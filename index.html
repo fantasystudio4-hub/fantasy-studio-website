@@ -736,6 +736,8 @@ section[id]{scroll-margin-top:84px}
   text-transform:uppercase;white-space:nowrap;transition:.25s;
 }
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
+.toast .t-close{border:0;background:none;color:#b3a98f;font-size:1.25rem;padding:0 .1em;line-height:1}
+.toast .t-close:hover{background:none;color:#fff}
 @media(max-width:860px){.toast{bottom:86px}}
 
 /* ---- back to top ---- */
@@ -1209,6 +1211,7 @@ section[id]{scroll-margin-top:84px}
   </span>
   <span id="toastMsg"></span>
   <button id="toastAction" type="button"></button>
+  <button class="t-close" id="toastClose" type="button" aria-label="Dismiss">&times;</button>
 </div>
 
 <!-- back to top -->
@@ -1805,6 +1808,10 @@ function showToast(msg, actionLabel, actionFn){
   toastTimer = setTimeout(hideToast, 7000);
 }
 function hideToast(){ $('#toast').classList.remove('show'); }
+$('#toastClose').addEventListener('click', hideToast);
+
+/* clear the saved quote (called after a successful WhatsApp send) */
+function clearSavedQuote(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
 
 /* ============================================================
    ANIMATED STAT COUNTERS (About)
@@ -1844,7 +1851,7 @@ if(saved && hasContent(saved)){
   state.albumSheets = saved.albumSheets||0;
   state.promo = PROMO_CODES[saved.promo] ? saved.promo : '';
   eid = state.events.reduce((m,e)=>Math.max(m, +e.id||0), 0);
-  showToast('Welcome back — your saved quote was restored.', 'Start fresh', startFresh);
+  showToast('Continue where you left off? Your saved quote is loaded.', 'Start fresh', startFresh);
 }else{
   seedDefaults();
 }
