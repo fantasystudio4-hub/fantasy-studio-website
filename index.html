@@ -369,6 +369,7 @@ header.nav.scrolled{
   transition:.25s;
 }
 .field select:focus,.field input:focus{outline:none;border-color:var(--gold-bright);background:rgba(255,255,255,.1)}
+.field input.date-dup{border-color:#e0a63a;box-shadow:0 0 0 2px rgba(224,166,58,.22)}
 .field select option{background:#26221a;color:#fff}
 .field input[type=date]{color-scheme:dark}
 .event-remove{
@@ -892,7 +893,7 @@ section[id]{scroll-margin-top:84px}
             <div class="album-control">
               <div class="qty">
                 <button type="button" id="albMinus" aria-label="Fewer sheets">−</button>
-                <input type="number" id="albInput" value="0" min="0" max="200" />
+                <input type="number" id="albInput" value="0" min="0" max="100" />
                 <button type="button" id="albPlus" aria-label="More sheets">+</button>
               </div>
               <div class="album-total" id="albTotal">₹0</div>
@@ -1363,6 +1364,7 @@ function eventCardHTML(ev){
 function renderEvents(){
   const list = $('#eventsList');
   list.innerHTML = state.events.map(eventCardHTML).join('');
+  if(typeof checkDupDates === 'function') checkDupDates(false);
 }
 
 /* ============================================================
@@ -1613,10 +1615,36 @@ document.addEventListener('change', e=>{
   if(f){
     const card = f.closest('.event-card');
     const ev = findEvent(card.dataset.ev);
+    if(f.dataset.field === 'date' && e.target.value && e.target.value < TODAY_ISO){
+      e.target.value = '';
+      ev.date = '';
+      showToast('Past dates can\u2019t be selected \u2014 please pick an upcoming date.');
+      renderSummary();
+      return;
+    }
     ev[f.dataset.field] = e.target.value;
+    if(f.dataset.field === 'date') checkDupDates(true);
     renderSummary();
   }
 });
+
+/* duplicate-date detection: warn, never block */
+let _hadDup = false;
+function checkDupDates(announce){
+  const counts = {};
+  state.events.forEach(ev=>{ if(ev.date) counts[ev.date] = (counts[ev.date]||0) + 1; });
+  let dup = false;
+  $$('.event-card input[type=date]').forEach(inp=>{
+    const isDup = !!(inp.value && counts[inp.value] > 1);
+    inp.classList.toggle('date-dup', isDup);
+    if(isDup) dup = true;
+  });
+  if(announce && dup && !_hadDup){
+    showToast('Note: two of your events share the same date.');
+  }
+  _hadDup = dup;
+  return dup;
+}
 document.addEventListener('input', e=>{
   if(e.target.matches('input[data-qty]')){
     const row = e.target.closest('.svc-toggle');
@@ -1640,7 +1668,7 @@ $('#addEvent').addEventListener('click', ()=>{
 });
 
 /* album controls */
-function setAlbum(n){ state.albumSheets = Math.max(0, Math.min(200, n||0)); renderSummary(); }
+function setAlbum(n){ state.albumSheets = Math.max(PRICES.albumMinSheets, Math.min(PRICES.albumMaxSheets, n||0)); renderSummary(); }
 $('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets+1));
 $('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets-1));
 $('#albInput').addEventListener('input', e=>setAlbum(parseInt(e.target.value)||0));
