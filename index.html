@@ -193,7 +193,8 @@ header.nav.scrolled{
   min-height:100vh;display:flex;align-items:center;
   position:relative;color:#fff;overflow:hidden;
   background:
-    radial-gradient(130% 90% at 50% -10%, rgba(184,144,43,.20), transparent 55%),
+    radial-gradient(130% 90% at 50% -10%, rgba(184,144,43,.22), transparent 55%),
+    radial-gradient(90% 60% at 50% 115%, rgba(184,144,43,.10), transparent 60%),
     linear-gradient(165deg,#231a0d 0%,#161108 48%,#0c0a06 100%);
   background-color:#14110a;
 }
@@ -202,6 +203,40 @@ header.nav.scrolled{
   background:radial-gradient(120% 80% at 50% 0%,rgba(226,194,117,.10),transparent 55%);
   pointer-events:none;
 }
+.hero::before{ /* ornamental invitation frame */
+  content:"";position:absolute;inset:clamp(14px,2.6vw,28px);z-index:1;
+  border:1px solid rgba(226,194,117,.26);
+  outline:1px solid rgba(226,194,117,.10);outline-offset:6px;
+  border-radius:2px;pointer-events:none;
+}
+/* watermark rings behind the title */
+.hero-rings{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(115vw,940px);aspect-ratio:1;pointer-events:none;z-index:0;
+}
+.hero-rings .spin{animation:ringspin 100s linear infinite;transform-origin:400px 400px}
+@keyframes ringspin{to{transform:rotate(360deg)}}
+/* floating gold dust */
+.hero-dust{position:absolute;inset:0;pointer-events:none;z-index:1}
+.hero-dust i{
+  position:absolute;bottom:-12px;width:5px;height:5px;border-radius:50%;
+  background:var(--gold-bright);opacity:0;filter:blur(.6px);
+  animation:rise 13s linear infinite;
+}
+.hero-dust i:nth-child(1){left:8%;animation-duration:14s;animation-delay:0s;width:4px;height:4px}
+.hero-dust i:nth-child(2){left:22%;animation-duration:17s;animation-delay:3.5s}
+.hero-dust i:nth-child(3){left:37%;animation-duration:12s;animation-delay:7s;width:3px;height:3px}
+.hero-dust i:nth-child(4){left:52%;animation-duration:19s;animation-delay:1.5s;width:4px;height:4px}
+.hero-dust i:nth-child(5){left:66%;animation-duration:13.5s;animation-delay:5s}
+.hero-dust i:nth-child(6){left:78%;animation-duration:16s;animation-delay:9s;width:3px;height:3px}
+.hero-dust i:nth-child(7){left:90%;animation-duration:15s;animation-delay:2.5s;width:4px;height:4px}
+.hero-dust i:nth-child(8){left:45%;animation-duration:18s;animation-delay:11s;width:3px;height:3px}
+@keyframes rise{
+  0%{transform:translateY(0) scale(1);opacity:0}
+  8%{opacity:.55}
+  85%{opacity:.25}
+  100%{transform:translateY(-94vh) scale(.35);opacity:0}
+}
 .hero-inner{max-width:920px;margin:0 auto;text-align:center;padding-top:60px;position:relative;z-index:2}
 .hero .ornament{display:flex;align-items:center;justify-content:center;gap:1rem;margin-bottom:1.6rem}
 .hero .ornament i{width:50px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-bright))}
@@ -209,8 +244,14 @@ header.nav.scrolled{
 .hero .ornament span{font-family:var(--sans);letter-spacing:.4em;text-transform:uppercase;font-size:.72rem;color:var(--gold-bright)}
 .hero h1{
   font-size:clamp(3rem,11vw,8rem);font-weight:800;letter-spacing:.02em;line-height:.95;
-  text-shadow:0 8px 40px rgba(0,0,0,.4);
+  background:linear-gradient(105deg,#fff 42%,var(--gold-bright) 50%,#fff 58%);
+  background-size:240% 100%;background-position:120% 0;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  filter:drop-shadow(0 8px 30px rgba(0,0,0,.45));
+  animation:sheen 8s ease-in-out infinite;
 }
+@keyframes sheen{0%{background-position:120% 0}55%{background-position:-20% 0}100%{background-position:-20% 0}}
 .hero h1 .amp{font-style:italic;font-weight:500;color:var(--gold-bright)}
 .hero .tagline{
   font-family:var(--serif-2);font-size:clamp(1.05rem,2.4vw,1.55rem);
@@ -219,7 +260,7 @@ header.nav.scrolled{
 .hero .tagline b{color:var(--gold-bright);font-weight:600;font-style:normal}
 .hero-cta{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:2.6rem}
 .scroll-cue{
-  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:2;
+  position:absolute;bottom:46px;left:50%;transform:translateX(-50%);z-index:2;
   color:rgba(255,255,255,.75);font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;
   display:flex;flex-direction:column;align-items:center;gap:.6rem;
 }
@@ -285,7 +326,14 @@ header.nav.scrolled{
 /* ============================================================
    PACKAGE BUILDER
    ============================================================ */
-.builder{background:var(--ink);color:#f3ecdc;position:relative;overflow:hidden}
+.builder{
+  color:#f3ecdc;position:relative;overflow:hidden;
+  background:
+    radial-gradient(rgba(226,194,117,.05) 1px, transparent 1.5px) 0 0/26px 26px,   /* gold dot weave */
+    linear-gradient(180deg,#26200f 0%,#1b160b 45%,#141008 100%);
+  border-top:1px solid rgba(226,194,117,.30);
+  border-bottom:1px solid rgba(226,194,117,.16);
+}
 .builder::before{content:"";position:absolute;inset:0;background:
   radial-gradient(60% 50% at 85% 0%,rgba(184,144,43,.16),transparent 60%),
   radial-gradient(50% 40% at 0% 100%,rgba(184,144,43,.10),transparent 60%);pointer-events:none}
@@ -400,8 +448,16 @@ header.nav.scrolled{
 .disc-field{display:flex;align-items:center;gap:.6rem;margin:.8rem 0;padding:.7rem .8rem;background:var(--cream);border:1px solid var(--line);border-radius:8px}
 .disc-field label{font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);white-space:nowrap}
 .disc-field .rupee{color:var(--gold-deep);font-weight:600}
-.disc-field input{flex:1;background:#fff;border:1px solid var(--line);border-radius:6px;padding:.4em .6em;font-family:var(--sans);width:100%;color:var(--ink)}
+.disc-field input{flex:1;background:#fff;border:1px solid var(--line);border-radius:6px;padding:.4em .6em;font-family:var(--sans);width:100%;color:var(--ink);text-transform:uppercase}
 .disc-field input:focus{outline:none;border-color:var(--gold)}
+.disc-field button{
+  background:var(--gold);border:0;color:#fff;border-radius:6px;padding:.45em 1em;
+  font-family:var(--sans);font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:.25s;
+}
+.disc-field button:hover{background:var(--gold-deep)}
+.promo-status{font-size:.78rem;margin:-.3rem 0 .5rem;padding:0 .2rem}
+.promo-status.ok{color:#1f7a3d}
+.promo-status.err{color:#b04030}
 .grand{display:flex;justify-content:space-between;align-items:flex-end;margin-top:.8rem;padding-top:1rem;border-top:2px solid var(--gold)}
 .grand .gl{font-family:var(--serif);font-size:1.05rem}
 .grand .gv{font-family:var(--serif);font-size:2.1rem;font-weight:700;color:var(--gold-deep);line-height:1}
@@ -664,6 +720,36 @@ section[id]{scroll-margin-top:84px}
 @media(max-width:900px){.preset-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.preset-grid{grid-template-columns:1fr}.preset .pk-desc{min-height:0}}
 
+/* ---- toast notifications ---- */
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translate(-50%,140%);z-index:1200;
+  display:flex;align-items:center;gap:.9rem;max-width:min(92vw,480px);
+  background:var(--ink);color:#f3ecdc;border:1px solid rgba(226,194,117,.4);
+  border-radius:60px;padding:.8rem 1.4rem;box-shadow:0 18px 50px rgba(0,0,0,.35);
+  font-size:.88rem;transition:transform .45s cubic-bezier(.2,.7,.3,1);
+}
+.toast.show{transform:translate(-50%,0)}
+.toast .t-ic{color:var(--gold-bright);flex:0 0 auto;display:grid;place-items:center}
+.toast button{
+  background:none;border:1px solid rgba(226,194,117,.5);color:var(--gold-bright);border-radius:40px;
+  padding:.35em 1em;font-family:var(--sans);font-size:.76rem;letter-spacing:.06em;cursor:pointer;
+  text-transform:uppercase;white-space:nowrap;transition:.25s;
+}
+.toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
+@media(max-width:860px){.toast{bottom:86px}}
+
+/* ---- back to top ---- */
+.to-top{
+  position:fixed;right:22px;bottom:96px;z-index:940;width:46px;height:46px;border-radius:50%;
+  background:var(--ink);border:1px solid rgba(226,194,117,.45);color:var(--gold-bright);
+  display:grid;place-items:center;cursor:pointer;opacity:0;pointer-events:none;transform:translateY(10px);
+  transition:.35s;box-shadow:0 10px 26px rgba(0,0,0,.25);
+}
+.to-top.show{opacity:1;pointer-events:auto;transform:none}
+.to-top:hover{background:var(--gold);color:#fff;border-color:var(--gold)}
+.to-top svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+@media(max-width:860px){.to-top{bottom:158px;right:24px}}
+
 /* respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
@@ -689,8 +775,8 @@ section[id]{scroll-margin-top:84px}
       <span class="logo-text"><b>Fantasy Studio</b><span>Malakpet · Hyderabad</span></span>
     </a>
     <nav class="nav-links">
-      <a href="#about">About</a>
       <a href="#builder">Package Builder</a>
+      <a href="#about">About</a>
       <a href="#services">Services</a>
       <a href="#portfolio">Portfolio</a>
       <a href="#testimonials">Reviews</a>
@@ -703,8 +789,8 @@ section[id]{scroll-margin-top:84px}
 
 <div class="mobile-menu" id="mobileMenu">
   <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
-  <a href="#about">About</a>
   <a href="#builder">Package Builder</a>
+  <a href="#about">About</a>
   <a href="#services">Services</a>
   <a href="#portfolio">Portfolio</a>
   <a href="#testimonials">Reviews</a>
@@ -713,6 +799,18 @@ section[id]{scroll-margin-top:84px}
 
 <!-- ============ HERO ============ -->
 <section class="hero" id="home">
+  <svg class="hero-rings" viewBox="0 0 800 800" aria-hidden="true">
+    <circle cx="400" cy="400" r="330" fill="none" stroke="rgba(226,194,117,.09)" stroke-width="1.4"/>
+    <circle cx="400" cy="400" r="252" fill="none" stroke="rgba(226,194,117,.07)" stroke-width="1"/>
+    <g class="spin">
+      <circle cx="400" cy="400" r="296" fill="none" stroke="rgba(226,194,117,.13)" stroke-width="1" stroke-dasharray="2 14"/>
+      <circle cx="400" cy="104" r="3.5" fill="rgba(226,194,117,.35)"/>
+      <circle cx="400" cy="696" r="3.5" fill="rgba(226,194,117,.35)"/>
+      <circle cx="104" cy="400" r="3.5" fill="rgba(226,194,117,.35)"/>
+      <circle cx="696" cy="400" r="3.5" fill="rgba(226,194,117,.35)"/>
+    </g>
+  </svg>
+  <div class="hero-dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap hero-inner">
     <div class="ornament reveal"><i></i><span>Est. — 14 Years of Artistry</span><i></i></div>
     <h1 class="reveal d1">FANTASY STUDIO</h1>
@@ -723,33 +821,6 @@ section[id]{scroll-margin-top:84px}
     </div>
   </div>
   <div class="scroll-cue"><span>Scroll</span><span class="line"></span></div>
-</section>
-
-<!-- ============ ABOUT ============ -->
-<section class="about section-pad" id="about">
-  <div class="wrap about-grid">
-    <div class="about-media reveal">
-      <div class="frame">
-        <div class="frame-ring"><span class="frame-mono">FS</span></div>
-        <h3 class="frame-name">Fantasy Studio</h3>
-        <span class="frame-tag">Timeless Wedding Stories</span>
-      </div>
-      <div class="badge"><b>14</b><span>Years of Experience</span></div>
-      <div class="seal">Crafted<br>with<br>Love</div>
-    </div>
-    <div class="about-copy reveal d1">
-      <span class="eyebrow">Who We Are</span>
-      <h2 class="h-section">Timeless stories,<br><span class="it">beautifully</span> told.</h2>
-      <p class="lead-2">For over fourteen years, Fantasy Studio has been Hyderabad's trusted name in luxury wedding photography &amp; cinematography.</p>
-      <p>Based in the heart of Malakpet, we have had the honour of documenting hundreds of celebrations — from intimate Nikahs to grand Receptions, vibrant Mehndis to soulful Ruksati moments. Every frame we create is rooted in respect, artistry, and an obsessive eye for detail.</p>
-      <p>We are proud to be warmly trusted across both <strong>Muslim and Hindu</strong> wedding traditions, honouring every ritual and every emotion with the dignity it deserves.</p>
-      <div class="trust-row">
-        <div class="ti"><b>1500+</b><span>Weddings Filmed</span></div>
-        <div class="ti"><b>14 Yrs</b><span>Of Experience</span></div>
-        <div class="ti"><b>100%</b><span>Hyderabad Local</span></div>
-      </div>
-    </div>
-  </div>
 </section>
 
 <!-- ============ PACKAGE BUILDER ============ -->
@@ -824,11 +895,12 @@ section[id]{scroll-margin-top:84px}
           <div class="sum-foot">
             <div class="sum-sub"><span>Events Subtotal</span><span id="evSubtotal">₹0</span></div>
             <div class="sum-sub"><span>Album Subtotal</span><span id="albSubtotal">₹0</span></div>
-            <div class="disc-field">
-              <label for="discInput">Discount</label>
-              <span class="rupee">₹</span>
-              <input type="number" id="discInput" value="0" min="0" placeholder="0" />
+            <div class="disc-field" id="promoField" hidden>
+              <label for="promoInput">Promo code</label>
+              <input type="text" id="promoInput" placeholder="Enter code" autocomplete="off" autocapitalize="characters" />
+              <button type="button" id="promoApply">Apply</button>
             </div>
+            <div class="promo-status" id="promoStatus" hidden></div>
             <div class="grand-was" id="grandWas"></div>
             <div class="grand">
               <span class="gl">Grand Total</span>
@@ -844,6 +916,33 @@ section[id]{scroll-margin-top:84px}
           </div>
         </div>
       </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ABOUT ============ -->
+<section class="about section-pad" id="about">
+  <div class="wrap about-grid">
+    <div class="about-media reveal">
+      <div class="frame">
+        <div class="frame-ring"><span class="frame-mono">FS</span></div>
+        <h3 class="frame-name">Fantasy Studio</h3>
+        <span class="frame-tag">Timeless Wedding Stories</span>
+      </div>
+      <div class="badge"><b>14</b><span>Years of Experience</span></div>
+      <div class="seal">Crafted<br>with<br>Love</div>
+    </div>
+    <div class="about-copy reveal d1">
+      <span class="eyebrow">Who We Are</span>
+      <h2 class="h-section">Timeless stories,<br><span class="it">beautifully</span> told.</h2>
+      <p class="lead-2">For over fourteen years, Fantasy Studio has been Hyderabad's trusted name in luxury wedding photography &amp; cinematography.</p>
+      <p>Based in the heart of Malakpet, we have had the honour of documenting hundreds of celebrations — from intimate Nikahs to grand Receptions, vibrant Mehndis to soulful Ruksati moments. Every frame we create is rooted in respect, artistry, and an obsessive eye for detail.</p>
+      <p>We are proud to be warmly trusted across both <strong>Muslim and Hindu</strong> wedding traditions, honouring every ritual and every emotion with the dignity it deserves.</p>
+      <div class="trust-row">
+        <div class="ti"><b class="stat" data-count="1500" data-suffix="+">1500+</b><span>Weddings Filmed</span></div>
+        <div class="ti"><b class="stat" data-count="14" data-suffix=" Yrs">14 Yrs</b><span>Of Experience</span></div>
+        <div class="ti"><b class="stat" data-count="100" data-suffix="%">100%</b><span>Hyderabad Local</span></div>
+      </div>
     </div>
   </div>
 </section>
@@ -1103,12 +1202,30 @@ section[id]{scroll-margin-top:84px}
   </div>
 </div>
 
+<!-- toast -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="t-ic">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+  </span>
+  <span id="toastMsg"></span>
+  <button id="toastAction" type="button"></button>
+</div>
+
+<!-- back to top -->
+<button class="to-top" id="toTop" aria-label="Back to top">
+  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
 <!-- print quote target -->
 <div id="print-quote"></div>
 
 <script>
 /* ============================================================
    FANTASY STUDIO — OFFICIAL PRICING (edit here)
+   ============================================================ */
+/* ============================================================
+   FANTASY STUDIO — OFFICIAL PRICING (single source of truth)
+   Every rupee shown anywhere on this page traces back here.
    ============================================================ */
 const PRICES = {
   cinematography:    15000,  // per event
@@ -1122,8 +1239,16 @@ const PRICES = {
   liveStreaming:     6000,   // per event
   extraShortVPShoot: 3000,   // per event
   albumPerSheet:     400,    // album = sheets × 400
+  albumMinSheets:    0,
+  albumMaxSheets:    100,
 };
 // All per-service charges are per visit / per event / up to 5 hours.
+
+/* Promo whitelist — only the studio edits this. Empty = promo field hidden.
+   Shape: 'CODE': { type:'percent'|'flat', value:Number, label:'shown to client' } */
+const PROMO_CODES = {};
+
+const PAYMENT_TERMS = ['90% on event day', '10% at delivery'];
 
 const WA_NUMBER = "918686868803";
 
@@ -1149,7 +1274,7 @@ const EVENT_TYPES = ['Manje','Sanchak','Mehndi','Nikah','Ruksati','Valima / Rece
 let state = {
   events: [],      // { id, type, date, services:{ key:qty } }
   albumSheets: 0,
-  discount: 0,
+  promo: '',       // validated against PROMO_CODES only — never a raw amount
 };
 let eid = 0;
 
@@ -1157,6 +1282,7 @@ let eid = 0;
 const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
 const $  = (s,c=document) => c.querySelector(s);
 const $$ = (s,c=document) => [...c.querySelectorAll(s)];
+const TODAY_ISO = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd, local time
 
 /* ============================================================
    EVENT RENDERING
@@ -1190,7 +1316,7 @@ function eventCardHTML(ev){
       </div>
       <div class="field">
         <label>Date</label>
-        <input type="date" data-field="date" value="${ev.date||''}" />
+        <input type="date" data-field="date" value="${ev.date||''}" min="${TODAY_ISO}" />
       </div>
       <button class="event-remove" data-remove title="Remove event">&times;</button>
     </div>
@@ -1211,12 +1337,14 @@ function eventTotal(ev){
   for(const k in ev.services){ t += (PRICES[k]||0) * ev.services[k]; }
   return t;
 }
+function activePromo(){ return PROMO_CODES[state.promo] || null; }
 function calc(){
   const evSub = state.events.reduce((s,e)=>s+eventTotal(e),0);
   const albSub = state.albumSheets * PRICES.albumPerSheet;
   const sub = evSub + albSub;
-  const disc = Math.min(Math.max(state.discount,0), sub);
-  return { evSub, albSub, sub, disc, grand: sub - disc };
+  const p = activePromo();
+  const disc = !p ? 0 : Math.min(sub, p.type==='percent' ? Math.round(sub*p.value/100) : p.value);
+  return { evSub, albSub, sub, disc, promo:p, grand: sub - disc };
 }
 
 /* ============================================================
@@ -1292,7 +1420,7 @@ function renderSheet(){
     `<div class="sheet-totals">
        <div class="sum-sub"><span>Events Subtotal</span><span>${inr(evSub)}</span></div>
        <div class="sum-sub"><span>Album Subtotal</span><span>${inr(albSub)}</span></div>
-       ${disc>0?`<div class="sum-sub"><span>Discount</span><span>−${inr(disc)}</span></div>`:''}
+       ${disc>0?`<div class="sum-sub"><span>Promo (${state.promo})</span><span>−${inr(disc)}</span></div>`:''}
        <div class="grand"><span class="gl">Grand Total</span><span class="gv">${inr(grand)}</span></div>
      </div>`;
 }
@@ -1316,6 +1444,7 @@ function renderSummary(){
 
   renderSheet();
   buildWaLink();
+  saveState();
 }
 
 /* ============================================================
@@ -1354,7 +1483,7 @@ function buildQuoteText(){
   m += `Album Subtotal: ${inr(albSub)}\n`;
   if(disc>0){
     m += `Subtotal: ${inr(sub)}\n`;
-    m += `Discount: −${inr(disc)}\n`;
+    m += `Promo (${state.promo}): −${inr(disc)}\n`;
   }
   m += `*GRAND TOTAL: ${inr(grand)}*\n\n`;
   m += `Please confirm availability for my dates. Thank you!`;
@@ -1437,8 +1566,34 @@ $('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets+1));
 $('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets-1));
 $('#albInput').addEventListener('input', e=>setAlbum(parseInt(e.target.value)||0));
 
-/* discount */
-$('#discInput').addEventListener('input', e=>{ state.discount = parseInt(e.target.value)||0; renderSummary(); });
+/* promo code (whitelist-only — customers can never type an amount) */
+function syncPromoUI(){
+  const field = $('#promoField'), status = $('#promoStatus');
+  if(!field) return;
+  field.hidden = Object.keys(PROMO_CODES).length === 0;
+  const p = activePromo();
+  if(p){
+    $('#promoInput').value = state.promo;
+    status.hidden = false; status.className = 'promo-status ok';
+    status.textContent = `✓ ${state.promo} applied — ${p.label||'discount active'}`;
+  }else{
+    status.hidden = true; status.textContent = '';
+  }
+}
+$('#promoApply').addEventListener('click', ()=>{
+  const code = ($('#promoInput').value||'').trim().toUpperCase();
+  const status = $('#promoStatus');
+  if(!code){ state.promo=''; syncPromoUI(); renderSummary(); return; }
+  if(PROMO_CODES[code]){
+    state.promo = code;
+    renderSummary(); syncPromoUI();
+  }else{
+    state.promo = '';
+    renderSummary();
+    status.hidden = false; status.className = 'promo-status err';
+    status.textContent = 'Code not recognised.';
+  }
+});
 
 /* PDF (print) */
 function downloadQuotePDF(){
@@ -1467,7 +1622,7 @@ const PRESETS = {
     name:'Single-Day', tag:'',
     desc:'One function — engagement or birthday. Traditional photo & video coverage.',
     events:[{type:'Engagement', services:{traditionalPhoto:1, traditionalVideo:1}}],
-    album:0, price:13000
+    album:0
   },
   essential: {
     name:'Essential', tag:'',
@@ -1477,7 +1632,7 @@ const PRESETS = {
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2}},
       {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2}}
     ],
-    album:0, price:65000
+    album:0
   },
   premium: {
     name:'Premium', tag:'Popular',
@@ -1487,7 +1642,7 @@ const PRESETS = {
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}},
       {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}}
     ],
-    album:0, price:95000
+    album:0
   },
   royal: {
     name:'Royal', tag:'Signature',
@@ -1497,7 +1652,7 @@ const PRESETS = {
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}},
       {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}}
     ],
-    album:0, price:131000
+    album:0
   }
 };
 function presetRawTotal(p){
@@ -1513,7 +1668,7 @@ function renderPresets(){
       ${p.tag?`<span class="pk-tag">${p.tag}</span>`:''}
       <span class="pk-name">${p.name}</span>
       <span class="pk-desc">${p.desc}</span>
-      <span class="pk-from">Package<b>${inr(p.price)}</b></span>
+      <span class="pk-from">Package<b>${inr(presetRawTotal(p))}</b></span>
     </button>`;
   }).join('');
 }
@@ -1521,9 +1676,6 @@ function applyPreset(key){
   const p = PRESETS[key]; if(!p) return;
   state.events = p.events.map(ev=>({ id:++eid, type:ev.type, date:'', services:{...ev.services} }));
   state.albumSheets = p.album||0;
-  const raw = presetRawTotal(p);
-  state.discount = Math.max(0, raw - (p.price||raw));   // package saving to hit advertised price
-  const di = $('#discInput'); if(di) di.value = state.discount;
   renderEvents(); renderSummary();
   $$('.preset').forEach(b=>b.classList.toggle('active', b.dataset.preset===key));
   $('#eventsList').scrollIntoView({behavior:'smooth', block:'start'});
@@ -1599,14 +1751,105 @@ $('#enquiryForm').addEventListener('submit', e=>{
 });
 
 /* ============================================================
+   QUOTE PERSISTENCE (localStorage)
+   ============================================================ */
+const STORE_KEY = 'fs_quote_v1';
+function saveState(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      events: state.events, albumSheets: state.albumSheets, promo: state.promo
+    }));
+  }catch(e){ /* private mode / quota — persistence is best-effort */ }
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return null;
+    const d = JSON.parse(raw);
+    if(!d || !Array.isArray(d.events)) return null;
+    return d;
+  }catch(e){ return null; }
+}
+function hasContent(d){
+  return d.events.some(e=>Object.values(e.services||{}).some(q=>q>0)) || d.albumSheets>0;
+}
+function seedDefaults(){
+  state.events = [
+    { id:++eid, type:'Nikah', date:'', services:{} },
+    { id:++eid, type:'Valima / Reception', date:'', services:{} }
+  ];
+  state.albumSheets = 0;
+  state.promo = '';
+  const pi = $('#promoInput'); if(pi) pi.value = '';
+  syncPromoUI();
+}
+function startFresh(){
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  seedDefaults();
+  $$('.preset').forEach(b=>b.classList.remove('active'));
+  renderEvents(); renderSummary();
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer;
+function showToast(msg, actionLabel, actionFn){
+  const t = $('#toast'), btn = $('#toastAction');
+  $('#toastMsg').textContent = msg;
+  btn.style.display = actionLabel ? '' : 'none';
+  btn.textContent = actionLabel || '';
+  btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 7000);
+}
+function hideToast(){ $('#toast').classList.remove('show'); }
+
+/* ============================================================
+   ANIMATED STAT COUNTERS (About)
+   ============================================================ */
+const statIO = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{
+    if(!en.isIntersecting) return;
+    statIO.unobserve(en.target);
+    const el = en.target, target = parseInt(el.dataset.count,10), suffix = el.dataset.suffix||'';
+    if(REDUCE_MOTION || !target){ el.textContent = target + suffix; return; }
+    const dur = 1400, start = performance.now();
+    (function tick(now){
+      const t = Math.min(1,(now-start)/dur), e = 1-Math.pow(1-t,3);
+      el.textContent = Math.round(target*e).toLocaleString('en-IN') + suffix;
+      if(t<1) requestAnimationFrame(tick);
+    })(start);
+  });
+},{threshold:.5});
+$$('.stat').forEach(el=>statIO.observe(el));
+
+/* ============================================================
+   BACK TO TOP
+   ============================================================ */
+const toTop = $('#toTop');
+window.addEventListener('scroll', ()=>{ toTop.classList.toggle('show', window.scrollY>700); }, {passive:true});
+toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: REDUCE_MOTION?'auto':'smooth'}));
+
+/* ============================================================
    INIT
    ============================================================ */
 $('#year').textContent = new Date().getFullYear();
-// seed two empty event cards so the structure is visible — every quantity starts at 0
-state.events.push({ id:++eid, type:'Nikah',  date:'', services:{} });
-state.events.push({ id:++eid, type:'Valima / Reception', date:'', services:{} });
-state.albumSheets = 0;
+const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
+
+const saved = loadState();
+if(saved && hasContent(saved)){
+  state.events = saved.events.map(e=>({ ...e, services:{...(e.services||{})} }));
+  state.albumSheets = saved.albumSheets||0;
+  state.promo = PROMO_CODES[saved.promo] ? saved.promo : '';
+  eid = state.events.reduce((m,e)=>Math.max(m, +e.id||0), 0);
+  showToast('Welcome back — your saved quote was restored.', 'Start fresh', startFresh);
+}else{
+  seedDefaults();
+}
 renderPresets();
+syncPromoUI();
 renderEvents();
 renderSummary();
 observeReveals();
