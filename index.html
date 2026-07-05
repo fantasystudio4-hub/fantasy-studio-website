@@ -1558,7 +1558,8 @@ function renderSummary(){
 
   // album panel labels
   $('#albTotal').textContent = inr(albSub);
-  $('#albInput').value = state.albumSheets;
+  const albIn = $('#albInput');
+  if(albIn && document.activeElement !== albIn) albIn.value = state.albumSheets; // don't fight the user's caret
   $('#albumPriceLbl').textContent = `${inr(PRICES.albumPerSheet)} per sheet`;
 
   const ap = $('#albumPanel'); if(ap) ap.hidden = !albumEligible();
@@ -1736,14 +1737,25 @@ document.addEventListener('input', e=>{
   if(e.target.matches('input[data-qty]')){
     const row = e.target.closest('.svc-toggle');
     const ev  = findEvent(row.dataset.ev);
+    if(e.target.value === '') return;      // let the user clear it while typing
     let q = parseInt(e.target.value, 10);
-    if(isNaN(q) || q < 0) q = 0;            // typing also floors at 0
+    if(isNaN(q) || q < 0) q = 0;
     ev.services[row.dataset.svc] = q;
     row.classList.toggle('on', q > 0);
     markCustomised();
     renderSummary();
   }
 });
+/* blur doesn't bubble — capture phase; write the committed value back */
+document.addEventListener('blur', e=>{
+  if(e.target.matches && e.target.matches('input[data-qty]')){
+    const row = e.target.closest('.svc-toggle');
+    const ev  = findEvent(row.dataset.ev);
+    const q   = ev.services[row.dataset.svc] || 0;
+    e.target.value = q;                     // '' or junk → committed number
+    row.classList.toggle('on', q > 0);
+  }
+}, true);
 
 /* add event */
 $('#addEvent').addEventListener('click', ()=>{
@@ -1768,7 +1780,22 @@ function setAlbum(n){
 }
 $('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets===0 ? PRICES.albumMinSheets : state.albumSheets+1));
 $('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets<=PRICES.albumMinSheets ? 0 : state.albumSheets-1));
-$('#albInput').addEventListener('input', e=>setAlbum(parseInt(e.target.value)||0));
+/* typing: keep the raw string, allow empty/partial entry; live total updates
+   without min-snapping so intermediate values (like the "4" in "40") survive */
+$('#albInput').addEventListener('input', e=>{
+  const raw = e.target.value;
+  if(raw === '') return;                              // mid-entry blank is fine
+  const n = parseInt(raw, 10);
+  if(isNaN(n) || n < 0) return;
+  state.albumSheets = Math.min(PRICES.albumMaxSheets, n);  // max-cap only; no snap
+  markCustomised(); renderSummary();
+});
+/* committing: snap 1–14 → 15, clamp to bounds, and normalise the display */
+$('#albInput').addEventListener('blur', e=>{
+  setAlbum(e.target.value === '' ? 0 : parseInt(e.target.value, 10));
+  e.target.value = state.albumSheets;
+});
+$('#albInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') e.target.blur(); });
 
 /* promo code (whitelist-only — customers can never type an amount) */
 function syncPromoUI(){
