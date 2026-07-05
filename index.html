@@ -651,12 +651,43 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .about-media .badge{left:50%;transform:translateX(-50%);bottom:-22px}
 }
 
-/* print quote */
+/* ---- royal quotation (print / save-as-PDF only) ---- */
 #print-quote{display:none}
+#print-quote .pq{font-family:Helvetica,Arial,sans-serif;color:#1c1a16;-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}
+.pq-inner{border:2px solid #B8902B;outline:1px solid #B8902B;outline-offset:3px;margin:6mm;padding:10mm 9mm 22mm;position:relative;min-height:272mm;box-sizing:border-box}
+.pqd{position:absolute;width:9px;height:9px;background:#B8902B;transform:rotate(45deg)}
+.pqd.tl{top:-6px;left:-6px}.pqd.tr{top:-6px;right:-6px}.pqd.bl{bottom:-6px;left:-6px}.pqd.br{bottom:-6px;right:-6px}
+.pq-head{text-align:center}
+.pq-mono{width:58px;height:58px;margin:0 auto 6px;display:block}
+.pq-head h1{font-family:'Times New Roman',Times,serif;font-size:25pt;letter-spacing:5px;color:#B8902B;margin:0;font-weight:bold}
+.pq-sub{font-size:7.5pt;letter-spacing:2px;color:#666;margin-top:4px}
+.pq-rule{display:flex;align-items:center;gap:8px;margin:10px auto 0;max-width:58%}
+.pq-rule::before,.pq-rule::after{content:"";flex:1;height:1px;background:#B8902B}
+.pq-rule span{color:#B8902B;font-size:8pt}
+.pq-title{font-family:'Times New Roman',Times,serif;font-weight:bold;font-size:13.5pt;letter-spacing:4px;margin-top:9px}
+.pq-meta{font-size:9pt;color:#555;margin:5px 0 12px}
+.pq-table{width:100%;border-collapse:collapse;font-size:9.5pt;margin-top:4px}
+.pq-table th{font-family:'Times New Roman',Times,serif;text-align:left;border-top:1.5px solid #B8902B;border-bottom:1.5px solid #B8902B;padding:6px 8px;letter-spacing:1px;font-size:9pt}
+.pq-table td{padding:5px 8px;border-bottom:.5pt solid #eee}
+.pq-table .num{text-align:right;white-space:nowrap}
+.pq-table tr.pq-ev td{background:#F4EAD3;font-family:'Times New Roman',Times,serif;font-weight:bold;font-size:10pt;border-top:1px solid #B8902B}
+.pq-table tr.alt td{background:#FBF6EA}
+.pq-evtotal{color:#8E6E1E}
+.pq-tot{margin:12px 0 0 auto;width:62%;font-size:10pt}
+.pq-tot .row{display:flex;justify-content:space-between;padding:3px 8px}
+.pq-grand{display:flex;justify-content:space-between;background:#B8902B;color:#fff;font-family:'Times New Roman',Times,serif;font-weight:bold;font-size:13pt;padding:8px 12px;border-radius:3px;margin-top:6px}
+.pq-terms{margin-top:16px;font-size:9pt}
+.pq-terms h4{font-family:'Times New Roman',Times,serif;letter-spacing:2px;color:#8E6E1E;margin:0 0 4px;font-size:10pt}
+.pq-terms ol{margin:0;padding-left:16px}
+.pq-note{margin-top:6px;color:#777;font-size:8pt}
+.pq-foot{position:absolute;left:9mm;right:9mm;bottom:7mm;text-align:center;font-size:8.5pt;color:#666;border-top:1px solid #B8902B;padding-top:6px}
+.pq-foot b{color:#B8902B;font-size:11.5pt;letter-spacing:1px}
 @media print{
+  @page{size:A4;margin:0}
+  html,body{background:#fff}
   body *{visibility:hidden}
   #print-quote,#print-quote *{visibility:visible}
-  #print-quote{display:block;position:absolute;left:0;top:0;width:100%;padding:30px;color:#000}
+  #print-quote{display:block;position:absolute;left:0;top:0;width:100%;padding:0;color:#000}
   .wa-fab,.mobile-bar,.quote-sheet,.sheet-backdrop,.lead-modal,.lead-backdrop,.toast,.to-top,header.nav{display:none!important}
 }
 
@@ -1703,17 +1734,61 @@ $('#promoApply').addEventListener('click', ()=>{
 });
 
 /* PDF (print) */
+function esc(t){ return String(t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function downloadQuotePDF(){
-  const txt = buildQuoteText().replace(/\*/g,'').replace(/_/g,'');
+  const { albSub, sub, disc, grand } = calc();
+  const evs = sortedQuoteEvents();
+  let lead = null; try{ lead = JSON.parse(localStorage.getItem(LEAD_KEY)||'null'); }catch(e){}
+  const today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+
+  let rows = '';
+  evs.forEach((ev,i)=>{
+    rows += `<tr class="pq-ev"><td colspan="3">${i+1}. ${esc((ev.type||'Event').toUpperCase())} — ${fmtDate(ev.date)}</td><td class="num pq-evtotal">${inr(eventTotal(ev))}</td></tr>`;
+    let r = 0;
+    SERVICES.forEach(sv=>{
+      const q = ev.services[sv.key]||0; if(!q) return;
+      rows += `<tr class="${r%2?'alt':''}"><td>${sv.label}</td><td class="num">${q}</td><td class="num">${inr(PRICES[sv.key])}</td><td class="num">${inr(PRICES[sv.key]*q)}</td></tr>`;
+      r++;
+    });
+  });
+  if(state.albumSheets>0){
+    rows += `<tr class="pq-ev"><td colspan="3">PREMIUM ALBUM</td><td class="num pq-evtotal">${inr(albSub)}</td></tr>`;
+    rows += `<tr><td>Album sheets</td><td class="num">${state.albumSheets}</td><td class="num">${inr(PRICES.albumPerSheet)}</td><td class="num">${inr(albSub)}</td></tr>`;
+  }
+  if(!rows) rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:18px">No services selected yet</td></tr>`;
+
   $('#print-quote').innerHTML = `
-    <div style="font-family:Georgia,serif;max-width:700px;margin:0 auto">
-      <div style="text-align:center;border-bottom:3px double #B8902B;padding-bottom:14px;margin-bottom:20px">
-        <h1 style="font-size:30px;letter-spacing:3px;color:#B8902B;margin:0">FANTASY STUDIO</h1>
-        <p style="margin:6px 0 0;letter-spacing:2px;font-size:11px;color:#555">WEDDING PHOTOGRAPHY &amp; CINEMATOGRAPHY · MALAKPET, HYDERABAD · +91 8686868803</p>
-      </div>
-      <pre style="white-space:pre-wrap;font-family:Georgia,serif;font-size:14px;line-height:1.7;color:#1c1a16">${txt.replace(/━+/g,'──────────────────────────')}</pre>
-      <p style="text-align:center;margin-top:24px;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:12px">Generated ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} · This is an estimate. Final quote confirmed on booking.</p>
-    </div>`;
+  <div class="pq"><div class="pq-inner">
+    <i class="pqd tl"></i><i class="pqd tr"></i><i class="pqd bl"></i><i class="pqd br"></i>
+    <div class="pq-head">
+      <svg class="pq-mono" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+        <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+        <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+        <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+        <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="Times New Roman,serif" font-weight="bold" font-size="33" fill="#B8902B">FS</text>
+      </svg>
+      <h1>FANTASY STUDIO</h1>
+      <div class="pq-sub">WEDDING PHOTOGRAPHY &amp; CINEMATOGRAPHY &middot; MALAKPET, HYDERABAD</div>
+      <div class="pq-rule"><span>&#9670;</span></div>
+      <div class="pq-title">PACKAGE QUOTATION</div>
+      <div class="pq-meta">Date: ${today}${lead&&lead.name?` &middot; Prepared for: ${esc(lead.name)}${lead.phone?' ('+esc(lead.phone)+')':''}`:''}</div>
+    </div>
+    <table class="pq-table">
+      <thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="pq-tot">
+      ${disc>0?`<div class="row"><span>Subtotal</span><span>${inr(sub)}</span></div><div class="row"><span>Promo (${esc(state.promo)})</span><span>&minus;${inr(disc)}</span></div>`:''}
+      <div class="pq-grand"><span>GRAND TOTAL</span><span>${inr(grand)}</span></div>
+    </div>
+    <div class="pq-terms">
+      <h4>PAYMENT TERMS</h4>
+      <ol>${PAYMENT_TERMS.map(t=>`<li>${t}</li>`).join('')}</ol>
+      <div class="pq-note">This is an estimate; final quote confirmed on booking. Valid for 30 days.</div>
+    </div>
+    <div class="pq-foot">FANTASY STUDIO &middot; MALAKPET, HYDERABAD<br><b>&#9742; 8686868803</b></div>
+  </div></div>`;
   window.print();
 }
 $('#pdfBtn').addEventListener('click', downloadQuotePDF);
