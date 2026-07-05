@@ -916,11 +916,11 @@ section[id]{scroll-margin-top:84px}
         <div class="panel reveal">
           <div class="panel-head">
             <span class="num">2</span>
-            <div><h3>Wedding Album</h3><p>Choose your number of sheets — priced per sheet.</p></div>
+            <div><h3>Album</h3><p>Choose your number of sheets — minimum 15.</p></div>
           </div>
           <div class="album-row">
             <div class="album-info">
-              <span class="nm">Premium Album Sheets</span>
+              <span class="nm">Album Sheets</span>
               <span class="pr" id="albumPriceLbl"></span>
             </div>
             <div class="album-control">
@@ -1311,7 +1311,7 @@ const PRICES = {
   liveStreaming:     6000,   // per event
   extraShortVPShoot: 3000,   // per event
   albumPerSheet:     400,    // album = sheets × 400
-  albumMinSheets:    0,
+  albumMinSheets:    15,    // albums start at 15 sheets (0 = no album)
   albumMaxSheets:    100,
 };
 // All per-service charges are per visit / per event / up to 5 hours.
@@ -1456,7 +1456,7 @@ function buildBreakdownHTML(){
   if(state.albumSheets>0){
     html += `
       <div class="sum-event">
-        <div class="sum-event-h"><span class="en">Wedding Album</span><span class="et">${inr(albSub)}</span></div>
+        <div class="sum-event-h"><span class="en">Album</span><span class="et">${inr(albSub)}</span></div>
         <div class="sum-line"><span>Sheets <span class="q">×${state.albumSheets}</span></span><span>${inr(albSub)}</span></div>
       </div>`;
   }
@@ -1718,9 +1718,15 @@ $('#addEvent').addEventListener('click', ()=>{
 });
 
 /* album controls */
-function setAlbum(n){ state.albumSheets = Math.max(PRICES.albumMinSheets, Math.min(PRICES.albumMaxSheets, n||0)); markCustomised(); renderSummary(); }
-$('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets+1));
-$('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets-1));
+function setAlbum(n){
+  n = parseInt(n, 10) || 0;
+  if(n <= 0) n = 0;                                   // no album
+  else if(n < PRICES.albumMinSheets) n = PRICES.albumMinSheets;  // albums start at 15 sheets
+  state.albumSheets = Math.min(PRICES.albumMaxSheets, n);
+  markCustomised(); renderSummary();
+}
+$('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets===0 ? PRICES.albumMinSheets : state.albumSheets+1));
+$('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets<=PRICES.albumMinSheets ? 0 : state.albumSheets-1));
 $('#albInput').addEventListener('input', e=>setAlbum(parseInt(e.target.value)||0));
 
 /* promo code (whitelist-only — customers can never type an amount) */
@@ -1771,7 +1777,7 @@ function downloadQuotePDF(){
     });
   });
   if(state.albumSheets>0){
-    rows += `<tr class="pq-ev"><td colspan="3">PREMIUM ALBUM</td><td class="num pq-evtotal">${inr(albSub)}</td></tr>`;
+    rows += `<tr class="pq-ev"><td colspan="3">ALBUM</td><td class="num pq-evtotal">${inr(albSub)}</td></tr>`;
     rows += `<tr><td>Album sheets</td><td class="num">${state.albumSheets}</td><td class="num">${inr(PRICES.albumPerSheet)}</td><td class="num">${inr(albSub)}</td></tr>`;
   }
   if(!rows) rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:18px">No services selected yet</td></tr>`;
@@ -1995,14 +2001,15 @@ function loadState(){
   }catch(e){ return null; }
 }
 function hasContent(d){
-  return d.events.some(e=>Object.values(e.services||{}).some(q=>q>0)) || d.albumSheets>0;
+  const hasSvc = d.events.some(e=>Object.values(e.services||{}).some(q=>q>0));
+  return hasSvc || (d.albumSheets>0 && d.albumSheets !== PRICES.albumMinSheets);
 }
 function seedDefaults(){
   state.events = [
     { id:++eid, type:'Nikah', date:'', services:{} },
     { id:++eid, type:'Valima / Reception', date:'', services:{} }
   ];
-  state.albumSheets = 0;
+  state.albumSheets = PRICES.albumMinSheets;   // builder starts at 15 sheets
   state.promo = '';
   const pi = $('#promoInput'); if(pi) pi.value = '';
   syncPromoUI();
