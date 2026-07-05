@@ -74,6 +74,7 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{
   font-family:var(--sans);
@@ -237,7 +238,7 @@ header.nav.scrolled{
   85%{opacity:.25}
   100%{transform:translateY(-94vh) scale(.35);opacity:0}
 }
-.hero-inner{max-width:920px;margin:0 auto;text-align:center;padding-top:60px;position:relative;z-index:2}
+.hero-inner{max-width:920px;margin:-6vh auto 0;text-align:center;padding-top:0;position:relative;z-index:2}
 .hero .ornament{display:flex;align-items:center;justify-content:center;gap:1rem;margin-bottom:1.6rem}
 .hero .ornament i{width:50px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-bright))}
 .hero .ornament i:last-child{background:linear-gradient(90deg,var(--gold-bright),transparent)}
@@ -604,12 +605,12 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
 
 /* floating whatsapp */
 .wa-fab{
-  position:fixed;right:22px;bottom:22px;z-index:950;width:60px;height:60px;border-radius:50%;
+  position:fixed;right:22px;bottom:22px;z-index:950;width:50px;height:50px;border-radius:50%;
   background:#1faa52;display:grid;place-items:center;box-shadow:0 12px 30px rgba(31,170,82,.45);
   transition:.3s;animation:wa-pulse 2.4s infinite;
 }
 .wa-fab:hover{transform:scale(1.08)}
-.wa-fab svg{width:32px;height:32px;fill:#fff}
+.wa-fab svg{width:26px;height:26px;fill:#fff}
 @keyframes wa-pulse{0%{box-shadow:0 12px 30px rgba(31,170,82,.45),0 0 0 0 rgba(31,170,82,.5)}70%{box-shadow:0 12px 30px rgba(31,170,82,.45),0 0 0 16px rgba(31,170,82,0)}100%{box-shadow:0 12px 30px rgba(31,170,82,.45),0 0 0 0 rgba(31,170,82,0)}}
 
 /* ============================================================
@@ -718,16 +719,19 @@ section[id]{scroll-margin-top:84px}
 .preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem}
 .preset{
   text-align:left;cursor:pointer;border-radius:11px;padding:1.15rem 1.2rem;font-family:var(--sans);
-  border:1px solid var(--line);background:#fff;color:var(--ink);
+  border:1px solid rgba(255,255,255,.4);
+  background:linear-gradient(150deg,#C9A347 0%,#B8902B 55%,#9A7722 100%);
+  color:#fff;box-shadow:0 8px 20px rgba(184,144,43,.28);
   transition:.3s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden;
 }
-.preset:hover{transform:translateY(-4px);border-color:var(--gold);background:#FBF6EA;box-shadow:var(--shadow-sm)}
-.preset.active{border-color:var(--gold);background:rgba(184,144,43,.12);box-shadow:0 10px 26px rgba(184,144,43,.22)}
-.preset .pk-name{font-family:var(--serif);font-size:1.2rem;color:var(--ink);display:block;margin-bottom:.25rem}
-.preset .pk-desc{font-size:.77rem;color:var(--ink-soft);display:block;line-height:1.45;min-height:3.6em}
-.preset .pk-from{display:block;margin-top:.75rem;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-deep)}
+.preset:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(184,144,43,.48);border-color:#fff}
+.preset.active{border:2px solid var(--ink);box-shadow:0 12px 28px rgba(184,144,43,.5)}
+.preset .pk-name{font-family:var(--serif);font-size:1.2rem;color:#fff;display:block;margin-bottom:.25rem;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.preset .pk-desc{font-size:.77rem;color:#FFF6E0;display:block;line-height:1.45;min-height:3.6em}
+.preset .pk-from{display:block;margin-top:.75rem;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#FFEFC4}
+.preset .pk-from b{color:#fff}
 .preset .pk-from b{font-family:var(--serif);font-size:1.08rem;letter-spacing:0;margin-left:.2em}
-.preset .pk-tag{position:absolute;top:0;right:0;background:var(--gold);color:#fff;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.3em .75em;border-bottom-left-radius:9px}
+.preset .pk-tag{position:absolute;top:0;right:0;background:var(--ink);color:var(--gold-bright);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.3em .75em;border-bottom-left-radius:9px}
 
 /* ---- mobile quote bottom-sheet ---- */
 .mobile-bar .mb-info{cursor:pointer}
@@ -743,14 +747,21 @@ section[id]{scroll-margin-top:84px}
 .sheet-grip{width:42px;height:4px;border-radius:4px;background:var(--line);margin:.7rem auto -.2rem}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;border-bottom:1px solid var(--line)}
 .sheet-head h3{font-family:var(--serif);font-size:1.28rem;color:var(--ink)}
-.sheet-close{background:none;border:0;font-size:1.8rem;line-height:1;color:var(--ink-soft);cursor:pointer;padding:0 .2em}
+.sheet-close{background:var(--cream);border:1px solid var(--line);border-radius:50%;width:42px;height:42px;display:grid;place-items:center;font-size:1.5rem;line-height:1;color:var(--ink);cursor:pointer;flex:0 0 auto}
+.sheet-close:active{background:var(--line)}
 .sheet-body{padding:1.1rem 1.4rem;overflow-y:auto;color:var(--ink)}
 .sheet-totals{margin-top:.6rem;padding-top:.9rem;border-top:1px solid var(--line)}
 .sheet-foot{padding:1rem 1.4rem calc(1rem + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:.7rem}
 .sheet-foot .btn{flex:1;padding:1em 1.2em}
 @media(min-width:1081px){.quote-sheet,.sheet-backdrop{display:none!important}}
 @media(max-width:900px){.preset-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.preset-grid{grid-template-columns:1fr}.preset .pk-desc{min-height:0}}
+@media(max-width:560px){
+  .preset-grid{grid-template-columns:1fr}
+  .preset .pk-desc{min-height:0}
+  .insta-cta{padding:1.9rem 1.2rem}
+  .insta-cta .btn{width:100%;white-space:normal;line-height:1.4;padding:1em 1.1em}
+  .insta-cta h3{word-break:break-word;font-size:1.25rem}
+}
 
 /* ---- toast notifications ---- */
 .toast{
@@ -1329,9 +1340,11 @@ const PRICES = {
 
 /* Promo whitelist — only the studio edits this. Empty = promo field hidden.
    Shape: 'CODE': { type:'percent'|'flat', value:Number, label:'shown to client' } */
-const PROMO_CODES = {};
+const PROMO_CODES = {
+  'SPECIAL10': { type:'percent', value:10, label:'10% special discount' },
+};
 
-const PAYMENT_TERMS = ['90% on event day', '10% at delivery'];
+const PAYMENT_TERMS = ['50% advance', '40% on event day', '10% at delivery'];
 
 const WA_NUMBER = "918686868803";
 
@@ -1778,7 +1791,7 @@ $('#promoApply').addEventListener('click', ()=>{
 
 /* PDF (print) */
 function esc(t){ return String(t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function downloadQuotePDF(){
+function printQuoteFallback(){
   const { albSub, sub, disc, grand } = calc();
   const evs = sortedQuoteEvents();
   let lead = null; try{ lead = JSON.parse(localStorage.getItem(LEAD_KEY)||'null'); }catch(e){}
@@ -1800,7 +1813,6 @@ function downloadQuotePDF(){
   }
   if(!rows) rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:18px">No services selected yet</td></tr>`;
 
-  track('pdf_downloaded', { events: evs.length, total: grand });
   $('#print-quote').innerHTML = `
   <div class="pq"><div class="pq-inner">
     <i class="pqd tl"></i><i class="pqd tr"></i><i class="pqd bl"></i><i class="pqd br"></i>
@@ -1834,6 +1846,171 @@ function downloadQuotePDF(){
     <div class="pq-foot">FANTASY STUDIO &middot; MALAKPET, HYDERABAD<br><b>&#9742; 8686868803</b></div>
   </div></div>`;
   window.print();
+}
+
+/* ---- one-click PDF: jsPDF loaded lazily on first use ---- */
+let _jspdfLoading = null;
+function ensureJsPDF(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(_jspdfLoading) return _jspdfLoading;
+  _jspdfLoading = new Promise((res, rej)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    sc.onload = res;
+    sc.onerror = ()=>{ _jspdfLoading = null; rej(new Error('jspdf failed')); };
+    document.head.appendChild(sc);
+  });
+  return _jspdfLoading;
+}
+
+function buildPdfDoc(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const GOLD=[184,144,43], DEEP=[142,110,30], INK=[28,26,22], CREAM=[251,246,234], CREAM2=[244,234,211];
+  const W=210, H=297, M=8, IL=M+6, IR=W-M-6;
+  const rupee = n => 'Rs. ' + Math.round(n).toLocaleString('en-IN');
+
+  function frame(){
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.8); doc.rect(M, M, W-2*M, H-2*M);
+    doc.setLineWidth(0.25); doc.rect(M+1.8, M+1.8, W-2*M-3.6, H-2*M-3.6);
+    const d=2.2;
+    [[M,M],[W-M,M],[M,H-M],[W-M,H-M]].forEach(([x,y])=>{
+      doc.setFillColor(...GOLD);
+      doc.triangle(x-d,y, x,y-d, x+d,y, 'F');
+      doc.triangle(x-d,y, x,y+d, x+d,y, 'F');
+    });
+  }
+  function footer(){
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.3);
+    doc.line(IL, 279, IR, 279);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(102,102,102);
+    doc.text('FANTASY STUDIO  |  MALAKPET, HYDERABAD', 105, 283.5, {align:'center'});
+    doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(...GOLD);
+    doc.text('8686868803', 105, 289, {align:'center'});
+  }
+  function newPage(){ doc.addPage(); frame(); footer(); return 22; }
+
+  frame(); footer();
+
+  // header: monogram + name + title
+  doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
+  doc.circle(105, 24, 8); doc.circle(105, 24, 6.2);
+  doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(...GOLD);
+  doc.text('FS', 105, 25.4, {align:'center'});
+  doc.setFontSize(24); doc.text('FANTASY STUDIO', 105, 41.5, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(102,102,102);
+  doc.text('WEDDING PHOTOGRAPHY & CINEMATOGRAPHY  |  MALAKPET, HYDERABAD', 105, 47, {align:'center'});
+  doc.setDrawColor(...GOLD); doc.setLineWidth(0.3); doc.line(62, 51, 148, 51);
+  doc.setFont('times','bold'); doc.setFontSize(13); doc.setTextColor(...INK);
+  doc.text('PACKAGE QUOTATION', 105, 57.5, {align:'center'});
+
+  let lead=null; try{ lead=JSON.parse(localStorage.getItem(LEAD_KEY)||'null'); }catch(e){}
+  const today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(85,85,85);
+  let meta = 'Date: ' + today;
+  if(lead && lead.name) meta += '    |    Prepared for: ' + lead.name + (lead.phone ? ' ('+lead.phone+')' : '');
+  doc.text(meta, 105, 63, {align:'center'});
+
+  // itemised table
+  let y = 70;
+  const colQ=148, colR=170, colA=IR-2, rowH=7;
+  function tableHead(){
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
+    doc.line(IL, y, IR, y);
+    doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(...INK);
+    doc.text('SERVICE', IL+2, y+5.2);
+    doc.text('QTY', colQ, y+5.2, {align:'right'});
+    doc.text('RATE', colR, y+5.2, {align:'right'});
+    doc.text('AMOUNT', colA, y+5.2, {align:'right'});
+    doc.line(IL, y+7.5, IR, y+7.5);
+    y += 7.5;
+  }
+  function ensureSpace(h){ if(y + h > 252){ y = newPage(); tableHead(); } }
+  tableHead();
+
+  const evs = sortedQuoteEvents();
+  evs.forEach((ev,i)=>{
+    ensureSpace(rowH+2);
+    doc.setFillColor(...CREAM2); doc.rect(IL, y, IR-IL, rowH, 'F');
+    doc.setFont('times','bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+    doc.text(`${i+1}. ${(ev.type||'Event').toUpperCase()}  -  ${fmtDate(ev.date)}`, IL+2, y+4.8);
+    doc.setTextColor(...DEEP);
+    doc.text(rupee(eventTotal(ev)), colA, y+4.8, {align:'right'});
+    y += rowH;
+    let r=0;
+    SERVICES.forEach(sv=>{
+      const q = ev.services[sv.key]||0; if(!q) return;
+      ensureSpace(rowH);
+      if(r%2===0){ doc.setFillColor(...CREAM); doc.rect(IL, y, IR-IL, rowH, 'F'); }
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
+      doc.text(sv.label, IL+5, y+4.7);
+      doc.text(String(q), colQ, y+4.7, {align:'right'});
+      doc.text(rupee(PRICES[sv.key]), colR, y+4.7, {align:'right'});
+      doc.text(rupee(PRICES[sv.key]*q), colA, y+4.7, {align:'right'});
+      y += rowH; r++;
+    });
+  });
+  const { albSub, sub, disc, grand } = calc();
+  if(albumEligible() && state.albumSheets>0){
+    ensureSpace(rowH*2+2);
+    doc.setFillColor(...CREAM2); doc.rect(IL, y, IR-IL, rowH, 'F');
+    doc.setFont('times','bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+    doc.text('ALBUM', IL+2, y+4.8);
+    doc.setTextColor(...DEEP); doc.text(rupee(albSub), colA, y+4.8, {align:'right'});
+    y += rowH;
+    doc.setFillColor(...CREAM); doc.rect(IL, y, IR-IL, rowH, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
+    doc.text('Album sheets', IL+5, y+4.7);
+    doc.text(String(state.albumSheets), colQ, y+4.7, {align:'right'});
+    doc.text(rupee(PRICES.albumPerSheet), colR, y+4.7, {align:'right'});
+    doc.text(rupee(albSub), colA, y+4.7, {align:'right'});
+    y += rowH;
+  }
+  if(!evs.length && !(albumEligible() && state.albumSheets>0)){
+    doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,150);
+    doc.text('No services selected yet', 105, y+6, {align:'center'});
+    y += 10;
+  }
+  doc.setDrawColor(...GOLD); doc.setLineWidth(0.4); doc.line(IL, y+0.5, IR, y+0.5);
+  y += 7;
+
+  // totals
+  ensureSpace(34);
+  const totX = 118;
+  if(disc>0){
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
+    doc.text('Subtotal', totX, y); doc.text(rupee(sub), colA, y, {align:'right'}); y += 5.5;
+    doc.text('Promo ('+state.promo+')', totX, y); doc.text('- '+rupee(disc), colA, y, {align:'right'}); y += 5.5;
+  }
+  doc.setFillColor(...GOLD); doc.rect(totX-4, y-1.5, (colA+2)-(totX-4), 10, 'F');
+  doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(255,255,255);
+  doc.text('GRAND TOTAL', totX, y+4.9);
+  doc.text(rupee(grand), colA, y+4.9, {align:'right'});
+  y += 17;
+
+  // payment terms
+  ensureSpace(32);
+  doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(...DEEP);
+  doc.text('PAYMENT TERMS', IL, y); y += 5.5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
+  PAYMENT_TERMS.forEach((t,i)=>{ doc.text((i+1)+'.  '+t, IL+2, y); y += 5; });
+  y += 2;
+  doc.setFontSize(8); doc.setTextColor(130,130,130);
+  doc.text('This is an estimate; final quote confirmed on booking. Valid for 30 days.', IL, y);
+  return doc;
+}
+
+async function downloadQuotePDF(){
+  const { grand } = calc();
+  track('pdf_downloaded', { events: sortedQuoteEvents().length, total: grand });
+  try{
+    await ensureJsPDF();
+    buildPdfDoc().save('Fantasy-Studio-Quote.pdf');
+    showToast('Your quote PDF has been downloaded.');
+  }catch(e){
+    printQuoteFallback();   // offline / CDN blocked: print dialog with the same royal layout
+  }
 }
 $('#pdfBtn').addEventListener('click', downloadQuotePDF);
 
