@@ -73,7 +73,7 @@
   --maxw:        1240px;
 }
 
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
 body{
   font-family:var(--sans);
@@ -801,6 +801,28 @@ section[id]{scroll-margin-top:84px}
 .lead-close{position:absolute;top:10px;right:14px;background:none;border:0;font-size:1.7rem;color:var(--ink-soft);cursor:pointer;line-height:1}
 .lead-close:hover{color:var(--ink)}
 .lead-err{background:#fbeae7;color:#a33d2c;border:1px solid #eac6bf;border-radius:8px;padding:.55em .8em;font-size:.82rem;margin-bottom:1rem;text-align:left}
+
+/* ============================================================
+   MOBILE POLISH
+   ============================================================ */
+@media(max-width:700px){
+  .foot-grid{grid-template-columns:1fr;gap:2.2rem}
+}
+@media(max-width:860px){
+  /* keep form controls at 16px so iOS Safari doesn't zoom on focus */
+  .field select,.field input[type=date],.field input[type=text],.field input[type=number],
+  .fg input,.fg textarea,.fg select,.disc-field input,.qty input{font-size:16px}
+  /* comfortable thumb-sized touch targets */
+  .qty button{width:38px;height:42px;font-size:1.15rem}
+  .qty input{width:42px;height:42px}
+  .album-control .qty button{width:46px;height:46px}
+  .album-control .qty input{width:58px;height:46px}
+  .event-remove{width:44px;height:44px}
+  .svc-toggle{padding:.85rem .9rem}
+  .panel{padding:1.25rem}
+  .event-card{padding:1.05rem}
+  .summary-body{max-height:none}
+}
 
 /* respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce){
