@@ -432,6 +432,8 @@ header.nav.scrolled{
 .summary-head{background:linear-gradient(135deg,var(--gold-soft),var(--gold-deep));color:#fff;padding:1.3rem 1.5rem;text-align:center}
 .summary-head .lbl{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;opacity:.9}
 .summary-head h3{font-size:1.45rem;color:#fff;margin-top:2px}
+.pkg-chip{display:inline-block;margin-top:.5rem;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.5);color:#fff;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;padding:.3em 1em;border-radius:40px}
+.sheet-head .pkg-chip{background:var(--cream);border-color:var(--gold);color:var(--gold-deep);margin:0 auto 0 .8rem}
 .summary-body{padding:1.4rem 1.5rem;max-height:46vh;overflow-y:auto}
 .summary-body::-webkit-scrollbar{width:6px}
 .summary-body::-webkit-scrollbar-thumb{background:var(--gold-bright);border-radius:6px}
@@ -940,6 +942,7 @@ section[id]{scroll-margin-top:84px}
           <div class="summary-head">
             <div class="lbl">Your Live Quote</div>
             <h3>Fantasy Studio</h3>
+            <div class="pkg-chip" id="pkgChip" hidden></div>
           </div>
           <div class="summary-body" id="summaryBody">
             <div class="sum-empty">Add an event to begin building your quote ✦</div>
@@ -1245,6 +1248,7 @@ section[id]{scroll-margin-top:84px}
   <div class="sheet-grip"></div>
   <div class="sheet-head">
     <h3>Your Live Quote</h3>
+    <span class="pkg-chip" id="pkgChipM" hidden></span>
     <button class="sheet-close" id="sheetClose" aria-label="Close breakdown">&times;</button>
   </div>
   <div class="sheet-body" id="sheetBody"></div>
@@ -1627,6 +1631,7 @@ document.addEventListener('click', e=>{
     ev.services[key] = q;                             // 1) update state
     row.querySelector('input[data-qty]').value = q;   // 2) update the number on screen
     row.classList.toggle('on', q > 0);                //    highlight when selected
+    markCustomised();
     renderSummary();                                  // 3) update the live price total
     return;
   }
@@ -1635,6 +1640,7 @@ document.addEventListener('click', e=>{
   if(rm){
     const card = rm.closest('.event-card');
     state.events = state.events.filter(ev=>ev.id!=card.dataset.ev);
+    markCustomised();
     renderEvents(); renderSummary();
     return;
   }
@@ -1655,6 +1661,7 @@ document.addEventListener('change', e=>{
     }
     ev[f.dataset.field] = e.target.value;
     if(f.dataset.field === 'date') checkDupDates(true);
+    markCustomised();
     renderSummary();
   }
 });
@@ -1684,6 +1691,7 @@ document.addEventListener('input', e=>{
     if(isNaN(q) || q < 0) q = 0;            // typing also floors at 0
     ev.services[row.dataset.svc] = q;
     row.classList.toggle('on', q > 0);
+    markCustomised();
     renderSummary();
   }
 });
@@ -1693,13 +1701,14 @@ $('#addEvent').addEventListener('click', ()=>{
   const used = state.events.map(e=>e.type);
   const next = EVENT_TYPES.find(t=>!used.includes(t)) || EVENT_TYPES[0];
   state.events.push({ id:++eid, type:next, date:'', services:{} });
+  markCustomised();
   renderEvents(); renderSummary();
   // gentle scroll to new card
   const cards = $$('.event-card'); cards[cards.length-1]?.scrollIntoView({behavior:'smooth',block:'center'});
 });
 
 /* album controls */
-function setAlbum(n){ state.albumSheets = Math.max(PRICES.albumMinSheets, Math.min(PRICES.albumMaxSheets, n||0)); renderSummary(); }
+function setAlbum(n){ state.albumSheets = Math.max(PRICES.albumMinSheets, Math.min(PRICES.albumMaxSheets, n||0)); markCustomised(); renderSummary(); }
 $('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets+1));
 $('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets-1));
 $('#albInput').addEventListener('input', e=>setAlbum(parseInt(e.target.value)||0));
@@ -1854,10 +1863,30 @@ function renderPresets(){
     </button>`;
   }).join('');
 }
+/* preset <-> builder sync: any manual edit turns the quote into a Custom Package */
+let activePresetKey = null;
+function updatePkgChip(){
+  const label = activePresetKey === 'custom' ? 'Custom Package'
+              : (activePresetKey && PRESETS[activePresetKey]) ? PRESETS[activePresetKey].name + ' Package' : '';
+  ['#pkgChip','#pkgChipM'].forEach(sel=>{
+    const el = $(sel); if(!el) return;
+    el.hidden = !label;
+    el.textContent = label;
+  });
+}
+function markCustomised(){
+  if(activePresetKey && activePresetKey !== 'custom'){
+    activePresetKey = 'custom';
+    $$('.preset').forEach(b=>b.classList.remove('active'));
+    updatePkgChip();
+  }
+}
 function applyPreset(key){
   const p = PRESETS[key]; if(!p) return;
   state.events = p.events.map(ev=>({ id:++eid, type:ev.type, date:'', services:{...ev.services} }));
   state.albumSheets = p.album||0;
+  activePresetKey = key;
+  updatePkgChip();
   renderEvents(); renderSummary();
   $$('.preset').forEach(b=>b.classList.toggle('active', b.dataset.preset===key));
   $('#eventsList').scrollIntoView({behavior:'smooth', block:'start'});
@@ -1969,6 +1998,8 @@ function startFresh(){
   try{ localStorage.removeItem(STORE_KEY); }catch(e){}
   seedDefaults();
   $$('.preset').forEach(b=>b.classList.remove('active'));
+  activePresetKey = null;
+  updatePkgChip();
   renderEvents(); renderSummary();
 }
 
