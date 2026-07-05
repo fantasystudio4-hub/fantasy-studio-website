@@ -178,14 +178,23 @@ header.nav.scrolled{
 .burger span{width:26px;height:2px;background:#fff;transition:.3s;display:block}
 .nav.scrolled .burger span{background:var(--ink)}
 .mobile-menu{
-  position:fixed;inset:0;z-index:999;background:var(--ink);
+  position:fixed;inset:0;z-index:1150;background:var(--ink);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.6rem;
   opacity:0;pointer-events:none;transform:translateY(-12px);transition:.4s;
 }
 .mobile-menu.open{opacity:1;pointer-events:auto;transform:none}
 .mobile-menu a{color:#fff;font-family:var(--serif);font-size:1.7rem;font-style:italic}
 .mobile-menu a:hover{color:var(--gold-bright)}
-.mm-close{position:absolute;top:24px;right:24px;background:none;border:0;color:#fff;font-size:2rem;cursor:pointer}
+.mm-close{position:absolute;top:16px;right:16px;width:48px;height:48px;display:grid;place-items:center;background:none;border:0;color:#fff;font-size:2rem;cursor:pointer}
+.mm-close:active{color:var(--gold-bright)}
+/* dedicated close below the menu items */
+.mm-close-bottom{
+  margin-top:1rem;width:52px;height:52px;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(226,194,117,.55);background:transparent;color:var(--gold-bright);
+  font-family:var(--serif);font-size:1.5rem;line-height:1;display:grid;place-items:center;transition:.25s;
+}
+.mm-close-bottom:hover{background:var(--gold);border-color:var(--gold);color:#fff}
+.mm-close-bottom:active{transform:scale(.92)}
 
 /* ============================================================
    HERO
@@ -880,6 +889,7 @@ section[id]{scroll-margin-top:84px}
   <a href="#portfolio">Portfolio</a>
   <a href="#testimonials">Reviews</a>
   <a href="#contact">Contact</a>
+  <button class="mm-close-bottom" id="mmCloseBottom" type="button" aria-label="Close menu">&times;</button>
 </div>
 
 <!-- ============ HERO ============ -->
@@ -2119,7 +2129,7 @@ $('#mbOpen').addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ 
 $('#sheetClose').addEventListener('click', closeSheet);
 $('#sheetBackdrop').addEventListener('click', closeSheet);
 $('#sheetPdf').addEventListener('click', ()=>{ closeSheet(); downloadQuotePDF(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); } });
 
 /* ============================================================
    PORTFOLIO — diverts to Instagram (no on-page gallery)
@@ -2141,9 +2151,12 @@ window.addEventListener('scroll',()=>{
   nav.classList.toggle('scrolled', window.scrollY>40);
   scrollSpy();
 }, {passive:true});
-$('#burger').addEventListener('click',()=>$('#mobileMenu').classList.add('open'));
-$('#mmClose').addEventListener('click',()=>$('#mobileMenu').classList.remove('open'));
-$$('#mobileMenu a').forEach(a=>a.addEventListener('click',()=>$('#mobileMenu').classList.remove('open')));
+function openMobileMenu(){ $('#mobileMenu').classList.add('open'); }
+function closeMobileMenu(){ $('#mobileMenu').classList.remove('open'); }
+$('#burger').addEventListener('click',()=>$('#mobileMenu').classList.contains('open') ? closeMobileMenu() : openMobileMenu());
+$('#mmClose').addEventListener('click', closeMobileMenu);
+$('#mmCloseBottom').addEventListener('click', closeMobileMenu);
+$$('#mobileMenu a').forEach(a=>a.addEventListener('click', closeMobileMenu));
 
 /* ============================================================
    REVEAL ON SCROLL
