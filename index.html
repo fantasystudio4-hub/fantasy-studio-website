@@ -779,9 +779,9 @@ section[id]{scroll-margin-top:84px}
   text-transform:uppercase;white-space:nowrap;transition:.25s;
 }
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
-.toast .t-close{border:0;background:none;color:#b3a98f;font-size:1.25rem;padding:0 .1em;line-height:1}
+.toast .t-close{border:0;background:none;color:#b3a98f;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.35em .4em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
-@media(max-width:860px){.toast{bottom:86px}}
+@media(max-width:860px){.toast{bottom:calc(100px + env(safe-area-inset-bottom))}}
 
 /* ---- back to top ---- */
 .to-top{
@@ -1282,12 +1282,12 @@ section[id]{scroll-margin-top:84px}
 
 <!-- toast -->
 <div class="toast" id="toast" role="status" aria-live="polite">
-  <span class="t-ic">
+  <span class="t-ic" aria-hidden="true">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
   </span>
   <span id="toastMsg"></span>
   <button id="toastAction" type="button"></button>
-  <button class="t-close" id="toastClose" type="button" aria-label="Dismiss">&times;</button>
+  <button class="t-close" id="toastClose" type="button" aria-label="Dismiss notification">Dismiss &times;</button>
 </div>
 
 <!-- back to top -->
@@ -2224,6 +2224,7 @@ function showToast(msg, actionLabel, actionFn){
   $('#toastMsg').textContent = msg;
   btn.style.display = actionLabel ? '' : 'none';
   btn.textContent = actionLabel || '';
+  btn.setAttribute('aria-label', actionLabel || 'Toast action');
   btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
   t.classList.add('show');
   clearTimeout(toastTimer);
