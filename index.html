@@ -1356,6 +1356,12 @@ const $  = (s,c=document) => c.querySelector(s);
 const $$ = (s,c=document) => [...c.querySelectorAll(s)];
 const TODAY_ISO = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd, local time
 
+/* ---- light anonymous analytics (GTM-ready, no cookies) ---- */
+window.dataLayer = window.dataLayer || [];
+function track(ev, data){ try{ window.dataLayer.push(Object.assign({event:ev}, data||{})); }catch(e){} }
+let _builderStarted = false;
+function markBuilderStarted(){ if(_builderStarted) return; _builderStarted = true; track('builder_started'); }
+
 /* ============================================================
    EVENT RENDERING
    ============================================================ */
@@ -1608,6 +1614,7 @@ $('#leadForm').addEventListener('submit', e=>{
   const lead = { name, phone };
   try{ localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); }catch(e2){}
   window.open(waUrl(lead), '_blank', 'noopener');
+  track('quote_whatsapp_sent', { events: sortedQuoteEvents().length, total: calc().grand });
   clearSavedQuote();   // stored quote is cleared after a successful send
   closeLeadModal();
   showToast("Opening WhatsApp — send the message and we'll reply shortly!");
@@ -1631,6 +1638,7 @@ document.addEventListener('click', e=>{
     ev.services[key] = q;                             // 1) update state
     row.querySelector('input[data-qty]').value = q;   // 2) update the number on screen
     row.classList.toggle('on', q > 0);                //    highlight when selected
+    if(q > 0) markBuilderStarted();
     markCustomised();
     renderSummary();                                  // 3) update the live price total
     return;
@@ -1701,6 +1709,8 @@ $('#addEvent').addEventListener('click', ()=>{
   const used = state.events.map(e=>e.type);
   const next = EVENT_TYPES.find(t=>!used.includes(t)) || EVENT_TYPES[0];
   state.events.push({ id:++eid, type:next, date:'', services:{} });
+  markBuilderStarted();
+  track('event_added', { event_type: next });
   markCustomised();
   renderEvents(); renderSummary();
   // gentle scroll to new card
@@ -1766,6 +1776,7 @@ function downloadQuotePDF(){
   }
   if(!rows) rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:18px">No services selected yet</td></tr>`;
 
+  track('pdf_downloaded', { events: evs.length, total: grand });
   $('#print-quote').innerHTML = `
   <div class="pq"><div class="pq-inner">
     <i class="pqd tl"></i><i class="pqd tr"></i><i class="pqd bl"></i><i class="pqd br"></i>
@@ -1886,6 +1897,8 @@ function applyPreset(key){
   state.events = p.events.map(ev=>({ id:++eid, type:ev.type, date:'', services:{...ev.services} }));
   state.albumSheets = p.album||0;
   activePresetKey = key;
+  markBuilderStarted();
+  track('preset_applied', { preset: key });
   updatePkgChip();
   renderEvents(); renderSummary();
   $$('.preset').forEach(b=>b.classList.toggle('active', b.dataset.preset===key));
