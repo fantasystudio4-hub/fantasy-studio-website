@@ -305,19 +305,21 @@ header.nav.scrolled{
    SERVICES
    ============================================================ */
 .services{background:linear-gradient(180deg,var(--cream),var(--cream-2))}
-.svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.1rem}
+.services.section-pad{padding:clamp(52px,7vw,88px) 0}
+.svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem}
 .svc-card{
-  background:#fff;border:1px solid var(--line);border-radius:6px;padding:2rem 1.6rem;
+  background:#fff;border:1px solid var(--line);border-radius:6px;padding:1.05rem 1.1rem;
+  display:grid;grid-template-columns:auto 1fr;column-gap:.8rem;align-items:start;
   transition:.4s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden;
 }
 .svc-card::before{content:"";position:absolute;left:0;top:0;height:3px;width:0;background:var(--gold);transition:.4s}
 .svc-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-md);border-color:var(--gold-bright)}
 .svc-card:hover::before{width:100%}
-.svc-ic{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin-bottom:1.2rem;
+.svc-ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;grid-row:1 / span 2;
   background:radial-gradient(circle at 30% 30%,#fff,var(--cream-2));border:1px solid var(--line)}
-.svc-ic svg{width:26px;height:26px;stroke:var(--gold-deep);fill:none;stroke-width:1.4}
-.svc-card h3{font-size:1.18rem;margin-bottom:.45rem}
-.svc-card p{font-size:.9rem;color:var(--ink-soft)}
+.svc-ic svg{width:19px;height:19px;stroke:var(--gold-deep);fill:none;stroke-width:1.4}
+.svc-card h3{font-size:1rem;margin-bottom:.15rem;grid-column:2}
+.svc-card p{font-size:.78rem;line-height:1.45;color:var(--ink-soft);grid-column:2}
 
 /* ============================================================
    PACKAGE BUILDER
@@ -642,7 +644,11 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .wa-fab{bottom:84px}
 }
 @media(max-width:560px){
-  .svc-grid{grid-template-columns:1fr}
+  .svc-grid{grid-template-columns:repeat(2,1fr);gap:.65rem}
+  .svc-card{grid-template-columns:1fr;justify-items:center;text-align:center;padding:.95rem .6rem;row-gap:.45rem}
+  .svc-ic{grid-row:auto}
+  .svc-card h3{font-size:.9rem;margin:0;grid-column:1}
+  .svc-card p{display:none}
   .svc-list{grid-template-columns:1fr}
   .masonry{columns:1}
   .hero-cta{flex-direction:column;align-items:stretch}
