@@ -487,14 +487,14 @@ header.nav.scrolled{
 .mobile-bar{
   position:fixed;left:0;right:0;bottom:0;z-index:900;display:none;
   background:rgba(28,26,22,.97);backdrop-filter:blur(10px);border-top:1px solid rgba(226,194,117,.3);
-  padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom));
-  align-items:center;gap:.9rem;box-shadow:0 -10px 30px rgba(0,0,0,.3);
+  padding:.7rem .8rem calc(.7rem + env(safe-area-inset-bottom));
+  align-items:center;gap:.55rem;box-shadow:0 -10px 30px rgba(0,0,0,.3);
 }
 .mobile-bar .mb-info{flex:1;min-width:0}
 .mobile-bar .mb-info .l{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
 .mobile-bar .mb-info .v{font-family:var(--serif);font-size:1.5rem;color:#fff;font-weight:700;line-height:1}
-.mobile-bar .btn{padding:.85em 1.3em;font-size:.78rem;flex:0 0 auto}
-.mobile-bar .mb-pdf{background:transparent;border:1px solid rgba(226,194,117,.65);color:var(--gold-bright);padding:.85em 1em}
+.mobile-bar .btn{padding:.85em 1em;font-size:.72rem;flex:0 0 auto}
+.mobile-bar .mb-pdf{background:transparent;border:1px solid rgba(226,194,117,.65);color:var(--gold-bright);padding:.85em .8em}
 .mobile-bar .mb-pdf:active{background:var(--gold);border-color:var(--gold);color:#fff}
 
 /* ============================================================
@@ -539,19 +539,6 @@ header.nav.scrolled{
 .m-cap b{font-family:var(--serif);font-size:1.05rem;display:block}
 .m-cap span{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-bright)}
 .m-item.hide{display:none}
-
-/* ============================================================
-   WHY US
-   ============================================================ */
-.why{background:linear-gradient(180deg,var(--cream-2),var(--cream))}
-.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem}
-.why-card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:2.4rem 2rem;text-align:center;transition:.4s}
-.why-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-md)}
-.why-ic{width:64px;height:64px;margin:0 auto 1.3rem;border-radius:50%;display:grid;place-items:center;
-  background:var(--ink);color:var(--gold-bright)}
-.why-ic svg{width:30px;height:30px;stroke:var(--gold-bright);fill:none;stroke-width:1.4}
-.why-card h3{font-size:1.3rem;margin-bottom:.6rem}
-.why-card p{font-size:.92rem;color:var(--ink-soft)}
 
 /* ============================================================
    TESTIMONIALS
@@ -648,7 +635,7 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .burger{display:flex}
   .nav-cta{display:none}
   .contact-grid{grid-template-columns:1fr}
-  .why-grid,.testi-grid{grid-template-columns:1fr}
+  .testi-grid{grid-template-columns:1fr}
   .form-row{grid-template-columns:1fr}
   .mobile-bar{display:flex}
   body{padding-bottom:74px}
@@ -1115,33 +1102,6 @@ section[id]{scroll-margin-top:84px}
   </div>
 </section>
 
-<!-- ============ WHY US ============ -->
-<section class="why section-pad" id="why">
-  <div class="wrap">
-    <div class="center-head reveal">
-      <span class="eyebrow center">The Fantasy Difference</span>
-      <h2 class="h-section">Why Couples <span class="it">Choose</span> Us</h2>
-    </div>
-    <div class="why-grid">
-      <div class="why-card reveal">
-        <div class="why-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-        <h3>14 Years of Mastery</h3>
-        <p>Over a decade of refining our craft across every kind of Hyderabadi wedding — experience you can see in every frame.</p>
-      </div>
-      <div class="why-card reveal d1">
-        <div class="why-ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M15 20c0-2.5 1.5-4 4-4"/></svg></div>
-        <h3>Dedicated Teams</h3>
-        <p>Separate, specialist teams for photography, cinematography &amp; candid — so no moment is ever missed.</p>
-      </div>
-      <div class="why-card reveal d2">
-        <div class="why-ic"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
-        <h3>Fast Delivery</h3>
-        <p>Beautifully edited films and albums delivered promptly — without ever compromising on quality.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ============ TESTIMONIALS ============ -->
 <section class="testi section-pad" id="testimonials">
   <div class="wrap">
@@ -1277,7 +1237,7 @@ section[id]{scroll-margin-top:84px}
     <div class="v" id="mbTotal">₹0</div>
     <span class="mb-chev">Tap for breakdown ▴</span>
   </div>
-  <button class="btn mb-pdf" id="mbPdf" type="button" aria-label="Download quote PDF">PDF</button>
+  <button class="btn mb-pdf" id="mbPdf" type="button" aria-label="Download quote PDF">Download PDF</button>
   <a class="btn btn-wa" id="mbWa" href="#" rel="noopener" aria-label="Send quote on WhatsApp">Send</a>
 </div>
 
@@ -1293,7 +1253,7 @@ section[id]{scroll-margin-top:84px}
   <div class="sheet-body" id="sheetBody"></div>
   <div class="sheet-foot">
     <a class="btn btn-wa" id="sheetWa" href="#" rel="noopener">WhatsApp Quote</a>
-    <button class="btn btn-pdf" id="sheetPdf" type="button">PDF</button>
+    <button class="btn btn-pdf" id="sheetPdf" type="button">Download PDF</button>
   </div>
 </div>
 
@@ -1570,6 +1530,9 @@ function renderSummary(){
   $('#albumPriceLbl').textContent = `${inr(PRICES.albumPerSheet)} per sheet`;
 
   const ap = $('#albumPanel'); if(ap) ap.hidden = !albumEligible();
+  // quote bar CTAs only make sense once something is selected
+  const empty = grand <= 0;
+  ['mbPdf','mbWa'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
   renderSheet();
   saveState();
 }
