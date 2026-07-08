@@ -565,14 +565,7 @@ header.nav.scrolled{
    CONTACT
    ============================================================ */
 .contact{background:var(--ivory)}
-.contact-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:clamp(36px,6vw,72px);align-items:start}
-.contact-info .cinfo{display:flex;gap:1.1rem;align-items:flex-start;padding:1.3rem 0;border-bottom:1px solid var(--line)}
-.contact-info .cinfo:first-of-type{padding-top:0}
-.cinfo .ic{width:48px;height:48px;flex:0 0 auto;border-radius:50%;background:var(--cream-2);border:1px solid var(--line);display:grid;place-items:center}
-.cinfo .ic svg{width:22px;height:22px;stroke:var(--gold-deep);fill:none;stroke-width:1.5}
-.cinfo .lbl{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-deep)}
-.cinfo .val{font-family:var(--serif);font-size:1.18rem;color:var(--ink)}
-.cinfo .val:hover{color:var(--gold-deep)}
+.contact-grid{max-width:660px;margin:0 auto}
 .contact-form{background:#fff;border:1px solid var(--line);border-radius:12px;padding:clamp(1.6rem,4vw,2.6rem);box-shadow:var(--shadow-md)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .fg{display:flex;flex-direction:column;gap:.45rem;margin-bottom:1.1rem}
@@ -636,7 +629,6 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .nav-links{display:none}
   .burger{display:flex}
   .nav-cta{display:none}
-  .contact-grid{grid-template-columns:1fr}
   .testi-grid{grid-template-columns:1fr}
   .form-row{grid-template-columns:1fr}
   .mobile-bar{display:flex}
@@ -644,11 +636,10 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .wa-fab{bottom:84px}
 }
 @media(max-width:560px){
-  .svc-grid{grid-template-columns:repeat(2,1fr);gap:.65rem}
-  .svc-card{grid-template-columns:1fr;justify-items:center;text-align:center;padding:.95rem .6rem;row-gap:.45rem}
-  .svc-ic{grid-row:auto}
-  .svc-card h3{font-size:.9rem;margin:0;grid-column:1}
-  .svc-card p{display:none}
+  .svc-grid{grid-template-columns:1fr;gap:.6rem}
+  .svc-card{padding:.9rem .95rem}
+  .svc-card h3{font-size:.95rem}
+  .svc-card p{font-size:.75rem;line-height:1.4}
   .svc-list{grid-template-columns:1fr}
   .masonry{columns:1}
   .hero-cta{flex-direction:column;align-items:stretch}
@@ -1144,25 +1135,6 @@ section[id]{scroll-margin-top:84px}
       <p class="lead">Tell us about your celebration — we'll get back within hours.</p>
     </div>
     <div class="contact-grid">
-      <div class="contact-info reveal">
-        <div class="cinfo">
-          <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 16v3a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 1.7l.5 3a2 2 0 0 1-.6 1.8L8.5 11a14 14 0 0 0 4.5 4.5l1.5-1.4a2 2 0 0 1 1.8-.6l3 .5A2 2 0 0 1 21 16z"/></svg></div>
-          <div><div class="lbl">Call / WhatsApp</div><a class="val" href="tel:+918686868803">+91 86868 68803</a></div>
-        </div>
-        <div class="cinfo">
-          <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-          <div><div class="lbl">Studio Location</div><a class="val" href="https://maps.app.goo.gl/PkdJGAbwHNMvmo5D8" target="_blank" rel="noopener">Malakpet, Hyderabad &nbsp;↗</a></div>
-        </div>
-        <div class="cinfo">
-          <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></div>
-          <div><div class="lbl">Follow Us</div><a class="val" href="https://www.instagram.com/fantasy_studio_official?igsh=NXNldTh2aXJyMDAz" target="_blank" rel="noopener">@fantasy_studio_official</a></div>
-        </div>
-        <div class="cinfo">
-          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-          <div><div class="lbl">Working Hours</div><div class="val">Mon – Sun · 10am – 9pm</div></div>
-        </div>
-      </div>
-
       <form class="contact-form reveal d1" id="enquiryForm">
         <div class="form-row">
           <div class="fg"><label for="cName">Your Name</label><input type="text" id="cName" required placeholder="Full name" /></div>
