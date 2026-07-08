@@ -11,6 +11,7 @@
 <meta name="author" content="Fantasy Studio" />
 <meta name="robots" content="index, follow" />
 <meta name="theme-color" content="#B8902B" />
+<link rel="canonical" href="https://fantasystudio4-hub.github.io/fantasy-studio-website/" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='%23B8902B' stroke-width='4'/%3E%3Ctext x='50' y='50' text-anchor='middle' dominant-baseline='central' font-family='Georgia,serif' font-weight='700' font-size='42' fill='%23B8902B'%3EFS%3C/text%3E%3C/svg%3E" />
 
 <!-- Open Graph -->
@@ -53,6 +54,9 @@
   "priceRange": "₹₹₹",
   "sameAs": ["https://www.instagram.com/fantasy_studio_official"]
 }
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How do I book Fantasy Studio for my wedding?", "acceptedAnswer": {"@type": "Answer", "text": "Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery."}}, {"@type": "Question", "name": "What are the payment terms?", "acceptedAnswer": {"@type": "Answer", "text": "50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF."}}, {"@type": "Question", "name": "Do you cover both Muslim and Hindu weddings?", "acceptedAnswer": {"@type": "Answer", "text": "Yes — for over 14 years we have covered Nikahs, Valimas, Mehndis, and every Hindu ceremony with equal care and respect for each ritual."}}, {"@type": "Question", "name": "Do you have lady photographers for the bridal side?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Dedicated lady shooters are available at ₹2,000 per head per event — just add them to any event in the package builder."}}, {"@type": "Question", "name": "Will we get the raw photos too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package."}}, {"@type": "Question", "name": "Can I customise a ready-made package?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things."}}, {"@type": "Question", "name": "How does the premium album work?", "acceptedAnswer": {"@type": "Answer", "text": "Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly."}}, {"@type": "Question", "name": "Which events do you cover?", "acceptedAnswer": {"@type": "Answer", "text": "Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage."}}]}
 </script>
 
 <style>
@@ -708,6 +712,22 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
 }
 
 /* ============================================================
+   FAQ
+   ============================================================ */
+.faq{background:var(--ivory)}
+.faq-list{max-width:760px;margin:0 auto}
+.faq-item{border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:.7rem;overflow:hidden;transition:.3s}
+.faq-item summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  font-family:var(--serif);font-size:1.05rem;color:var(--ink);padding:1.05rem 1.3rem;
+}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:"+";font-family:var(--sans);color:var(--gold);font-size:1.4rem;line-height:1;transition:.25s;flex:0 0 auto}
+.faq-item[open]{border-color:var(--gold-bright);box-shadow:var(--shadow-sm)}
+.faq-item[open] summary::after{transform:rotate(45deg)}
+.faq-item p{padding:0 1.3rem 1.15rem;color:var(--ink-soft);font-size:.93rem}
+
+/* ============================================================
    UI / UX POLISH
    ============================================================ */
 /* keyboard accessibility */
@@ -1164,6 +1184,50 @@ section[id]{scroll-margin-top:84px}
   </div>
 </section>
 
+<!-- ============ FAQ ============ -->
+<section class="faq section-pad" id="faq">
+  <div class="wrap">
+    <div class="center-head reveal">
+      <span class="eyebrow center">Good To Know</span>
+      <h2 class="h-section">Questions, <span class="it">Answered</span></h2>
+    </div>
+    <div class="faq-list reveal d1">
+      <details class="faq-item">
+        <summary>How do I book Fantasy Studio for my wedding?</summary>
+        <p>Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What are the payment terms?</summary>
+        <p>50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Do you cover both Muslim and Hindu weddings?</summary>
+        <p>Yes — for over 14 years we have covered Nikahs, Valimas, Mehndis, and every Hindu ceremony with equal care and respect for each ritual.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Do you have lady photographers for the bridal side?</summary>
+        <p>Yes. Dedicated lady shooters are available at ₹2,000 per head per event — just add them to any event in the package builder.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Will we get the raw photos too?</summary>
+        <p>Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can I customise a ready-made package?</summary>
+        <p>Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How does the premium album work?</summary>
+        <p>Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Which events do you cover?</summary>
+        <p>Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- ============ CONTACT ============ -->
 <section class="contact section-pad" id="contact">
   <div class="wrap">
@@ -1215,6 +1279,7 @@ section[id]{scroll-margin-top:84px}
       </div>
       <div class="foot-col">
         <h4>Explore</h4>
+        <a href="#faq">FAQs</a>
         <a href="#about">About Us</a>
         <a href="#services">Services</a>
         <a href="#builder">Build a Package</a>

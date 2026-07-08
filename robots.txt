@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://fantasystudio4-hub.github.io/fantasy-studio-website/sitemap.xml
