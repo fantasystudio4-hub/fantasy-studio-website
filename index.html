@@ -640,7 +640,7 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .svc-card{padding:.9rem .95rem}
   .svc-card h3{font-size:.95rem}
   .svc-card p{font-size:.75rem;line-height:1.4}
-  .svc-list{grid-template-columns:1fr}
+  .svc-list{grid-template-columns:repeat(2,1fr);gap:.55rem}
   .masonry{columns:1}
   .hero-cta{flex-direction:column;align-items:stretch}
   .hero-cta .btn{width:100%}
@@ -746,6 +746,10 @@ section[id]{scroll-margin-top:84px}
 .sheet-close:active{background:var(--line)}
 .sheet-body{padding:1.1rem 1.4rem;overflow-y:auto;color:var(--ink)}
 .sheet-totals{margin-top:.6rem;padding-top:.9rem;border-top:1px solid var(--line)}
+.sheet-promo{margin:.7rem 1.4rem .2rem}
+.quote-sheet .promo-status{margin:0 1.6rem .5rem;color:var(--ink)}
+.quote-sheet .promo-status.ok{color:#1f7a3d}
+.quote-sheet .promo-status.err{color:#b04030}
 .sheet-foot{padding:1rem 1.4rem calc(1rem + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:.7rem}
 .sheet-foot .btn{flex:1;padding:1em 1.2em}
 @media(min-width:1081px){.quote-sheet,.sheet-backdrop{display:none!important}}
@@ -832,6 +836,16 @@ section[id]{scroll-margin-top:84px}
   .panel{padding:1.25rem}
   .event-card{padding:1.05rem}
   .summary-body{max-height:none}
+}
+
+/* compact 2-up service tiles inside event cards on phones */
+@media(max-width:560px){
+  .svc-list .svc-toggle{flex-direction:column;align-items:stretch;gap:.5rem;padding:.65rem .65rem;justify-content:space-between}
+  .svc-list .svc-meta .nm{font-size:.8rem;line-height:1.25;min-height:2.5em}
+  .svc-list .svc-meta .pr{font-size:.66rem}
+  .svc-list .svc-toggle .qty{width:100%;justify-content:space-between;background:#fff}
+  .svc-list .svc-toggle .qty button{flex:1 1 auto;width:auto;height:36px}
+  .svc-list .svc-toggle .qty input{flex:0 0 44px;width:44px;height:36px;font-size:16px}
 }
 
 /* respect reduced-motion preferences */
@@ -1229,6 +1243,12 @@ section[id]{scroll-margin-top:84px}
     <button class="sheet-close" id="sheetClose" aria-label="Close breakdown">&times;</button>
   </div>
   <div class="sheet-body" id="sheetBody"></div>
+  <div class="disc-field sheet-promo" id="sheetPromoField" hidden>
+    <label for="sheetPromoInput">Promo code</label>
+    <input type="text" id="sheetPromoInput" placeholder="Enter code" autocomplete="off" autocapitalize="characters" />
+    <button type="button" id="sheetPromoApply">Apply</button>
+  </div>
+  <div class="promo-status" id="sheetPromoStatus" hidden></div>
   <div class="sheet-foot">
     <a class="btn btn-wa" id="sheetWa" href="#" rel="noopener">WhatsApp Quote</a>
     <button class="btn btn-pdf" id="sheetPdf" type="button">Download PDF</button>
@@ -1746,33 +1766,41 @@ $('#albInput').addEventListener('blur', e=>{
 $('#albInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') e.target.blur(); });
 
 /* promo code (whitelist-only — customers can never type an amount) */
+const PROMO_UIS = [
+  ['promoField','promoInput','promoStatus'],
+  ['sheetPromoField','sheetPromoInput','sheetPromoStatus'],
+];
 function syncPromoUI(){
-  const field = $('#promoField'), status = $('#promoStatus');
-  if(!field) return;
-  field.hidden = Object.keys(PROMO_CODES).length === 0;
+  const hasCodes = Object.keys(PROMO_CODES).length > 0;
   const p = activePromo();
-  if(p){
-    $('#promoInput').value = state.promo;
-    status.hidden = false; status.className = 'promo-status ok';
-    status.textContent = `✓ ${state.promo} applied — ${p.label||'discount active'}`;
-  }else{
-    status.hidden = true; status.textContent = '';
-  }
+  PROMO_UIS.forEach(([f,i,st])=>{
+    const field = document.getElementById(f), inp = document.getElementById(i), status = document.getElementById(st);
+    if(!field) return;
+    field.hidden = !hasCodes;
+    if(p){
+      inp.value = state.promo;
+      status.hidden = false; status.className = 'promo-status ok';
+      status.textContent = `✓ ${state.promo} applied — ${p.label||'discount active'}`;
+    }else{
+      status.hidden = true; status.textContent = '';
+    }
+  });
 }
-$('#promoApply').addEventListener('click', ()=>{
-  const code = ($('#promoInput').value||'').trim().toUpperCase();
-  const status = $('#promoStatus');
-  if(!code){ state.promo=''; syncPromoUI(); renderSummary(); return; }
+function tryApplyPromo(inp, status){
+  const code = (inp.value||'').trim().toUpperCase();
+  if(!code){ state.promo=''; renderSummary(); syncPromoUI(); return; }
   if(PROMO_CODES[code]){
     state.promo = code;
     renderSummary(); syncPromoUI();
   }else{
     state.promo = '';
-    renderSummary();
+    renderSummary(); syncPromoUI();
     status.hidden = false; status.className = 'promo-status err';
     status.textContent = 'Code not recognised.';
   }
-});
+}
+$('#promoApply').addEventListener('click', ()=>tryApplyPromo($('#promoInput'), $('#promoStatus')));
+$('#sheetPromoApply').addEventListener('click', ()=>tryApplyPromo($('#sheetPromoInput'), $('#sheetPromoStatus')));
 
 /* PDF (print) */
 function esc(t){ return String(t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -2186,13 +2214,13 @@ function loadState(){
 }
 function hasContent(d){
   const hasSvc = d.events.some(e=>Object.values(e.services||{}).some(q=>q>0));
-  return hasSvc || (d.albumSheets>0 && d.albumSheets !== PRICES.albumMinSheets);
+  return hasSvc || d.albumSheets>0;
 }
 function seedDefaults(){
   state.events = [];   // first visit: only Quick Start shows; returning visits restore saved work
-  state.albumSheets = PRICES.albumMinSheets;   // builder starts at 15 sheets
+  state.albumSheets = 0;   // user adds the album themselves (min 15 once chosen)
   state.promo = '';
-  const pi = $('#promoInput'); if(pi) pi.value = '';
+  ['promoInput','sheetPromoInput'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   syncPromoUI();
 }
 function startFresh(){
