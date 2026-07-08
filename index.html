@@ -350,6 +350,7 @@ header.nav.scrolled{
 .builder .h-section .it{color:var(--gold-deep)}
 .builder .lead{color:var(--ink-soft)}
 .builder-grid{display:grid;grid-template-columns:1fr 388px;gap:2.4rem;align-items:start;position:relative;z-index:2}
+.builder-grid > *{min-width:0}   /* grid items must shrink so wide tables scroll instead of overflowing */
 
 /* glass panels */
 .panel{
@@ -735,6 +736,23 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
 .skip-link{position:fixed;top:-70px;left:14px;z-index:2000;background:var(--ink);color:#fff;padding:.75em 1.3em;border-radius:8px;font-size:.85rem;letter-spacing:.05em;transition:top .25s}
 .skip-link:focus{top:14px}
 
+/* announcement bar */
+.annc{
+  position:fixed;top:0;left:0;right:0;z-index:1100;height:38px;
+  display:flex;align-items:center;justify-content:center;gap:.8rem;padding:0 2.6rem 0 1rem;
+  background:linear-gradient(90deg,#1c1a16,#2a2318 50%,#1c1a16);color:var(--gold-bright);
+  font-size:.78rem;letter-spacing:.04em;border-bottom:1px solid rgba(226,194,117,.35);
+}
+.annc span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.annc button{cursor:pointer;font-family:var(--sans)}
+#anncCta{background:var(--gold);border:0;color:#fff;border-radius:30px;padding:.3em 1em;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;transition:.25s}
+#anncCta:hover{background:var(--gold-deep)}
+.annc-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;background:none;border:0;color:#b3a98f;font-size:1.3rem;line-height:1}
+.annc-x:hover{color:#fff}
+body.has-annc{padding-top:38px}
+body.has-annc header.nav{top:38px}
+@media(max-width:560px){.annc{font-size:.7rem;gap:.5rem}}
+
 /* offset anchored sections below the fixed nav */
 section[id]{scroll-margin-top:84px}
 
@@ -765,6 +783,31 @@ section[id]{scroll-margin-top:84px}
 .preset .pk-desc{font-size:.77rem;color:#FFF6E0;display:block;line-height:1.45;min-height:3.6em}
 .preset .pk-from{display:block;margin-top:.75rem;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#FFEFC4}
 .preset .pk-from b{color:#fff}
+/* package comparison */
+.pkg-compare-btn{
+  display:block;margin:1.05rem auto 0;background:none;border:1px dashed rgba(184,144,43,.5);color:var(--gold-deep);
+  border-radius:40px;padding:.68em 1.7em;font-family:var(--sans);font-size:.8rem;letter-spacing:.08em;
+  text-transform:uppercase;cursor:pointer;transition:.25s;
+}
+.pkg-compare-btn:hover{background:rgba(184,144,43,.1);border-style:solid;transform:translateY(-2px)}
+.cmp-modal{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:1250;
+  width:min(94vw,780px);max-height:86vh;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#fffdf8,#f7f0e1);border:1px solid var(--gold-bright);
+  border-radius:14px;box-shadow:var(--shadow-lg);padding:1.7rem 1.5rem 1.2rem;
+  opacity:0;pointer-events:none;transition:.35s cubic-bezier(.2,.7,.3,1);
+}
+.cmp-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.cmp-modal h3{font-family:var(--serif);font-size:1.45rem;color:var(--ink);text-align:center;margin-bottom:1rem}
+.cmp-note{font-size:.78rem;color:var(--ink-soft);text-align:center;margin-top:.85rem}
+.pkg-compare-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;flex:1;min-height:0}
+.compare-table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:560px}
+.compare-table th{background:linear-gradient(135deg,var(--gold-soft),var(--gold-deep));color:#fff;font-family:var(--serif);font-size:.92rem;padding:.7rem .8rem;text-align:center;white-space:nowrap}
+.compare-table th:first-child{text-align:left;background:var(--ink)}
+.compare-table td{padding:.55rem .8rem;border-bottom:1px solid var(--line);text-align:center;color:var(--ink-soft);white-space:nowrap}
+.compare-table td:first-child{text-align:left;color:var(--ink)}
+.compare-table tr:nth-child(even) td{background:var(--cream)}
+.compare-table .cmp-price td{font-family:var(--serif);font-weight:700;color:var(--gold-deep);font-size:.95rem;border-top:2px solid var(--gold);background:#FBF4E1}
 .preset .pk-from b{font-family:var(--serif);font-size:1.08rem;letter-spacing:0;margin-left:.2em}
 .preset .pk-tag{position:absolute;top:0;right:0;background:var(--ink);color:var(--gold-bright);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.3em .75em;border-bottom-left-radius:9px}
 
@@ -901,6 +944,13 @@ section[id]{scroll-margin-top:84px}
 
 <a href="#builder" class="skip-link">Skip to package builder</a>
 
+<!-- announcement bar -->
+<div class="annc" id="annc" hidden role="region" aria-label="Announcement">
+  <span id="anncText"></span>
+  <button id="anncCta" type="button"></button>
+  <button class="annc-x" id="anncClose" type="button" aria-label="Dismiss announcement">&times;</button>
+</div>
+
 <!-- ============ NAV ============ -->
 <header class="nav" id="nav">
   <div class="wrap nav-inner">
@@ -984,6 +1034,7 @@ section[id]{scroll-margin-top:84px}
             <div><h3>Quick Start</h3><p>Pick a ready-made package, then fine-tune everything below.</p></div>
           </div>
           <div class="preset-grid" id="presetGrid"></div>
+          <button type="button" class="pkg-compare-btn" id="pkgCompareBtn">&#8646; Compare packages side-by-side</button>
         </div>
 
         <!-- Events -->
@@ -1375,6 +1426,15 @@ section[id]{scroll-margin-top:84px}
   </form>
 </div>
 
+<!-- package comparison modal -->
+<div class="lead-backdrop" id="cmpBackdrop"></div>
+<div class="cmp-modal" id="cmpModal" role="dialog" aria-modal="true" aria-label="Compare packages">
+  <button class="lead-close" id="cmpClose" type="button" aria-label="Close comparison">&times;</button>
+  <h3>Compare Packages</h3>
+  <div class="pkg-compare-scroll"><table id="compareTable" class="compare-table"></table></div>
+  <p class="cmp-note">Every package is fully customisable in the builder — pick one and adjust anything; the price updates live.</p>
+</div>
+
 <!-- print quote target -->
 <div id="print-quote"></div>
 
@@ -1410,6 +1470,14 @@ const PROMO_CODES = {
 };
 
 const PAYMENT_TERMS = ['50% advance', '40% on event day', '10% at delivery'];
+
+/* Announcement bar — edit or disable anytime. code must exist in PROMO_CODES to be applied. */
+const ANNOUNCEMENT = {
+  enabled: true,
+  text: 'Wedding season offer — use code SPECIAL10 for 10% off your package',
+  cta:  'Apply code',
+  code: 'SPECIAL10',
+};
 
 const WA_NUMBER = "918686868803";
 
@@ -2235,6 +2303,29 @@ function presetRawTotal(p){
   p.events.forEach(ev=>{ for(const k in ev.services) t += PRICES[k]*ev.services[k]; });
   return t;
 }
+function renderCompareTable(){
+  const tbl = $('#compareTable'); if(!tbl) return;
+  const keys = Object.keys(PRESETS);
+  const agg = {};
+  keys.forEach(k=>{
+    agg[k] = {};
+    PRESETS[k].events.forEach(ev=>{ for(const sk in ev.services){ agg[k][sk] = (agg[k][sk]||0) + ev.services[sk]; } });
+  });
+  let h = '<thead><tr><th>Included</th>' + keys.map(k=>`<th>${PRESETS[k].name}</th>`).join('') + '</tr></thead><tbody>';
+  h += '<tr><td>Events covered</td>' + keys.map(k=>`<td>${PRESETS[k].events.length}</td>`).join('') + '</tr>';
+  SERVICES.forEach(sv=>{
+    if(!keys.some(k=>agg[k][sv.key])) return;
+    h += `<tr><td>${sv.label}</td>` + keys.map(k=>`<td>${agg[k][sv.key] ? '✓ ×'+agg[k][sv.key] : '—'}</td>`).join('') + '</tr>';
+  });
+  h += '<tr class="cmp-price"><td>Package price</td>' + keys.map(k=>`<td>${inr(presetRawTotal(PRESETS[k]))}</td>`).join('') + '</tr></tbody>';
+  tbl.innerHTML = h;
+}
+function openCompare(){
+  renderCompareTable();
+  $('#cmpModal').classList.add('open'); $('#cmpBackdrop').classList.add('open');
+  track('compare_opened');
+}
+function closeCompare(){ $('#cmpModal').classList.remove('open'); $('#cmpBackdrop').classList.remove('open'); }
 function renderPresets(){
   const grid = $('#presetGrid'); if(!grid) return;
   grid.innerHTML = Object.keys(PRESETS).map(key=>{
@@ -2292,7 +2383,7 @@ $('#sheetClose').addEventListener('click', closeSheet);
 $('#sheetBackdrop').addEventListener('click', closeSheet);
 $('#sheetPdf').addEventListener('click', ()=>{ closeSheet(); downloadQuotePDF(); });
 $('#mbPdf').addEventListener('click', ()=>downloadQuotePDF());
-document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); closeCompare(); } });
 
 /* ============================================================
    PORTFOLIO — diverts to Instagram (no on-page gallery)
@@ -2471,7 +2562,36 @@ if(_shared){
   seedDefaults();
 }
 renderPresets();
+$('#pkgCompareBtn').addEventListener('click', openCompare);
+$('#cmpClose').addEventListener('click', closeCompare);
+$('#cmpBackdrop').addEventListener('click', closeCompare);
 syncPromoUI();
+
+/* announcement bar */
+(function(){
+  if(!ANNOUNCEMENT.enabled || !ANNOUNCEMENT.text) return;
+  try{ if(sessionStorage.getItem('fs_annc_hide')) return; }catch(e){}
+  const a = $('#annc'); if(!a) return;
+  a.hidden = false; document.body.classList.add('has-annc');
+  $('#anncText').textContent = ANNOUNCEMENT.text;
+  const cta = $('#anncCta');
+  if(ANNOUNCEMENT.cta){
+    cta.textContent = ANNOUNCEMENT.cta;
+    cta.addEventListener('click', ()=>{
+      if(ANNOUNCEMENT.code && PROMO_CODES[ANNOUNCEMENT.code]){
+        state.promo = ANNOUNCEMENT.code;
+        renderSummary(); syncPromoUI();
+        showToast(`Code ${ANNOUNCEMENT.code} applied — build your package below!`);
+        track('announcement_cta', {code: ANNOUNCEMENT.code});
+      }
+      document.querySelector('#builder').scrollIntoView({behavior: REDUCE_MOTION?'auto':'smooth'});
+    });
+  }else{ cta.hidden = true; }
+  $('#anncClose').addEventListener('click', ()=>{
+    a.hidden = true; document.body.classList.remove('has-annc');
+    try{ sessionStorage.setItem('fs_annc_hide','1'); }catch(e){}
+  });
+})();
 renderEvents();
 renderSummary();
 observeReveals();
