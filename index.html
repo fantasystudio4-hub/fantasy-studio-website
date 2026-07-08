@@ -56,7 +56,7 @@
 }
 </script>
 <script type="application/ld+json">
-{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How do I book Fantasy Studio for my wedding?", "acceptedAnswer": {"@type": "Answer", "text": "Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery."}}, {"@type": "Question", "name": "What are the payment terms?", "acceptedAnswer": {"@type": "Answer", "text": "50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF."}}, {"@type": "Question", "name": "Do you have lady photographers for the bridal side?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Dedicated lady shooters are available at ₹2,000 per head per event — just add them to any event in the package builder."}}, {"@type": "Question", "name": "Will we get the raw photos too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package."}}, {"@type": "Question", "name": "Can I customise a ready-made package?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things."}}, {"@type": "Question", "name": "How does the premium album work?", "acceptedAnswer": {"@type": "Answer", "text": "Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly."}}, {"@type": "Question", "name": "Which events do you cover?", "acceptedAnswer": {"@type": "Answer", "text": "Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage."}}]}
+{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How do I book Fantasy Studio for my wedding?", "acceptedAnswer": {"@type": "Answer", "text": "Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery."}}, {"@type": "Question", "name": "What are the payment terms?", "acceptedAnswer": {"@type": "Answer", "text": "50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF."}}, {"@type": "Question", "name": "Do you have female photographers for the bridal side?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Dedicated female shooters are available at ₹2,000 per head per event — just add them to any event in the package builder."}}, {"@type": "Question", "name": "Will we get the raw photos too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package."}}, {"@type": "Question", "name": "Can I customise a ready-made package?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things."}}, {"@type": "Question", "name": "How does the premium album work?", "acceptedAnswer": {"@type": "Answer", "text": "Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly."}}, {"@type": "Question", "name": "Which events do you cover?", "acceptedAnswer": {"@type": "Answer", "text": "Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage."}}]}
 </script>
 
 <style>
@@ -429,6 +429,11 @@ header.nav.scrolled{
 .svc-meta .nm{font-size:.86rem;color:var(--ink);display:block;line-height:1.2}
 .svc-meta .pr{font-size:.72rem;color:#6e6551}
 .svc-toggle.on .svc-meta .pr{color:var(--gold-deep)}
+.svc-badge{
+  display:inline-block;margin-left:.5em;padding:.16em .65em;vertical-align:middle;white-space:nowrap;
+  border:1px solid var(--gold);color:var(--gold-deep);border-radius:30px;
+  font-family:var(--sans);font-size:.55rem;letter-spacing:.07em;text-transform:uppercase;font-weight:500;
+}
 /* qty stepper — always visible */
 .qty{display:flex;align-items:center;gap:0;flex:0 0 auto;border:1px solid var(--gold-soft);border-radius:6px;overflow:hidden;background:#fff}
 .qty button{width:26px;height:28px;background:rgba(184,144,43,.12);border:0;color:var(--gold-deep);cursor:pointer;font-size:1rem;line-height:1;transition:.2s}
@@ -928,6 +933,7 @@ section[id]{scroll-margin-top:84px}
   .svc-list .svc-toggle{flex-direction:column;align-items:stretch;gap:.4rem;padding:.6rem}
   .svc-list .svc-meta .nm{font-size:.8rem;line-height:1.25}
   .svc-list .svc-meta .pr{font-size:.66rem}
+  .svc-list .svc-badge{display:block;width:fit-content;margin:.3em 0 .15em}
   .svc-list .svc-toggle .qty{width:100%;justify-content:space-between;background:#fff;margin-top:auto}
   .svc-list .svc-toggle .qty button{flex:1 1 auto;width:auto;height:34px}
   .svc-list .svc-toggle .qty input{flex:0 0 44px;width:44px;height:34px;font-size:16px}
@@ -1179,8 +1185,8 @@ section[id]{scroll-margin-top:84px}
       </div>
       <div class="svc-card reveal d3">
         <div class="svc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/></svg></div>
-        <h3>Lady Shooters</h3>
-        <p>Dedicated lady photographers for comfortable, intimate bridal coverage.</p>
+        <h3>Female Shooters</h3>
+        <p>Dedicated female photographers for comfortable, intimate bridal coverage.</p>
       </div>
     </div>
   </div>
@@ -1252,8 +1258,8 @@ section[id]{scroll-margin-top:84px}
         <p>50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF.</p>
       </details>
       <details class="faq-item">
-        <summary>Do you have lady photographers for the bridal side?</summary>
-        <p>Yes. Dedicated lady shooters are available at ₹2,000 per head per event — just add them to any event in the package builder.</p>
+        <summary>Do you have female photographers for the bridal side?</summary>
+        <p>Yes. Dedicated female shooters are available at ₹2,000 per head per event — just add them to any event in the package builder.</p>
       </details>
       <details class="faq-item">
         <summary>Will we get the raw photos too?</summary>
@@ -1483,7 +1489,8 @@ const SERVICES = [
   { key:'candidPhotography', label:'Candid Photography',  unit:'event' },
   { key:'traditionalVideo',  label:'Traditional Video',   unit:'event' },
   { key:'traditionalPhoto',  label:'Traditional Photo',   unit:'event' },
-  { key:'ladyShooter',       label:'Lady Shooter',        unit:'head'  },
+  { key:'ladyShooter',       label:'Female Shooter',      unit:'head',
+    badge:'Ladies\u2019 Section Only' },
   { key:'drone',             label:'Drone Coverage',      unit:'event' },
   { key:'ledScreen6x8',      label:'LED Screen 6×8',      unit:'event' },
   { key:'ledScreen8x12',     label:'LED Screen 8×12',     unit:'event' },
@@ -1527,8 +1534,9 @@ function eventCardHTML(ev, idx){
     return `
       <div class="svc-toggle ${on?'on':''}" data-ev="${ev.id}" data-svc="${s.key}">
         <span class="svc-meta">
-          <span class="nm">${s.label}</span>
+          <span class="nm">${s.label}${s.badge?`<span class="svc-badge">${s.badge}</span>`:''}</span>
           <span class="pr">${inr(PRICES[s.key])} ${unitTxt}</span>
+          ${s.note?`<span class="svc-note">${s.note}</span>`:''}
         </span>
         <span class="qty">
           <button type="button" data-act="dec" aria-label="Decrease ${s.label}">−</button>
