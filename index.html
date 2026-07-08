@@ -494,6 +494,8 @@ header.nav.scrolled{
 .mobile-bar .mb-info .l{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
 .mobile-bar .mb-info .v{font-family:var(--serif);font-size:1.5rem;color:#fff;font-weight:700;line-height:1}
 .mobile-bar .btn{padding:.85em 1.3em;font-size:.78rem;flex:0 0 auto}
+.mobile-bar .mb-pdf{background:transparent;border:1px solid rgba(226,194,117,.65);color:var(--gold-bright);padding:.85em 1em}
+.mobile-bar .mb-pdf:active{background:var(--gold);border-color:var(--gold);color:#fff}
 
 /* ============================================================
    PORTFOLIO → INSTAGRAM CTA
@@ -1275,7 +1277,8 @@ section[id]{scroll-margin-top:84px}
     <div class="v" id="mbTotal">₹0</div>
     <span class="mb-chev">Tap for breakdown ▴</span>
   </div>
-  <a class="btn btn-wa" id="mbWa" href="#" rel="noopener">WhatsApp</a>
+  <button class="btn mb-pdf" id="mbPdf" type="button" aria-label="Download quote PDF">PDF</button>
+  <a class="btn btn-wa" id="mbWa" href="#" rel="noopener" aria-label="Send quote on WhatsApp">Send</a>
 </div>
 
 <!-- mobile quote bottom-sheet -->
@@ -2160,6 +2163,7 @@ $('#mbOpen').addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ 
 $('#sheetClose').addEventListener('click', closeSheet);
 $('#sheetBackdrop').addEventListener('click', closeSheet);
 $('#sheetPdf').addEventListener('click', ()=>{ closeSheet(); downloadQuotePDF(); });
+$('#mbPdf').addEventListener('click', ()=>downloadQuotePDF());
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); } });
 
 /* ============================================================
