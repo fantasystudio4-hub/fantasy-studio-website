@@ -371,6 +371,12 @@ header.nav.scrolled{
 .album-panel .qty button{background:rgba(184,144,43,.22);color:var(--gold-bright)}
 .album-panel .qty button:hover{background:var(--gold);color:#fff}
 .album-panel .album-total{color:var(--gold-bright)}
+.album-add-chip{
+  width:100%;margin-bottom:1.1rem;padding:.85em 1em;border-radius:40px;cursor:pointer;
+  border:1.5px dashed rgba(226,194,117,.55);background:rgba(184,144,43,.14);color:var(--gold-bright);
+  font-family:var(--sans);font-size:.85rem;letter-spacing:.04em;transition:.25s;
+}
+.album-add-chip:hover{background:var(--gold);color:#fff;border-style:solid}
 .event-card.empty{display:none}
 .event-top{display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;margin-bottom:1.3rem}
 .field{display:flex;flex-direction:column;gap:.4rem;flex:1 1 160px}
@@ -388,6 +394,8 @@ header.nav.scrolled{
   border-radius:7px;width:42px;height:42px;flex:0 0 auto;cursor:pointer;font-size:1.2rem;transition:.25s;
 }
 .event-remove:hover{background:#b04030;border-color:#b04030;color:#fff}
+.copy-prev{background:none;border:1px dashed rgba(184,144,43,.45);color:var(--gold-deep);border-radius:30px;padding:.45em 1.1em;font-family:var(--sans);font-size:.72rem;letter-spacing:.05em;cursor:pointer;margin:-.3rem 0 .9rem;transition:.25s}
+.copy-prev:hover{background:rgba(184,144,43,.12);border-style:solid}
 
 /* service rows */
 .svc-list{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
@@ -967,6 +975,7 @@ section[id]{scroll-margin-top:84px}
             <span class="num">2</span>
             <div><h3>Album</h3><p>Choose your number of sheets — minimum 15.</p></div>
           </div>
+          <button type="button" class="album-add-chip" id="albumQuickAdd" hidden></button>
           <div class="album-row">
             <div class="album-info">
               <span class="nm">Album Sheets</span>
@@ -1368,7 +1377,7 @@ function markBuilderStarted(){ if(_builderStarted) return; _builderStarted = tru
 /* ============================================================
    EVENT RENDERING
    ============================================================ */
-function eventCardHTML(ev){
+function eventCardHTML(ev, idx){
   const opts = EVENT_TYPES.map(t=>`<option value="${t}" ${t===ev.type?'selected':''}>${t}</option>`).join('');
   const svc = SERVICES.map(s=>{
     const qty = ev.services[s.key]||0;          // quantity starts at 0
@@ -1401,6 +1410,7 @@ function eventCardHTML(ev){
       </div>
       <button class="event-remove" data-remove title="Remove event">&times;</button>
     </div>
+    ${idx>0?`<button type="button" class="copy-prev" data-copyprev="${ev.id}">&#10697; Same services as previous event</button>`:''}
     <div class="svc-list">${svc}</div>
   </div>`;
 }
@@ -1532,6 +1542,11 @@ function renderSummary(){
   $('#albumPriceLbl').textContent = `${inr(PRICES.albumPerSheet)} per sheet`;
 
   const ap = $('#albumPanel'); if(ap) ap.hidden = !albumEligible();
+  const chip = $('#albumQuickAdd');
+  if(chip){
+    chip.hidden = state.albumSheets > 0;
+    if(!chip.hidden) chip.textContent = `+ Add ${PRICES.albumMinSheets}-sheet album · ${inr(PRICES.albumMinSheets*PRICES.albumPerSheet)}`;
+  }
   // quote bar CTAs only make sense once something is selected
   const empty = grand <= 0;
   ['mbPdf','mbWa'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
@@ -1657,6 +1672,18 @@ document.addEventListener('click', e=>{
     renderSummary();                                  // 3) update the live price total
     return;
   }
+  // copy services from the previous event
+  const cp = e.target.closest('[data-copyprev]');
+  if(cp){
+    const idx = state.events.findIndex(ev=>ev.id==cp.dataset.copyprev);
+    if(idx > 0){
+      state.events[idx].services = {...state.events[idx-1].services};
+      markBuilderStarted(); markCustomised();
+      renderEvents(); renderSummary();
+      showToast('Copied services from the previous event.');
+    }
+    return;
+  }
   // remove event
   const rm = e.target.closest('[data-remove]');
   if(rm){
@@ -1750,6 +1777,7 @@ function setAlbum(n){
   state.albumSheets = Math.min(PRICES.albumMaxSheets, n);
   markCustomised(); renderSummary();
 }
+$('#albumQuickAdd').addEventListener('click', ()=>setAlbum(PRICES.albumMinSheets));
 $('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets===0 ? PRICES.albumMinSheets : state.albumSheets+1));
 $('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets<=PRICES.albumMinSheets ? 0 : state.albumSheets-1));
 /* typing: keep the raw string, allow empty/partial entry; live total updates
