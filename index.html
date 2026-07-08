@@ -778,9 +778,13 @@ section[id]{scroll-margin-top:84px}
   display:flex;align-items:center;gap:.9rem;max-width:min(92vw,480px);
   background:var(--ink);color:#f3ecdc;border:1px solid rgba(226,194,117,.4);
   border-radius:60px;padding:.8rem 1.4rem;box-shadow:0 18px 50px rgba(0,0,0,.35);
-  font-size:.88rem;transition:transform .45s cubic-bezier(.2,.7,.3,1);
+  font-size:.88rem;opacity:0;visibility:hidden;pointer-events:none;
+  transition:transform .45s cubic-bezier(.2,.7,.3,1), opacity .35s ease, visibility 0s linear .45s;
 }
-.toast.show{transform:translate(-50%,0)}
+.toast.show{
+  transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto;
+  transition:transform .45s cubic-bezier(.2,.7,.3,1), opacity .35s ease;
+}
 .toast .t-ic{color:var(--gold-bright);flex:0 0 auto;display:grid;place-items:center}
 .toast button{
   background:none;border:1px solid rgba(226,194,117,.5);color:var(--gold-bright);border-radius:40px;
@@ -1296,7 +1300,7 @@ section[id]{scroll-margin-top:84px}
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
   </span>
   <span id="toastMsg"></span>
-  <button id="toastAction" type="button"></button>
+  <button id="toastAction" type="button" hidden></button>
   <button class="t-close" id="toastClose" type="button" aria-label="Dismiss notification">Dismiss &times;</button>
 </div>
 
@@ -2262,7 +2266,7 @@ let toastTimer;
 function showToast(msg, actionLabel, actionFn){
   const t = $('#toast'), btn = $('#toastAction');
   $('#toastMsg').textContent = msg;
-  btn.style.display = actionLabel ? '' : 'none';
+  btn.hidden = !actionLabel;
   btn.textContent = actionLabel || '';
   btn.setAttribute('aria-label', actionLabel || 'Toast action');
   btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
