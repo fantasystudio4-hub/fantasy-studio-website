@@ -18,6 +18,13 @@
 <meta property="og:title" content="Fantasy Studio — Wedding Photography & Cinematography in Hyderabad" />
 <meta property="og:description" content="14 years of premium wedding photography & cinematography in Hyderabad. Build your custom package and see your price live." />
 <meta property="og:locale" content="en_IN" />
+<meta property="og:url" content="https://fantasystudio4-hub.github.io/fantasy-studio-website/" />
+<meta property="og:image" content="https://fantasystudio4-hub.github.io/fantasy-studio-website/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Fantasy Studio — Wedding Photography &amp; Cinematography in Hyderabad" />
+<meta name="twitter:image" content="https://fantasystudio4-hub.github.io/fantasy-studio-website/og.png" />
 
 <!-- Geo -->
 <meta name="geo.region" content="IN-TG" />
@@ -26,7 +33,7 @@
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,400;1,400;1,500;1,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
 
 <!-- Structured data -->
 <script type="application/ld+json">
@@ -35,7 +42,7 @@
   "@type": "LocalBusiness",
   "name": "Fantasy Studio",
   "description": "Premium wedding photography & cinematography studio with 14 years of experience.",
-  "image": "",
+  "image": "https://fantasystudio4-hub.github.io/fantasy-studio-website/og.png",
   "telephone": "+918686868803",
   "address": {
     "@type": "PostalAddress",
@@ -415,7 +422,7 @@ header.nav.scrolled{
 .svc-toggle.on .svc-check svg{opacity:1}
 .svc-meta{flex:1;min-width:0}
 .svc-meta .nm{font-size:.86rem;color:var(--ink);display:block;line-height:1.2}
-.svc-meta .pr{font-size:.72rem;color:#8f8672}
+.svc-meta .pr{font-size:.72rem;color:#6e6551}
 .svc-toggle.on .svc-meta .pr{color:var(--gold-deep)}
 /* qty stepper — always visible */
 .qty{display:flex;align-items:center;gap:0;flex:0 0 auto;border:1px solid var(--gold-soft);border-radius:6px;overflow:hidden;background:#fff}
@@ -431,7 +438,7 @@ header.nav.scrolled{
   text-transform:uppercase;
 }
 .add-event:hover{background:rgba(184,144,43,.14);border-color:var(--gold);transform:translateY(-2px)}
-.events-empty{text-align:center;color:#9a8f76;font-family:var(--serif-2);font-style:italic;font-size:1.08rem;padding:.6rem 0 1.3rem}
+.events-empty{text-align:center;color:#7d7258;font-family:var(--serif-2);font-style:italic;font-size:1.08rem;padding:.6rem 0 1.3rem}
 
 /* album */
 .album-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.2rem}
@@ -457,7 +464,7 @@ header.nav.scrolled{
 .summary-body{padding:1.4rem 1.5rem;max-height:46vh;overflow-y:auto}
 .summary-body::-webkit-scrollbar{width:6px}
 .summary-body::-webkit-scrollbar-thumb{background:var(--gold-bright);border-radius:6px}
-.sum-empty{text-align:center;color:#9a8f76;font-family:var(--serif-2);font-style:italic;font-size:1.1rem;padding:1.6rem 0}
+.sum-empty{text-align:center;color:#7d7258;font-family:var(--serif-2);font-style:italic;font-size:1.1rem;padding:1.6rem 0}
 .sum-event{margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px dashed var(--line)}
 .sum-event:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
 .sum-event-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.5rem}
@@ -1659,11 +1666,23 @@ function openLeadModal(){
   $('#leadModal').classList.add('open'); $('#leadBackdrop').classList.add('open');
   setTimeout(()=>$('#leadName').focus(), 80);
 }
-function closeLeadModal(){ $('#leadModal').classList.remove('open'); $('#leadBackdrop').classList.remove('open'); }
+let _leadOpener = null;
+function closeLeadModal(){
+  $('#leadModal').classList.remove('open'); $('#leadBackdrop').classList.remove('open');
+  if(_leadOpener && _leadOpener.focus){ _leadOpener.focus(); _leadOpener = null; }
+}
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Tab' || !$('#leadModal').classList.contains('open')) return;
+  const f = [...document.querySelectorAll('#leadModal input, #leadModal button')].filter(el=>!el.disabled && el.offsetParent);
+  if(!f.length) return;
+  const first = f[0], last = f[f.length-1];
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+});
 
 ['waQuote','mbWa','sheetWa'].forEach(id=>{
   const el = document.getElementById(id); if(!el) return;
-  el.addEventListener('click', e=>{ e.preventDefault(); closeSheet(); openLeadModal(); });
+  el.addEventListener('click', e=>{ e.preventDefault(); _leadOpener = el; closeSheet(); openLeadModal(); });
 });
 $('#leadClose').addEventListener('click', closeLeadModal);
 $('#leadBackdrop').addEventListener('click', closeLeadModal);
