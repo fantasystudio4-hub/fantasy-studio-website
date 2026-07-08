@@ -494,6 +494,9 @@ header.nav.scrolled{
 .btn-wa:hover{background:#1a9249;transform:translateY(-3px)}
 .btn-pdf{background:transparent;border:1px solid var(--gold);color:var(--gold-deep)}
 .btn-pdf:hover{background:var(--gold);color:#fff}
+.btn-share{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
+.btn-share:hover{border-color:var(--gold);color:var(--gold-deep);transform:translateY(-3px)}
+.sheet-share{margin:.1rem 1.4rem .3rem;padding:.55em;background:none;border:0;color:var(--gold-deep);font-family:var(--sans);font-size:.8rem;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
 /* mobile sticky price bar */
 .mobile-bar{
@@ -1025,6 +1028,7 @@ section[id]{scroll-margin-top:84px}
                 Get This Quote on WhatsApp
               </a>
               <button class="btn btn-pdf" id="pdfBtn">Download Quote PDF</button>
+              <button class="btn btn-share" id="shareBtn" type="button">Share Quote Link</button>
             </div>
           </div>
         </div>
@@ -1262,6 +1266,7 @@ section[id]{scroll-margin-top:84px}
     <button type="button" id="sheetPromoApply">Apply</button>
   </div>
   <div class="promo-status" id="sheetPromoStatus" hidden></div>
+  <button type="button" class="sheet-share" id="sheetShare">&#128279; Share this quote with family</button>
   <div class="sheet-foot">
     <a class="btn btn-wa" id="sheetWa" href="#" rel="noopener">WhatsApp Quote</a>
     <button class="btn btn-pdf" id="sheetPdf" type="button">Download PDF</button>
@@ -1549,7 +1554,7 @@ function renderSummary(){
   }
   // quote bar CTAs only make sense once something is selected
   const empty = grand <= 0;
-  ['mbPdf','mbWa'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
+  ['mbPdf','mbWa','shareBtn','sheetShare'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
   renderSheet();
   saveState();
 }
@@ -1611,6 +1616,37 @@ function buildQuoteText(lead){
   return L.join('\n');
 }
 function waUrl(lead){ return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(buildQuoteText(lead))}`; }
+
+/* ---- shareable quote links: the whole package travels in the URL ---- */
+function encodeQuote(){
+  const payload = {
+    e: state.events.map(ev=>({ t: ev.type, d: ev.date||'', s: ev.services })),
+    a: state.albumSheets, p: state.promo
+  };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeQuote(str){
+  try{
+    const d = JSON.parse(decodeURIComponent(escape(atob(str.replace(/-/g,'+').replace(/_/g,'/')))));
+    return (d && Array.isArray(d.e)) ? d : null;
+  }catch(e){ return null; }
+}
+function shareQuote(){
+  const url = location.origin + location.pathname + '#q=' + encodeQuote();
+  track('quote_link_shared', { total: calc().grand });
+  if(navigator.share){
+    navigator.share({ title:'Fantasy Studio — My Wedding Package', text:'Check out the wedding package I built:', url }).catch(()=>{});
+  }else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(
+      ()=>showToast('Quote link copied — share it with your family!'),
+      ()=>prompt('Copy this link:', url)
+    );
+  }else{
+    prompt('Copy this link:', url);
+  }
+}
+$('#shareBtn').addEventListener('click', shareQuote);
+$('#sheetShare').addEventListener('click', shareQuote);
 
 /* ---- lead capture: identity travels with every WhatsApp quote ---- */
 const LEAD_KEY = 'fs_lead';
@@ -2324,8 +2360,24 @@ toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: REDUCE_MOT
 $('#year').textContent = new Date().getFullYear();
 const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
 
+let _shared = null;
+if(location.hash.indexOf('#q=') === 0) _shared = decodeQuote(location.hash.slice(3));
 const saved = loadState();
-if(saved && hasContent(saved)){
+if(_shared){
+  state.events = _shared.e.slice(0,12).map(ev=>({
+    id: ++eid,
+    type: String(ev.t||'Event').slice(0,40),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(ev.d) ? ev.d : '',
+    services: Object.fromEntries(Object.entries(ev.s||{})
+      .filter(([k,v])=>PRICES[k] && v>0)
+      .map(([k,v])=>[k, Math.min(50, Math.floor(v))]))
+  }));
+  state.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(_shared.a,10)||0));
+  state.promo = PROMO_CODES[_shared.p] ? _shared.p : '';
+  history.replaceState(null, '', location.pathname + location.search);
+  track('quote_link_opened');
+  showToast('Shared quote loaded — feel free to adjust it.');
+}else if(saved && hasContent(saved)){
   state.events = saved.events.map(e=>({ ...e, services:{...(e.services||{})} }));
   state.albumSheets = saved.albumSheets||0;
   state.promo = PROMO_CODES[saved.promo] ? saved.promo : '';
