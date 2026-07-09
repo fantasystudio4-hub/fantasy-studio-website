@@ -11,6 +11,12 @@
 <meta name="author" content="Fantasy Studio" />
 <meta name="robots" content="index, follow" />
 <meta name="theme-color" content="#B8902B" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Fantasy Studio" />
 <link rel="canonical" href="https://fantasystudio4-hub.github.io/fantasy-studio-website/" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='%23B8902B' stroke-width='4'/%3E%3Ctext x='50' y='50' text-anchor='middle' dominant-baseline='central' font-family='Georgia,serif' font-weight='700' font-size='42' fill='%23B8902B'%3EFS%3C/text%3E%3C/svg%3E" />
 
@@ -2647,6 +2653,11 @@ toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: REDUCE_MOT
 /* ============================================================
    INIT
    ============================================================ */
+/* progressive web app: offline fallback + install-to-home-screen */
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+
 /* always open at the very top (hero) — never restore a mid-page scroll position */
 if('scrollRestoration' in history) history.scrollRestoration = 'manual';
 function _startAtTop(){
