@@ -2570,6 +2570,20 @@ toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: REDUCE_MOT
 /* ============================================================
    INIT
    ============================================================ */
+/* always open at the very top (hero) — never restore a mid-page scroll position */
+if('scrollRestoration' in history) history.scrollRestoration = 'manual';
+if(!location.hash) window.scrollTo(0, 0);
+window.addEventListener('load', ()=>{
+  // manual restoration also skips native anchor jumps on reload — do it ourselves
+  if(location.hash && !location.hash.startsWith('#q=')){
+    try{
+      const target = document.querySelector(location.hash);
+      if(target){ target.scrollIntoView(); return; }
+    }catch(e){}
+  }
+  window.scrollTo(0, 0);
+});
+
 $('#year').textContent = new Date().getFullYear();
 const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
 
@@ -2588,6 +2602,7 @@ if(_shared){
   state.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(_shared.a,10)||0));
   state.promo = PROMO_CODES[_shared.p] ? _shared.p : '';
   history.replaceState(null, '', location.pathname + location.search);
+  window.scrollTo(0, 0);
   track('quote_link_opened');
   showToast('Shared quote loaded — feel free to adjust it.');
 }else if(saved && hasContent(saved)){
