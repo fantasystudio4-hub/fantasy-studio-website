@@ -1424,7 +1424,7 @@ section[id]{scroll-margin-top:84px}
     <div class="fg"><label for="leadName">Your Name</label><input type="text" id="leadName" required placeholder="Full name" autocomplete="name" /></div>
     <div class="fg"><label for="leadPhone">Phone / WhatsApp</label><input type="tel" id="leadPhone" required placeholder="10-digit mobile" autocomplete="tel" inputmode="numeric" /></div>
     <div class="lead-err" id="leadErr" hidden></div>
-    <button type="submit" class="btn btn-wa" style="width:100%">Send Quote on WhatsApp</button>
+    <button type="submit" class="btn btn-wa" id="leadSubmit" style="width:100%">Send Quote on WhatsApp</button>
   </form>
 </div>
 
@@ -1801,7 +1801,14 @@ $('#sheetShare').addEventListener('click', shareQuote);
 
 /* ---- lead capture: identity travels with every WhatsApp quote ---- */
 const LEAD_KEY = 'fs_lead';
-function openLeadModal(){
+let _leadAction = 'wa';
+function openLeadModal(action){
+  _leadAction = action === 'pdf' ? 'pdf' : 'wa';
+  const sub = $('#leadSubmit');
+  if(sub){
+    sub.textContent = _leadAction === 'pdf' ? 'Download Quote PDF' : 'Send Quote on WhatsApp';
+    sub.className = 'btn ' + (_leadAction === 'pdf' ? 'btn-gold' : 'btn-wa');
+  }
   try{
     const l = JSON.parse(localStorage.getItem(LEAD_KEY)||'null');
     if(l){ $('#leadName').value = l.name||''; $('#leadPhone').value = l.phone||''; }
@@ -1826,7 +1833,7 @@ document.addEventListener('keydown', e=>{
 
 ['waQuote','mbWa','sheetWa'].forEach(id=>{
   const el = document.getElementById(id); if(!el) return;
-  el.addEventListener('click', e=>{ e.preventDefault(); _leadOpener = el; closeSheet(); openLeadModal(); });
+  el.addEventListener('click', e=>{ e.preventDefault(); _leadOpener = el; closeSheet(); openLeadModal('wa'); });
 });
 $('#leadClose').addEventListener('click', closeLeadModal);
 $('#leadBackdrop').addEventListener('click', closeLeadModal);
@@ -1841,11 +1848,16 @@ $('#leadForm').addEventListener('submit', e=>{
   if(phone.length !== 10){ err.textContent = 'Please enter a valid 10-digit mobile number.'; err.hidden = false; $('#leadPhone').focus(); return; }
   const lead = { name, phone };
   try{ localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); }catch(e2){}
-  window.open(waUrl(lead), '_blank', 'noopener');
-  track('quote_whatsapp_sent', { events: sortedQuoteEvents().length, total: calc().grand });
-  clearSavedQuote();   // stored quote is cleared after a successful send
-  closeLeadModal();
-  showToast("Opening WhatsApp — send the message and we'll reply shortly!");
+  if(_leadAction === 'pdf'){
+    closeLeadModal();
+    downloadQuotePDF();   // reads the saved lead, so 'Prepared for' is always filled
+  }else{
+    window.open(waUrl(lead), '_blank', 'noopener');
+    track('quote_whatsapp_sent', { events: sortedQuoteEvents().length, total: calc().grand });
+    clearSavedQuote();   // stored quote is cleared after a successful send
+    closeLeadModal();
+    showToast("Opening WhatsApp — send the message and we'll reply shortly!");
+  }
 });
 
 /* ============================================================
@@ -2134,11 +2146,11 @@ function buildPdfDoc(){
   }
   function footer(){
     doc.setDrawColor(...GOLD); doc.setLineWidth(0.3);
-    doc.line(IL, 279, IR, 279);
+    doc.line(IL, 269, IR, 269);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(102,102,102);
-    doc.text('FANTASY STUDIO  |  MALAKPET, HYDERABAD', 105, 283.5, {align:'center'});
-    doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(...GOLD);
-    doc.text('8686868803', 105, 289, {align:'center'});
+    doc.text('FANTASY STUDIO  |  MALAKPET, HYDERABAD', 105, 274, {align:'center'});
+    doc.setFont('times','bold'); doc.setFontSize(14); doc.setTextColor(...GOLD);
+    doc.text('Call / WhatsApp: 8686868803', 105, 281.5, {align:'center'});
   }
   function newPage(){ doc.addPage(); frame(); footer(); return 22; }
 
@@ -2263,7 +2275,7 @@ async function downloadQuotePDF(){
     printQuoteFallback();   // offline / CDN blocked: print dialog with the same royal layout
   }
 }
-$('#pdfBtn').addEventListener('click', downloadQuotePDF);
+$('#pdfBtn').addEventListener('click', ()=>{ _leadOpener = $('#pdfBtn'); openLeadModal('pdf'); });
 
 /* ============================================================
    QUICK-START PRESETS
@@ -2392,8 +2404,8 @@ $('#mbOpen').addEventListener('click', openSheet);
 $('#mbOpen').addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openSheet(); }});
 $('#sheetClose').addEventListener('click', closeSheet);
 $('#sheetBackdrop').addEventListener('click', closeSheet);
-$('#sheetPdf').addEventListener('click', ()=>{ closeSheet(); downloadQuotePDF(); });
-$('#mbPdf').addEventListener('click', ()=>downloadQuotePDF());
+$('#sheetPdf').addEventListener('click', ()=>{ _leadOpener = $('#sheetPdf'); closeSheet(); openLeadModal('pdf'); });
+$('#mbPdf').addEventListener('click', ()=>{ _leadOpener = $('#mbPdf'); openLeadModal('pdf'); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); closeCompare(); } });
 
 /* ============================================================
