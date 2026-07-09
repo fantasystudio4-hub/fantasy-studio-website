@@ -514,6 +514,9 @@ header.nav.scrolled{
 .btn-share{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
 .btn-share:hover{border-color:var(--gold);color:var(--gold-deep);transform:translateY(-3px)}
 .sheet-share{margin:.1rem 1.4rem .3rem;padding:.55em;background:none;border:0;color:var(--gold-deep);font-family:var(--sans);font-size:.8rem;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.btn-clear{display:block;margin:.15rem auto 0;background:none;border:0;color:#a99885;font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;cursor:pointer;transition:.2s;padding:.45em .8em}
+.btn-clear:hover{color:#b04030}
+.sheet-clear{margin:0 auto .35rem}
 
 /* mobile sticky price bar */
 .mobile-bar{
@@ -1113,6 +1116,7 @@ section[id]{scroll-margin-top:84px}
               </a>
               <button class="btn btn-pdf" id="pdfBtn">Download Quote PDF</button>
               <button class="btn btn-share" id="shareBtn" type="button">Share Quote Link</button>
+              <button class="btn-clear" id="clearBtn" type="button" hidden>Clear package</button>
             </div>
           </div>
         </div>
@@ -1392,6 +1396,7 @@ section[id]{scroll-margin-top:84px}
   </div>
   <div class="promo-status" id="sheetPromoStatus" hidden></div>
   <button type="button" class="sheet-share" id="sheetShare">&#128279; Share this quote with family</button>
+  <button type="button" class="btn-clear sheet-clear" id="sheetClear" hidden>Clear package</button>
   <div class="sheet-foot">
     <a class="btn btn-wa" id="sheetWa" href="#" rel="noopener">WhatsApp Quote</a>
     <button class="btn btn-pdf" id="sheetPdf" type="button">Download PDF</button>
@@ -1698,7 +1703,7 @@ function renderSummary(){
   }
   // quote bar CTAs only make sense once something is selected
   const empty = grand <= 0;
-  ['mbPdf','mbWa','shareBtn','sheetShare'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
+  ['mbPdf','mbWa','shareBtn','sheetShare','clearBtn','sheetClear'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
   // offer bar rides with the quote: visible only once something is selected
   const annc = document.getElementById('annc');
   if(annc){
@@ -1796,6 +1801,16 @@ function shareQuote(){
     prompt('Copy this link:', url);
   }
 }
+function requestClearPackage(){
+  showToast('Clear this package and start over?', 'Yes, clear', ()=>{
+    closeSheet();
+    startFresh();
+    showToast('Package cleared — start building whenever you like.');
+    track('package_cleared');
+  });
+}
+$('#clearBtn').addEventListener('click', requestClearPackage);
+$('#sheetClear').addEventListener('click', requestClearPackage);
 $('#shareBtn').addEventListener('click', shareQuote);
 $('#sheetShare').addEventListener('click', shareQuote);
 
