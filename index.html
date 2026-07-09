@@ -1515,6 +1515,10 @@ const PROMO_CODES = {
 
 const PAYMENT_TERMS = ['50% advance', '40% on event day', '10% at delivery'];
 
+/* Google Analytics 4 — paste your Measurement ID (looks like 'G-XXXXXXXXXX') between the
+   quotes to activate tracking. Leave empty to keep analytics off. */
+const GA_MEASUREMENT_ID = '';
+
 /* Announcement bar — edit or disable anytime. code must exist in PROMO_CODES to be applied. */
 const ANNOUNCEMENT = {
   enabled: true,
@@ -1560,7 +1564,22 @@ const TODAY_ISO = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd, local t
 
 /* ---- light anonymous analytics (GTM-ready, no cookies) ---- */
 window.dataLayer = window.dataLayer || [];
-function track(ev, data){ try{ window.dataLayer.push(Object.assign({event:ev}, data||{})); }catch(e){} }
+function track(ev, data){
+  try{
+    window.dataLayer.push(Object.assign({event:ev}, data||{}));
+    if(typeof window.gtag === 'function') window.gtag('event', ev, data||{});
+  }catch(e){}
+}
+/* GA4 loads only when a Measurement ID is configured */
+if(typeof GA_MEASUREMENT_ID === 'string' && /^G-[A-Z0-9]+$/.test(GA_MEASUREMENT_ID)){
+  const gs = document.createElement('script');
+  gs.async = true;
+  gs.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
+  document.head.appendChild(gs);
+  window.gtag = function(){ window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID, { anonymize_ip: true });
+}
 let _builderStarted = false;
 function markBuilderStarted(){ if(_builderStarted) return; _builderStarted = true; track('builder_started'); }
 
