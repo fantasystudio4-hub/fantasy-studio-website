@@ -2649,9 +2649,8 @@ toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: REDUCE_MOT
    ============================================================ */
 /* always open at the very top (hero) — never restore a mid-page scroll position */
 if('scrollRestoration' in history) history.scrollRestoration = 'manual';
-if(!location.hash) window.scrollTo(0, 0);
-window.addEventListener('load', ()=>{
-  // manual restoration also skips native anchor jumps on reload — do it ourselves
+function _startAtTop(){
+  // respect direct section links (#contact etc.); everything else opens on the hero
   if(location.hash && !location.hash.startsWith('#q=')){
     try{
       const target = document.querySelector(location.hash);
@@ -2659,7 +2658,15 @@ window.addEventListener('load', ()=>{
     }catch(e){}
   }
   window.scrollTo(0, 0);
-});
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+_startAtTop();                                   // as soon as the script parses
+document.addEventListener('DOMContentLoaded', _startAtTop);
+window.addEventListener('load', ()=>{ _startAtTop(); setTimeout(_startAtTop, 120); });
+/* phones restore tabs from the back/forward cache without reloading —
+   pageshow fires then, load does not */
+window.addEventListener('pageshow', e=>{ if(e.persisted) _startAtTop(); });
 
 $('#year').textContent = new Date().getFullYear();
 const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
