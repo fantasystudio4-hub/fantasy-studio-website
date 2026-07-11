@@ -1,0 +1,63 @@
+rules_version = '2';
+// LensCal security rules. Paste into Firebase console → Firestore → Rules,
+// MERGED with the studio site's existing rules for `leads` and `config`
+// (keep those blocks — see SETUP.md for the combined file).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // ---- users: any signed-in user can read profiles (needed for
+    // phone lookup, invite links and crew cards); only the owner writes.
+    match /lenscal_users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // ---- availability: doc id is `{uid}_{date}`; only the owner writes.
+    // Readable by any signed-in user (the app only queries docs of people
+    // you're connected with; notes are in these docs, so they're visible
+    // to connections' clients — the UI never shows another user's note,
+    // and truly-private notes can move to a subcollection later).
+    match /lenscal_availability/{docId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && docId.split('_')[0] == request.auth.uid
+                   && request.resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() && docId.split('_')[0] == request.auth.uid;
+    }
+
+    // ---- connections: doc id `{uidA}_{uidB}` (sorted). Either party
+    // can read; creator must be a participant; the other party accepts.
+    match /lenscal_connections/{pairId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.users;
+      allow create: if signedIn()
+                    && request.auth.uid in request.resource.data.users
+                    && request.resource.data.requestedBy == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if signedIn() && request.auth.uid in resource.data.users;
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+    }
+
+    // ---- groups: private to their owner.
+    match /lenscal_groups/{groupId} {
+      allow read, delete, update: if signedIn() && resource.data.owner == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
+    }
+
+    // ---- broadcasts: poster or targeted recipients can read; poster
+    // creates/deletes; recipients may update only to add their response.
+    match /lenscal_broadcasts/{id} {
+      allow read: if signedIn()
+                  && (resource.data.by == request.auth.uid
+                      || request.auth.uid in resource.data.to);
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid;
+      allow update: if signedIn()
+                    && (resource.data.by == request.auth.uid
+                        || (request.auth.uid in resource.data.to
+                            && request.resource.data.diff(resource.data)
+                                 .affectedKeys().hasOnly(['responders'])));
+      allow delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
+  }
+}
