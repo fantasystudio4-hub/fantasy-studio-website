@@ -1,7 +1,7 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets. */
-const CACHE = 'fs-cache-v1';
+const CACHE = 'fs-cache-v2';
 const PRECACHE = [
   './',
   'manifest.webmanifest',

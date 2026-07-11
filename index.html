@@ -1488,10 +1488,8 @@ section[id]{scroll-margin-top:84px}
 <!-- print quote target -->
 <div id="print-quote"></div>
 
+<script src="firebase-config.js"></script>
 <script>
-/* ============================================================
-   FANTASY STUDIO — OFFICIAL PRICING (edit here)
-   ============================================================ */
 /* ============================================================
    FANTASY STUDIO — OFFICIAL PRICING (single source of truth)
    Every rupee shown anywhere on this page traces back here.
@@ -1936,7 +1934,23 @@ document.addEventListener('keydown', e=>{
 $('#leadClose').addEventListener('click', closeLeadModal);
 $('#leadBackdrop').addEventListener('click', closeLeadModal);
 
-$('#leadForm').addEventListener('submit', e=>{
+function buildLeadDoc(name, phone){
+  const evs = sortedQuoteEvents();
+  return {
+    name, phone,
+    eventType: evs.map(v=>v.type).join(', '),
+    weddingDate: (evs.find(v=>v.date)||{}).date || '',
+    message: '',
+    quote: {
+      events: state.events.map(ev=>({ type: ev.type, date: ev.date||'', services: ev.services })),
+      albumSheets: state.albumSheets,
+      promo: state.promo
+    },
+    grandTotal: calc().grand,
+    source: 'package_builder'
+  };
+}
+$('#leadForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const name = $('#leadName').value.trim();
   const digits = $('#leadPhone').value.replace(/\D/g,'');
@@ -1947,10 +1961,16 @@ $('#leadForm').addEventListener('submit', e=>{
   const lead = { name, phone };
   try{ localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); }catch(e2){}
   if(_leadAction === 'pdf'){
+    if(typeof window.__saveLead === 'function'){ try{ await window.__saveLead(buildLeadDoc(name, phone)); }catch(e3){} }
     closeLeadModal();
     downloadQuotePDF();   // reads the saved lead, so 'Prepared for' is always filled
   }else{
-    window.open(waUrl(lead), '_blank', 'noopener');
+    // open the tab synchronously (keeps the user gesture), save the lead, then point it at WhatsApp
+    const waWin = window.open('', '_blank');
+    if(typeof window.__saveLead === 'function'){ try{ await window.__saveLead(buildLeadDoc(name, phone)); }catch(e3){} }
+    const url = waUrl(lead);
+    if(waWin && !waWin.closed){ waWin.location.href = url; }
+    else{ window.open(url, '_blank', 'noopener'); }
     track('quote_whatsapp_sent', { events: sortedQuoteEvents().length, total: calc().grand });
     clearSavedQuote();   // stored quote is cleared after a successful send
     closeLeadModal();
@@ -2549,7 +2569,7 @@ function observeReveals(){
 /* ============================================================
    CONTACT FORM → WhatsApp
    ============================================================ */
-$('#enquiryForm').addEventListener('submit', e=>{
+$('#enquiryForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const name = $('#cName').value.trim();
   const phone= $('#cPhone').value.trim();
@@ -2560,7 +2580,15 @@ $('#enquiryForm').addEventListener('submit', e=>{
   if(date) t+=`Wedding Date: ${new Date(date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}\n`;
   if(type) t+=`Event: ${type}\n`;
   if(msg)  t+=`\nMessage: ${msg}\n`;
-  window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t)}`,'_blank');
+  const waWin = window.open('', '_blank');
+  if(typeof window.__saveLead === 'function'){
+    try{
+      await window.__saveLead({ name, phone, eventType: type||'', weddingDate: date||'',
+        message: msg||'', quote: null, grandTotal: null, source: 'contact_form' });
+    }catch(e2){}
+  }
+  const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t)}`;
+  if(waWin && !waWin.closed){ waWin.location.href = url; } else { window.open(url, '_blank'); }
 });
 
 /* ============================================================
@@ -2747,6 +2775,79 @@ renderEvents();
 renderSummary();
 observeReveals();
 scrollSpy();
+
+/* ============================================================
+   LIVE CONFIG — prices/packages/testimonials/FAQs from Firestore.
+   Called by the Firebase loader below; on any failure the hardcoded
+   values above simply remain in force.
+   ============================================================ */
+window.__applyRemoteConfig = function(cfg){
+  try{
+    if(cfg && cfg.prices){
+      Object.keys(cfg.prices).forEach(k=>{
+        const v = Number(cfg.prices[k]);
+        if(!isNaN(v) && v >= 0) PRICES[k] = v;
+      });
+    }
+    if(cfg && cfg.presets && Object.keys(cfg.presets).length){
+      Object.keys(PRESETS).forEach(k=>{ if(!cfg.presets[k]) delete PRESETS[k]; });
+      Object.keys(cfg.presets).forEach(k=>{
+        const pr = cfg.presets[k];
+        if(pr && Array.isArray(pr.events)) PRESETS[k] = pr;
+      });
+    }
+    if(cfg && Array.isArray(cfg.testimonials) && cfg.testimonials.length){
+      const grid = document.querySelector('.testi-grid');
+      if(grid) grid.innerHTML = cfg.testimonials.map(t=>`
+        <div class="testi-card">
+          <div class="stars">★★★★★</div>
+          <p class="quote">"${esc(t.text||'')}"</p>
+          <div class="testi-who"><span class="testi-av">${esc(String(t.name||'F').charAt(0))}</span><div><b>${esc(t.name||'')}</b><span>${esc(t.location||'')}</span></div></div>
+        </div>`).join('');
+    }
+    if(cfg && Array.isArray(cfg.faqs) && cfg.faqs.length){
+      const list = document.querySelector('.faq-list');
+      if(list) list.innerHTML = cfg.faqs.map(f=>`
+        <details class="faq-item"><summary>${esc(f.q||'')}</summary><p>${esc(f.a||'')}</p></details>`).join('');
+    }
+    renderPresets();
+    renderCompareTable();
+    renderEvents();
+    renderSummary();
+    syncPromoUI();
+  }catch(e){}
+};
+</script>
+
+<!-- Firebase (modular v10, CDN) — loads only when firebase-config.js holds a real config -->
+<script type="module">
+if(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey){
+  (async ()=>{
+    try{
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+      const { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } =
+        await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+      const app = initializeApp(window.FIREBASE_CONFIG);
+      const db  = getFirestore(app);
+
+      /* live pricing & content — hardcoded values stay if this fails */
+      try{
+        const snap = await getDoc(doc(db, 'config', 'site'));
+        if(snap.exists() && typeof window.__applyRemoteConfig === 'function'){
+          window.__applyRemoteConfig(snap.data());
+        }
+      }catch(e){}
+
+      /* silent lead capture — resolves within 2.5s no matter what */
+      window.__saveLead = (lead)=>Promise.race([
+        addDoc(collection(db, 'leads'), Object.assign(
+          { createdAt: serverTimestamp(), status: 'new', notes: '' }, lead
+        )).catch(()=>{}),
+        new Promise(res=>setTimeout(res, 2500))
+      ]);
+    }catch(e){ /* CDN blocked / offline: site runs fully on built-in values */ }
+  })();
+}
 </script>
 </body>
 </html>

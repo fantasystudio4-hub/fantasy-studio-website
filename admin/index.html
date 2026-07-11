@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fantasy Studio — Admin</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --ink-2:#1f1a10; --panel:#241e12; --line:rgba(226,194,117,.22);
+  --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
+h1,h2,h3{font-family:var(--serif)}
+button,input,select,textarea{font-family:var(--sans);font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding:0 14px 90px}
+
+/* header */
+header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hd{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
+.hd svg{width:34px;height:34px;flex:0 0 auto}
+.hd b{font-family:var(--serif);font-size:1.05rem}
+.hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
+.hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
+.hd .out:active{border-color:var(--gold)}
+
+/* login */
+.login{max-width:360px;margin:16vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.8rem 1.5rem;text-align:center}
+.login h1{font-size:1.4rem;margin:.6rem 0 .2rem}
+.login p{color:var(--mut);font-size:.85rem;margin-bottom:1.2rem}
+.fld{margin-bottom:.8rem;text-align:left}
+.fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.fld input,.fld select,.fld textarea{width:100%;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.7em .8em}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
+.gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn:active{transform:scale(.98)}
+.err{color:var(--err);font-size:.8rem;margin-top:.7rem}
+.note{background:rgba(184,144,43,.1);border:1px solid var(--line);border-radius:10px;padding:1rem;font-size:.85rem;color:var(--mut);margin-top:1rem;text-align:left}
+.note code{color:var(--gold-b)}
+
+/* tabs */
+.tabs{display:flex;gap:.5rem;margin:1rem 0}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
+.tabs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .5rem;text-align:center}
+.stat b{font-family:var(--serif);font-size:1.25rem;color:var(--gold-b);display:block}
+.stat span{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.stat.month{grid-column:1 / -1;background:linear-gradient(135deg,rgba(201,163,71,.2),rgba(142,110,30,.15))}
+.stat.month b{font-size:1.5rem}
+
+/* toolbar */
+.bar{display:flex;gap:.5rem;margin-bottom:.8rem}
+.bar select{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em}
+.bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:8px;padding:.55em .9em;cursor:pointer}
+
+/* lead cards */
+.lead{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:.7rem;overflow:hidden}
+.lead-top{padding:.85rem .95rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center;cursor:pointer}
+.lead-top .nm{font-family:var(--serif);font-size:1.05rem;color:#fff}
+.lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
+.lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b)}
+.lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
+.lead-sub a{color:var(--gold-b);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.25em .8em}
+.lead-sub select{background:#171309;border:1px solid var(--line);color:var(--text);border-radius:20px;padding:.25em .5em;font-size:.78rem;margin-left:auto}
+.st-new{color:var(--gold-b)} .st-contacted{color:#7fb2e5} .st-booked{color:var(--ok)}
+.st-shot{color:#c99ae0} .st-delivered{color:#9adbb2} .st-lost{color:var(--err)}
+.lead-det{border-top:1px dashed var(--line);padding:.85rem .95rem;font-size:.85rem}
+.lead-det h4{font-family:var(--serif);color:var(--gold-b);font-size:.92rem;margin:.5rem 0 .3rem}
+.lead-det .ln{display:flex;justify-content:space-between;padding:.12rem 0;color:var(--text)}
+.lead-det .ln span:last-child{color:var(--mut)}
+.lead-det textarea{width:100%;min-height:70px;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.6em;margin-top:.3rem}
+.mini{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.4em 1.1em;font-size:.78rem;cursor:pointer;margin-top:.5rem}
+.mini:active{background:var(--gold);color:#fff}
+.empty{color:var(--mut);text-align:center;padding:2rem 0;font-style:italic}
+
+/* config editor */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:.9rem}
+.sec h3{color:var(--gold-b);font-size:1.05rem;margin-bottom:.7rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.row{border:1px dashed var(--line);border-radius:10px;padding:.7rem;margin-bottom:.6rem}
+.row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
+textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height:84px}
+.addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.6em;cursor:pointer;font-size:.82rem}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(20,17,10,.97);border-top:1px solid var(--line);padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+.savebar .in{max-width:860px;margin:0 auto;display:flex;gap:.6rem;align-items:center}
+.savebar .msg{font-size:.78rem;color:var(--mut);flex:1}
+.savebar .gbtn{width:auto;padding:.75em 1.8em}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+@media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
+</style>
+</head>
+<body>
+
+<header hidden id="hdr">
+  <div class="hd">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <div><b>Fantasy Studio</b><span>Admin Panel</span></div>
+    <button class="out" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<!-- no firebase config yet -->
+<div class="wrap" id="setupView" hidden>
+  <div class="login">
+    <h1>Admin not configured</h1>
+    <p>Firebase isn't connected yet.</p>
+    <div class="note">
+      Paste your Firebase web app config into <code>firebase-config.js</code> in the site
+      repository, then redeploy. Full steps are in the setup guide you received.
+    </div>
+  </div>
+</div>
+
+<!-- login -->
+<div class="wrap" id="loginView" hidden>
+  <div class="login">
+    <svg viewBox="0 0 100 100" style="width:56px;height:56px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <h1>Fantasy Studio</h1>
+    <p>Admin sign in</p>
+    <form id="loginForm">
+      <div class="fld"><label>Email</label><input type="email" id="email" autocomplete="username" required /></div>
+      <div class="fld"><label>Password</label><input type="password" id="pass" autocomplete="current-password" required /></div>
+      <button class="gbtn" type="submit">Sign In</button>
+      <div class="err" id="loginErr" hidden></div>
+    </form>
+  </div>
+</div>
+
+<!-- app -->
+<div class="wrap" id="appView" hidden>
+  <div class="tabs">
+    <button id="tabLeads" class="on">Leads</button>
+    <button id="tabConfig">Site Config</button>
+  </div>
+
+  <div id="leadsView">
+    <div class="stats" id="stats"></div>
+    <div class="bar">
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="new">New</option><option value="contacted">Contacted</option>
+        <option value="booked">Booked</option><option value="shot">Shot</option>
+        <option value="delivered">Delivered</option><option value="lost">Lost</option>
+      </select>
+      <button id="refreshBtn">↻ Refresh</button>
+    </div>
+    <div id="leadList"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div id="configView" hidden>
+    <div class="sec">
+      <h3>Service Rates (₹)</h3>
+      <div class="grid2" id="priceGrid"></div>
+    </div>
+    <div class="sec">
+      <h3>Album</h3>
+      <div class="grid2">
+        <div class="fld"><label>Price per sheet</label><input type="number" id="albumPerSheet" min="0" /></div>
+        <div class="fld"><label>Minimum sheets</label><input type="number" id="albumMinSheets" min="0" /></div>
+        <div class="fld"><label>Maximum sheets</label><input type="number" id="albumMaxSheets" min="1" /></div>
+      </div>
+    </div>
+    <div class="sec">
+      <h3>Ready-made Packages</h3>
+      <div id="pkgList"></div>
+      <button class="addrow" id="addPkg">＋ Add package</button>
+    </div>
+    <div class="sec">
+      <h3>Testimonials</h3>
+      <div id="testiList"></div>
+      <button class="addrow" id="addTesti">＋ Add testimonial</button>
+    </div>
+    <div class="sec">
+      <h3>FAQs</h3>
+      <div id="faqList"></div>
+      <button class="addrow" id="addFaq">＋ Add FAQ</button>
+    </div>
+    <div class="savebar"><div class="in">
+      <div class="msg" id="saveMsg">Changes go live on the site immediately after saving.</div>
+      <button class="gbtn" id="saveConfig">Save All</button>
+    </div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../firebase-config.js"></script>
+<script type="module">
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+
+const SERVICE_LABELS = {
+  cinematography:'Cinematography', candidPhotography:'Candid Photography',
+  traditionalVideo:'Traditional Video', traditionalPhoto:'Traditional Photo',
+  ladyShooter:'Female Shooter', drone:'Drone Coverage', ledScreen6x8:'LED Screen 6×8',
+  ledScreen8x12:'LED Screen 8×12', liveStreaming:'Live Streaming', extraShortVPShoot:'Extra Short VP Shoot'
+};
+const STATUSES = ['new','contacted','booked','shot','delivered','lost'];
+
+/* current live-site values — used to seed config/site the first time */
+const DEFAULTS = {
+  prices: { cinematography:15000, candidPhotography:10000, traditionalVideo:7000, traditionalPhoto:6000,
+    ladyShooter:2000, drone:8000, ledScreen6x8:7000, ledScreen8x12:10000, liveStreaming:6000,
+    extraShortVPShoot:3000, albumPerSheet:400, albumMinSheets:15, albumMaxSheets:100 },
+  presets: {
+    single:   { name:'Single-Day', tag:'', desc:'One function — engagement or birthday. Traditional photo & video coverage.', album:0,
+      events:[{type:'Engagement', services:{traditionalPhoto:1, traditionalVideo:1}}] },
+    essential:{ name:'Essential', tag:'', desc:'Sanchak, Nikah & Valima — traditional photo & video. Raw photos + edited video on pendrive.', album:0,
+      events:[{type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
+              {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2}},
+              {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2}}] },
+    premium:  { name:'Premium', tag:'Popular', desc:'Everything in Essential + cinematography for Nikah & Valima, plus 2 cinematic teasers.', album:0,
+      events:[{type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
+              {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}},
+              {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}}] },
+    royal:    { name:'Royal', tag:'Signature', desc:'Full signature coverage — cinematography, candid & drone for Nikah & Valima. + cinematic teasers.', album:0,
+      events:[{type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
+              {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}},
+              {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}}] }
+  },
+  testimonials: [
+    { name:'Ayesha & Imran', location:'Malakpet, Hyderabad', text:'Fantasy Studio captured our Nikah and Valima so beautifully. The candid shots brought tears to my mother’s eyes. Truly the best in Hyderabad.' },
+    { name:'Priya & Rohan', location:'Banjara Hills, Hyderabad', text:'The drone shots and cinematic film were straight out of a movie. Professional, punctual and so respectful of all our rituals. Highly recommended.' },
+    { name:'Sana & Bilal', location:'Old City, Hyderabad', text:'14 years of experience really shows. They handled our Mehndi, Nikah and Reception flawlessly with separate teams. The album is a family treasure now.' }
+  ],
+  faqs: [
+    { q:'How do I book Fantasy Studio for my wedding?', a:'Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery.' },
+    { q:'What are the payment terms?', a:'50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF.' },
+    { q:'Do you have female photographers for the bridal side?', a:'Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are ₹8,000 per head per event (₹6,000 photography charge + ₹2,000 female shooter pardah coverage premium). You can add them to any event directly in the Package Builder.' },
+    { q:'Will we get the raw photos too?', a:'Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package.' },
+    { q:'Can I customise a ready-made package?', a:'Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things.' },
+    { q:'How does the premium album work?', a:'Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly.' },
+    { q:'Which events do you cover?', a:'Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage.' }
+  ]
+};
+
+if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
+  $('#setupView').hidden = false;
+}else{
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, query, orderBy, limit } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+  const app  = initializeApp(window.FIREBASE_CONFIG);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  /* ---------- auth ---------- */
+  $('#loginForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    $('#loginErr').hidden = true;
+    try{ await signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#pass').value); }
+    catch(err){ $('#loginErr').textContent = 'Sign-in failed: ' + (err.code||'').replace('auth/','').replace(/-/g,' '); $('#loginErr').hidden = false; }
+  });
+  $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+  onAuthStateChanged(auth, user=>{
+    $('#loginView').hidden = !!user;
+    $('#appView').hidden = !user;
+    $('#hdr').hidden = !user;
+    if(user){ loadLeads(); loadConfig(); }
+  });
+
+  /* ---------- tabs ---------- */
+  $('#tabLeads').addEventListener('click', ()=>{ $('#tabLeads').classList.add('on'); $('#tabConfig').classList.remove('on'); $('#leadsView').hidden=false; $('#configView').hidden=true; });
+  $('#tabConfig').addEventListener('click', ()=>{ $('#tabConfig').classList.add('on'); $('#tabLeads').classList.remove('on'); $('#configView').hidden=false; $('#leadsView').hidden=true; });
+
+  /* ---------- leads ---------- */
+  let LEADS = [];
+  async function loadLeads(){
+    try{
+      const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(300)));
+      LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      renderStats(); renderLeads();
+    }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
+  }
+  $('#refreshBtn').addEventListener('click', loadLeads);
+  $('#statusFilter').addEventListener('change', renderLeads);
+
+  function renderStats(){
+    const counts = {}; STATUSES.forEach(s=>counts[s]=0);
+    const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
+    let monthTotal = 0, monthCount = 0;
+    LEADS.forEach(l=>{
+      counts[l.status||'new'] = (counts[l.status||'new']||0)+1;
+      const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
+      if(ts && ts >= mStart && l.grandTotal){ monthTotal += Number(l.grandTotal)||0; monthCount++; }
+    });
+    $('#stats').innerHTML =
+      `<div class="stat month"><b>${inr(monthTotal)}</b><span>${monthCount} quotes this month</span></div>` +
+      STATUSES.map(s=>`<div class="stat"><b class="st-${s}">${counts[s]||0}</b><span>${s}</span></div>`).join('');
+  }
+
+  function renderLeads(){
+    const f = $('#statusFilter').value;
+    const list = LEADS.filter(l=>!f || (l.status||'new')===f);
+    if(!list.length){ $('#leadList').innerHTML = '<div class="empty">No leads here yet.</div>'; return; }
+    $('#leadList').innerHTML = list.map(l=>{
+      const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
+      const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
+      return `
+      <div class="lead" data-id="${l.id}">
+        <div class="lead-top" data-toggle>
+          <span class="nm">${esc(l.name||'—')}</span>
+          <span class="src">${esc(l.source==='contact_form'?'enquiry':'builder')}</span>
+          <span class="amt">${l.grandTotal ? inr(l.grandTotal) : ''}</span>
+        </div>
+        <div class="lead-sub">
+          <a href="tel:+91${esc(l.phone||'')}">📞 Call</a>
+          <a href="https://wa.me/91${esc(l.phone||'')}" target="_blank" rel="noopener">WhatsApp</a>
+          <span>${when}</span>
+          ${l.weddingDate ? `<span>· 💍 ${esc(l.weddingDate)}</span>` : ''}
+          <select data-status>
+            ${STATUSES.map(s=>`<option value="${s}" ${(l.status||'new')===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="lead-det" hidden>${leadDetailHTML(l)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function leadDetailHTML(l){
+    let h = '';
+    if(l.eventType) h += `<div class="ln"><span>Events</span><span>${esc(l.eventType)}</span></div>`;
+    if(l.phone) h += `<div class="ln"><span>Phone</span><span>${esc(l.phone)}</span></div>`;
+    if(l.message) h += `<h4>Message</h4><div>${esc(l.message)}</div>`;
+    if(l.quote && Array.isArray(l.quote.events)){
+      h += '<h4>Quote breakdown</h4>';
+      l.quote.events.forEach(ev=>{
+        const svcs = Object.entries(ev.services||{}).filter(([,q])=>q>0)
+          .map(([k,q])=>`${SERVICE_LABELS[k]||k}${q>1?' ×'+q:''}`).join(', ');
+        if(svcs) h += `<div class="ln"><span>${esc(ev.type)}${ev.date?' · '+esc(ev.date):''}</span><span>${esc(svcs)}</span></div>`;
+      });
+      if(l.quote.albumSheets) h += `<div class="ln"><span>Album</span><span>${l.quote.albumSheets} sheets</span></div>`;
+      if(l.quote.promo) h += `<div class="ln"><span>Promo</span><span>${esc(l.quote.promo)}</span></div>`;
+      h += `<div class="ln"><span><b>Grand total</b></span><span><b>${inr(l.grandTotal)}</b></span></div>`;
+    }
+    h += `<h4>My notes</h4><textarea data-notes placeholder="Follow-up notes…">${esc(l.notes||'')}</textarea>
+          <button class="mini" data-savenotes>Save notes</button>`;
+    return h;
+  }
+
+  $('#leadList').addEventListener('click', async e=>{
+    const card = e.target.closest('.lead'); if(!card) return;
+    if(e.target.closest('[data-toggle]')){
+      const det = card.querySelector('.lead-det'); det.hidden = !det.hidden; return;
+    }
+    if(e.target.closest('[data-savenotes]')){
+      const notes = card.querySelector('[data-notes]').value;
+      try{ await updateDoc(doc(db,'leads',card.dataset.id), { notes }); toast('Notes saved'); }
+      catch(err){ toast('Save failed'); }
+    }
+  });
+  $('#leadList').addEventListener('change', async e=>{
+    if(!e.target.matches('[data-status]')) return;
+    const card = e.target.closest('.lead');
+    try{
+      await updateDoc(doc(db,'leads',card.dataset.id), { status: e.target.value });
+      const l = LEADS.find(x=>x.id===card.dataset.id); if(l) l.status = e.target.value;
+      renderStats(); toast('Status updated');
+    }catch(err){ toast('Update failed'); }
+  });
+
+  /* ---------- config editor ---------- */
+  let CFG = null;
+  async function loadConfig(){
+    try{
+      const snap = await getDoc(doc(db,'config','site'));
+      CFG = snap.exists() ? snap.data() : JSON.parse(JSON.stringify(DEFAULTS));
+      if(!snap.exists()) $('#saveMsg').textContent = 'No saved config yet — showing current site defaults. Save All to publish them.';
+    }catch(err){ CFG = JSON.parse(JSON.stringify(DEFAULTS)); }
+    buildConfigForms();
+  }
+
+  function buildConfigForms(){
+    const p = CFG.prices || {};
+    $('#priceGrid').innerHTML = Object.keys(SERVICE_LABELS).map(k=>`
+      <div class="fld"><label>${SERVICE_LABELS[k]}</label>
+      <input type="number" min="0" data-price="${k}" value="${Number(p[k])||0}" /></div>`).join('');
+    $('#albumPerSheet').value  = Number(p.albumPerSheet)||400;
+    $('#albumMinSheets').value = Number(p.albumMinSheets)||15;
+    $('#albumMaxSheets').value = Number(p.albumMaxSheets)||100;
+
+    $('#pkgList').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
+    $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
+    $('#faqList').innerHTML = (CFG.faqs||[]).map(faqRow).join('');
+  }
+  const pkgRow = (key, p) => `
+    <div class="row" data-pkg>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="grid2">
+        <div class="fld"><label>Key (no spaces)</label><input data-k="key" value="${esc(key)}" /></div>
+        <div class="fld"><label>Name</label><input data-k="name" value="${esc(p.name||'')}" /></div>
+        <div class="fld"><label>Tag (optional)</label><input data-k="tag" value="${esc(p.tag||'')}" /></div>
+        <div class="fld"><label>Album sheets</label><input type="number" min="0" data-k="album" value="${Number(p.album)||0}" /></div>
+      </div>
+      <div class="fld"><label>Description</label><input data-k="desc" value="${esc(p.desc||'')}" /></div>
+      <div class="fld"><label>Events (JSON — type + services with quantities)</label>
+        <textarea class="json" data-k="events">${esc(JSON.stringify(p.events||[], null, 1))}</textarea></div>
+    </div>`;
+  const testiRow = (t={}) => `
+    <div class="row" data-testi>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="grid2">
+        <div class="fld"><label>Name</label><input data-k="name" value="${esc(t.name||'')}" /></div>
+        <div class="fld"><label>Location</label><input data-k="location" value="${esc(t.location||'')}" /></div>
+      </div>
+      <div class="fld"><label>Review text</label><textarea data-k="text">${esc(t.text||'')}</textarea></div>
+    </div>`;
+  const faqRow = (f={}) => `
+    <div class="row" data-faq>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="fld"><label>Question</label><input data-k="q" value="${esc(f.q||'')}" /></div>
+      <div class="fld"><label>Answer</label><textarea data-k="a">${esc(f.a||'')}</textarea></div>
+    </div>`;
+
+  $('#addPkg').addEventListener('click', ()=>$('#pkgList').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'Nikah', services:{traditionalPhoto:1}}]})));
+  $('#addTesti').addEventListener('click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
+  $('#addFaq').addEventListener('click', ()=>$('#faqList').insertAdjacentHTML('beforeend', faqRow()));
+  document.addEventListener('click', e=>{ if(e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
+
+  $('#saveConfig').addEventListener('click', async ()=>{
+    try{
+      const prices = {};
+      $$('[data-price]').forEach(i=>{ prices[i.dataset.price] = Number(i.value)||0; });
+      prices.albumPerSheet  = Number($('#albumPerSheet').value)||400;
+      prices.albumMinSheets = Number($('#albumMinSheets').value)||0;
+      prices.albumMaxSheets = Number($('#albumMaxSheets').value)||100;
+
+      const presets = {};
+      for(const row of $$('[data-pkg]')){
+        const get = k => row.querySelector(`[data-k="${k}"]`).value;
+        const key = get('key').trim().replace(/\s+/g,'');
+        if(!key) continue;
+        let events;
+        try{ events = JSON.parse(get('events')); if(!Array.isArray(events)) throw 0; }
+        catch(_){ toast(`Package "${key}": events JSON is invalid`); return; }
+        presets[key] = { name:get('name').trim(), tag:get('tag').trim(), desc:get('desc').trim(),
+          album:Number(get('album'))||0, events };
+      }
+      const testimonials = $$('[data-testi]').map(r=>({
+        name: r.querySelector('[data-k="name"]').value.trim(),
+        location: r.querySelector('[data-k="location"]').value.trim(),
+        text: r.querySelector('[data-k="text"]').value.trim()
+      })).filter(t=>t.name || t.text);
+      const faqs = $$('[data-faq]').map(r=>({
+        q: r.querySelector('[data-k="q"]').value.trim(),
+        a: r.querySelector('[data-k="a"]').value.trim()
+      })).filter(f=>f.q && f.a);
+
+      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, updatedAt: new Date().toISOString() });
+      $('#saveMsg').textContent = 'Saved — the live site now uses these values.';
+      toast('Config published ✓');
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+  });
+}
+</script>
+</body>
+</html>
