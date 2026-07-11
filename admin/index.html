@@ -70,6 +70,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b)}
 .lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
 .lead-sub a{color:var(--gold-b);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.25em .8em}
+.lead-sub .lead-x{background:none;border:1px solid rgba(224,122,106,.5);color:var(--err);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
+.lead-sub .lead-x:active{background:var(--err);color:#fff}
 .lead-sub select{background:#171309;border:1px solid var(--line);color:var(--text);border-radius:20px;padding:.25em .5em;font-size:.78rem;margin-left:auto}
 .st-new{color:var(--gold-b)} .st-contacted{color:#7fb2e5} .st-booked{color:var(--ok)}
 .st-shot{color:#c99ae0} .st-delivered{color:#9adbb2} .st-lost{color:var(--err)}
@@ -254,7 +256,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, query, orderBy, limit } =
+  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
@@ -323,6 +325,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="lead-sub">
           <a href="tel:+91${esc(l.phone||'')}">📞 Call</a>
           <a href="https://wa.me/91${esc(l.phone||'')}" target="_blank" rel="noopener">WhatsApp</a>
+          <button class="lead-x" data-del-lead>Delete</button>
           <span>${when}</span>
           ${l.weddingDate ? `<span>· 💍 ${esc(l.weddingDate)}</span>` : ''}
           <select data-status>
@@ -359,6 +362,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const card = e.target.closest('.lead'); if(!card) return;
     if(e.target.closest('[data-toggle]')){
       const det = card.querySelector('.lead-det'); det.hidden = !det.hidden; return;
+    }
+    if(e.target.closest('[data-del-lead]')){
+      const l = LEADS.find(x=>x.id===card.dataset.id);
+      if(!confirm(`Delete the lead "${(l&&l.name)||'this lead'}" permanently? This cannot be undone.`)) return;
+      try{
+        await deleteDoc(doc(db,'leads',card.dataset.id));
+        LEADS = LEADS.filter(x=>x.id!==card.dataset.id);
+        renderStats(); renderLeads();
+        toast('Lead deleted');
+      }catch(err){ toast('Delete failed'); }
+      return;
     }
     if(e.target.closest('[data-savenotes]')){
       const notes = card.querySelector('[data-notes]').value;
