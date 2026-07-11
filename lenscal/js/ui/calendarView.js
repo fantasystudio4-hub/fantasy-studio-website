@@ -34,7 +34,7 @@ export function renderCalendar(root, uid) {
 
   const legend = el('div.cal-legend', {},
     ...STATUS_CYCLE.map(s => el('span', {}, `${STATUSES[s].icon} ${STATUSES[s].label}`)),
-    el('span.legend-note', {}, 'Tap a slot to cycle'),
+    el('span.legend-note', {}, 'Top half = morning · bottom = evening · tap to cycle · tap the date for notes'),
   );
 
   const multiToggle = el('button.btn.btn-ghost.btn-sm', {
@@ -42,10 +42,10 @@ export function renderCalendar(root, uid) {
       state.multi = !state.multi;
       state.selected.clear();
       multiToggle.classList.toggle('on', state.multi);
-      multiToggle.textContent = state.multi ? '✕ Cancel selection' : '⬚ Select multiple dates';
+      multiToggle.textContent = state.multi ? 'Cancel' : 'Select dates';
       drawGrid(); drawMultiBar();
     },
-  }, '⬚ Select multiple dates');
+  }, 'Select dates');
 
   root.append(
     el('div.page-head', {}, el('h1.page-title', {}, 'My Calendar'), multiToggle),
@@ -83,38 +83,47 @@ export function renderCalendar(root, uid) {
       const avail = state.data.get(iso) || null;
       const isPast = iso < today;
 
-      const slotChips = SLOTS.map(slot => {
+      const toggleSelect = () => {
+        state.selected.has(iso) ? state.selected.delete(iso) : state.selected.add(iso);
+        cell.classList.toggle('selected');
+        drawMultiBar();
+      };
+
+      // One box per day: top half = morning, bottom half = evening.
+      const halves = SLOTS.map(slot => {
         const eff = effectiveSlot(avail, slot.id);
-        const chip = el('button.slot-chip', {
-          class: `slot-chip ${STATUSES[eff.status].cls} ${eff.confirmed ? '' : 'unconfirmed'}`,
-          disabled: isPast || state.multi,
-          'aria-label': `${fmtDateNice(iso)} ${slot.label}: ${STATUSES[eff.status].label}`,
-          onclick: async e => {
+        const half = el('button.cal-half', {
+          class: `cal-half ${eff.confirmed ? STATUSES[eff.status].cls : 'unmarked'}`,
+          disabled: isPast,
+          'aria-label': `${fmtDateNice(iso)} ${slot.label}: ${STATUSES[eff.status].label}${eff.confirmed ? '' : ' (unconfirmed)'}`,
+          onclick: e => {
             e.stopPropagation();
+            if (state.multi) return toggleSelect();
             // optimistic UI: cycle instantly, Firestore confirms via listener
-            const next = await quickCycle(chip, uid, iso, slot.id, eff.status);
-            if (eff.note && next !== 'booked') { /* keep note; notes live per slot */ }
+            quickCycle(half, uid, iso, slot.id, eff.status);
           },
-        }, slot.icon);
-        if (eff.note) chip.append(el('span.note-dot'));
-        return chip;
+        },
+          eff.confirmed
+            ? el('span.half-status', {}, STATUSES[eff.status].icon)
+            : el('span.half-glyph', {}, slot.icon),
+        );
+        if (eff.note) half.append(el('span.note-dot'));
+        return half;
       });
 
       const cell = el('div.cal-cell', {
         class: `cal-cell ${iso === today ? 'today' : ''} ${isPast ? 'past' : ''} ${state.selected.has(iso) ? 'selected' : ''}`,
-        onclick: () => {
-          if (isPast) return;
-          if (state.multi) {
-            state.selected.has(iso) ? state.selected.delete(iso) : state.selected.add(iso);
-            cell.classList.toggle('selected');
-            drawMultiBar();
-          } else {
-            openDaySheet(uid, iso, () => state.data.get(iso) || null);
-          }
-        },
       },
-        el('span.cal-day', {}, String(d)),
-        el('div.cal-slots', {}, slotChips),
+        el('button.cal-day', {
+          disabled: isPast,
+          'aria-label': `Details for ${fmtDateNice(iso)}`,
+          onclick: e => {
+            e.stopPropagation();
+            if (state.multi) return toggleSelect();
+            openDaySheet(uid, iso, () => state.data.get(iso) || null);
+          },
+        }, String(d)),
+        halves,
       );
       grid.append(cell);
     }
@@ -147,7 +156,7 @@ export function renderCalendar(root, uid) {
             toast(`${STATUSES[st].icon} Marked ${state.selected.size} dates ${STATUSES[st].label.toLowerCase()}`);
             state.selected.clear(); state.multi = false;
             multiToggle.classList.remove('on');
-            multiToggle.textContent = '⬚ Select multiple dates';
+            multiToggle.textContent = 'Select dates';
             drawGrid(); drawMultiBar();
           },
         }, `${STATUSES[st].icon} ${STATUSES[st].label}`),
@@ -161,11 +170,13 @@ export function renderCalendar(root, uid) {
 }
 
 /** Instant optimistic cycle so a status change feels < 2s (it's ~0ms). */
-async function quickCycle(chip, uid, iso, slotId, current) {
+async function quickCycle(half, uid, iso, slotId, current) {
   const order = STATUS_CYCLE;
   const next = order[(order.indexOf(current) + 1) % order.length];
-  chip.classList.remove(...order.map(s => STATUSES[s].cls), 'unconfirmed');
-  chip.classList.add(STATUSES[next].cls);
+  half.classList.remove(...order.map(s => STATUSES[s].cls), 'unmarked');
+  half.classList.add(STATUSES[next].cls);
+  const glyph = half.querySelector('.half-glyph, .half-status');
+  if (glyph) { glyph.className = 'half-status'; glyph.textContent = STATUSES[next].icon; }
   try { await cycleSlot(uid, iso, slotId, current); }
   catch (e) { console.error(e); toast('Could not save — check connection', 'err'); }
   return next;

@@ -16,7 +16,7 @@ export function renderBroadcast(root, uid) {
   root.append(
     el('div.page-head', {},
       el('h1.page-title', {}, 'Broadcasts'),
-      el('button.btn.btn-primary', { onclick: () => openCompose(uid) }, '📣 New'),
+      el('button.btn.btn-primary', { onclick: () => openCompose(uid) }, '+ New'),
     ),
     incomingBox, mineBox,
   );

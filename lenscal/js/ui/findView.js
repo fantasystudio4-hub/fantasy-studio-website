@@ -89,7 +89,7 @@ export function renderFind(root, uid) {
     const distRow = el('div.chip-row', {}, DISTANCE_CHIPS.map(km => el('button.chip', {
       class: `chip ${state.maxKm === km ? 'on' : ''}`,
       onclick: () => { state.maxKm = km; drawFilters(); run(); },
-    }, km == null ? '🌐 Anywhere' : `${km} km`)));
+    }, km == null ? 'Anywhere' : `${km} km`)));
 
     // group chips
     const groupRow = state.groups.length ? el('div.chip-row', {},
@@ -109,8 +109,8 @@ export function renderFind(root, uid) {
 
   function viewToggle() {
     return el('div.view-toggle', {},
-      el('button.chip', { class: `chip ${state.view === 'list' ? 'on' : ''}`, onclick: () => { state.view = 'list'; drawFilters(); drawResults(); } }, '☰ List'),
-      el('button.chip', { class: `chip ${state.view === 'map' ? 'on' : ''}`, onclick: () => { state.view = 'map'; drawFilters(); drawResults(); } }, '🗺️ Map'),
+      el('button.chip', { class: `chip ${state.view === 'list' ? 'on' : ''}`, onclick: () => { state.view = 'list'; drawFilters(); drawResults(); } }, 'List'),
+      el('button.chip', { class: `chip ${state.view === 'map' ? 'on' : ''}`, onclick: () => { state.view = 'map'; drawFilters(); drawResults(); } }, 'Map'),
     );
   }
 

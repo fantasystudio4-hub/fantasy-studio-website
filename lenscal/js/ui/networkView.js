@@ -41,7 +41,7 @@ export function renderNetwork(root, uid) {
         toast('Invite link copied — share it on WhatsApp');
       }
     },
-  }, '🔗 Share my invite link');
+  }, 'Share invite link');
 
   const counter = el('p.net-counter');
   const pendingBox = el('div.section');

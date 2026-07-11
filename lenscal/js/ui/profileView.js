@@ -66,7 +66,7 @@ export function renderProfile(root, uid, user, rerender) {
       ),
       el('button.btn.btn-ghost.btn-full', {
         onclick: () => renderOnboarding(root, user, p, () => rerender()),
-      }, '✏️ Edit profile'),
+      }, 'Edit profile'),
       el('h2.section-title', {}, 'Privacy'),
       locToggle, rateToggle,
       el('h2.section-title', {}, 'AI search'),

@@ -1,7 +1,7 @@
 /* LensCal service worker — network-first for the shell (deploys show
    instantly), stale-while-revalidate for assets. Firestore/Auth traffic
    is never intercepted (the SDK has its own offline handling). */
-const CACHE = 'lenscal-v1';
+const CACHE = 'lenscal-v2';
 const PRECACHE = [
   './',
   'index.html',
