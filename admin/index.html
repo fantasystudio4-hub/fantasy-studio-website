@@ -128,6 +128,14 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pkg-actions .gbtn{width:auto;flex:1;min-width:130px}
 .pkg-actions .mini{margin-top:0}
 .lead-sub .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
+.hint{background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--mut);margin-bottom:.9rem}
+.hint b{color:var(--gold-b);font-weight:500}
+.sec .sub{font-size:.75rem;color:var(--mut);margin:-.5rem 0 .8rem}
+.stepnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;font-size:.75rem;font-family:var(--sans);margin-right:.45rem;vertical-align:-3px}
+.mini-f{display:flex;flex-direction:column;gap:.25rem}
+.mini-f > label{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.mini-f.amtf{margin-left:auto;text-align:right}
+.pkg-actions{position:sticky;bottom:0;z-index:40;background:rgba(20,17,10,.97);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 -14px;padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -199,12 +207,15 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <button id="pkgRefresh">↻</button>
         <button class="goldbar" id="pkgNew">＋ New Package</button>
       </div>
+      <p class="sub" style="margin:0 0 .7rem">Tap a status chip to move a package <b style="color:var(--gold-b)">draft → sent → booked</b>.</p>
       <div id="pkgList"><div class="empty">Loading…</div></div>
     </div>
 
     <div id="pkgEditView" hidden>
+      <div class="hint">Service rates auto-fill from <b>Site Config → Quotation Service Rates</b> — you can change any rate per quote. Once saved, a package keeps its own prices even if the presets change later.</div>
       <div class="sec">
-        <h3 id="pkgEditTitle">New Package</h3>
+        <h3><span class="stepnum">1</span><span id="pkgEditTitle">New Package</span></h3>
+        <p class="sub">Who is this quotation for?</p>
         <div class="grid2">
           <div class="fld"><label>Client name</label><input id="pcName" /></div>
           <div class="fld"><label>C/o (optional)</label><input id="pcCareOf" /></div>
@@ -212,15 +223,21 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
           <div class="fld"><label>Quote date</label><input id="pcDate" type="date" /></div>
         </div>
       </div>
+      <div class="sec" style="padding-bottom:.6rem">
+        <h3><span class="stepnum">2</span>Events &amp; Services</h3>
+        <p class="sub">Add each function, then its services — quantity × rate is totalled automatically.</p>
+      </div>
       <div id="pkgEvents"></div>
       <button class="addrow" id="pkgAddEvent" style="margin-bottom:.9rem">＋ Add Event</button>
       <div class="sec">
-        <h3>Add-ons (included extras)</h3>
+        <h3><span class="stepnum">3</span>Add-ons (included extras)</h3>
+        <p class="sub">Free-text lines shown on the PDF with gold bullets — albums, pendrive, teasers…</p>
         <div id="pkgAddons"></div>
         <button class="addrow" id="pkgAddAddon">＋ Add-on</button>
       </div>
       <div class="sec">
-        <h3>Pricing</h3>
+        <h3><span class="stepnum">4</span>Pricing</h3>
+        <p class="sub">Updates live as you type. The final price becomes the gold band on the PDF.</p>
         <div class="prow"><span>Gross total</span><b id="ppGross">₹0</b></div>
         <div class="prow"><label>Discount (₹)</label><input id="ppDiscount" type="number" min="0" value="0" /></div>
         <div class="prow big"><span>Final price</span><b id="ppFinal">₹0</b></div>
@@ -382,7 +399,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
-    if(user){ loadLeads(); loadConfig(); loadPkgs(); }
+    if(user){
+      loadLeads(); loadConfig(); loadPkgs();
+      $('#tabPkgs').click();   // packages front and centre
+    }
   });
 
   /* ---------- tabs ---------- */
@@ -641,6 +661,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const snap = await getDocs(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(200)));
       PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       renderPkgList();
+      if(!PKGS.length && !window._pkgIntroShown){
+        window._pkgIntroShown = true;
+        openPkgEdit(null);   // first visit: walk straight into the builder
+        toast('Your first package — fill it in and tap Save');
+      }
     }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
@@ -727,13 +752,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <input data-f="serviceName" placeholder="Custom service name" value="${esc(isCustom?it.service:'')}" ${isCustom?'':'hidden'} style="grid-column:1 / -1" />
       <div class="l2">
-        <div class="qwrap">
-          <button type="button" data-qm>−</button>
-          <input data-f="qty" type="number" min="1" value="${Number(it.qty)||1}" />
-          <button type="button" data-qp>+</button>
+        <div class="mini-f"><label>Qty</label>
+          <div class="qwrap">
+            <button type="button" data-qm>−</button>
+            <input data-f="qty" type="number" min="1" value="${Number(it.qty)||1}" />
+            <button type="button" data-qp>+</button>
+          </div>
         </div>
-        <input data-f="rate" type="number" min="0" value="${Number(it.rate)||0}" placeholder="Rate" />
-        <span class="amt" data-amt>${inr((Number(it.qty)||1)*(Number(it.rate)||0))}</span>
+        <div class="mini-f"><label>Rate (₹)</label>
+          <input data-f="rate" type="number" min="0" value="${Number(it.rate)||0}" placeholder="Rate" />
+        </div>
+        <div class="mini-f amtf"><label>Amount</label>
+          <span class="amt" data-amt>${inr((Number(it.qty)||1)*(Number(it.rate)||0))}</span>
+        </div>
       </div>
     </div>`;
   };
