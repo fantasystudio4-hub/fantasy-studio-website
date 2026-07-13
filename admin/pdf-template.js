@@ -202,6 +202,31 @@ export async function buildQuotePdf(pkg, contact, terms){
     y += 16;
   });
 
+  /* ---------- album ---------- */
+  const alb = pkg.album || {};
+  if ((Number(alb.sheets) || 0) > 0 || (Number(alb.price) || 0) > 0) {
+    ensure(22 + 26 + 12);
+    doc.setFillColor(...GOLD);
+    doc.rect(ML - 8, y, (MR - ML) + 16, 22, 'F');
+    doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
+    doc.text('ALBUM', ML, y + 15);
+    if (Number(alb.sheets) > 0) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+      doc.text(`${alb.sheets} SHEETS`, MR, y + 14, { align: 'right' });
+    }
+    y += 26;
+    doc.setFillColor(...CREAM);
+    doc.rect(ML - 8, y, (MR - ML) + 16, 18, 'F');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+    doc.text('Premium Album' + (Number(alb.sheets) > 0 ? ` — ${alb.sheets} sheets` : ''), ML, y + 12.5);
+    setMoneyFont('bold', 10); doc.setTextColor(...GOLD);
+    doc.text(money(alb.price || 0), COL_AMT, y + 12.5, { align: 'right' });
+    y += 18;
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.7);
+    doc.line(ML - 8, y, MR + 8, y);
+    y += 16;
+  }
+
   /* ---------- add-ons ---------- */
   const addons = (pkg.addons || []).filter(Boolean);
   if (addons.length) {

@@ -230,14 +230,22 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
       <div id="pkgEvents"></div>
       <button class="addrow" id="pkgAddEvent" style="margin-bottom:.9rem">＋ Add Event</button>
       <div class="sec">
-        <h3><span class="stepnum">3</span>Add-ons (included extras)</h3>
+        <h3><span class="stepnum">3</span>Album</h3>
+        <p class="sub">Sheets and the total album price you're quoting — added straight into the gross.</p>
+        <div class="grid2">
+          <div class="fld"><label>Album sheets</label><input id="paSheets" type="number" min="0" value="0" /></div>
+          <div class="fld"><label>Album price (₹, total)</label><input id="paPrice" type="number" min="0" value="0" /></div>
+        </div>
+      </div>
+      <div class="sec">
+        <h3><span class="stepnum">4</span>Add-ons (included extras)</h3>
         <p class="sub">Free-text lines shown on the PDF with gold bullets — albums, pendrive, teasers…</p>
         <div id="pkgAddons"></div>
         <button class="addrow" id="pkgAddAddon">＋ Add-on</button>
       </div>
       <div class="sec">
-        <h3><span class="stepnum">4</span>Pricing</h3>
-        <p class="sub">Updates live as you type. The final price becomes the gold band on the PDF.</p>
+        <h3><span class="stepnum">5</span>Pricing</h3>
+        <p class="sub">Gross = all events + album. Updates live; the final price becomes the gold band on the PDF.</p>
         <div class="prow"><span>Gross total</span><b id="ppGross">₹0</b></div>
         <div class="prow"><label>Discount (₹)</label><input id="ppDiscount" type="number" min="0" value="0" /></div>
         <div class="prow big"><span>Final price</span><b id="ppFinal">₹0</b></div>
@@ -794,6 +802,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
     $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[{}]}]).map(evCardHTML).join('');
     $('#pkgAddons').innerHTML = ((x && x.addons) || []).map(addonRowHTML).join('');
+    $('#paSheets').value = x && x.album ? (Number(x.album.sheets)||0) : 0;
+    $('#paPrice').value  = x && x.album ? (Number(x.album.price)||0) : 0;
     $('#ppDiscount').value = x ? ((x.totals||{}).discount||0) : 0;
     $('#ppAdvance').value  = x ? ((x.totals||{}).advance||0) : 0;
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -813,7 +823,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  rate: Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0) };
       }).filter(it=>it.service)
     })).filter(ev=>ev.title || ev.items.length);
-    const gross = events.reduce((s,ev)=>s + ev.items.reduce((a,it)=>a + it.qty*it.rate, 0), 0);
+    const album = {
+      sheets: Math.max(0, Number($('#paSheets').value)||0),
+      price:  Math.max(0, Number($('#paPrice').value)||0)
+    };
+    const gross = events.reduce((s,ev)=>s + ev.items.reduce((a,it)=>a + it.qty*it.rate, 0), 0) + album.price;
     const discount = Math.min(gross, Math.max(0, Number($('#ppDiscount').value)||0));
     const finalPrice = gross - discount;
     const advance = Math.min(finalPrice, Math.max(0, Number($('#ppAdvance').value)||0));
@@ -823,6 +837,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       clientPhone: $('#pcPhone').value.trim(),
       quoteDate: $('#pcDate').value || todayISO(),
       events,
+      album,
       addons: $$('#pkgAddons [data-addon] [data-f="addon"]').map(i=>i.value.trim()).filter(Boolean),
       totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance }
     };
