@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Fantasy Studio — Admin</title>
 <meta name="robots" content="noindex, nofollow" />
-<link rel="icon" href="../icons/icon-192.png" />
+<link rel="icon" href="../icons/admin-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="../icons/admin-apple.png" />
+<meta name="theme-color" content="#B8902B" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="FS Admin" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
 :root{
@@ -231,11 +237,12 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
       <button class="addrow" id="pkgAddEvent" style="margin-bottom:.9rem">＋ Add Event</button>
       <div class="sec">
         <h3><span class="stepnum">3</span>Album</h3>
-        <p class="sub">Sheets and the total album price you're quoting — added straight into the gross.</p>
+        <p class="sub">Sheets × price per sheet — the album total is added straight into the gross.</p>
         <div class="grid2">
           <div class="fld"><label>Album sheets</label><input id="paSheets" type="number" min="0" value="0" /></div>
-          <div class="fld"><label>Album price (₹, total)</label><input id="paPrice" type="number" min="0" value="0" /></div>
+          <div class="fld"><label>Price per sheet (₹)</label><input id="paPerSheet" type="number" min="0" value="0" /></div>
         </div>
+        <div class="prow"><span>Album total</span><b id="paTotal">₹0</b></div>
       </div>
       <div class="sec">
         <h3><span class="stepnum">4</span>Add-ons (included extras)</h3>
@@ -646,8 +653,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
       const contact = { phone: $('#cfgPhone').value.trim(), website: $('#cfgWebsite').value.trim() };
       const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
-      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms };
-      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, updatedAt: new Date().toISOString() });
+      const learnedRates = (CFG && CFG.learnedRates) || {};
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, learnedRates };
+      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, learnedRates, updatedAt: new Date().toISOString() });
       $('#saveMsg').textContent = 'Saved — the live site now uses these values.';
       toast('Config published ✓');
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
@@ -660,6 +668,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let editingId = null;
 
   const builderRates = () => (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length ? CFG.serviceRates : DEFAULTS.serviceRates);
+  /* the builder learns: every rate you actually use overrides the preset next time */
+  const allRates = () => {
+    const m = Object.assign({}, builderRates(), (CFG && CFG.learnedRates) || {});
+    delete m['__albumPerSheet'];
+    return m;
+  };
+  const learnedAlbumRate = () => Number(((CFG && CFG.learnedRates) || {})['__albumPerSheet']) || 400;
   const pdfContact   = () => (CFG && CFG.contact) || DEFAULTS.contact;
   const pdfTerms     = () => (CFG && Array.isArray(CFG.quoteTerms) && CFG.quoteTerms.length ? CFG.quoteTerms : DEFAULTS.quoteTerms);
   const todayISO = () => new Date().toLocaleDateString('en-CA');
@@ -743,14 +758,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#pkgBack').addEventListener('click', ()=>{ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; });
 
   function rateOptions(selected){
-    const rates = builderRates();
+    const rates = allRates();
     const known = Object.keys(rates);
     const isCustom = selected && !known.includes(selected);
     return known.map(n=>`<option value="${esc(n)}" ${n===selected?'selected':''}>${esc(n)}</option>`).join('')
       + `<option value="__custom" ${isCustom?'selected':''}>Custom service…</option>`;
   }
   const itemRowHTML = (it={}) => {
-    const rates = builderRates();
+    const rates = allRates();
     const isCustom = it.service && !Object.keys(rates).includes(it.service);
     return `
     <div class="itemrow">
@@ -802,8 +817,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
     $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[{}]}]).map(evCardHTML).join('');
     $('#pkgAddons').innerHTML = ((x && x.addons) || []).map(addonRowHTML).join('');
-    $('#paSheets').value = x && x.album ? (Number(x.album.sheets)||0) : 0;
-    $('#paPrice').value  = x && x.album ? (Number(x.album.price)||0) : 0;
+    const alb = (x && x.album) || {};
+    $('#paSheets').value = Number(alb.sheets)||0;
+    $('#paPerSheet').value = Number(alb.perSheet) || (Number(alb.sheets)>0 && Number(alb.price)>0
+      ? Math.round(Number(alb.price)/Number(alb.sheets)) : learnedAlbumRate());
     $('#ppDiscount').value = x ? ((x.totals||{}).discount||0) : 0;
     $('#ppAdvance').value  = x ? ((x.totals||{}).advance||0) : 0;
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -823,10 +840,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  rate: Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0) };
       }).filter(it=>it.service)
     })).filter(ev=>ev.title || ev.items.length);
-    const album = {
-      sheets: Math.max(0, Number($('#paSheets').value)||0),
-      price:  Math.max(0, Number($('#paPrice').value)||0)
-    };
+    const _sheets = Math.max(0, Number($('#paSheets').value)||0);
+    const _perSheet = Math.max(0, Number($('#paPerSheet').value)||0);
+    const album = { sheets: _sheets, perSheet: _perSheet, price: _sheets * _perSheet };
     const gross = events.reduce((s,ev)=>s + ev.items.reduce((a,it)=>a + it.qty*it.rate, 0), 0) + album.price;
     const discount = Math.min(gross, Math.max(0, Number($('#ppDiscount').value)||0));
     const finalPrice = gross - discount;
@@ -851,6 +867,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       r.querySelector('[data-amt]').textContent = inr(q*rt);
     });
     const d = readForm();
+    $('#paTotal').textContent = inr((d.album||{}).price||0);
     $('#ppGross').textContent = inr(d.totals.gross);
     $('#ppFinal').textContent = inr(d.totals.finalPrice);
     $('#ppBalance').textContent = inr(d.totals.balance);
@@ -863,7 +880,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const nameInp = row.querySelector('[data-f="serviceName"]');
       if(e.target.value === '__custom'){ nameInp.hidden = false; nameInp.focus(); }
       else{ nameInp.hidden = true; nameInp.value = '';
-        row.querySelector('[data-f="rate"]').value = builderRates()[e.target.value] ?? 0; }
+        row.querySelector('[data-f="rate"]').value = allRates()[e.target.value] ?? 0; }
       computePkg();
     }
   });
@@ -894,6 +911,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         editingId = ref.id;
       }
       toast('Package saved');
+      /* learn the rates used, so the next quote prefills them automatically */
+      try{
+        const learned = Object.assign({}, (CFG && CFG.learnedRates) || {});
+        d.events.forEach(ev=>ev.items.forEach(it=>{ if(it.service && it.rate > 0) learned[it.service] = it.rate; }));
+        if(d.album && d.album.perSheet > 0) learned['__albumPerSheet'] = d.album.perSheet;
+        CFG = CFG || {}; CFG.learnedRates = learned;
+        setDoc(doc(db,'config','site'), { learnedRates: learned }, { merge: true });
+      }catch(e){}
       loadPkgs();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
   });

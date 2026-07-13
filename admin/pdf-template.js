@@ -217,8 +217,12 @@ export async function buildQuotePdf(pkg, contact, terms){
     y += 26;
     doc.setFillColor(...CREAM);
     doc.rect(ML - 8, y, (MR - ML) + 16, 18, 'F');
+    const perSheet = Number(alb.perSheet) || (Number(alb.sheets) > 0 ? Math.round((Number(alb.price) || 0) / Number(alb.sheets)) : 0);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
-    doc.text('Premium Album' + (Number(alb.sheets) > 0 ? ` — ${alb.sheets} sheets` : ''), ML, y + 12.5);
+    doc.text('Premium Album', ML, y + 12.5);
+    doc.text(String(alb.sheets || ''), COL_QTY, y + 12.5, { align: 'right' });
+    setMoneyFont('normal', 10); doc.setTextColor(...DARK);
+    if (perSheet > 0) doc.text(money(perSheet), COL_RATE, y + 12.5, { align: 'right' });
     setMoneyFont('bold', 10); doc.setTextColor(...GOLD);
     doc.text(money(alb.price || 0), COL_AMT, y + 12.5, { align: 'right' });
     y += 18;
