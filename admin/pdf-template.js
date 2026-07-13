@@ -251,8 +251,7 @@ export async function buildQuotePdf(pkg, contact, terms){
   /* ---------- flourish + pricing box ---------- */
   const t = pkg.totals || {};
   const showAdv = (Number(t.advance) || 0) > 0;
-  const boxRows = 1 + (showAdv ? 2 : 0);
-  const boxH = 14 + boxRows * 20 + 34 + 12;
+  const boxH = showAdv ? 124 : 80;
   ensure(16 + boxH + 10);
   flourish(y + 4); y += 16;
 
@@ -271,10 +270,6 @@ export async function buildQuotePdf(pkg, contact, terms){
     by += 20;
   };
   boxRow('Total Package Price', t.gross || 0, false);
-  if (showAdv) {
-    boxRow('Advance Received', t.advance || 0, false);
-    boxRow('Balance', t.balance || 0, true);
-  }
   // gold band with the final price — the largest number on the page
   const bandY = by - 10;
   doc.setFillColor(...GOLD);
@@ -283,6 +278,12 @@ export async function buildQuotePdf(pkg, contact, terms){
   doc.text('After Discount', BX + 18, bandY + 22);
   setMoneyFont('bold', 17); doc.setTextColor(...WHITE);
   doc.text(money(t.finalPrice || 0), BX + BW - 18, bandY + 23, { align: 'right' });
+  // advance + balance sit under the band so the split is unmistakable
+  if (showAdv) {
+    by = bandY + 34 + 20;
+    boxRow('Advance Received', t.advance || 0, false);
+    boxRow('Balance Due', t.balance || 0, true);
+  }
   y += boxH + 22;
 
   /* ---------- terms ---------- */

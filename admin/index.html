@@ -321,6 +321,11 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
 <div class="toast" id="toast"></div>
 
+<script>
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
+}
+</script>
 <script src="../firebase-config.js"></script>
 <script type="module">
 const $  = s => document.querySelector(s);
