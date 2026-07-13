@@ -99,6 +99,35 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99}
 .toast.show{opacity:1}
 @media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
+
+/* packages */
+.goldbar{background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:8px;padding:.55em .9em;cursor:pointer}
+.chip{border:1px solid var(--line);border-radius:20px;padding:.2em .8em;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:none}
+.chip.draft{color:var(--gold-b);border-color:rgba(226,194,117,.5)}
+.chip.sent{color:#7fb2e5;border-color:rgba(127,178,229,.5)}
+.chip.booked{color:var(--ok);border-color:rgba(76,175,125,.5)}
+.itemrow{display:grid;grid-template-columns:1fr auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
+.itemrow .l1{display:flex;gap:.45rem}
+.itemrow .l1 select{flex:1;min-width:0}
+.itemrow .l2{display:flex;gap:.45rem;align-items:center;grid-column:1 / -1;flex-wrap:wrap}
+.itemrow select,.itemrow input{background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .6em}
+.itemrow .qwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.itemrow .qwrap button{width:34px;height:38px;background:rgba(184,144,43,.18);border:0;color:var(--gold-b);font-size:1.1rem;cursor:pointer}
+.itemrow .qwrap input{width:46px;text-align:center;border:0;background:transparent}
+.itemrow input[data-f="rate"]{width:92px}
+.itemrow .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
+.itemrow .rm{background:none;border:0;color:var(--err);font-size:1.05rem;cursor:pointer}
+.pkg-ev{position:relative}
+.pkg-ev > .del{position:absolute;top:.5rem;right:.6rem;float:none}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.3rem 0}
+.prow b{font-family:var(--serif);color:var(--gold-b)}
+.prow input{width:130px;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.45em .6em;text-align:right}
+.prow.big{border-top:1px solid var(--line);margin-top:.3rem;padding-top:.6rem}
+.prow.big b{font-size:1.35rem}
+.pkg-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:.4rem 0 1rem}
+.pkg-actions .gbtn{width:auto;flex:1;min-width:130px}
+.pkg-actions .mini{margin-top:0}
+.lead-sub .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -142,6 +171,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 <div class="wrap" id="appView" hidden>
   <div class="tabs">
     <button id="tabLeads" class="on">Leads</button>
+    <button id="tabPkgs">Packages</button>
     <button id="tabConfig">Site Config</button>
   </div>
 
@@ -159,6 +189,52 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div id="leadList"><div class="empty">Loading…</div></div>
   </div>
 
+  <div id="pkgView" hidden>
+    <div id="pkgListView">
+      <div class="bar">
+        <select id="pkgFilter">
+          <option value="">All statuses</option>
+          <option value="draft">Draft</option><option value="sent">Sent</option><option value="booked">Booked</option>
+        </select>
+        <button id="pkgRefresh">↻</button>
+        <button class="goldbar" id="pkgNew">＋ New Package</button>
+      </div>
+      <div id="pkgList"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div id="pkgEditView" hidden>
+      <div class="sec">
+        <h3 id="pkgEditTitle">New Package</h3>
+        <div class="grid2">
+          <div class="fld"><label>Client name</label><input id="pcName" /></div>
+          <div class="fld"><label>C/o (optional)</label><input id="pcCareOf" /></div>
+          <div class="fld"><label>Client phone (optional)</label><input id="pcPhone" inputmode="numeric" /></div>
+          <div class="fld"><label>Quote date</label><input id="pcDate" type="date" /></div>
+        </div>
+      </div>
+      <div id="pkgEvents"></div>
+      <button class="addrow" id="pkgAddEvent" style="margin-bottom:.9rem">＋ Add Event</button>
+      <div class="sec">
+        <h3>Add-ons (included extras)</h3>
+        <div id="pkgAddons"></div>
+        <button class="addrow" id="pkgAddAddon">＋ Add-on</button>
+      </div>
+      <div class="sec">
+        <h3>Pricing</h3>
+        <div class="prow"><span>Gross total</span><b id="ppGross">₹0</b></div>
+        <div class="prow"><label>Discount (₹)</label><input id="ppDiscount" type="number" min="0" value="0" /></div>
+        <div class="prow big"><span>Final price</span><b id="ppFinal">₹0</b></div>
+        <div class="prow"><label>Advance received (₹)</label><input id="ppAdvance" type="number" min="0" value="0" /></div>
+        <div class="prow"><span>Balance</span><b id="ppBalance">₹0</b></div>
+      </div>
+      <div class="pkg-actions">
+        <button class="gbtn" id="pkgSave">Save</button>
+        <button class="mini" id="pkgPdf">Download PDF</button>
+        <button class="mini" id="pkgBack">← Back</button>
+      </div>
+    </div>
+  </div>
+
   <div id="configView" hidden>
     <div class="sec">
       <h3>Service Rates (₹)</h3>
@@ -174,8 +250,25 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     </div>
     <div class="sec">
       <h3>Ready-made Packages</h3>
-      <div id="pkgList"></div>
+      <div id="pkgListRM"></div>
       <button class="addrow" id="addPkg">＋ Add package</button>
+    </div>
+    <div class="sec">
+      <h3>Quotation Service Rates <span style="font-size:.7rem;color:var(--mut)">(admin package builder)</span></h3>
+      <div id="rateList"></div>
+      <button class="addrow" id="addRate">＋ Add service rate</button>
+    </div>
+    <div class="sec">
+      <h3>PDF Contact Footer</h3>
+      <div class="grid2">
+        <div class="fld"><label>Phone</label><input id="cfgPhone" /></div>
+        <div class="fld"><label>Website</label><input id="cfgWebsite" /></div>
+      </div>
+    </div>
+    <div class="sec">
+      <h3>Quotation Terms</h3>
+      <div id="termList"></div>
+      <button class="addrow" id="addTerm">＋ Add term</button>
     </div>
     <div class="sec">
       <h3>Testimonials</h3>
@@ -239,6 +332,20 @@ const DEFAULTS = {
     { name:'Priya & Rohan', location:'Banjara Hills, Hyderabad', text:'The drone shots and cinematic film were straight out of a movie. Professional, punctual and so respectful of all our rituals. Highly recommended.' },
     { name:'Sana & Bilal', location:'Old City, Hyderabad', text:'14 years of experience really shows. They handled our Mehndi, Nikah and Reception flawlessly with separate teams. The album is a family treasure now.' }
   ],
+  serviceRates: {
+    'Traditional Photography': 5500,
+    'Traditional Videography': 6500,
+    'Drone Coverage': 6000,
+    'Female Photographer – Ladies Section': 1500,
+    'Candid Photography': 0,
+    'Cinematography': 0
+  },
+  contact: { phone: '+91 86868 68803', website: 'www.fantasystudio.in' },
+  quoteTerms: [
+    '50% advance to confirm the booking; balance on the event day.',
+    'Quotation valid for 7 days from the date above.',
+    'Travel outside Hyderabad city limits charged extra, if applicable.'
+  ],
   faqs: [
     { q:'How do I book Fantasy Studio for my wedding?', a:'Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery.' },
     { q:'What are the payment terms?', a:'50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF.' },
@@ -256,7 +363,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit } =
+  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
@@ -275,12 +382,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
-    if(user){ loadLeads(); loadConfig(); }
+    if(user){ loadLeads(); loadConfig(); loadPkgs(); }
   });
 
   /* ---------- tabs ---------- */
-  $('#tabLeads').addEventListener('click', ()=>{ $('#tabLeads').classList.add('on'); $('#tabConfig').classList.remove('on'); $('#leadsView').hidden=false; $('#configView').hidden=true; });
-  $('#tabConfig').addEventListener('click', ()=>{ $('#tabConfig').classList.add('on'); $('#tabLeads').classList.remove('on'); $('#configView').hidden=false; $('#leadsView').hidden=true; });
+  const TABS = { tabLeads:'leadsView', tabPkgs:'pkgView', tabConfig:'configView' };
+  Object.keys(TABS).forEach(id=>{
+    $('#'+id).addEventListener('click', ()=>{
+      Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
+    });
+  });
 
   /* ---------- leads ---------- */
   let LEADS = [];
@@ -410,7 +521,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#albumMinSheets').value = Number(p.albumMinSheets)||15;
     $('#albumMaxSheets').value = Number(p.albumMaxSheets)||100;
 
-    $('#pkgList').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
+    const rates = CFG.serviceRates || DEFAULTS.serviceRates;
+    $('#rateList').innerHTML = Object.keys(rates).map(n=>rateRow(n, rates[n])).join('');
+    const contact = CFG.contact || DEFAULTS.contact;
+    $('#cfgPhone').value = contact.phone || '';
+    $('#cfgWebsite').value = contact.website || '';
+    const terms = CFG.quoteTerms || DEFAULTS.quoteTerms;
+    $('#termList').innerHTML = terms.map(termRow).join('');
+    $('#pkgListRM').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
     $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
     $('#faqList').innerHTML = (CFG.faqs||[]).map(faqRow).join('');
   }
@@ -443,7 +561,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="fld"><label>Answer</label><textarea data-k="a">${esc(f.a||'')}</textarea></div>
     </div>`;
 
-  $('#addPkg').addEventListener('click', ()=>$('#pkgList').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'Nikah', services:{traditionalPhoto:1}}]})));
+  const rateRow = (name, rate) => `
+    <div class="row" data-rate>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="grid2">
+        <div class="fld"><label>Service name</label><input data-k="name" value="${esc(name)}" /></div>
+        <div class="fld"><label>Rate (₹)</label><input data-k="rate" type="number" min="0" value="${Number(rate)||0}" /></div>
+      </div>
+    </div>`;
+  const termRow = (t='') => `
+    <div class="row" data-term>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="fld"><label>Term</label><input data-k="t" value="${esc(t)}" /></div>
+    </div>`;
+  $('#addRate').addEventListener('click', ()=>$('#rateList').insertAdjacentHTML('beforeend', rateRow('New Service', 0)));
+  $('#addTerm').addEventListener('click', ()=>$('#termList').insertAdjacentHTML('beforeend', termRow('')));
+
+  $('#addPkg').addEventListener('click', ()=>$('#pkgListRM').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'Nikah', services:{traditionalPhoto:1}}]})));
   $('#addTesti').addEventListener('click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
   $('#addFaq').addEventListener('click', ()=>$('#faqList').insertAdjacentHTML('beforeend', faqRow()));
   document.addEventListener('click', e=>{ if(e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
@@ -477,10 +611,260 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         a: r.querySelector('[data-k="a"]').value.trim()
       })).filter(f=>f.q && f.a);
 
-      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, updatedAt: new Date().toISOString() });
+      const serviceRates = {};
+      $$('[data-rate]').forEach(r=>{
+        const n = r.querySelector('[data-k="name"]').value.trim();
+        if(n) serviceRates[n] = Number(r.querySelector('[data-k="rate"]').value)||0;
+      });
+      const contact = { phone: $('#cfgPhone').value.trim(), website: $('#cfgWebsite').value.trim() };
+      const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms };
+      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, updatedAt: new Date().toISOString() });
       $('#saveMsg').textContent = 'Saved — the live site now uses these values.';
       toast('Config published ✓');
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+  });
+
+  /* ============================================================
+     PACKAGES — private quotation builder
+     ============================================================ */
+  let PKGS = [];
+  let editingId = null;
+
+  const builderRates = () => (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length ? CFG.serviceRates : DEFAULTS.serviceRates);
+  const pdfContact   = () => (CFG && CFG.contact) || DEFAULTS.contact;
+  const pdfTerms     = () => (CFG && Array.isArray(CFG.quoteTerms) && CFG.quoteTerms.length ? CFG.quoteTerms : DEFAULTS.quoteTerms);
+  const todayISO = () => new Date().toLocaleDateString('en-CA');
+
+  async function loadPkgs(){
+    try{
+      const snap = await getDocs(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(200)));
+      PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      renderPkgList();
+    }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
+  }
+  $('#pkgRefresh').addEventListener('click', loadPkgs);
+  $('#pkgFilter').addEventListener('change', renderPkgList);
+
+  function renderPkgList(){
+    const f = $('#pkgFilter').value;
+    const list = PKGS.filter(x=>!f || (x.status||'draft')===f);
+    if(!list.length){ $('#pkgList').innerHTML = '<div class="empty">No packages yet — tap ＋ New Package.</div>'; return; }
+    $('#pkgList').innerHTML = list.map(x=>{
+      const st = x.status||'draft';
+      const evn = (x.events||[]).length;
+      return `
+      <div class="lead" data-id="${x.id}">
+        <div class="lead-top">
+          <span class="nm">${esc(x.clientName||'—')}</span>
+          <span class="src">${evn} event${evn===1?'':'s'}</span>
+          <span class="amt">${inr((x.totals||{}).finalPrice||0)}</span>
+        </div>
+        <div class="lead-sub">
+          <button class="chip ${st}" data-cycle>${st}</button>
+          <button class="act" data-edit>Edit</button>
+          <button class="act" data-dup>Duplicate</button>
+          <button class="act" data-pdfrow>PDF</button>
+          ${x.clientPhone ? `<a href="https://wa.me/91${esc(String(x.clientPhone).replace(/\D/g,'').slice(-10))}?text=${encodeURIComponent(waSummary(x))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          <button class="lead-x" data-delpkg>Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function waSummary(x){
+    const t = x.totals||{};
+    return `Fantasy Studio — Quotation for ${x.clientName||''}: ${(x.events||[]).length} event(s). ` +
+      `Total ${inr(t.gross||0)}${t.discount?`, after discount ${inr(t.finalPrice||0)}`:''}. PDF attached.`;
+  }
+
+  $('#pkgList').addEventListener('click', async e=>{
+    const card = e.target.closest('.lead'); if(!card) return;
+    const id = card.dataset.id;
+    const x = PKGS.find(p=>p.id===id); if(!x) return;
+    if(e.target.closest('[data-cycle]')){
+      const order = ['draft','sent','booked'];
+      const next = order[(order.indexOf(x.status||'draft')+1)%order.length];
+      try{ await updateDoc(doc(db,'packages',id), { status: next, updatedAt: serverTimestamp() }); x.status = next; renderPkgList(); }
+      catch(err){ toast('Update failed'); }
+      return;
+    }
+    if(e.target.closest('[data-edit]')){ openPkgEdit(x); return; }
+    if(e.target.closest('[data-dup]')){
+      const copy = JSON.parse(JSON.stringify(x)); delete copy.id;
+      copy.status = 'draft';
+      copy.createdAt = serverTimestamp(); copy.updatedAt = serverTimestamp();
+      try{ await addDoc(collection(db,'packages'), copy); toast('Duplicated as draft'); loadPkgs(); }
+      catch(err){ toast('Duplicate failed'); }
+      return;
+    }
+    if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
+    if(e.target.closest('[data-delpkg]')){
+      if(!confirm(`Delete the package for "${x.clientName||'this client'}" permanently?`)) return;
+      try{ await deleteDoc(doc(db,'packages',id)); PKGS = PKGS.filter(p=>p.id!==id); renderPkgList(); toast('Package deleted'); }
+      catch(err){ toast('Delete failed'); }
+    }
+  });
+
+  /* ---------- builder ---------- */
+  $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
+  $('#pkgBack').addEventListener('click', ()=>{ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; });
+
+  function rateOptions(selected){
+    const rates = builderRates();
+    const known = Object.keys(rates);
+    const isCustom = selected && !known.includes(selected);
+    return known.map(n=>`<option value="${esc(n)}" ${n===selected?'selected':''}>${esc(n)}</option>`).join('')
+      + `<option value="__custom" ${isCustom?'selected':''}>Custom service…</option>`;
+  }
+  const itemRowHTML = (it={}) => {
+    const rates = builderRates();
+    const isCustom = it.service && !Object.keys(rates).includes(it.service);
+    return `
+    <div class="itemrow">
+      <div class="l1">
+        <select data-f="service">${rateOptions(it.service)}</select>
+        <button class="rm" data-rmitem title="Remove">✕</button>
+      </div>
+      <input data-f="serviceName" placeholder="Custom service name" value="${esc(isCustom?it.service:'')}" ${isCustom?'':'hidden'} style="grid-column:1 / -1" />
+      <div class="l2">
+        <div class="qwrap">
+          <button type="button" data-qm>−</button>
+          <input data-f="qty" type="number" min="1" value="${Number(it.qty)||1}" />
+          <button type="button" data-qp>+</button>
+        </div>
+        <input data-f="rate" type="number" min="0" value="${Number(it.rate)||0}" placeholder="Rate" />
+        <span class="amt" data-amt>${inr((Number(it.qty)||1)*(Number(it.rate)||0))}</span>
+      </div>
+    </div>`;
+  };
+  const evCardHTML = (ev={}) => `
+    <div class="sec pkg-ev">
+      <button class="del" data-rmev title="Remove event">✕</button>
+      <div class="grid2">
+        <div class="fld"><label>Event title</label><input data-f="title" value="${esc(ev.title||'')}" placeholder="e.g. VALIMA RECEPTION" /></div>
+        <div class="fld"><label>Date</label><input data-f="date" type="date" value="${esc(ev.date||'')}" /></div>
+      </div>
+      <div class="fld"><label>Venue (optional)</label><input data-f="venue" value="${esc(ev.venue||'')}" /></div>
+      <div class="items">${(ev.items&&ev.items.length?ev.items:[{}]).map(itemRowHTML).join('')}</div>
+      <button class="addrow" data-additem>＋ Add Service</button>
+    </div>`;
+  const addonRowHTML = (a='') => `
+    <div class="itemrow" data-addon style="grid-template-columns:1fr auto">
+      <input data-f="addon" value="${esc(a)}" placeholder="e.g. 100 sheets Canvera album (400 photos)" />
+      <button class="rm" data-rmaddon>✕</button>
+    </div>`;
+
+  function openPkgEdit(x){
+    editingId = x ? x.id : null;
+    $('#pkgEditTitle').textContent = x ? `Edit — ${x.clientName||''}` : 'New Package';
+    $('#pcName').value = x ? (x.clientName||'') : '';
+    $('#pcCareOf').value = x ? (x.careOf||'') : '';
+    $('#pcPhone').value = x ? (x.clientPhone||'') : '';
+    $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
+    $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[{}]}]).map(evCardHTML).join('');
+    $('#pkgAddons').innerHTML = ((x && x.addons) || []).map(addonRowHTML).join('');
+    $('#ppDiscount').value = x ? ((x.totals||{}).discount||0) : 0;
+    $('#ppAdvance').value  = x ? ((x.totals||{}).advance||0) : 0;
+    $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
+    computePkg();
+    window.scrollTo(0,0);
+  }
+
+  function readForm(){
+    const events = $$('#pkgEvents .pkg-ev').map(card=>({
+      title: card.querySelector('[data-f="title"]').value.trim(),
+      date:  card.querySelector('[data-f="date"]').value,
+      venue: card.querySelector('[data-f="venue"]').value.trim(),
+      items: [...card.querySelectorAll('.itemrow')].map(r=>{
+        const sel = r.querySelector('[data-f="service"]').value;
+        const name = sel === '__custom' ? r.querySelector('[data-f="serviceName"]').value.trim() : sel;
+        return { service: name, qty: Math.max(1, Number(r.querySelector('[data-f="qty"]').value)||1),
+                 rate: Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0) };
+      }).filter(it=>it.service)
+    })).filter(ev=>ev.title || ev.items.length);
+    const gross = events.reduce((s,ev)=>s + ev.items.reduce((a,it)=>a + it.qty*it.rate, 0), 0);
+    const discount = Math.min(gross, Math.max(0, Number($('#ppDiscount').value)||0));
+    const finalPrice = gross - discount;
+    const advance = Math.min(finalPrice, Math.max(0, Number($('#ppAdvance').value)||0));
+    return {
+      clientName: $('#pcName').value.trim(),
+      careOf: $('#pcCareOf').value.trim(),
+      clientPhone: $('#pcPhone').value.trim(),
+      quoteDate: $('#pcDate').value || todayISO(),
+      events,
+      addons: $$('#pkgAddons [data-addon] [data-f="addon"]').map(i=>i.value.trim()).filter(Boolean),
+      totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance }
+    };
+  }
+
+  function computePkg(){
+    // per-row amounts
+    $$('#pkgEvents .itemrow').forEach(r=>{
+      const q = Math.max(1, Number(r.querySelector('[data-f="qty"]').value)||1);
+      const rt = Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0);
+      r.querySelector('[data-amt]').textContent = inr(q*rt);
+    });
+    const d = readForm();
+    $('#ppGross').textContent = inr(d.totals.gross);
+    $('#ppFinal').textContent = inr(d.totals.finalPrice);
+    $('#ppBalance').textContent = inr(d.totals.balance);
+  }
+
+  $('#pkgEditView').addEventListener('input', computePkg);
+  $('#pkgEditView').addEventListener('change', e=>{
+    if(e.target.matches('[data-f="service"]')){
+      const row = e.target.closest('.itemrow');
+      const nameInp = row.querySelector('[data-f="serviceName"]');
+      if(e.target.value === '__custom'){ nameInp.hidden = false; nameInp.focus(); }
+      else{ nameInp.hidden = true; nameInp.value = '';
+        row.querySelector('[data-f="rate"]').value = builderRates()[e.target.value] ?? 0; }
+      computePkg();
+    }
+  });
+  $('#pkgEditView').addEventListener('click', e=>{
+    if(e.target.closest('[data-qm]') || e.target.closest('[data-qp]')){
+      const row = e.target.closest('.itemrow');
+      const q = row.querySelector('[data-f="qty"]');
+      q.value = Math.max(1, (Number(q.value)||1) + (e.target.closest('[data-qp]') ? 1 : -1));
+      computePkg(); return;
+    }
+    if(e.target.closest('[data-rmitem]')){ e.target.closest('.itemrow').remove(); computePkg(); return; }
+    if(e.target.closest('[data-additem]')){ e.target.closest('.pkg-ev').querySelector('.items').insertAdjacentHTML('beforeend', itemRowHTML({})); return; }
+    if(e.target.closest('[data-rmev]')){ e.target.closest('.pkg-ev').remove(); computePkg(); return; }
+    if(e.target.closest('[data-rmaddon]')){ e.target.closest('[data-addon]').remove(); return; }
+  });
+  $('#pkgAddEvent').addEventListener('click', ()=>$('#pkgEvents').insertAdjacentHTML('beforeend', evCardHTML({items:[{}]})));
+  $('#pkgAddAddon').addEventListener('click', ()=>$('#pkgAddons').insertAdjacentHTML('beforeend', addonRowHTML('')));
+
+  $('#pkgSave').addEventListener('click', async ()=>{
+    const d = readForm();
+    if(!d.clientName){ toast('Client name is required'); $('#pcName').focus(); return; }
+    if(!d.events.length){ toast('Add at least one event with a service'); return; }
+    try{
+      if(editingId){
+        await updateDoc(doc(db,'packages',editingId), { ...d, updatedAt: serverTimestamp() });
+      }else{
+        const ref = await addDoc(collection(db,'packages'), { ...d, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        editingId = ref.id;
+      }
+      toast('Package saved');
+      loadPkgs();
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+  });
+
+  async function makePdf(x){
+    try{
+      toast('Preparing PDF…');
+      const { buildQuotePdf } = await import('./pdf-template.js');
+      const docPdf = await buildQuotePdf(x, pdfContact(), pdfTerms());
+      const safe = String(x.clientName||'Client').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Client';
+      docPdf.save(`Fantasy_Studio_Quote_${safe}.pdf`);
+    }catch(err){ toast('PDF failed: ' + (err.message||err)); }
+  }
+  $('#pkgPdf').addEventListener('click', async ()=>{
+    const d = readForm();
+    if(!d.events.length){ toast('Add at least one event first'); return; }
+    await makePdf(d);
   });
 }
 </script>
