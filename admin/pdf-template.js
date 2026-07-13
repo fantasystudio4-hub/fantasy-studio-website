@@ -286,19 +286,29 @@ export async function buildQuotePdf(pkg, contact, terms){
   y += boxH + 22;
 
   /* ---------- terms ---------- */
-  const termList = (terms && terms.length ? terms : []).filter(Boolean);
+  let termList = (terms && terms.length ? terms : []).filter(Boolean).slice();
+  /* advance entered -> the first (payment) term becomes the real split:
+     remaining on the event day + 10% of the final price at delivery */
+  const advAmt = Number(t.advance) || 0;
+  if (advAmt > 0 && termList.length) {
+    const fin = Number(t.finalPrice) || 0;
+    const delivery = Math.round(fin * 0.10);
+    const eventDay = Math.max(0, fin - advAmt - delivery);
+    termList[0] = `Advance received: ${money(advAmt)}. Balance ${money(eventDay)} payable on the event day and ${money(delivery)} (10%) at the time of delivery.`;
+  }
   if (termList.length) {
     ensure(20 + termList.length * 26);
     doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...GOLDD);
     doc.text('TERMS', ML, y + 4);
     y += 18;
     termList.forEach((tm, i) => {
+      setMoneyFont('normal', 9.5);
       const lines = doc.splitTextToSize(String(tm), MR - ML - 26);
       ensure(lines.length * 12 + 12);
       doc.setFillColor(...GOLD); doc.circle(ML + 7, y + 2, 7, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...WHITE);
       doc.text(String(i + 1), ML + 7, y + 5, { align: 'center' });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...DARK);
+      setMoneyFont('normal', 9.5); doc.setTextColor(...DARK);
       doc.text(lines, ML + 22, y + 5);
       y += Math.max(20, lines.length * 12 + 8);
     });
