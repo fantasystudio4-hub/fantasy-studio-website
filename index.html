@@ -2644,7 +2644,7 @@ function showToast(msg, actionLabel, actionFn){
   btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, 7000);
+  toastTimer = setTimeout(hideToast, arguments.length > 3 && arguments[3] ? arguments[3] : 7000);
 }
 function hideToast(){ $('#toast').classList.remove('show'); }
 $('#toastClose').addEventListener('click', hideToast);
@@ -2737,6 +2737,20 @@ if(_shared){
 }else{
   seedDefaults();
 }
+/* iPhones never auto-prompt to install — teach the gesture, once */
+(function(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if(!isIOS || standalone) return;
+  try{
+    if(localStorage.getItem('fs_ios_hint')) return;
+    setTimeout(()=>{
+      showToast('Add Fantasy Studio to your iPhone: tap Share \u2b06 then \u201cAdd to Home Screen\u201d.', 'Got it', ()=>{}, 15000);
+      try{ localStorage.setItem('fs_ios_hint','1'); }catch(e){}
+    }, 9000);
+  }catch(e){}
+})();
+
 renderPresets();
 $('#pkgCompareBtn').addEventListener('click', openCompare);
 $('#cmpClose').addEventListener('click', closeCompare);
