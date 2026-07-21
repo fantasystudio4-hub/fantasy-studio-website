@@ -75,6 +75,30 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
+/* search + upcoming */
+.bar input[type=search]{flex:1.2;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em .7em;min-width:0}
+.bar input[type=search]:focus{outline:none;border-color:var(--gold)}
+.upco{padding:.8rem 1rem}
+.upco h3{font-size:.92rem;margin-bottom:.4rem}
+.up-ev{display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.up-ev:last-child{border-bottom:0}
+.up-ev .when{font-family:var(--serif);color:var(--gold-b);font-size:.85rem;min-width:64px}
+.up-ev .what{flex:1;min-width:0;font-size:.85rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-ev .what span{color:var(--mut)}
+
+/* professional hover / focus states */
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+@media(hover:hover){
+  .tabs button:hover:not(.on){color:var(--gold-b);border-color:var(--gold)}
+  .pkg-acts .act:hover,.bar button:hover,.cal-nav button:hover,.lead-sub a:hover,.mini:hover{border-color:var(--gold);color:#fff}
+  .pkg-acts .lead-x:hover,.lead-sub .lead-x:hover{background:var(--err);border-color:var(--err);color:#fff}
+  .gbtn:hover,.goldbar:hover{filter:brightness(1.1)}
+  .addrow:hover{border-color:var(--gold)}
+  .cal-cell:not(.off):hover{border-color:var(--line)}
+  .up-ev:hover .what{color:var(--gold-b)}
+  .hd .out:hover{border-color:var(--gold);color:var(--gold-b)}
+}
+
 /* calendar */
 .cal-nav{display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem}
 .cal-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.4em .9em;font-size:.95rem}
@@ -255,6 +279,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <div id="leadsView">
     <div class="stats" id="stats"></div>
     <div class="bar">
+      <input id="leadSearch" type="search" placeholder="Search name or phone…" />
       <select id="statusFilter">
         <option value="">All statuses</option>
         <option value="new">New</option><option value="contacted">Contacted</option>
@@ -268,13 +293,16 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
   <div id="pkgView" hidden>
     <div id="pkgListView">
+      <div class="stats" id="pkgStats"></div>
+      <div class="sec upco" id="upcoming" hidden></div>
       <div class="bar">
+        <input id="pkgSearch" type="search" placeholder="Search name or phone…" />
         <select id="pkgFilter">
-          <option value="">All statuses</option>
+          <option value="">All</option>
           <option value="draft">Draft</option><option value="sent">Sent</option><option value="booked">Booked</option>
         </select>
-        <button id="pkgRefresh">↻</button>
-        <button class="goldbar" id="pkgNew">＋ New Package</button>
+        <button id="pkgRefresh" aria-label="Refresh">↻</button>
+        <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
       <p class="sub" style="margin:0 0 .7rem">Tap a status chip to move a package <b style="color:var(--gold-b)">draft → sent → booked</b>.</p>
       <div id="pkgList"><div class="empty">Loading…</div></div>
@@ -561,7 +589,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderLeads(){
     const f = $('#statusFilter').value;
-    const list = LEADS.filter(l=>!f || (l.status||'new')===f);
+    const q = ($('#leadSearch').value||'').trim().toLowerCase();
+    const list = LEADS.filter(l=>(!f || (l.status||'new')===f)
+      && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)));
     if(!list.length){ $('#leadList').innerHTML = '<div class="empty">No leads here yet.</div>'; return; }
     $('#leadList').innerHTML = list.map(l=>{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
@@ -606,6 +636,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     h += `<h4>My notes</h4><textarea data-notes placeholder="Follow-up notes…">${esc(l.notes||'')}</textarea>
           <button class="mini" data-savenotes>Save notes</button>`;
+    if(l.quote && Array.isArray(l.quote.events) && l.quote.events.length){
+      h += ` <button class="mini" data-convert>→ Create package from this lead</button>`;
+    }
     return h;
   }
 
@@ -623,6 +656,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         renderStats(); renderLeads();
         toast('Lead deleted');
       }catch(err){ toast('Delete failed'); }
+      return;
+    }
+    if(e.target.closest('[data-convert]')){
+      const l = LEADS.find(x=>x.id===card.dataset.id);
+      if(l){ $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l)); $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`; toast('Quote loaded — check rates, then Save'); }
       return;
     }
     if(e.target.closest('[data-savenotes]')){
@@ -799,10 +837,49 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
   $('#pkgFilter').addEventListener('change', renderPkgList);
+  $('#pkgSearch').addEventListener('input', renderPkgList);
+  $('#leadSearch').addEventListener('input', renderLeads);
+
+  function renderPkgStats(){
+    const el = $('#pkgStats'); if(!el) return;
+    const booked = PKGS.filter(x=>(x.status||'draft')==='booked');
+    const outstanding = booked.reduce((s,x)=>s+((x.totals||{}).balance||0),0);
+    const bookedVal = booked.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
+    const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
+    const newMonth = PKGS.filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
+    el.innerHTML = `
+      <div class="stat month"><b>${inr(outstanding)}</b><span>left to collect (booked)</span></div>
+      <div class="stat"><b>${inr(bookedVal)}</b><span>booked value</span></div>
+      <div class="stat"><b>${booked.length}</b><span>booked</span></div>
+      <div class="stat"><b>${newMonth}</b><span>new this month</span></div>`;
+  }
+  function renderUpcoming(){
+    const el = $('#upcoming'); if(!el) return;
+    const today = new Date().toLocaleDateString('en-CA');
+    const next = calEvents().filter(e=>e.date >= today).sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
+    el.hidden = !next.length;
+    if(!next.length) return;
+    el.innerHTML = '<h3>📅 Upcoming shoots</h3>' + next.map(e=>`
+      <div class="up-ev" data-goto="${e.date}">
+        <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
+        <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
+        <i class="dot ${e.status}"></i>
+      </div>`).join('');
+  }
+  $('#upcoming').addEventListener('click', e=>{
+    const row = e.target.closest('[data-goto]'); if(!row) return;
+    calSel = row.dataset.goto;
+    const d = new Date(calSel+'T00:00'); calY = d.getFullYear(); calM = d.getMonth();
+    $('#tabCal').click();
+  });
 
   function renderPkgList(){
+    renderPkgStats();
+    renderUpcoming();
     const f = $('#pkgFilter').value;
-    const list = PKGS.filter(x=>!f || (x.status||'draft')===f);
+    const q = ($('#pkgSearch').value||'').trim().toLowerCase();
+    const list = PKGS.filter(x=>(!f || (x.status||'draft')===f)
+      && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)));
     if(!list.length){ $('#pkgList').innerHTML = '<div class="empty">No packages yet — tap ＋ New Package.</div>'; return; }
     $('#pkgList').innerHTML = list.map(x=>{
       const st = x.status||'draft';
@@ -927,6 +1004,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   });
   $('#tabCal').addEventListener('click', renderCalendar);
+
+  /* ---------- lead -> package bridge ---------- */
+  function pkgFromLead(l){
+    const q = l.quote || {};
+    const events = (q.events||[]).map(ev=>({
+      title: String(ev.type||'Event').toUpperCase(),
+      date: /^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') ? ev.date : '',
+      venue: '',
+      items: Object.entries(ev.services||{}).filter(([,qty])=>Number(qty)>0).map(([k,qty])=>{
+        const label = SERVICE_LABELS[k] || k;
+        return { service: label, qty: Number(qty)||1, rate: Number(allRates()[label])||0 };
+      })
+    })).filter(ev=>ev.items.length);
+    const sheets = Number(q.albumSheets)||0;
+    return {
+      clientName: l.name||'', careOf:'', clientPhone: l.phone||'', quoteDate: todayISO(),
+      events: events.length ? events : [{title:'', date:'', venue:'', items:[{}]}],
+      album: { sheets, perSheet: sheets>0 ? learnedAlbumRate() : 0, price: sheets * (sheets>0 ? learnedAlbumRate() : 0) },
+      addons: [], totals: {}
+    };
+  }
 
   /* ---------- record payment ---------- */
   let payingId = null, payMode = 'online';
