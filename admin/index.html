@@ -882,7 +882,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderUpcoming(){
     const el = $('#upcoming'); if(!el) return;
     const today = new Date().toLocaleDateString('en-CA');
-    const next = calEvents().filter(e=>e.date >= today).sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
+    const next = calEvents()
+      .filter(e=>e.date >= today && (e.status === 'booked' || e.status === 'lead'))   // confirmed bookings only
+      .sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
     el.hidden = !next.length;
     if(!next.length) return;
     el.innerHTML = '<h3>📅 Upcoming shoots</h3>' + next.map(e=>`
