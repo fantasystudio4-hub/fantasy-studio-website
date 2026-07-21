@@ -75,6 +75,19 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
+/* package row actions — even grid, no crowding */
+.pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;padding:0 .95rem .85rem}
+.pkg-acts button{
+  width:100%;text-align:center;padding:.55em .3em;font-size:.78rem;border-radius:10px;
+  letter-spacing:.02em;cursor:pointer;white-space:nowrap;
+}
+.pkg-acts .chip{border:1px solid var(--line);background:#171309;text-transform:uppercase;font-size:.72rem;letter-spacing:.06em}
+.pkg-acts .act{background:none;border:1px solid var(--line);color:var(--gold-b)}
+.pkg-acts .act:active{background:rgba(184,144,43,.18)}
+.pkg-acts .lead-x{background:none;border:1px solid rgba(224,122,106,.45);color:var(--err)}
+.pkg-acts .lead-x:active{background:var(--err);color:#fff}
+@media(min-width:700px){.pkg-acts{grid-template-columns:repeat(6,1fr)}}
+
 /* payment popup */
 .pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.25s}
 .pay-backdrop.open{opacity:1;pointer-events:auto}
@@ -756,22 +769,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="src">${evn} event${evn===1?'':'s'}</span>
           ${amt}
         </div>
-        <div class="lead-sub">
+        <div class="pkg-acts">
           <button class="chip ${st}" data-cycle>${st}</button>
           <button class="act" data-edit>Edit</button>
           <button class="act" data-dup>Duplicate</button>
           <button class="act" data-pdfrow>PDF</button>
           <button class="act" data-pay>＋ Payment</button>
-          ${x.clientPhone ? `<a href="https://wa.me/91${esc(String(x.clientPhone).replace(/\D/g,'').slice(-10))}?text=${encodeURIComponent(waSummary(x))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
           <button class="lead-x" data-delpkg>Delete</button>
         </div>
       </div>`;
     }).join('');
-  }
-  function waSummary(x){
-    const t = x.totals||{};
-    return `Fantasy Studio — Quotation for ${x.clientName||''}: ${(x.events||[]).length} event(s). ` +
-      `Total ${inr(t.gross||0)}${t.discount?`, after discount ${inr(t.finalPrice||0)}`:''}. PDF attached.`;
   }
 
   $('#pkgList').addEventListener('click', async e=>{
