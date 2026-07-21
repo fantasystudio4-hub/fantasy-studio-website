@@ -52,7 +52,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 
 /* tabs */
 .tabs{display:flex;gap:.5rem;margin:1rem 0}
-.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em .2em;font-size:.78rem;letter-spacing:.03em;cursor:pointer}
 .tabs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
 
 /* stats */
@@ -75,6 +75,33 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
+/* calendar */
+.cal-nav{display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem}
+.cal-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.4em .9em;font-size:.95rem}
+.cal-nav #calToday{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+.cal-title{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.08rem}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem}
+.cal-dow{text-align:center;font-size:.6rem;letter-spacing:.08em;color:var(--mut);padding:.15rem 0}
+.cal-cell{min-height:52px;border:1px solid transparent;border-radius:10px;padding:.28rem .3rem;cursor:pointer;background:#171309}
+.cal-cell.off{background:none;cursor:default}
+.cal-cell .d{font-size:.78rem;color:var(--text)}
+.cal-cell.today{border-color:var(--gold)}
+.cal-cell.sel{background:rgba(184,144,43,.2);border-color:var(--gold-b)}
+.cal-cell.has .d{color:var(--gold-b);font-weight:600}
+.dots{display:flex;gap:2.5px;flex-wrap:wrap;margin-top:3px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.booked{background:var(--ok)} .dot.sent{background:#7fb2e5} .dot.draft{background:var(--mut)} .dot.lead{background:var(--gold-b)}
+.dots b{font-size:.55rem;color:var(--mut);font-weight:600}
+.cal-legend{display:flex;gap:.9rem;justify-content:center;flex-wrap:wrap;margin-top:.75rem;font-size:.68rem;color:var(--mut)}
+.cal-legend .dot{margin-right:.3em;vertical-align:middle}
+.cal-ev{display:flex;align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px dashed var(--line)}
+.cal-ev:last-child{border-bottom:0}
+.cal-ev .dot{flex:0 0 auto}
+.cal-ev-t{flex:1;min-width:0}
+.cal-ev-t b{display:block;font-family:var(--serif);color:#fff;font-size:.95rem}
+.cal-ev-t span{font-size:.74rem;color:var(--mut)}
+.cal-ev .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.75rem;cursor:pointer}
+
 /* package row actions — even grid, no crowding */
 .pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;padding:0 .95rem .85rem}
 .pkg-acts button{
@@ -221,7 +248,8 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <div class="tabs">
     <button id="tabPkgs" class="on">Packages</button>
     <button id="tabLeads">Leads</button>
-    <button id="tabConfig">Site Config</button>
+    <button id="tabCal">Calendar</button>
+    <button id="tabConfig">Config</button>
   </div>
 
   <div id="leadsView">
@@ -300,6 +328,25 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <button class="mini" id="pkgBack">← Back</button>
       </div>
     </div>
+  </div>
+
+  <div id="calView" hidden>
+    <div class="sec">
+      <div class="cal-nav">
+        <button id="calPrev" aria-label="Previous month">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button id="calNext" aria-label="Next month">›</button>
+        <button id="calToday">Today</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span><i class="dot booked"></i>Booked</span>
+        <span><i class="dot sent"></i>Sent</span>
+        <span><i class="dot draft"></i>Draft</span>
+        <span><i class="dot lead"></i>Booked lead</span>
+      </div>
+    </div>
+    <div id="calDetail"><div class="empty">Tap a date to see its events.</div></div>
   </div>
 
   <div id="configView" hidden>
@@ -478,7 +525,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---------- tabs ---------- */
-  const TABS = { tabLeads:'leadsView', tabPkgs:'pkgView', tabConfig:'configView' };
+  const TABS = { tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabConfig:'configView' };
   Object.keys(TABS).forEach(id=>{
     $('#'+id).addEventListener('click', ()=>{
       Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
@@ -492,6 +539,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(300)));
       LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       renderStats(); renderLeads();
+      renderCalendar();
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
   $('#refreshBtn').addEventListener('click', loadLeads);
@@ -741,6 +789,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const snap = await getDocs(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(200)));
       PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       renderPkgList();
+      renderCalendar();
       if(!PKGS.length && !window._pkgIntroShown){
         window._pkgIntroShown = true;
         openPkgEdit(null);   // first visit: walk straight into the builder
@@ -809,6 +858,75 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       catch(err){ toast('Delete failed'); }
     }
   });
+
+  /* ---------- calendar: every dated event across the panel ---------- */
+  let calY, calM, calSel = null;
+  (function(){ const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); })();
+  function calEvents(){
+    const evs = [];
+    PKGS.forEach(pk=>{
+      (pk.events||[]).forEach(ev=>{
+        if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
+          evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'' });
+      });
+    });
+    LEADS.forEach(l=>{
+      if(l.status === 'booked' && /^\d{4}-\d{2}-\d{2}$/.test(l.weddingDate||''))
+        evs.push({ date: l.weddingDate, title: l.eventType||'Wedding', client: l.name||'', status:'lead', kind:'lead', id: l.id, venue:'' });
+    });
+    return evs;
+  }
+  function renderCalendar(){
+    const grid = $('#calGrid'); if(!grid) return;
+    const first = new Date(calY, calM, 1);
+    $('#calTitle').textContent = first.toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+    const startDow = first.getDay();
+    const dim = new Date(calY, calM+1, 0).getDate();
+    const byDate = {};
+    calEvents().forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
+    const todayIso = new Date().toLocaleDateString('en-CA');
+    let h = ['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    for(let i=0;i<startDow;i++) h += '<div class="cal-cell off"></div>';
+    for(let d=1; d<=dim; d++){
+      const iso = `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const evs = byDate[iso]||[];
+      h += `<div class="cal-cell ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''}" data-date="${iso}">
+        <span class="d">${d}</span>
+        <div class="dots">${evs.slice(0,3).map(e=>`<i class="dot ${e.status}"></i>`).join('')}${evs.length>3?`<b>+${evs.length-3}</b>`:''}</div>
+      </div>`;
+    }
+    grid.innerHTML = h;
+    renderCalDetail();
+  }
+  function renderCalDetail(){
+    const box = $('#calDetail'); if(!box) return;
+    if(!calSel){ box.innerHTML = '<div class="empty">Tap a date to see its events.</div>'; return; }
+    const evs = calEvents().filter(e=>e.date===calSel);
+    const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    box.innerHTML = `<div class="sec"><h3>${human}</h3>` + (evs.length ? evs.map(e=>`
+      <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
+        <i class="dot ${e.status}"></i>
+        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${esc(e.client)}${e.venue?' · '+esc(e.venue):''}</span></div>
+        <button class="act" data-openev>Open</button>
+      </div>`).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
+  }
+  $('#calPrev').addEventListener('click', ()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
+  $('#calNext').addEventListener('click', ()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
+  $('#calToday').addEventListener('click', ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=n.toLocaleDateString('en-CA'); renderCalendar(); });
+  $('#calGrid').addEventListener('click', e=>{
+    const c = e.target.closest('.cal-cell[data-date]'); if(!c) return;
+    calSel = c.dataset.date; renderCalendar();
+  });
+  $('#calDetail').addEventListener('click', e=>{
+    const row = e.target.closest('.cal-ev'); if(!row || !e.target.closest('[data-openev]')) return;
+    if(row.dataset.kind === 'pkg'){
+      const pk = PKGS.find(x=>x.id===row.dataset.id);
+      if(pk){ $('#tabPkgs').click(); openPkgEdit(pk); }
+    }else{
+      $('#tabLeads').click();
+    }
+  });
+  $('#tabCal').addEventListener('click', renderCalendar);
 
   /* ---------- record payment ---------- */
   let payingId = null, payMode = 'online';
