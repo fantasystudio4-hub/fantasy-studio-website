@@ -53,7 +53,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 
 /* tabs */
 .tabs{display:flex;gap:.5rem;margin:1rem 0}
-.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em .2em;font-size:.78rem;letter-spacing:.03em;cursor:pointer}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em .15em;font-size:.72rem;letter-spacing:.02em;cursor:pointer}
 .tabs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
 
 /* stats */
@@ -275,7 +275,8 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 <!-- app -->
 <div class="wrap" id="appView" hidden>
   <div class="tabs">
-    <button id="tabPkgs" class="on">Packages</button>
+    <button id="tabHome" class="on">Home</button>
+    <button id="tabPkgs">Packages</button>
     <button id="tabLeads">Leads</button>
     <button id="tabCal">Calendar</button>
     <button id="tabConfig">Config</button>
@@ -296,10 +297,17 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div id="leadList"><div class="empty">Loading…</div></div>
   </div>
 
+  <div id="homeView">
+    <div class="stats" id="pkgStats"></div>
+    <div class="sec upco" id="upcoming" hidden></div>
+    <div class="sec" style="padding:.9rem 1rem">
+      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked packages</h3>
+      <div id="homeBooked"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
   <div id="pkgView" hidden>
     <div id="pkgListView">
-      <div class="stats" id="pkgStats"></div>
-      <div class="sec upco" id="upcoming" hidden></div>
       <div class="bar">
         <input id="pkgSearch" type="search" placeholder="Search name or phone…" />
         <select id="pkgFilter">
@@ -559,7 +567,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#hdr').hidden = !user;
     if(user){
       loadLeads(); loadConfig(); loadPkgs();
-      const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabPkgs';
+      const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
       showTab(fromHash);
       try{ history.replaceState({view: VIEW_OF_TAB[fromHash]}, '', '#' + VIEW_OF_TAB[fromHash]); }catch(e){}
     }
@@ -589,13 +597,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   refreshInstallBtn();
 
   /* ---------- tabs ---------- */
-  const TABS = { tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabConfig:'configView' };
-  const VIEW_OF_TAB = { tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabConfig:'config' };
-  const TAB_OF_VIEW = { packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', config:'tabConfig' };
+  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabConfig:'configView' };
+  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabConfig:'config' };
+  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', config:'tabConfig' };
   let _navFromPop = false;
   function showTab(id){
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
     if(id === 'tabCal') renderCalendar();
+    if(id === 'tabHome' && typeof renderHome === 'function') renderHome();
   }
   Object.keys(TABS).forEach(id=>{
     $('#'+id).addEventListener('click', ()=>{
@@ -607,13 +616,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   window.addEventListener('popstate', e=>{
     _navFromPop = true;
     try{
-      const v = (e.state && e.state.view) || 'packages';
+      const v = (e.state && e.state.view) || 'home';
       if(typeof closePayUI === 'function') closePayUI();
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
       }else{
-        const tab = TAB_OF_VIEW[v] || 'tabPkgs';
+        const tab = TAB_OF_VIEW[v] || 'tabHome';
         showTab(tab);
         if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
       }
@@ -889,11 +898,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       renderPkgList();
       renderCalendar();
-      if(!PKGS.length && !window._pkgIntroShown){
-        window._pkgIntroShown = true;
-        openPkgEdit(null);   // first visit: walk straight into the builder
-        toast('Your first package — fill it in and tap Save');
-      }
     }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
@@ -936,9 +940,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tabCal').click();
   });
 
-  function renderPkgList(){
+  function renderHome(){
     renderPkgStats();
     renderUpcoming();
+    renderHomeBooked();
+  }
+  function renderHomeBooked(){
+    const el = $('#homeBooked'); if(!el) return;
+    const booked = PKGS.filter(x=>(x.status||'draft')==='booked');
+    if(!booked.length){ el.innerHTML = '<div class="empty">No booked packages yet.</div>'; return; }
+    el.innerHTML = booked.map(x=>{
+      const tt = x.totals||{};
+      const amt = (Number(tt.advance)||0) > 0
+        ? `<span class="amt">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
+        : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
+      return `
+      <div class="lead" data-open-pkg="${x.id}" style="cursor:pointer">
+        <div class="lead-top">
+          <i class="dot booked"></i>
+          <span class="nm">${esc(x.clientName||'—')}</span>
+          <span class="src">${(x.events||[]).length} event${(x.events||[]).length===1?'':'s'}</span>
+          ${amt}
+          <span class="chev">›</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  $('#homeBooked').addEventListener('click', e=>{
+    const row = e.target.closest('[data-open-pkg]'); if(!row) return;
+    expandedPkg = row.dataset.openPkg;
+    $('#tabPkgs').click();
+    renderPkgList();
+  });
+
+  function renderPkgList(){
+    renderHome();
     const f = $('#pkgFilter').value;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
     const list = PKGS.filter(x=>(!f || (x.status||'draft')===f)
