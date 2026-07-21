@@ -126,7 +126,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cal-cell.has .d{color:var(--gold-b);font-weight:600}
 .dots{display:flex;gap:2.5px;flex-wrap:wrap;margin-top:3px;align-items:center}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
-.dot.booked{background:var(--ok)} .dot.sent{background:#7fb2e5} .dot.draft{background:var(--mut)} .dot.lead{background:var(--gold-b)}
+.dot.booked{background:var(--ok)} .dot.sent{background:#7fb2e5} .dot.draft{background:var(--mut)} .dot.lead{background:var(--gold-b)} .dot.delivered{background:#9adbb2}
 .dots b{font-size:.55rem;color:var(--mut);font-weight:600}
 .cal-legend{display:flex;gap:.9rem;justify-content:center;flex-wrap:wrap;margin-top:.75rem;font-size:.68rem;color:var(--mut)}
 .cal-legend .dot{margin-right:.3em;vertical-align:middle}
@@ -150,6 +150,24 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .pkg-acts .lead-x{background:rgba(224,122,106,.08);border:1px solid transparent;color:var(--err)}
 .pkg-acts .lead-x:active{background:var(--err);color:#fff}
 @media(min-width:700px){.pkg-acts{grid-template-columns:repeat(6,1fr)}}
+
+/* delivery tracker */
+.dprog{height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
+.dprog i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#9adbb2);border-radius:4px;transition:width .3s}
+.dl3{display:flex;align-items:center;gap:.5rem;margin-top:.1rem}
+.dl3 .dprog{flex:1}
+.dl3 b{font-size:.6rem;color:var(--mut);font-weight:600;letter-spacing:.04em;white-space:nowrap;margin-left:auto}
+.dl3 b.dv{color:#9adbb2}
+.dtrack{margin:0 1rem;padding:.6rem 0 .85rem;border-top:1px dashed var(--line)}
+.dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
+.dt-head .dprog{flex:1}
+.dt-head b{color:var(--mut);font-weight:600}
+.dstep{display:flex;align-items:center;gap:.55rem;padding:.36rem .15rem;cursor:pointer;border-radius:8px;font-size:.85rem;color:var(--mut)}
+.dstep i{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:.6rem;color:transparent;font-style:normal;transition:.2s}
+.dstep em{margin-left:auto;font-style:normal;font-size:.68rem;color:var(--mut);opacity:.85;white-space:nowrap}
+.dstep.done{color:var(--text)}
+.dstep.done i{background:var(--ok);border-color:var(--ok);color:#fff}
+@media(hover:hover){ .dstep:hover{background:rgba(255,255,255,.04)} .dstep:hover i{border-color:var(--gold)} }
 
 /* payment popup */
 .pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.25s}
@@ -210,6 +228,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
 .chip.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
 .chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
+.chip.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
 .itemrow{display:grid;grid-template-columns:1fr auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
 .itemrow .l1{display:flex;gap:.45rem}
 .itemrow .l1 select{flex:1;min-width:0}
@@ -309,7 +328,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div class="stats" id="pkgStats"></div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" style="padding:.9rem 1rem">
-      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked packages</h3>
+      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked &amp; recent deliveries</h3>
       <div id="homeBooked"><div class="empty">Loading…</div></div>
     </div>
   </div>
@@ -320,12 +339,12 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <input id="pkgSearch" type="search" placeholder="Search name or phone…" />
         <select id="pkgFilter">
           <option value="">All</option>
-          <option value="draft">Draft</option><option value="sent">Sent</option><option value="booked">Booked</option>
+          <option value="draft">Draft</option><option value="sent">Sent</option><option value="booked">Booked</option><option value="delivered">Delivered</option>
         </select>
         <button id="pkgRefresh" aria-label="Refresh">↻</button>
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
-      <p class="sub" style="margin:0 0 .7rem">Tap a status chip to move a package <b style="color:var(--gold-b)">draft → sent → booked</b>.</p>
+      <p class="sub" style="margin:0 0 .7rem">Tap a status chip to move a package <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>. Booked packages get a delivery checklist — tick steps as you finish them.</p>
       <div id="pkgList"><div class="empty">Loading…</div></div>
     </div>
 
@@ -392,6 +411,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <span><i class="dot booked"></i>Booked</span>
         <span><i class="dot sent"></i>Sent</span>
         <span><i class="dot draft"></i>Draft</span>
+        <span><i class="dot delivered"></i>Delivered</span>
         <span><i class="dot lead"></i>Booked lead</span>
       </div>
     </div>
@@ -437,6 +457,11 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <div class="fld"><label>Phone</label><input id="cfgPhone" /></div>
         <div class="fld"><label>Website</label><input id="cfgWebsite" /></div>
       </div>
+    </div>
+    <div class="sec">
+      <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist)</span></h3>
+      <div id="dstepList"></div>
+      <button class="addrow" id="addDstep">＋ Add step</button>
     </div>
     <div class="sec">
       <h3>Quotation Terms</h3>
@@ -542,6 +567,7 @@ const DEFAULTS = {
     'Cinematography': 0
   },
   contact: { phone: '+91 86868 68803', website: 'www.fantasystudio.in' },
+  deliverySteps: ['All events shot','Photos edited','Video edited','Cinematic teasers','Album designed','Album printed','Pendrive prepared','Delivered to client'],
   quoteTerms: [
     '50% advance to confirm the booking; balance on the event day.',
     'Quotation valid for 7 days from the date above.',
@@ -564,7 +590,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp, onSnapshot } =
+  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, orderBy, limit, serverTimestamp, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
@@ -809,6 +835,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cfgWebsite').value = contact.website || '';
     const terms = CFG.quoteTerms || DEFAULTS.quoteTerms;
     $('#termList').innerHTML = terms.map(termRow).join('');
+    const dsteps = (CFG.deliverySteps && CFG.deliverySteps.length) ? CFG.deliverySteps : DEFAULTS.deliverySteps;
+    $('#dstepList').innerHTML = dsteps.map(dstepRow).join('');
     $('#pkgListRM').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
     $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
     $('#faqList').innerHTML = (CFG.faqs||[]).map(faqRow).join('');
@@ -857,6 +885,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   $('#addRate').addEventListener('click', ()=>$('#rateList').insertAdjacentHTML('beforeend', rateRow('New Service', 0)));
   $('#addTerm').addEventListener('click', ()=>$('#termList').insertAdjacentHTML('beforeend', termRow('')));
+  const dstepRow = (t='') => `
+    <div class="row" data-dstep>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="fld"><label>Step</label><input data-k="t" value="${esc(t)}" /></div>
+    </div>`;
+  $('#addDstep').addEventListener('click', ()=>$('#dstepList').insertAdjacentHTML('beforeend', dstepRow('')));
 
   $('#addPkg').addEventListener('click', ()=>$('#pkgListRM').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'Nikah', services:{traditionalPhoto:1}}]})));
   $('#addTesti').addEventListener('click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
@@ -899,9 +933,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
       const contact = { phone: $('#cfgPhone').value.trim(), website: $('#cfgWebsite').value.trim() };
       const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
+      const deliverySteps = $$('[data-dstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       const learnedRates = (CFG && CFG.learnedRates) || {};
-      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, learnedRates };
-      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, learnedRates, updatedAt: new Date().toISOString() });
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates };
+      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, updatedAt: new Date().toISOString() });
       $('#saveMsg').textContent = 'Saved — the live site now uses these values.';
       toast('Config published ✓');
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
@@ -932,6 +967,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const pdfTerms     = () => (CFG && Array.isArray(CFG.quoteTerms) && CFG.quoteTerms.length ? CFG.quoteTerms : DEFAULTS.quoteTerms);
   const todayISO = () => new Date().toLocaleDateString('en-CA');
 
+  /* ---------- delivery tracker (booked → delivered) ---------- */
+  const dSteps = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULTS.deliverySteps);
+  const stepDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+  function deliveryInfo(x){
+    const steps = dSteps();
+    const done = {};
+    (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date||''; });
+    const doneCount = steps.filter(s=>s in done).length;
+    return { steps, done, doneCount, total: steps.length, pct: steps.length ? Math.round(100*doneCount/steps.length) : 0 };
+  }
+  function trackerHTML(x){
+    const di = deliveryInfo(x);
+    return `
+    <div class="dtrack">
+      <div class="dt-head"><span>Delivery</span><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b></div>
+      ${di.steps.map(s=>{
+        const d = (s in di.done);
+        return `<div class="dstep ${d?'done':''}" data-tstep data-name="${esc(s)}"><i>✓</i><span>${esc(s)}</span><em>${d?stepDate(di.done[s]):''}</em></div>`;
+      }).join('')}
+    </div>`;
+  }
+
   async function loadPkgs(){
     try{
       const snap = await getDocs(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(200)));
@@ -957,9 +1014,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderPkgStats(){
     const el = $('#pkgStats'); if(!el) return;
+    const confirmed = PKGS.filter(x=>['booked','delivered'].includes(x.status||'draft'));
     const booked = PKGS.filter(x=>(x.status||'draft')==='booked');
-    const outstanding = booked.reduce((s,x)=>s+((x.totals||{}).balance||0),0);
-    const bookedVal = booked.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
+    const outstanding = confirmed.reduce((s,x)=>s+((x.totals||{}).balance||0),0);
+    const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
     const newMonth = PKGS.filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
     el.innerHTML = `
@@ -997,9 +1055,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function renderHomeBooked(){
     const el = $('#homeBooked'); if(!el) return;
-    const booked = PKGS.filter(x=>(x.status||'draft')==='booked');
-    if(!booked.length){ el.innerHTML = '<div class="empty">No booked packages yet.</div>'; return; }
-    el.innerHTML = booked.map(x=>pkgCardHTML(x, expandedHome === x.id)).join('');
+    /* booked packages + anything delivered in the last 7 days, so a card doesn't vanish the moment it's marked delivered */
+    const cutoff = new Date(Date.now() - 7*864e5).toLocaleDateString('en-CA');
+    const show = PKGS.filter(x=>{
+      const st = x.status||'draft';
+      return st === 'booked' || (st === 'delivered' && (x.deliveredAt||'') >= cutoff);
+    });
+    if(!show.length){ el.innerHTML = '<div class="empty">No booked packages yet.</div>'; return; }
+    el.innerHTML = show.map(x=>pkgCardHTML(x, expandedHome === x.id)).join('');
   }
 
   function pkgCardHTML(x, open){
@@ -1009,6 +1072,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const amt = (Number(tt.advance)||0) > 0
       ? `<span class="amt" title="Balance due / package total">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
       : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
+    const track = (st === 'booked' || st === 'delivered');
+    let prog = '';
+    if(track){
+      const di = deliveryInfo(x);
+      prog = st === 'delivered'
+        ? `<div class="dl3">${di.doneCount ? `<span class="dprog"><i style="width:${di.pct}%"></i></span>` : ''}<b class="dv">✓ Delivered${x.deliveredAt ? ' ' + stepDate(x.deliveredAt) : ''}</b></div>`
+        : `<div class="dl3"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total} steps</b></div>`;
+    }
     return `
     <div class="lead ${open?'open':''}" data-id="${x.id}">
       <div class="lead-top" data-expand>
@@ -1022,6 +1093,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <span class="qno">${x.quoteNo ? esc(x.quoteNo) : ''}</span>
             ${amt}
           </div>
+          ${prog}
         </div>
         <span class="chev">▾</span>
       </div>
@@ -1033,6 +1105,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="act" data-pay>＋ Payment</button>
         <button class="lead-x" data-delpkg>Delete</button>
       </div>
+      ${track && open ? trackerHTML(x) : ''}
     </div>`;
   }
 
@@ -1057,10 +1130,39 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const x = PKGS.find(p=>p.id===id); if(!x) return;
     if(e.target.closest('[data-cycle]')){
-      const order = ['draft','sent','booked'];
+      const order = ['draft','sent','booked','delivered'];
       const next = order[(order.indexOf(x.status||'draft')+1)%order.length];
-      try{ await updateDoc(doc(db,'packages',id), { status: next, updatedAt: serverTimestamp() }); x.status = next; renderPkgList(); }
+      const patch = { status: next, updatedAt: serverTimestamp() };
+      if(next === 'delivered') patch.deliveredAt = todayISO();
+      else if(x.deliveredAt) patch.deliveredAt = deleteField();
+      try{
+        await updateDoc(doc(db,'packages',id), patch);
+        x.status = next;
+        if(next === 'delivered') x.deliveredAt = patch.deliveredAt; else delete x.deliveredAt;
+        renderPkgList();
+      }
       catch(err){ toast('Update failed'); }
+      return;
+    }
+    if(e.target.closest('[data-tstep]')){
+      const name = e.target.closest('[data-tstep]').dataset.name;
+      const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
+      const had = list.some(d=>d.step === name);
+      const delivery = had ? list.filter(d=>d.step !== name) : [...list, { step: name, date: todayISO() }];
+      const steps = dSteps();
+      const allDone = steps.length > 0 && steps.every(s=>delivery.some(d=>d.step === s));
+      const patch = { delivery, updatedAt: serverTimestamp() };
+      let becameDelivered = false;
+      if(!had && allDone && (x.status||'draft') === 'booked'
+         && confirm(`All delivery steps done — mark "${x.clientName||'this package'}" as Delivered?`)){
+        patch.status = 'delivered'; patch.deliveredAt = todayISO(); becameDelivered = true;
+      }
+      try{
+        await updateDoc(doc(db,'packages',id), patch);
+        x.delivery = delivery;
+        if(becameDelivered){ x.status = 'delivered'; x.deliveredAt = patch.deliveredAt; toast('🎉 Package delivered'); }
+        renderPkgList();
+      }catch(err){ toast('Update failed'); }
       return;
     }
     if(e.target.closest('[data-edit]')){
@@ -1073,6 +1175,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       copy.status = 'draft';
       copy.quoteNo = nextQuoteNo();
       copy.payments = [];
+      delete copy.delivery; delete copy.deliveredAt;
       if(copy.totals){ copy.totals.advance = 0; copy.totals.balance = copy.totals.finalPrice || 0; }
       copy.createdAt = serverTimestamp(); copy.updatedAt = serverTimestamp();
       try{ await addDoc(collection(db,'packages'), copy); toast('Duplicated as draft'); loadPkgs(); }
@@ -1199,8 +1302,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       'application/json'); toast('Backup downloaded');
   });
   $('#expPkgs').addEventListener('click', ()=>{
-    const rows = [['QuoteNo','Client','Phone','Status','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
-    PKGS.forEach(x=>{ const t=x.totals||{}; rows.push([x.quoteNo||'', x.clientName||'', x.clientPhone||'', x.status||'draft',
+    const rows = [['QuoteNo','Client','Phone','Status','DeliveryProgress','DeliveredOn','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
+    PKGS.forEach(x=>{ const t=x.totals||{}; const st=x.status||'draft';
+      const di = (st==='booked'||st==='delivered') ? deliveryInfo(x) : null;
+      rows.push([x.quoteNo||'', x.clientName||'', x.clientPhone||'', st,
+      di ? di.doneCount+'/'+di.total : '', st==='delivered' ? (x.deliveredAt||'') : '',
       (x.events||[]).length, (x.events||[]).map(e=>e.date).filter(Boolean).join(' '), t.gross||0, t.discount||0,
       t.finalPrice||0, t.advance||0, t.balance||0, tsDate(x.createdAt)]); });
     dl(`packages-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Packages CSV downloaded');
