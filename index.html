@@ -1523,6 +1523,12 @@ const PAYMENT_TERMS = ['50% advance', '40% on event day', '10% at delivery'];
    quotes to activate tracking. Leave empty to keep analytics off. */
 const GA_MEASUREMENT_ID = 'G-X5VJYY7NP9';
 
+/* Google Ads conversion tracking — paste from Google Ads > Conversions > "Contact"
+   > Tag setup > "Install the tag yourself". The id looks like 'AW-123456789';
+   the contact label is the part after the slash in send_to (e.g. 'AbCdEfGhIj0'). 
+   Leave empty to keep Ads tracking off. */
+const ADS_TAG = { id: '', labels: { contact: '' } };
+
 /* Announcement bar — edit or disable anytime. code must exist in PROMO_CODES to be applied. */
 const ANNOUNCEMENT = {
   enabled: true,
@@ -1583,9 +1589,19 @@ if(typeof GA_MEASUREMENT_ID === 'string' && /^G-[A-Z0-9]+$/.test(GA_MEASUREMENT_
   window.gtag = function(){ window.dataLayer.push(arguments); };
   window.gtag('js', new Date());
   window.gtag('config', GA_MEASUREMENT_ID, { anonymize_ip: true });
+  if(typeof ADS_TAG !== 'undefined' && ADS_TAG.id) window.gtag('config', ADS_TAG.id);
 }
 let _builderStarted = false;
 function markBuilderStarted(){ if(_builderStarted) return; _builderStarted = true; track('builder_started'); }
+/* Google Ads conversion ping (no-op until ADS_TAG is configured) */
+function fireAdsConversion(kind){
+  try{
+    if(typeof ADS_TAG === 'undefined' || !ADS_TAG.id) return;
+    const label = ADS_TAG.labels && ADS_TAG.labels[kind];
+    if(!label || typeof window.gtag !== 'function') return;
+    window.gtag('event', 'conversion', { send_to: ADS_TAG.id + '/' + label });
+  }catch(e){}
+}
 
 /* ============================================================
    EVENT RENDERING
@@ -1962,6 +1978,7 @@ $('#leadForm').addEventListener('submit', async e=>{
   try{ localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); }catch(e2){}
   if(_leadAction === 'pdf'){
     if(typeof window.__saveLead === 'function'){ try{ await window.__saveLead(buildLeadDoc(name, phone)); }catch(e3){} }
+    fireAdsConversion('contact');
     closeLeadModal();
     downloadQuotePDF();   // reads the saved lead, so 'Prepared for' is always filled
   }else{
@@ -1972,6 +1989,7 @@ $('#leadForm').addEventListener('submit', async e=>{
     if(waWin && !waWin.closed){ waWin.location.href = url; }
     else{ window.open(url, '_blank', 'noopener'); }
     track('quote_whatsapp_sent', { events: sortedQuoteEvents().length, total: calc().grand });
+    fireAdsConversion('contact');
     clearSavedQuote();   // stored quote is cleared after a successful send
     closeLeadModal();
     showToast("Opening WhatsApp — send the message and we'll reply shortly!");
@@ -2587,6 +2605,7 @@ $('#enquiryForm').addEventListener('submit', async e=>{
         message: msg||'', quote: null, grandTotal: null, source: 'contact_form' });
     }catch(e2){}
   }
+  fireAdsConversion('contact');
   const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t)}`;
   if(waWin && !waWin.closed){ waWin.location.href = url; } else { window.open(url, '_blank'); }
 });
