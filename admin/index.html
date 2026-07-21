@@ -1307,12 +1307,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const grid = $('#calGrid'); if(!grid) return;
     const first = new Date(calY, calM, 1);
     $('#calTitle').textContent = first.toLocaleDateString('en-IN', { month:'long', year:'numeric' });
-    const startDow = first.getDay();
+    const startDow = (first.getDay() + 6) % 7;   // Monday-first week
     const dim = new Date(calY, calM+1, 0).getDate();
     const byDate = {};
     calEvents().forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
     const todayIso = new Date().toLocaleDateString('en-CA');
-    let h = ['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    let h = ['M','T','W','T','F','S','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
     for(let i=0;i<startDow;i++) h += '<div class="cal-cell off"></div>';
     for(let d=1; d<=dim; d++){
       const iso = `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
