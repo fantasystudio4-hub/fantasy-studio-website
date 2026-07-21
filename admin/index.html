@@ -73,7 +73,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top{padding:.85rem .95rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center;cursor:pointer}
 .lead-top .nm{font-family:var(--serif);font-size:1.05rem;color:#fff}
 .lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
-.lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b)}
+.lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
+.lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
 .lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
 .lead-sub a{color:var(--gold-b);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.25em .8em}
 .lead-sub .lead-x{background:none;border:1px solid rgba(224,122,106,.5);color:var(--err);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
@@ -706,12 +707,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pkgList').innerHTML = list.map(x=>{
       const st = x.status||'draft';
       const evn = (x.events||[]).length;
+      const tt = x.totals||{};
+      const amt = (Number(tt.advance)||0) > 0
+        ? `<span class="amt" title="Balance due / package total">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
+        : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
       return `
       <div class="lead" data-id="${x.id}">
         <div class="lead-top">
           <span class="nm">${esc(x.clientName||'—')}</span>
           <span class="src">${evn} event${evn===1?'':'s'}</span>
-          <span class="amt">${inr((x.totals||{}).finalPrice||0)}</span>
+          ${amt}
         </div>
         <div class="lead-sub">
           <button class="chip ${st}" data-cycle>${st}</button>
