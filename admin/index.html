@@ -76,6 +76,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
 .lead-top .newb{font-size:.58rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
+.lead-top .qno{color:var(--gold-b);letter-spacing:.04em}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
 .lead-top .dot{flex:0 0 auto;width:8px;height:8px;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
@@ -931,6 +932,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       const snap = await getDocs(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(200)));
       PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      /* one-time backfill: number packages created before quote numbers existed */
+      const unnumbered = PKGS.filter(x=>!x.quoteNo).sort((a,b)=>{
+        const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+        const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+        return ta - tb;
+      });
+      for(const x of unnumbered){
+        x.quoteNo = nextQuoteNo();
+        try{ await updateDoc(doc(db,'packages',x.id), { quoteNo: x.quoteNo }); }catch(e){}
+      }
       renderPkgList();
       renderCalendar();
     }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
@@ -1000,7 +1011,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="lead-top" data-expand>
         <i class="dot ${st}"></i>
         <span class="nm">${esc(x.clientName||'—')}</span>
-        <span class="src">${x.quoteNo ? esc(x.quoteNo)+' · ' : ''}${evn} event${evn===1?'':'s'}</span>
+        <span class="src">${x.quoteNo ? `<span class="qno">${esc(x.quoteNo)}</span> · ` : ''}${evn} event${evn===1?'':'s'}</span>
         ${amt}
         <span class="chev">▾</span>
       </div>
@@ -1323,7 +1334,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function openPkgEdit(x){
     editingId = x ? x.id : null;
-    $('#pkgEditTitle').textContent = x ? `Edit — ${x.clientName||''}` : 'New Package';
+    $('#pkgEditTitle').textContent = x ? `Edit — ${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||''}` : 'New Package';
     $('#pcName').value = x ? (x.clientName||'') : '';
     $('#pcCareOf').value = x ? (x.careOf||'') : '';
     $('#pcPhone').value = x ? (x.clientPhone||'') : '';
@@ -1425,7 +1436,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!d.events.length){ toast('Add at least one event with a service'); return; }
     try{
       if(editingId){
-        await updateDoc(doc(db,'packages',editingId), { ...d, updatedAt: serverTimestamp() });
+        const existing = PKGS.find(pk=>pk.id===editingId);
+        const patch = { ...d, updatedAt: serverTimestamp() };
+        if(existing && !existing.quoteNo) patch.quoteNo = nextQuoteNo();
+        await updateDoc(doc(db,'packages',editingId), patch);
       }else{
         const quoteNo = nextQuoteNo();
         const ref = await addDoc(collection(db,'packages'), { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
