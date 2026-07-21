@@ -35,6 +35,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
 .hd .out:active{border-color:var(--gold)}
+.hd .inst{margin-left:.45rem;border-color:var(--gold);color:var(--gold-b)}
 
 /* login */
 .login{max-width:360px;margin:16vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.8rem 1.5rem;text-align:center}
@@ -237,6 +238,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Admin Panel</span></div>
     <button class="out" id="logoutBtn">Logout</button>
+    <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
   </div>
 </header>
 
@@ -452,6 +454,12 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
 }
+window.__bipEvent = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  window.__bipEvent = e;
+  window.dispatchEvent(new Event('bip-ready'));
+});
 </script>
 <script src="../firebase-config.js"></script>
 <script type="module">
@@ -553,6 +561,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{ history.replaceState({view: VIEW_OF_TAB[fromHash]}, '', '#' + VIEW_OF_TAB[fromHash]); }catch(e){}
     }
   });
+
+  /* ---------- install-to-app-list ---------- */
+  const installBtn = $('#installBtn');
+  function refreshInstallBtn(){
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    installBtn.hidden = standalone || (!window.__bipEvent && !isIOS);
+  }
+  installBtn.addEventListener('click', async ()=>{
+    if(window.__bipEvent){
+      const ev = window.__bipEvent; window.__bipEvent = null;
+      ev.prompt();
+      try{ await ev.userChoice; }catch(e){}
+      refreshInstallBtn();
+    }else if(/iphone|ipad|ipod/i.test(navigator.userAgent)){
+      toast('Tap Share \u2b06 then \u201cAdd to Home Screen\u201d');
+    }else{
+      toast('Browser menu \u2192 Install app / Add to Home screen');
+    }
+  });
+  window.addEventListener('bip-ready', refreshInstallBtn);
+  window.addEventListener('appinstalled', ()=>{ installBtn.hidden = true; toast('FS Admin installed \u2713'); });
+  refreshInstallBtn();
 
   /* ---------- tabs ---------- */
   const TABS = { tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabConfig:'configView' };

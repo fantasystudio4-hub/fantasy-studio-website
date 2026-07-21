@@ -1,7 +1,7 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets. */
-const CACHE = 'fs-cache-v3';
+const CACHE = 'fs-cache-v4';
 const PRECACHE = [
   './',
   'manifest.webmanifest',
@@ -10,6 +10,11 @@ const PRECACHE = [
   'icons/icon-512.png',
   'icons/maskable-512.png',
   'icons/apple-touch-icon.png',
+  'admin/manifest.webmanifest',
+  'icons/admin-192.png',
+  'icons/admin-512.png',
+  'icons/admin-maskable-512.png',
+  'icons/admin-apple.png',
 ];
 
 self.addEventListener('install', e => {
