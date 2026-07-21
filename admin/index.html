@@ -879,6 +879,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let PKGS = [];
   let editingId = null;
   let expandedPkg = null;
+  let expandedHome = null;
 
   const builderRates = () => (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length ? CFG.serviceRates : DEFAULTS.serviceRates);
   /* the builder learns: every rate you actually use overrides the preset next time */
@@ -949,29 +950,35 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const el = $('#homeBooked'); if(!el) return;
     const booked = PKGS.filter(x=>(x.status||'draft')==='booked');
     if(!booked.length){ el.innerHTML = '<div class="empty">No booked packages yet.</div>'; return; }
-    el.innerHTML = booked.map(x=>{
-      const tt = x.totals||{};
-      const amt = (Number(tt.advance)||0) > 0
-        ? `<span class="amt">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
-        : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
-      return `
-      <div class="lead" data-open-pkg="${x.id}" style="cursor:pointer">
-        <div class="lead-top">
-          <i class="dot booked"></i>
-          <span class="nm">${esc(x.clientName||'—')}</span>
-          <span class="src">${(x.events||[]).length} event${(x.events||[]).length===1?'':'s'}</span>
-          ${amt}
-          <span class="chev">›</span>
-        </div>
-      </div>`;
-    }).join('');
+    el.innerHTML = booked.map(x=>pkgCardHTML(x, expandedHome === x.id)).join('');
   }
-  $('#homeBooked').addEventListener('click', e=>{
-    const row = e.target.closest('[data-open-pkg]'); if(!row) return;
-    expandedPkg = row.dataset.openPkg;
-    $('#tabPkgs').click();
-    renderPkgList();
-  });
+
+  function pkgCardHTML(x, open){
+    const st = x.status||'draft';
+    const evn = (x.events||[]).length;
+    const tt = x.totals||{};
+    const amt = (Number(tt.advance)||0) > 0
+      ? `<span class="amt" title="Balance due / package total">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
+      : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
+    return `
+    <div class="lead ${open?'open':''}" data-id="${x.id}">
+      <div class="lead-top" data-expand>
+        <i class="dot ${st}"></i>
+        <span class="nm">${esc(x.clientName||'—')}</span>
+        <span class="src">${evn} event${evn===1?'':'s'}</span>
+        ${amt}
+        <span class="chev">▾</span>
+      </div>
+      <div class="pkg-acts" ${open?'':'hidden'}>
+        <button class="chip ${st}" data-cycle>${st}</button>
+        <button class="act" data-edit>Edit</button>
+        <button class="act" data-dup>Duplicate</button>
+        <button class="act" data-pdfrow>PDF</button>
+        <button class="act" data-pay>＋ Payment</button>
+        <button class="lead-x" data-delpkg>Delete</button>
+      </div>
+    </div>`;
+  }
 
   function renderPkgList(){
     renderHome();
@@ -980,41 +987,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const list = PKGS.filter(x=>(!f || (x.status||'draft')===f)
       && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)));
     if(!list.length){ $('#pkgList').innerHTML = '<div class="empty">No packages yet — tap ＋ New Package.</div>'; return; }
-    $('#pkgList').innerHTML = list.map(x=>{
-      const st = x.status||'draft';
-      const evn = (x.events||[]).length;
-      const tt = x.totals||{};
-      const amt = (Number(tt.advance)||0) > 0
-        ? `<span class="amt" title="Balance due / package total">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
-        : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
-      const open = expandedPkg === x.id;
-      return `
-      <div class="lead ${open?'open':''}" data-id="${x.id}">
-        <div class="lead-top" data-expand>
-          <i class="dot ${st}"></i>
-          <span class="nm">${esc(x.clientName||'—')}</span>
-          <span class="src">${evn} event${evn===1?'':'s'}</span>
-          ${amt}
-          <span class="chev">▾</span>
-        </div>
-        <div class="pkg-acts" ${open?'':'hidden'}>
-          <button class="chip ${st}" data-cycle>${st}</button>
-          <button class="act" data-edit>Edit</button>
-          <button class="act" data-dup>Duplicate</button>
-          <button class="act" data-pdfrow>PDF</button>
-          <button class="act" data-pay>＋ Payment</button>
-          <button class="lead-x" data-delpkg>Delete</button>
-        </div>
-      </div>`;
-    }).join('');
+    $('#pkgList').innerHTML = list.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
   }
 
-  $('#pkgList').addEventListener('click', async e=>{
+  async function pkgCardAction(e){
     const card = e.target.closest('.lead'); if(!card) return;
     const id = card.dataset.id;
+    const inHome = !!card.closest('#homeBooked');
     if(e.target.closest('[data-expand]')){
-      expandedPkg = (expandedPkg === id) ? null : id;   // accordion: one open at a time
-      renderPkgList();
+      if(inHome){ expandedHome = (expandedHome === id) ? null : id; renderHomeBooked(); }
+      else{ expandedPkg = (expandedPkg === id) ? null : id; renderPkgList(); }
       return;
     }
     const x = PKGS.find(p=>p.id===id); if(!x) return;
@@ -1025,7 +1007,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       catch(err){ toast('Update failed'); }
       return;
     }
-    if(e.target.closest('[data-edit]')){ openPkgEdit(x); return; }
+    if(e.target.closest('[data-edit]')){
+      if(inHome) $('#tabPkgs').click();   // the editor lives in the Packages tab
+      openPkgEdit(x);
+      return;
+    }
     if(e.target.closest('[data-dup]')){
       const copy = JSON.parse(JSON.stringify(x)); delete copy.id;
       copy.status = 'draft';
@@ -1041,7 +1027,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{ await deleteDoc(doc(db,'packages',id)); PKGS = PKGS.filter(p=>p.id!==id); renderPkgList(); toast('Package deleted'); }
       catch(err){ toast('Delete failed'); }
     }
-  });
+  }
+  $('#pkgList').addEventListener('click', pkgCardAction);
+  $('#homeBooked').addEventListener('click', pkgCardAction);
 
   /* ---------- calendar: every dated event across the panel ---------- */
   let calY, calM, calSel = null;
