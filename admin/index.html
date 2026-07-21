@@ -169,6 +169,61 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .dstep.done i{background:var(--ok);border-color:var(--ok);color:#fff}
 @media(hover:hover){ .dstep:hover{background:rgba(255,255,255,.04)} .dstep:hover i{border-color:var(--gold)} }
 
+/* filter chips with counts */
+.fchips{display:flex;gap:.4rem;overflow-x:auto;margin:0 0 .8rem;padding-bottom:2px;scrollbar-width:none}
+.fchips::-webkit-scrollbar{display:none}
+.fchips button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em .95em;font-size:.74rem;cursor:pointer;white-space:nowrap}
+.fchips button b{font-weight:600;margin-left:.3em;opacity:.75}
+.fchips button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+@media(hover:hover){ .fchips button:hover:not(.on){border-color:var(--gold);color:var(--gold-b)} }
+
+/* skeleton loading */
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;height:64px;margin-bottom:.6rem;position:relative;overflow:hidden}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.08),transparent);animation:shim 1.2s infinite}
+@keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* empty states */
+.empty2{text-align:center;padding:2.2rem .8rem;color:var(--mut);font-size:.9rem}
+.empty2 .ic{font-size:2.1rem;display:block;margin-bottom:.45rem}
+
+/* tappable stat tiles */
+.stat[data-fs],.stat[data-goto]{cursor:pointer;transition:border-color .2s}
+.stat.sel{border-color:var(--gold);background:rgba(184,144,43,.16)}
+@media(hover:hover){ .stat[data-fs]:hover,.stat[data-goto]:hover{border-color:var(--gold)} }
+
+/* status picker sheet */
+.st-opts{display:grid;gap:.5rem}
+.st-opts button{display:flex;align-items:center;gap:.65rem;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.85em 1em;color:var(--text);cursor:pointer;font-size:.92rem;text-transform:capitalize;text-align:left}
+.st-opts button em{margin-left:auto;font-style:normal;font-size:.66rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
+.st-opts button.on{border-color:var(--gold)}
+.st-opts .dot{width:9px;height:9px;flex:0 0 auto}
+@media(hover:hover){ .st-opts button:hover{border-color:var(--gold)} }
+
+/* payment quick amounts */
+.qamt{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.2rem 0 .8rem}
+.qamt:empty{display:none}
+.qamt button{background:rgba(184,144,43,.12);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.32em .85em;font-size:.72rem;cursor:pointer}
+@media(hover:hover){ .qamt button:hover{border-color:var(--gold)} }
+
+/* tab icons + new-leads badge */
+.tabs button{position:relative}
+.tabs button i{display:none;font-style:normal}
+.tabs .badge{background:var(--err);color:#fff;font-size:.55rem;font-weight:600;border-radius:10px;padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
+
+/* app-style bottom navigation on phones */
+@media(max-width:699px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:70;margin:0;gap:0;padding:.3rem .3rem calc(.3rem + env(safe-area-inset-bottom));background:rgba(20,17,10,.97);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+  .tabs button{background:none;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:.28em 0;font-size:.58rem;letter-spacing:.02em}
+  .tabs button i{display:block;font-size:1.14rem;line-height:1.25;filter:grayscale(1);opacity:.66;transition:.2s}
+  .tabs button.on{background:none;color:var(--gold-b)}
+  .tabs button.on i{filter:none;opacity:1}
+  .tabs .badge{position:absolute;top:-2px;right:14%;margin:0}
+  .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  .savebar{bottom:calc(52px + env(safe-area-inset-bottom))}
+  .pkg-actions{bottom:calc(52px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(122px + env(safe-area-inset-bottom))}
+}
+
 /* payment popup */
 .pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.25s}
 .pay-backdrop.open{opacity:1;pointer-events:auto}
@@ -302,26 +357,21 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 <!-- app -->
 <div class="wrap" id="appView" hidden>
   <div class="tabs">
-    <button id="tabHome" class="on">Home</button>
-    <button id="tabPkgs">Packages</button>
-    <button id="tabLeads">Leads</button>
-    <button id="tabCal">Calendar</button>
-    <button id="tabConfig">Config</button>
+    <button id="tabHome" class="on"><i>🏠</i><span>Home</span></button>
+    <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
+    <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
+    <button id="tabCal"><i>📅</i><span>Calendar</span></button>
+    <button id="tabConfig"><i>⚙️</i><span>Config</span></button>
   </div>
 
   <div id="leadsView">
     <div class="stats" id="stats"></div>
     <div class="bar">
       <input id="leadSearch" type="search" placeholder="Search name or phone…" />
-      <select id="statusFilter">
-        <option value="">All statuses</option>
-        <option value="new">New</option><option value="contacted">Contacted</option>
-        <option value="booked">Booked</option><option value="shot">Shot</option>
-        <option value="delivered">Delivered</option><option value="lost">Lost</option>
-      </select>
       <button id="refreshBtn">↻ Refresh</button>
     </div>
-    <div id="leadList"><div class="empty">Loading…</div></div>
+    <div class="fchips" id="leadChips"></div>
+    <div id="leadList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   </div>
 
   <div id="homeView">
@@ -329,7 +379,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" style="padding:.9rem 1rem">
       <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked &amp; recent deliveries</h3>
-      <div id="homeBooked"><div class="empty">Loading…</div></div>
+      <div id="homeBooked"><div class="skel"></div><div class="skel"></div></div>
     </div>
   </div>
 
@@ -337,15 +387,12 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div id="pkgListView">
       <div class="bar">
         <input id="pkgSearch" type="search" placeholder="Search name or phone…" />
-        <select id="pkgFilter">
-          <option value="">All</option>
-          <option value="draft">Draft</option><option value="sent">Sent</option><option value="booked">Booked</option><option value="delivered">Delivered</option>
-        </select>
         <button id="pkgRefresh" aria-label="Refresh">↻</button>
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
-      <p class="sub" style="margin:0 0 .7rem">Tap a status chip to move a package <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>. Booked packages get a delivery checklist — tick steps as you finish them.</p>
-      <div id="pkgList"><div class="empty">Loading…</div></div>
+      <div class="fchips" id="pkgChips"></div>
+      <p class="sub" style="margin:0 0 .7rem">Tap a package's status chip to change it — <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>. Booked packages get a delivery checklist.</p>
+      <div id="pkgList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </div>
 
     <div id="pkgEditView" hidden>
@@ -491,6 +538,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <h3>Record Payment</h3>
   <div class="who" id="payWho"></div>
   <div class="fld"><label>Amount received (₹)</label><input id="payAmt" type="number" min="1" inputmode="numeric" placeholder="e.g. 10000" /></div>
+  <div class="qamt" id="payQuick"></div>
   <div class="fld"><label>Date</label><input id="payDate" type="date" /></div>
   <div class="fld"><label>Payment mode</label>
     <div class="mode-pills">
@@ -500,6 +548,14 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   </div>
   <div class="pay-hist" id="payHist"></div>
   <button class="gbtn" id="paySave" type="button">Save Payment</button>
+</div>
+
+<div class="pay-backdrop" id="stBackdrop"></div>
+<div class="pay-modal" id="stModal" role="dialog" aria-modal="true" aria-label="Change package status">
+  <button class="pay-close" id="stClose" type="button" aria-label="Close">&times;</button>
+  <h3>Package Status</h3>
+  <div class="who" id="stWho"></div>
+  <div class="st-opts" id="stOpts"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -523,6 +579,7 @@ const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+const buzz = () => { try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} };
 
 const SERVICE_LABELS = {
   cinematography:'Cinematography', candidPhotography:'Candid Photography',
@@ -668,6 +725,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       if(v !== 'pkgedit') _pkgBaseline = '';
       if(typeof closePayUI === 'function') closePayUI();
+      if(typeof closeStatusUI === 'function') closeStatusUI();
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -699,7 +757,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
   $('#refreshBtn').addEventListener('click', loadLeads);
-  $('#statusFilter').addEventListener('change', renderLeads);
+  let leadFilterVal = '';
+  function renderLeadChips(){
+    const counts = {}; STATUSES.forEach(s=>counts[s]=0);
+    LEADS.forEach(l=>{ const s=l.status||'new'; counts[s]=(counts[s]||0)+1; });
+    $('#leadChips').innerHTML = [['','All',LEADS.length], ...STATUSES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
+      .map(([v,lab,n])=>`<button data-f="${v}" class="${leadFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
+  }
+  $('#leadChips').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-f]'); if(!b) return;
+    leadFilterVal = b.dataset.f; renderStats(); renderLeads();
+  });
+  $('#stats').addEventListener('click', e=>{
+    const t = e.target.closest('[data-fs]'); if(!t) return;
+    leadFilterVal = (leadFilterVal === t.dataset.fs) ? '' : t.dataset.fs;
+    renderStats(); renderLeads();
+  });
 
   function renderStats(){
     const counts = {}; STATUSES.forEach(s=>counts[s]=0);
@@ -712,15 +785,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
     $('#stats').innerHTML =
       `<div class="stat month"><b>${inr(monthTotal)}</b><span>${monthCount} quotes this month</span></div>` +
-      STATUSES.map(s=>`<div class="stat"><b class="st-${s}">${counts[s]||0}</b><span>${s}</span></div>`).join('');
+      STATUSES.map(s=>`<div class="stat ${leadFilterVal===s?'sel':''}" data-fs="${s}" role="button" title="Filter ${s} leads"><b class="st-${s}">${counts[s]||0}</b><span>${s}</span></div>`).join('');
+    const badge = $('#leadsBadge');
+    if(badge){ badge.hidden = !counts.new; badge.textContent = counts.new || ''; }
   }
 
   function renderLeads(){
-    const f = $('#statusFilter').value;
+    renderLeadChips();
+    const f = leadFilterVal;
     const q = ($('#leadSearch').value||'').trim().toLowerCase();
     const list = LEADS.filter(l=>(!f || (l.status||'new')===f)
       && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)));
-    if(!list.length){ $('#leadList').innerHTML = '<div class="empty">No leads here yet.</div>'; return; }
+    if(!list.length){
+      $('#leadList').innerHTML = LEADS.length
+        ? '<div class="empty2"><span class="ic">👥</span>No leads match this filter.</div>'
+        : '<div class="empty2"><span class="ic">👥</span>No leads yet — new enquiries from the website appear here instantly.</div>';
+      return;
+    }
     $('#leadList').innerHTML = list.map(l=>{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
@@ -1008,9 +1089,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
-  $('#pkgFilter').addEventListener('change', renderPkgList);
   $('#pkgSearch').addEventListener('input', renderPkgList);
   $('#leadSearch').addEventListener('input', renderLeads);
+
+  let pkgFilterVal = '';
+  const PKG_STATES = ['draft','sent','booked','delivered'];
+  function renderPkgChips(){
+    const counts = {draft:0,sent:0,booked:0,delivered:0};
+    PKGS.forEach(x=>{ const s=x.status||'draft'; counts[s]=(counts[s]||0)+1; });
+    $('#pkgChips').innerHTML = [['','All',PKGS.length], ...PKG_STATES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
+      .map(([v,lab,n])=>`<button data-f="${v}" class="${pkgFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
+  }
+  $('#pkgChips').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-f]'); if(!b) return;
+    pkgFilterVal = b.dataset.f; renderPkgList();
+  });
+  $('#pkgStats').addEventListener('click', e=>{
+    const t = e.target.closest('[data-goto]'); if(!t) return;
+    if(!$('#pkgEditView').hidden) return;   // don't yank the user out of an open editor
+    pkgFilterVal = t.dataset.goto;
+    $('#tabPkgs').click();
+    renderPkgList();
+  });
 
   function renderPkgStats(){
     const el = $('#pkgStats'); if(!el) return;
@@ -1021,10 +1121,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
     const newMonth = PKGS.filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
     el.innerHTML = `
-      <div class="stat month"><b>${inr(outstanding)}</b><span>left to collect (booked)</span></div>
-      <div class="stat"><b>${inr(bookedVal)}</b><span>booked value</span></div>
-      <div class="stat"><b>${booked.length}</b><span>booked</span></div>
-      <div class="stat"><b>${newMonth}</b><span>new this month</span></div>`;
+      <div class="stat month" data-goto="booked" role="button"><b>${inr(outstanding)}</b><span>left to collect (booked)</span></div>
+      <div class="stat" data-goto="booked" role="button"><b>${inr(bookedVal)}</b><span>booked value</span></div>
+      <div class="stat" data-goto="booked" role="button"><b>${booked.length}</b><span>booked</span></div>
+      <div class="stat" data-goto="" role="button"><b>${newMonth}</b><span>new this month</span></div>`;
   }
   function renderUpcoming(){
     const el = $('#upcoming'); if(!el) return;
@@ -1111,15 +1211,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderPkgList(){
     renderHome();
-    const f = $('#pkgFilter').value;
+    renderPkgChips();
+    const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
     const list = PKGS.filter(x=>(!f || (x.status||'draft')===f)
       && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)));
-    if(!list.length){ $('#pkgList').innerHTML = '<div class="empty">No packages yet — tap ＋ New Package.</div>'; return; }
+    if(!list.length){
+      $('#pkgList').innerHTML = PKGS.length
+        ? '<div class="empty2"><span class="ic">📦</span>Nothing matches this filter.</div>'
+        : '<div class="empty2"><span class="ic">📦</span>No packages yet.<br><button class="goldbar" id="pkgEmptyNew" style="margin-top:.9rem">＋ Create your first package</button></div>';
+      return;
+    }
     $('#pkgList').innerHTML = list.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
   }
 
   async function pkgCardAction(e){
+    if(e.target.closest('#pkgEmptyNew')){ openPkgEdit(null); return; }
     const card = e.target.closest('.lead'); if(!card) return;
     const id = card.dataset.id;
     const inHome = !!card.closest('#homeBooked');
@@ -1129,21 +1236,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     const x = PKGS.find(p=>p.id===id); if(!x) return;
-    if(e.target.closest('[data-cycle]')){
-      const order = ['draft','sent','booked','delivered'];
-      const next = order[(order.indexOf(x.status||'draft')+1)%order.length];
-      const patch = { status: next, updatedAt: serverTimestamp() };
-      if(next === 'delivered') patch.deliveredAt = todayISO();
-      else if(x.deliveredAt) patch.deliveredAt = deleteField();
-      try{
-        await updateDoc(doc(db,'packages',id), patch);
-        x.status = next;
-        if(next === 'delivered') x.deliveredAt = patch.deliveredAt; else delete x.deliveredAt;
-        renderPkgList();
-      }
-      catch(err){ toast('Update failed'); }
-      return;
-    }
+    if(e.target.closest('[data-cycle]')){ openStatus(x); return; }
     if(e.target.closest('[data-tstep]')){
       const name = e.target.closest('[data-tstep]').dataset.name;
       const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
@@ -1161,7 +1254,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         await updateDoc(doc(db,'packages',id), patch);
         x.delivery = delivery;
         if(becameDelivered){ x.status = 'delivered'; x.deliveredAt = patch.deliveredAt; toast('🎉 Package delivered'); }
-        renderPkgList();
+        buzz(); renderPkgList();
       }catch(err){ toast('Update failed'); }
       return;
     }
@@ -1323,6 +1416,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     dl(`leads-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Leads CSV downloaded');
   });
 
+  /* ---------- status picker sheet ---------- */
+  let statusId = null;
+  function openStatus(x){
+    statusId = x.id;
+    $('#stWho').textContent = `${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||'—'}`;
+    $('#stOpts').innerHTML = PKG_STATES.map(s=>`
+      <button data-st="${s}" class="${(x.status||'draft')===s?'on':''}"><i class="dot ${s}"></i>${s}${(x.status||'draft')===s?'<em>current</em>':''}</button>`).join('');
+    $('#stModal').classList.add('open'); $('#stBackdrop').classList.add('open');
+    if(!_navFromPop){ try{ history.pushState({view:'stsheet'}, '', '#packages/status'); }catch(e){} }
+  }
+  function closeStatusUI(){ $('#stModal').classList.remove('open'); $('#stBackdrop').classList.remove('open'); statusId = null; }
+  function closeStatus(){
+    if(history.state && history.state.view === 'stsheet'){ history.back(); }
+    else closeStatusUI();
+  }
+  $('#stClose').addEventListener('click', closeStatus);
+  $('#stBackdrop').addEventListener('click', closeStatus);
+  $('#stOpts').addEventListener('click', async e=>{
+    const b = e.target.closest('[data-st]'); if(!b) return;
+    const x = PKGS.find(p=>p.id===statusId);
+    if(!x){ closeStatus(); return; }
+    const next = b.dataset.st;
+    if((x.status||'draft') === next){ closeStatus(); return; }
+    const patch = { status: next, updatedAt: serverTimestamp() };
+    if(next === 'delivered') patch.deliveredAt = todayISO();
+    else if(x.deliveredAt) patch.deliveredAt = deleteField();
+    try{
+      await updateDoc(doc(db,'packages',x.id), patch);
+      x.status = next;
+      if(next === 'delivered') x.deliveredAt = patch.deliveredAt; else delete x.deliveredAt;
+      buzz(); renderPkgList(); closeStatus();
+      toast(`Status → ${next}`);
+    }catch(err){ toast('Update failed'); }
+  });
+
   /* ---------- record payment ---------- */
   let payingId = null, payMode = 'online';
   function openPay(x){
@@ -1330,6 +1458,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on');
     $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr((x.totals||{}).balance||0)} of ${inr((x.totals||{}).finalPrice||0)}`;
     $('#payAmt').value = '';
+    const bal = Number((x.totals||{}).balance)||0;
+    const fin = Number((x.totals||{}).finalPrice)||0;
+    const quick = [];
+    if(bal > 0) quick.push(['Full balance', bal]);
+    if(fin > 0){
+      const half = Math.round(fin*0.5), ten = Math.round(fin*0.10);
+      if(half > 0 && half < bal) quick.push(['50% advance', half]);
+      if(ten > 0 && ten < bal) quick.push(['10% delivery', ten]);
+    }
+    $('#payQuick').innerHTML = quick.map(([l,v])=>`<button type="button" data-qa="${v}">${l} · ${inr(v)}</button>`).join('');
     $('#payDate').value = todayISO();
     const hist = (x.payments||[]);
     $('#payHist').innerHTML = hist.length
@@ -1345,11 +1483,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(history.state && history.state.view === 'pay'){ history.back(); }
     else closePayUI();
   }
+  $('#payQuick').addEventListener('click', e=>{
+    const b = e.target.closest('[data-qa]'); if(!b) return;
+    $('#payAmt').value = b.dataset.qa; $('#payAmt').focus();
+  });
   $('#payClose').addEventListener('click', closePay);
   $('#payBackdrop').addEventListener('click', closePay);
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
   $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closePay(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); } });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const amount = Math.round(Number($('#payAmt').value)||0);
@@ -1362,7 +1504,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       await updateDoc(doc(db,'packages',x.id), { payments, totals: tt, updatedAt: serverTimestamp() });
       x.payments = payments; x.totals = tt;
-      renderPkgList();
+      buzz(); renderPkgList();
       closePay();
       toast(`${inr(amount)} (${payMode}) recorded — balance ${inr(tt.balance)}`);
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
