@@ -153,6 +153,13 @@ export async function buildQuotePdf(pkg, contact, terms){
     doc.setFont('helvetica', 'bold'); doc.text('C/o :', ML, y);
     doc.setFont('helvetica', 'normal'); doc.text(String(pkg.careOf), ML + 30, y);
   }
+  if (pkg.quoteNo) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Quote No :', MR - 110, y + (pkg.careOf ? 0 : 15));
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(pkg.quoteNo), MR - 55, y + (pkg.careOf ? 0 : 15));
+    if (!pkg.careOf) y += 15;
+  }
   y += 18;
 
   /* ---------- events ---------- */

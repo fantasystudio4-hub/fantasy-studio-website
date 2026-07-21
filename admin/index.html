@@ -75,6 +75,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top{padding:.85rem 1rem;display:flex;flex-wrap:wrap;gap:.35rem .6rem;align-items:center;cursor:pointer}
 .lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
+.lead-top .newb{font-size:.58rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
 .lead-top .dot{flex:0 0 auto;width:8px;height:8px;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
@@ -300,6 +301,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
   <div id="homeView">
     <div class="stats" id="pkgStats"></div>
+    <div class="sec upco" id="incomeBox" hidden></div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" style="padding:.9rem 1rem">
       <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked packages</h3>
@@ -392,6 +394,16 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   </div>
 
   <div id="configView" hidden>
+    <div class="sec">
+      <h3>Backup &amp; Export</h3>
+      <p class="sub">Download your data for safekeeping and accounts.</p>
+      <div class="grid2">
+        <button class="addrow" id="expJson">⬇ Full backup (JSON)</button>
+        <button class="addrow" id="expPkgs">⬇ Packages CSV</button>
+        <button class="addrow" id="expPays">⬇ Payments CSV</button>
+        <button class="addrow" id="expLeads">⬇ Leads CSV</button>
+      </div>
+    </div>
     <div class="sec">
       <h3>Service Rates (₹)</h3>
       <div class="grid2" id="priceGrid"></div>
@@ -547,7 +559,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp } =
+  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
@@ -563,6 +575,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
   onAuthStateChanged(auth, user=>{
+    if(!user && _leadsUnsub){ try{ _leadsUnsub(); }catch(e){} _leadsUnsub = null; _leadsInit = false; }
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
@@ -618,6 +631,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _navFromPop = true;
     try{
       const v = (e.state && e.state.view) || 'home';
+      if(v !== 'pkgedit' && typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
+        try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e2){}
+        return;
+      }
+      if(v !== 'pkgedit') _pkgBaseline = '';
       if(typeof closePayUI === 'function') closePayUI();
       if(v === 'pkgedit'){
         showTab('tabPkgs');
@@ -632,12 +650,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- leads ---------- */
   let LEADS = [];
-  async function loadLeads(){
+  let _leadsUnsub = null, _leadsInit = false, _seenBefore = 0;
+  function loadLeads(){
+    if(_leadsUnsub){ renderLeads(); return; }
+    try{ _seenBefore = Number(localStorage.getItem('fs_leads_seen'))||0; localStorage.setItem('fs_leads_seen', String(Date.now())); }catch(e){}
     try{
-      const snap = await getDocs(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(300)));
-      LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-      renderStats(); renderLeads();
-      renderCalendar();
+      _leadsUnsub = onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(300)), snap=>{
+        const prevIds = new Set(LEADS.map(l=>l.id));
+        LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        if(_leadsInit){
+          const fresh = LEADS.filter(l=>!prevIds.has(l.id));
+          if(fresh.length) toast(`🔔 New lead: ${fresh[0].name||'someone'}${fresh.length>1 ? ' +' + (fresh.length-1) + ' more' : ''}`);
+        }
+        _leadsInit = true;
+        renderStats(); renderLeads(); renderCalendar(); renderHome();
+      }, err=>{ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; });
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
   $('#refreshBtn').addEventListener('click', loadLeads);
@@ -671,6 +698,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="lead-top" data-toggle>
           <span class="nm">${esc(l.name||'—')}</span>
           <span class="src">${esc(l.source==='contact_form'?'enquiry':'builder')}</span>
+          ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
           <span class="amt">${l.grandTotal ? inr(l.grandTotal) : ''}</span>
         </div>
         <div class="lead-sub">
@@ -881,6 +909,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let editingId = null;
   let expandedPkg = null;
   let expandedHome = null;
+  function nextQuoteNo(){
+    const yr = new Date().getFullYear();
+    const nums = PKGS.map(x=>x.quoteNo||'').filter(q=>q.startsWith('FS-'+yr+'-')).map(q=>parseInt(q.split('-')[2],10)||0);
+    return 'FS-' + yr + '-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,'0');
+  }
 
   const builderRates = () => (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length ? CFG.serviceRates : DEFAULTS.serviceRates);
   /* the builder learns: every rate you actually use overrides the preset next time */
@@ -944,6 +977,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderHome(){
     renderPkgStats();
+    renderIncome();
     renderUpcoming();
     renderHomeBooked();
   }
@@ -966,7 +1000,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="lead-top" data-expand>
         <i class="dot ${st}"></i>
         <span class="nm">${esc(x.clientName||'—')}</span>
-        <span class="src">${evn} event${evn===1?'':'s'}</span>
+        <span class="src">${x.quoteNo ? esc(x.quoteNo)+' · ' : ''}${evn} event${evn===1?'':'s'}</span>
         ${amt}
         <span class="chev">▾</span>
       </div>
@@ -1016,6 +1050,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-dup]')){
       const copy = JSON.parse(JSON.stringify(x)); delete copy.id;
       copy.status = 'draft';
+      copy.quoteNo = nextQuoteNo();
+      copy.payments = [];
+      if(copy.totals){ copy.totals.advance = 0; copy.totals.balance = copy.totals.finalPrice || 0; }
       copy.createdAt = serverTimestamp(); copy.updatedAt = serverTimestamp();
       try{ await addDoc(collection(db,'packages'), copy); toast('Duplicated as draft'); loadPkgs(); }
       catch(err){ toast('Duplicate failed'); }
@@ -1120,6 +1157,65 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
   }
 
+  /* ---------- export / backup ---------- */
+  function dl(filename, text, type){
+    const b = new Blob([text], {type});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = filename; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+  }
+  function csvEnc(rows){
+    return rows.map(r=>r.map(v=>{
+      v = (v==null ? '' : String(v));
+      return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+    }).join(',')).join('\n');
+  }
+  const tsDate = t => (t && t.toDate) ? t.toDate().toLocaleDateString('en-CA') : '';
+  const stamp = () => new Date().toLocaleDateString('en-CA');
+  $('#expJson').addEventListener('click', ()=>{
+    dl(`fantasy-studio-backup-${stamp()}.json`,
+      JSON.stringify({ exportedAt:new Date().toISOString(), packages:PKGS, leads:LEADS, config:CFG }, null, 1),
+      'application/json'); toast('Backup downloaded');
+  });
+  $('#expPkgs').addEventListener('click', ()=>{
+    const rows = [['QuoteNo','Client','Phone','Status','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
+    PKGS.forEach(x=>{ const t=x.totals||{}; rows.push([x.quoteNo||'', x.clientName||'', x.clientPhone||'', x.status||'draft',
+      (x.events||[]).length, (x.events||[]).map(e=>e.date).filter(Boolean).join(' '), t.gross||0, t.discount||0,
+      t.finalPrice||0, t.advance||0, t.balance||0, tsDate(x.createdAt)]); });
+    dl(`packages-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Packages CSV downloaded');
+  });
+  $('#expPays').addEventListener('click', ()=>{
+    const rows = [['Date','Client','Mode','Amount','QuoteNo']];
+    PKGS.forEach(x=>(x.payments||[]).forEach(pm=>rows.push([pm.date||'', x.clientName||'', pm.mode||'', pm.amount||0, x.quoteNo||''])));
+    dl(`payments-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Payments CSV downloaded');
+  });
+  $('#expLeads').addEventListener('click', ()=>{
+    const rows = [['Created','Name','Phone','Source','Status','Events','WeddingDate','QuoteTotal','Message','Notes']];
+    LEADS.forEach(l=>rows.push([tsDate(l.createdAt), l.name||'', l.phone||'', l.source||'', l.status||'new',
+      l.eventType||'', l.weddingDate||'', l.grandTotal||'', l.message||'', l.notes||'']));
+    dl(`leads-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Leads CSV downloaded');
+  });
+
+  /* ---------- income report ---------- */
+  function renderIncome(){
+    const el = $('#incomeBox'); if(!el) return;
+    const pays = [];
+    PKGS.forEach(x=>(x.payments||[]).forEach(pm=>pays.push({ date:pm.date||'', mode:pm.mode||'', amount:Number(pm.amount)||0, client:x.clientName||'' })));
+    el.hidden = !pays.length;
+    if(!pays.length) return;
+    const now = new Date();
+    const mIso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    const inMonth = pays.filter(pm=>pm.date >= mIso);
+    const cash = inMonth.filter(pm=>pm.mode==='cash').reduce((a,pm)=>a+pm.amount,0);
+    const online = inMonth.filter(pm=>pm.mode==='online').reduce((a,pm)=>a+pm.amount,0);
+    const recent = pays.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,6);
+    el.innerHTML = `<h3>💰 Income</h3>
+      <div class="prow"><span>Collected this month</span><b>${inr(cash+online)}</b></div>
+      <div class="prow" style="font-size:.8rem;color:var(--mut)"><span>Online ${inr(online)}</span><span>Cash ${inr(cash)}</span></div>` +
+      recent.map(pm=>`<div class="up-ev"><span class="when">${pm.date ? new Date(pm.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '—'}</span>
+        <span class="what">${esc(pm.client)} <span>· ${esc(pm.mode)}</span></span><b style="color:var(--gold-b);font-family:var(--serif)">${inr(pm.amount)}</b></div>`).join('');
+  }
+
   /* ---------- record payment ---------- */
   let payingId = null, payMode = 'online';
   function openPay(x){
@@ -1168,6 +1264,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- builder ---------- */
   $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
   $('#pkgBack').addEventListener('click', ()=>{
+    if(pkgDirty() && !confirm('Discard unsaved changes?')) return;
+    _pkgBaseline = '';
     if(history.state && history.state.view === 'pkgedit'){ history.back(); }
     else { $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
   });
@@ -1242,6 +1340,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     computePkg();
     window.scrollTo(0,0);
     if(!_navFromPop){ try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e){} }
+    _pkgBaseline = JSON.stringify(readForm());
+  }
+  let _pkgBaseline = '';
+  function pkgDirty(){
+    try{ return !$('#pkgEditView').hidden && JSON.stringify(readForm()) !== _pkgBaseline; }
+    catch(e){ return false; }
   }
 
   function readForm(){
@@ -1323,10 +1427,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(editingId){
         await updateDoc(doc(db,'packages',editingId), { ...d, updatedAt: serverTimestamp() });
       }else{
-        const ref = await addDoc(collection(db,'packages'), { ...d, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const quoteNo = nextQuoteNo();
+        const ref = await addDoc(collection(db,'packages'), { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         editingId = ref.id;
       }
       toast('Package saved');
+      _pkgBaseline = JSON.stringify(readForm());
       /* learn the rates used, so the next quote prefills them automatically */
       try{
         const learned = Object.assign({}, (CFG && CFG.learnedRates) || {});
