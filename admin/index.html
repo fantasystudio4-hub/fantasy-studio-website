@@ -70,13 +70,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:8px;padding:.55em .9em;cursor:pointer}
 
 /* lead cards */
-.lead{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:.7rem;overflow:hidden}
-.lead-top{padding:.85rem .95rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center;cursor:pointer}
-.lead-top .nm{font-family:var(--serif);font-size:1.05rem;color:#fff}
-.lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
+.lead{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:.6rem;overflow:hidden;transition:border-color .25s,background .25s}
+.lead.open{border-color:rgba(226,194,117,.45);background:#28211285}
+.lead-top{padding:.85rem 1rem;display:flex;flex-wrap:wrap;gap:.35rem .6rem;align-items:center;cursor:pointer}
+.lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
+.lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
-.lead-top .dot{flex:0 0 auto}
+.lead-top .dot{flex:0 0 auto;width:8px;height:8px;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
 .lead-top .chev{color:var(--mut);font-size:.8rem;transition:.25s;margin-left:.1rem}
 .lead.open .chev{transform:rotate(180deg);color:var(--gold-b)}
 /* search + upcoming */
@@ -131,15 +132,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cal-ev .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.75rem;cursor:pointer}
 
 /* package row actions — even grid, no crowding */
-.pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;padding:0 .95rem .85rem}
+.pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:0 1rem;padding:.75rem 0 .9rem;border-top:1px dashed var(--line)}
 .pkg-acts button{
   width:100%;text-align:center;padding:.55em .3em;font-size:.78rem;border-radius:10px;
   letter-spacing:.02em;cursor:pointer;white-space:nowrap;
 }
-.pkg-acts .chip{border:1px solid var(--line);background:#171309;text-transform:uppercase;font-size:.72rem;letter-spacing:.06em}
-.pkg-acts .act{background:none;border:1px solid var(--line);color:var(--gold-b)}
+.pkg-acts .chip{border:1px solid transparent;text-transform:uppercase;font-size:.7rem;letter-spacing:.06em;font-weight:500}
+.pkg-acts .act{background:rgba(255,255,255,.045);border:1px solid transparent;color:var(--gold-b)}
 .pkg-acts .act:active{background:rgba(184,144,43,.18)}
-.pkg-acts .lead-x{background:none;border:1px solid rgba(224,122,106,.45);color:var(--err)}
+.pkg-acts .lead-x{background:rgba(224,122,106,.08);border:1px solid transparent;color:var(--err)}
 .pkg-acts .lead-x:active{background:var(--err);color:#fff}
 @media(min-width:700px){.pkg-acts{grid-template-columns:repeat(6,1fr)}}
 
@@ -199,9 +200,9 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 /* packages */
 .goldbar{background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:8px;padding:.55em .9em;cursor:pointer}
 .chip{border:1px solid var(--line);border-radius:20px;padding:.2em .8em;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:none}
-.chip.draft{color:var(--gold-b);border-color:rgba(226,194,117,.5)}
-.chip.sent{color:#7fb2e5;border-color:rgba(127,178,229,.5)}
-.chip.booked{color:var(--ok);border-color:rgba(76,175,125,.5)}
+.chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
+.chip.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
+.chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
 .itemrow{display:grid;grid-template-columns:1fr auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
 .itemrow .l1{display:flex;gap:.45rem}
 .itemrow .l1 select{flex:1;min-width:0}
