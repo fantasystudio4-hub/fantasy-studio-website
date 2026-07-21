@@ -76,6 +76,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
+.lead-top .dot{flex:0 0 auto}
+.lead-top .chev{color:var(--mut);font-size:.8rem;transition:.25s;margin-left:.1rem}
+.lead.open .chev{transform:rotate(180deg);color:var(--gold-b)}
 /* search + upcoming */
 .bar input[type=search]{flex:1.2;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em .7em;min-width:0}
 .bar input[type=search]:focus{outline:none;border-color:var(--gold)}
@@ -866,6 +869,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      ============================================================ */
   let PKGS = [];
   let editingId = null;
+  let expandedPkg = null;
 
   const builderRates = () => (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length ? CFG.serviceRates : DEFAULTS.serviceRates);
   /* the builder learns: every rate you actually use overrides the preset next time */
@@ -947,14 +951,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const amt = (Number(tt.advance)||0) > 0
         ? `<span class="amt" title="Balance due / package total">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
         : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
+      const open = expandedPkg === x.id;
       return `
-      <div class="lead" data-id="${x.id}">
-        <div class="lead-top">
+      <div class="lead ${open?'open':''}" data-id="${x.id}">
+        <div class="lead-top" data-expand>
+          <i class="dot ${st}"></i>
           <span class="nm">${esc(x.clientName||'—')}</span>
           <span class="src">${evn} event${evn===1?'':'s'}</span>
           ${amt}
+          <span class="chev">▾</span>
         </div>
-        <div class="pkg-acts">
+        <div class="pkg-acts" ${open?'':'hidden'}>
           <button class="chip ${st}" data-cycle>${st}</button>
           <button class="act" data-edit>Edit</button>
           <button class="act" data-dup>Duplicate</button>
@@ -969,6 +976,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#pkgList').addEventListener('click', async e=>{
     const card = e.target.closest('.lead'); if(!card) return;
     const id = card.dataset.id;
+    if(e.target.closest('[data-expand]')){
+      expandedPkg = (expandedPkg === id) ? null : id;   // accordion: one open at a time
+      renderPkgList();
+      return;
+    }
     const x = PKGS.find(p=>p.id===id); if(!x) return;
     if(e.target.closest('[data-cycle]')){
       const order = ['draft','sent','booked'];
