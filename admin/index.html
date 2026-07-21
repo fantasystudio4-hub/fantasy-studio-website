@@ -548,16 +548,42 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#hdr').hidden = !user;
     if(user){
       loadLeads(); loadConfig(); loadPkgs();
-      $('#tabPkgs').click();   // packages front and centre
+      const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabPkgs';
+      showTab(fromHash);
+      try{ history.replaceState({view: VIEW_OF_TAB[fromHash]}, '', '#' + VIEW_OF_TAB[fromHash]); }catch(e){}
     }
   });
 
   /* ---------- tabs ---------- */
   const TABS = { tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabConfig:'configView' };
+  const VIEW_OF_TAB = { tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabConfig:'config' };
+  const TAB_OF_VIEW = { packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', config:'tabConfig' };
+  let _navFromPop = false;
+  function showTab(id){
+    Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
+    if(id === 'tabCal') renderCalendar();
+  }
   Object.keys(TABS).forEach(id=>{
     $('#'+id).addEventListener('click', ()=>{
-      Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
+      showTab(id);
+      if(!_navFromPop){ try{ history.pushState({view: VIEW_OF_TAB[id]}, '', '#' + VIEW_OF_TAB[id]); }catch(e){} }
     });
+  });
+  /* phone back button navigates within the app instead of exiting */
+  window.addEventListener('popstate', e=>{
+    _navFromPop = true;
+    try{
+      const v = (e.state && e.state.view) || 'packages';
+      if(typeof closePayUI === 'function') closePayUI();
+      if(v === 'pkgedit'){
+        showTab('tabPkgs');
+        $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
+      }else{
+        const tab = TAB_OF_VIEW[v] || 'tabPkgs';
+        showTab(tab);
+        if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
+      }
+    }finally{ _navFromPop = false; }
   });
 
   /* ---------- leads ---------- */
@@ -1003,8 +1029,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#tabLeads').click();
     }
   });
-  $('#tabCal').addEventListener('click', renderCalendar);
-
   /* ---------- lead -> package bridge ---------- */
   function pkgFromLead(l){
     const q = l.quote || {};
@@ -1041,8 +1065,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : '';
     $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
     setTimeout(()=>$('#payAmt').focus(), 80);
+    if(!_navFromPop){ try{ history.pushState({view:'pay'}, '', '#packages/pay'); }catch(e){} }
   }
-  function closePay(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
+  function closePayUI(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
+  function closePay(){
+    if(history.state && history.state.view === 'pay'){ history.back(); }
+    else closePayUI();
+  }
   $('#payClose').addEventListener('click', closePay);
   $('#payBackdrop').addEventListener('click', closePay);
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
@@ -1068,7 +1097,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- builder ---------- */
   $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
-  $('#pkgBack').addEventListener('click', ()=>{ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; });
+  $('#pkgBack').addEventListener('click', ()=>{
+    if(history.state && history.state.view === 'pkgedit'){ history.back(); }
+    else { $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
+  });
 
   function rateOptions(selected){
     const rates = allRates();
@@ -1139,6 +1171,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
     window.scrollTo(0,0);
+    if(!_navFromPop){ try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e){} }
   }
 
   function readForm(){
