@@ -76,7 +76,12 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
 .lead-top .newb{font-size:.58rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
-.lead-top .qno{color:var(--gold-b);letter-spacing:.04em}
+.lead-top .qno{color:var(--gold-b);letter-spacing:.05em;font-size:.72rem}
+.lt-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}
+.lt-lines .l1{display:flex;align-items:center;gap:.5rem;min-width:0}
+.lt-lines .l1 .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lt-lines .l2{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
+.lt-lines .l2 .amt{margin-left:auto}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
 .lead-top .dot{flex:0 0 auto;width:8px;height:8px;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
@@ -302,7 +307,6 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
   <div id="homeView">
     <div class="stats" id="pkgStats"></div>
-    <div class="sec upco" id="incomeBox" hidden></div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" style="padding:.9rem 1rem">
       <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked packages</h3>
@@ -988,7 +992,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderHome(){
     renderPkgStats();
-    renderIncome();
     renderUpcoming();
     renderHomeBooked();
   }
@@ -1009,10 +1012,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return `
     <div class="lead ${open?'open':''}" data-id="${x.id}">
       <div class="lead-top" data-expand>
-        <i class="dot ${st}"></i>
-        <span class="nm">${esc(x.clientName||'—')}</span>
-        <span class="src">${x.quoteNo ? `<span class="qno">${esc(x.quoteNo)}</span> · ` : ''}${evn} event${evn===1?'':'s'}</span>
-        ${amt}
+        <div class="lt-lines">
+          <div class="l1">
+            <i class="dot ${st}"></i>
+            <span class="nm">${esc(x.clientName||'—')}</span>
+            <span class="src">${evn} event${evn===1?'':'s'}</span>
+          </div>
+          <div class="l2">
+            <span class="qno">${x.quoteNo ? esc(x.quoteNo) : ''}</span>
+            ${amt}
+          </div>
+        </div>
         <span class="chev">▾</span>
       </div>
       <div class="pkg-acts" ${open?'':'hidden'}>
@@ -1206,26 +1216,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       l.eventType||'', l.weddingDate||'', l.grandTotal||'', l.message||'', l.notes||'']));
     dl(`leads-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Leads CSV downloaded');
   });
-
-  /* ---------- income report ---------- */
-  function renderIncome(){
-    const el = $('#incomeBox'); if(!el) return;
-    const pays = [];
-    PKGS.forEach(x=>(x.payments||[]).forEach(pm=>pays.push({ date:pm.date||'', mode:pm.mode||'', amount:Number(pm.amount)||0, client:x.clientName||'' })));
-    el.hidden = !pays.length;
-    if(!pays.length) return;
-    const now = new Date();
-    const mIso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-    const inMonth = pays.filter(pm=>pm.date >= mIso);
-    const cash = inMonth.filter(pm=>pm.mode==='cash').reduce((a,pm)=>a+pm.amount,0);
-    const online = inMonth.filter(pm=>pm.mode==='online').reduce((a,pm)=>a+pm.amount,0);
-    const recent = pays.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,6);
-    el.innerHTML = `<h3>💰 Income</h3>
-      <div class="prow"><span>Collected this month</span><b>${inr(cash+online)}</b></div>
-      <div class="prow" style="font-size:.8rem;color:var(--mut)"><span>Online ${inr(online)}</span><span>Cash ${inr(cash)}</span></div>` +
-      recent.map(pm=>`<div class="up-ev"><span class="when">${pm.date ? new Date(pm.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '—'}</span>
-        <span class="what">${esc(pm.client)} <span>· ${esc(pm.mode)}</span></span><b style="color:var(--gold-b);font-family:var(--serif)">${inr(pm.amount)}</b></div>`).join('');
-  }
 
   /* ---------- record payment ---------- */
   let payingId = null, payMode = 'online';
