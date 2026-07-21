@@ -75,6 +75,27 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .src{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:20px;padding:.15em .6em;color:var(--mut)}
 .lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
 .lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
+/* payment popup */
+.pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.25s}
+.pay-backdrop.open{opacity:1;pointer-events:auto}
+.pay-modal{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:130;
+  width:min(92vw,360px);background:var(--panel);border:1px solid var(--gold);border-radius:14px;
+  padding:1.4rem 1.2rem;opacity:0;pointer-events:none;transition:.3s;
+}
+.pay-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.pay-modal h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.2rem}
+.pay-modal .who{font-size:.8rem;color:var(--mut);margin-bottom:.9rem}
+.mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
+.mode-pills button{flex:1;background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.6em;cursor:pointer;font-size:.85rem}
+.mode-pills button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.pay-hist{font-size:.75rem;color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
+.pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
+.pay-close{position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:1.5rem;cursor:pointer}
+@media(max-width:560px){
+  .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%)}
+  .pay-modal.open{transform:translateY(0)}
+}
 .lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
 .lead-sub a{color:var(--gold-b);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.25em .8em}
 .lead-sub .lead-x{background:none;border:1px solid rgba(224,122,106,.5);color:var(--err);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
@@ -318,6 +339,23 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
       <button class="gbtn" id="saveConfig">Save All</button>
     </div></div>
   </div>
+</div>
+
+<div class="pay-backdrop" id="payBackdrop"></div>
+<div class="pay-modal" id="payModal" role="dialog" aria-modal="true" aria-label="Record payment">
+  <button class="pay-close" id="payClose" type="button" aria-label="Close">&times;</button>
+  <h3>Record Payment</h3>
+  <div class="who" id="payWho"></div>
+  <div class="fld"><label>Amount received (₹)</label><input id="payAmt" type="number" min="1" inputmode="numeric" placeholder="e.g. 10000" /></div>
+  <div class="fld"><label>Date</label><input id="payDate" type="date" /></div>
+  <div class="fld"><label>Payment mode</label>
+    <div class="mode-pills">
+      <button type="button" id="modeOnline" class="on">Online</button>
+      <button type="button" id="modeCash">Cash</button>
+    </div>
+  </div>
+  <div class="pay-hist" id="payHist"></div>
+  <button class="gbtn" id="paySave" type="button">Save Payment</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -723,6 +761,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button class="act" data-edit>Edit</button>
           <button class="act" data-dup>Duplicate</button>
           <button class="act" data-pdfrow>PDF</button>
+          <button class="act" data-pay>＋ Payment</button>
           ${x.clientPhone ? `<a href="https://wa.me/91${esc(String(x.clientPhone).replace(/\D/g,'').slice(-10))}?text=${encodeURIComponent(waSummary(x))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
           <button class="lead-x" data-delpkg>Delete</button>
         </div>
@@ -756,11 +795,52 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
+    if(e.target.closest('[data-pay]')){ openPay(x); return; }
     if(e.target.closest('[data-delpkg]')){
       if(!confirm(`Delete the package for "${x.clientName||'this client'}" permanently?`)) return;
       try{ await deleteDoc(doc(db,'packages',id)); PKGS = PKGS.filter(p=>p.id!==id); renderPkgList(); toast('Package deleted'); }
       catch(err){ toast('Delete failed'); }
     }
+  });
+
+  /* ---------- record payment ---------- */
+  let payingId = null, payMode = 'online';
+  function openPay(x){
+    payingId = x.id; payMode = 'online';
+    $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on');
+    $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr((x.totals||{}).balance||0)} of ${inr((x.totals||{}).finalPrice||0)}`;
+    $('#payAmt').value = '';
+    $('#payDate').value = todayISO();
+    const hist = (x.payments||[]);
+    $('#payHist').innerHTML = hist.length
+      ? '<b style="color:var(--gold-b)">Previous payments</b>' + hist.map(pm=>
+          `<div><span>${esc(pm.date||'')} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount||0)}</span></div>`).join('')
+      : '';
+    $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
+    setTimeout(()=>$('#payAmt').focus(), 80);
+  }
+  function closePay(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
+  $('#payClose').addEventListener('click', closePay);
+  $('#payBackdrop').addEventListener('click', closePay);
+  $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
+  $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closePay(); });
+  $('#paySave').addEventListener('click', async ()=>{
+    const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
+    const amount = Math.round(Number($('#payAmt').value)||0);
+    if(amount <= 0){ toast('Enter the amount received'); $('#payAmt').focus(); return; }
+    const payment = { amount, date: $('#payDate').value || todayISO(), mode: payMode };
+    const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, x.totals||{});
+    tt.advance = (Number(tt.advance)||0) + amount;
+    tt.balance = Math.max(0, (Number(tt.finalPrice)||0) - tt.advance);
+    const payments = [...(x.payments||[]), payment];
+    try{
+      await updateDoc(doc(db,'packages',x.id), { payments, totals: tt, updatedAt: serverTimestamp() });
+      x.payments = payments; x.totals = tt;
+      renderPkgList();
+      closePay();
+      toast(`${inr(amount)} (${payMode}) recorded — balance ${inr(tt.balance)}`);
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
   });
 
   /* ---------- builder ---------- */
