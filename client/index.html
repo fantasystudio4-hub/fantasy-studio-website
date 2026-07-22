@@ -225,6 +225,20 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
     </div></div>
   </div>
 
+  <!-- load failed (network / permissions) — distinct from "no bookings" -->
+  <div id="errorView" hidden>
+    <div class="pkg"><div class="empty">
+      <span class="ic">⚠️</span>
+      <b id="errTitle" style="color:var(--text)">We couldn't load your booking</b><br />
+      <span id="errText">Please check your connection and try again — your booking is safe.</span>
+      <button class="gbtn" id="retryBtn" type="button" style="margin-top:1.2rem;max-width:280px">Try again</button>
+      <div class="contact" style="margin-top:1rem">
+        <a id="errCall" href="#">📞 Call the studio</a>
+        <a id="errWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
+      </div>
+    </div></div>
+  </div>
+
 </div>
 
 <div id="recaptcha-box"></div>
@@ -238,7 +252,7 @@ const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
-const show = id => { ['loadingView','loginView','linkView','dashView','emptyView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+const show = id => { ['loadingView','loginView','linkView','dashView','emptyView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
 
 const DEFAULT_STEPS = ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'];
 const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in' };
@@ -481,16 +495,20 @@ function route(user){
   if(!user){ show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true; return; }
   if(!user.phoneNumber){ show('linkView'); return; }
   show('loadingView');
-  loadPackages(user).catch(err=>{
-    show('emptyView');
-    fillEmpty(user.phoneNumber);
-    if((err.code||'').includes('permission')){
-      toast('The studio has not opened client access yet — please contact us.');
-    }else{
-      toast('Could not load your booking: ' + (err.code||err.message));
-    }
-  });
+  loadPackages(user).catch(err=>{ showLoadError(err, user); });
 }
+function showLoadError(err, user){
+  const perm = (err && err.code || '').includes('permission');
+  $('#errTitle').textContent = perm ? 'Client access is not open yet' : "We couldn't load your booking";
+  $('#errText').textContent = perm
+    ? 'The studio has not switched on client access for this area yet — reach us and we will sort it out right away.'
+    : 'Please check your connection and try again — your booking is safe.';
+  const ph = (contact().phone||'').replace(/\D/g,'');
+  $('#errCall').href = 'tel:+' + ph;
+  $('#errWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! The client area could not load my booking. My number: ' + (user.phoneNumber||''));
+  show('errorView');
+}
+$('#retryBtn').addEventListener('click', ()=>{ if(auth.currentUser) route(auth.currentUser); });
 
 /* ---------- data ---------- */
 async function loadPackages(user){
@@ -499,6 +517,10 @@ async function loadPackages(user){
   const snap = await getDocs(query(collection(db,'packages'), where('clientPhone','==', last10)));
   const pkgs = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>!x.deleted);
   if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
+  /* newest first — createdAt when present, quote number as tiebreaker */
+  pkgs.sort((a,b)=>
+    ((b.createdAt && b.createdAt.seconds)||0) - ((a.createdAt && a.createdAt.seconds)||0)
+    || String(b.quoteNo||'').localeCompare(String(a.quoteNo||'')));
   const name = pkgs[0].clientName || user.displayName || '';
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
   $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio.`;
