@@ -22,6 +22,8 @@ async function ensureJsPDF(){
   await new Promise((res, rej) => {
     const sc = document.createElement('script');
     sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    sc.integrity = 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk';
+    sc.crossOrigin = 'anonymous';
     sc.onload = res; sc.onerror = () => rej(new Error('jsPDF failed to load'));
     document.head.appendChild(sc);
   });
@@ -41,7 +43,8 @@ async function fetchFontB64(url){
 async function ensureFonts(){
   if (fontsReady !== null) return fontsReady;
   try {
-    const base = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSans/';
+    /* pinned release tag — @main is a moving target and could silently change PDF output */
+    const base = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@v20201206-phase3/hinted/ttf/NotoSans/';
     const [n, b] = await Promise.all([
       fetchFontB64(base + 'NotoSans-Regular.ttf'),
       fetchFontB64(base + 'NotoSans-Bold.ttf'),

@@ -2295,6 +2295,8 @@ function ensureJsPDF(){
   _jspdfLoading = new Promise((res, rej)=>{
     const sc = document.createElement('script');
     sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    sc.integrity = 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk';
+    sc.crossOrigin = 'anonymous';
     sc.onload = res;
     sc.onerror = ()=>{ _jspdfLoading = null; rej(new Error('jspdf failed')); };
     document.head.appendChild(sc);
