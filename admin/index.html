@@ -1227,11 +1227,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return calEvents().filter(e=>e.date===dateISO && (e.status==='booked' || e.status==='lead') && e.id!==excludeId
       && !(xc && String(e.client||'').trim().toLowerCase() === xc));   /* the same client's own lead isn't a clash */
   }
-  /* client phones are stored as plain 10 digits — the portal's security rule
-     matches '+91' + clientPhone exactly, so spaces or +91 would break login */
+  /* client phones are stored as the LAST 10 DIGITS of the client's login
+     number — works for +91 and for NRI numbers alike (the portal matches on
+     the last 10 digits of the verified phone, whatever the country code) */
   function normPhone(v){
     const d = String(v||'').replace(/\D/g,'');
-    return (d.length > 10 && d.startsWith('91')) ? d.slice(-10) : d;
+    return d.length > 10 ? d.slice(-10) : d;
   }
   /* phone index: lets the client portal check "does this number have a booking?"
      BEFORE sending an OTP — stores only a hash, never the number itself */
