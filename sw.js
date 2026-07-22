@@ -1,9 +1,10 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets. */
-const CACHE = 'fs-cache-v4';
+const CACHE = 'fs-cache-v5';
 const PRECACHE = [
   './',
+  'admin/',
   'manifest.webmanifest',
   'og.png',
   'icons/icon-192.png',
@@ -40,24 +41,27 @@ self.addEventListener('fetch', e => {
   // never intercept analytics
   if (url.hostname.includes('googletagmanager.com') || url.hostname.includes('google-analytics.com')) return;
 
-  // the page itself: network-first so every deploy shows immediately
+  // the page itself: network-first so every deploy shows immediately.
+  // Cached under its own URL — the admin page must not overwrite the home page's offline copy.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)
         .then(res => {
           const copy = res.clone();
-          caches.open(CACHE).then(c => c.put('./', copy)).catch(() => {});
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
           return res;
         })
-        .catch(() => caches.match('./'))
+        .catch(() => caches.match(req).then(m => m || caches.match('./')))
     );
     return;
   }
 
-  // assets (same-origin, fonts, jsPDF CDN): serve cache fast, refresh in background
+  // assets (same-origin, fonts, Firebase SDK, jsPDF CDN): serve cache fast, refresh in background.
+  // www.gstatic.com matters: without it the admin cannot boot offline at all.
   const cacheable = url.origin === location.origin
     || url.hostname === 'fonts.googleapis.com'
     || url.hostname === 'fonts.gstatic.com'
+    || url.hostname === 'www.gstatic.com'
     || url.hostname === 'cdnjs.cloudflare.com';
   if (!cacheable) return;
 

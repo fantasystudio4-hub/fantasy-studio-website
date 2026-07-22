@@ -155,7 +155,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .pkg-acts .act:active{background:rgba(184,144,43,.18)}
 .pkg-acts .lead-x{background:rgba(224,122,106,.08);border:1px solid transparent;color:var(--err)}
 .pkg-acts .lead-x:active{background:var(--err);color:#fff}
-@media(min-width:700px){.pkg-acts{grid-template-columns:repeat(6,1fr)}}
+@media(min-width:700px){.pkg-acts{grid-template-columns:repeat(7,1fr)}}
 
 /* delivery tracker */
 .dprog{height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
@@ -174,6 +174,29 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .dstep.done{color:var(--text)}
 .dstep.done i{background:var(--ok);border-color:var(--ok);color:#fff}
 @media(hover:hover){ .dstep:hover{background:rgba(255,255,255,.04)} .dstep:hover i{border-color:var(--gold)} }
+
+/* offline chip + forgot password + undo toast */
+.net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
+.hd .net + .out{margin-left:.45rem}
+.linky{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;display:block;margin:-.2rem 0 .8rem;padding:0}
+.linky:active{color:var(--gold-b)}
+.toast button{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.15em .85em;margin-left:.6em;cursor:pointer;font-size:.8rem}
+
+/* date-clash warning in the builder */
+.dwarn{color:var(--err);font-size:.76rem;background:rgba(224,122,106,.08);border:1px dashed rgba(224,122,106,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .6rem}
+
+/* calendar quick jump */
+.cal-title{cursor:pointer}
+.cal-jump{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .8rem}
+.cal-jump .yr{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:1.1rem}
+.cal-jump .yr b{font-family:var(--serif);color:var(--gold-b);font-size:1.02rem}
+.cal-jump .yr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.3em .8em}
+.cal-jump .mo{background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.5em .2em;font-size:.76rem;cursor:pointer}
+.cal-jump .mo.on{border-color:var(--gold);color:var(--gold-b)}
+@media(hover:hover){ .cal-jump .mo:hover{border-color:var(--gold);color:var(--gold-b)} }
+
+/* balance-due pill on upcoming shoots */
+.up-ev .due{color:var(--gold-b);border-color:var(--gold);white-space:nowrap}
 
 /* filter chips with counts */
 .fchips{display:flex;gap:.4rem;overflow-x:auto;margin:0 0 .8rem;padding-bottom:2px;scrollbar-width:none}
@@ -246,6 +269,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .mode-pills button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
 .pay-hist{font-size:.75rem;color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
 .pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
+.pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:.85rem;padding:0 .15em;vertical-align:middle}
 .pay-close{position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:1.5rem;cursor:pointer}
 @media(max-width:560px){
   .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%)}
@@ -328,6 +352,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <div class="hd">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Admin Panel</span></div>
+    <span class="net" id="netDot" hidden>offline</span>
     <button class="out" id="logoutBtn">Logout</button>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
   </div>
@@ -361,6 +386,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
           </button>
         </div>
       </div>
+      <button type="button" class="linky" id="forgotPw">Forgot password?</button>
       <button class="gbtn" type="submit">Sign In</button>
       <div class="err" id="loginErr" hidden></div>
     </form>
@@ -390,6 +416,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <div id="homeView">
     <div class="stats" id="pkgStats"></div>
     <div class="sec upco" id="upcoming" hidden></div>
+    <div class="sec upco" id="followups" hidden></div>
     <div class="sec" style="padding:.9rem 1rem">
       <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked &amp; recent deliveries</h3>
       <div id="homeBooked"><div class="skel"></div><div class="skel"></div></div>
@@ -399,7 +426,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <div id="pkgView" hidden>
     <div id="pkgListView">
       <div class="bar">
-        <input id="pkgSearch" type="search" placeholder="Search name or phone…" />
+        <input id="pkgSearch" type="search" placeholder="Search name, phone or quote #…" />
         <button id="pkgRefresh" aria-label="Refresh">↻</button>
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
@@ -466,6 +493,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <button id="calNext" aria-label="Next month">›</button>
         <button id="calToday">Today</button>
       </div>
+      <div class="cal-jump" id="calJump" hidden></div>
       <div class="cal-grid" id="calGrid"></div>
       <div class="cal-legend">
         <span><i class="dot booked"></i>Booked</span>
@@ -479,6 +507,10 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   </div>
 
   <div id="configView" hidden>
+    <div class="sec">
+      <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days)</span></h3>
+      <div id="trashList"></div>
+    </div>
     <div class="sec">
       <h3>Backup &amp; Export</h3>
       <p class="sub">Download your data for safekeeping and accounts.</p>
@@ -591,7 +623,17 @@ const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.style.pointerEvents='none'; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+function toastUndo(m, fn){
+  const t=$('#toast');
+  t.textContent = m + ' ';
+  const b = document.createElement('button'); b.type='button'; b.textContent='Undo';
+  b.addEventListener('click', ()=>{ t.classList.remove('show'); t.style.pointerEvents='none'; fn(); });
+  t.appendChild(b);
+  t.style.pointerEvents='auto';
+  t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove('show'); t.style.pointerEvents='none'; }, 8000);
+}
 const buzz = () => { try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} };
 
 const SERVICE_LABELS = {
@@ -658,14 +700,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#setupView').hidden = false;
 }else{
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } =
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, orderBy, limit, serverTimestamp, onSnapshot } =
+  const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+          collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField,
+          query, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, arrayUnion, increment, getDocsFromServer } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
   const auth = getAuth(app);
-  const db   = getFirestore(app);
+  /* offline-first: writes queue locally and sync when signal returns */
+  let db;
+  try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+  catch(e){ db = initializeFirestore(app, {}); }
+
+  /* resolves 'ok' on server ack, 'queued' if the write is still pending after 2.5s (offline) */
+  function settle(p){ p.catch(()=>{}); return Promise.race([ p.then(()=>'ok'), new Promise(res=>setTimeout(()=>res('queued'), 2500)) ]); }
 
   /* ---------- auth ---------- */
   $('#loginForm').addEventListener('submit', async e=>{
@@ -684,14 +734,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#passEye').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     p.focus();
   });
+  $('#forgotPw').addEventListener('click', async ()=>{
+    const email = $('#email').value.trim();
+    if(!email){ toast('Type your email above first'); $('#email').focus(); return; }
+    try{ await sendPasswordResetEmail(auth, email); toast('Password reset link sent to ' + email); }
+    catch(err){ toast('Could not send: ' + (err.code||'').replace('auth/','').replace(/-/g,' ')); }
+  });
+  const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
+  window.addEventListener('online',  ()=>{ updNet(); toast('Back online — syncing'); });
+  window.addEventListener('offline', ()=>{ updNet(); toast('Offline — changes will sync when signal returns'); });
+  updNet();
   $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
   onAuthStateChanged(auth, user=>{
     if(!user && _leadsUnsub){ try{ _leadsUnsub(); }catch(e){} _leadsUnsub = null; _leadsInit = false; }
+    if(!user && _pkgsUnsub){ try{ _pkgsUnsub(); }catch(e){} _pkgsUnsub = null; }
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
     if(user){
       loadLeads(); loadConfig(); loadPkgs();
+      import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
       showTab(fromHash);
       try{ history.replaceState({view: VIEW_OF_TAB[fromHash]}, '', '#' + VIEW_OF_TAB[fromHash]); }catch(e){}
@@ -763,6 +825,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- leads ---------- */
   let LEADS = [];
   let _leadsUnsub = null, _leadsInit = false, _seenBefore = 0;
+  let _leadsFresh = false, _pkgsFresh = false;   /* true once a server (non-cache) snapshot has arrived */
   function loadLeads(){
     if(_leadsUnsub){ renderLeads(); return; }
     try{ _seenBefore = Number(localStorage.getItem('fs_leads_seen'))||0; localStorage.setItem('fs_leads_seen', String(Date.now())); }catch(e){}
@@ -770,21 +833,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _leadsUnsub = onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(300)), snap=>{
         const prevIds = new Set(LEADS.map(l=>l.id));
         LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        if(!snap.metadata.fromCache) _leadsFresh = true;
         if(_leadsInit){
           const fresh = LEADS.filter(l=>!prevIds.has(l.id));
           if(fresh.length) toast(`🔔 New lead: ${fresh[0].name||'someone'}${fresh.length>1 ? ' +' + (fresh.length-1) + ' more' : ''}`);
         }
         _leadsInit = true;
-        renderStats(); renderLeads(); renderCalendar(); renderHome();
-      }, err=>{ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; });
+        renderStats(); renderLeads(); renderCalendar(); renderHome(); renderTrash();
+      }, err=>{
+        try{ if(_leadsUnsub) _leadsUnsub(); }catch(e){}
+        _leadsUnsub = null; _leadsInit = false;   /* let ↻ Refresh resubscribe */
+        $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`;
+      });
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
   $('#refreshBtn').addEventListener('click', loadLeads);
   let leadFilterVal = '';
   function renderLeadChips(){
+    const live = LEADS.filter(l=>!l.deleted);
     const counts = {}; STATUSES.forEach(s=>counts[s]=0);
-    LEADS.forEach(l=>{ const s=l.status||'new'; counts[s]=(counts[s]||0)+1; });
-    $('#leadChips').innerHTML = [['','All',LEADS.length], ...STATUSES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
+    live.forEach(l=>{ const s=l.status||'new'; counts[s]=(counts[s]||0)+1; });
+    $('#leadChips').innerHTML = [['','All',live.length], ...STATUSES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${leadFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
   }
   $('#leadChips').addEventListener('click', e=>{
@@ -797,11 +866,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderStats(); renderLeads();
   });
 
+  const liveLeads = () => LEADS.filter(l=>!l.deleted);
   function renderStats(){
     const counts = {}; STATUSES.forEach(s=>counts[s]=0);
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
     let monthTotal = 0, monthCount = 0;
-    LEADS.forEach(l=>{
+    liveLeads().forEach(l=>{
       counts[l.status||'new'] = (counts[l.status||'new']||0)+1;
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       if(ts && ts >= mStart && l.grandTotal){ monthTotal += Number(l.grandTotal)||0; monthCount++; }
@@ -817,10 +887,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderLeadChips();
     const f = leadFilterVal;
     const q = ($('#leadSearch').value||'').trim().toLowerCase();
-    const list = LEADS.filter(l=>(!f || (l.status||'new')===f)
-      && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)));
+    const list = LEADS.filter(l=>!l.deleted && (!f || (l.status||'new')===f)
+      && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)
+          || String(l.eventType||'').toLowerCase().includes(q)));
     if(!list.length){
-      $('#leadList').innerHTML = LEADS.length
+      $('#leadList').innerHTML = LEADS.some(l=>!l.deleted)
         ? '<div class="empty2"><span class="ic">👥</span>No leads match this filter.</div>'
         : '<div class="empty2"><span class="ic">👥</span>No leads yet — new enquiries from the website appear here instantly.</div>';
       return;
@@ -882,12 +953,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-del-lead]')){
       const l = LEADS.find(x=>x.id===card.dataset.id);
-      if(!confirm(`Delete the lead "${(l&&l.name)||'this lead'}" permanently? This cannot be undone.`)) return;
+      if(!confirm(`Move the lead "${(l&&l.name)||'this lead'}" to Trash?`)) return;
+      const id = card.dataset.id;
       try{
-        await deleteDoc(doc(db,'leads',card.dataset.id));
-        LEADS = LEADS.filter(x=>x.id!==card.dataset.id);
-        renderStats(); renderLeads();
-        toast('Lead deleted');
+        await settle(updateDoc(doc(db,'leads',id), { deleted: true, deletedAt: todayISO() }));
+        if(l){ l.deleted = true; l.deletedAt = todayISO(); }
+        renderStats(); renderLeads(); renderTrash();
+        toastUndo('Lead moved to Trash', async ()=>{
+          try{
+            await settle(updateDoc(doc(db,'leads',id), { deleted: deleteField(), deletedAt: deleteField() }));
+            if(l){ delete l.deleted; delete l.deletedAt; }
+            renderStats(); renderLeads(); renderTrash();
+          }catch(err){ toast('Undo failed'); }
+        });
       }catch(err){ toast('Delete failed'); }
       return;
     }
@@ -1093,22 +1171,108 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
-  async function loadPkgs(){
+  /* ---------- shared package helpers ---------- */
+  const livePkgs = () => PKGS.filter(x=>!x.deleted);
+  const daysAgo = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? Math.floor((Date.now() - new Date(d+'T00:00').getTime()) / 864e5) : null;
+  const waLink = (phone, text) => `https://wa.me/91${String(phone||'').replace(/\D/g,'').slice(-10)}?text=${encodeURIComponent(text)}`;
+  function openWa(url){
+    const w = window.open(url, '_blank');
+    if(!w) toast('Popup blocked — allow popups for this app to open WhatsApp');
+    return !!w;
+  }
+  function waQuoteText(x){
+    const tt = x.totals||{};
+    const evs = (x.events||[]).map(ev=>`• ${ev.title||'Event'}${ev.date?' — '+stepDate(ev.date):''}`).join('\n');
+    return `*Fantasy Studio* — Quotation ${x.quoteNo||''}\n\n${evs}\n\nPackage total: ${inr(tt.finalPrice||0)}\n50% advance confirms your dates · 40% on event day · 10% at delivery.\n\n${pdfContact().phone||''} · ${pdfContact().website||''}`;
+  }
+  function waReceiptText(x, pm, balance){
+    return `*Fantasy Studio* — Payment received ✅\n\n${inr(pm.amount)} (${pm.mode}) on ${stepDate(pm.date)||pm.date}\nQuote ${x.quoteNo||''} — ${x.clientName||''}\nRemaining balance: ${inr(balance)}\n\nThank you!`;
+  }
+  function waFollowupText(x){
+    return `Salaam ${x.clientName||''}! Just checking if you had a chance to review our quotation ${x.quoteNo||''} (${inr((x.totals||{}).finalPrice||0)}) from Fantasy Studio. Dates book up fast in season — we would love to cover your functions. 🌟`;
+  }
+  function nextShootDate(x){
+    const today = todayISO();
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    return ds.find(d=>d>=today) || ds[ds.length-1] || '';
+  }
+  function dateConflicts(dateISO, excludeId, excludeClient){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(dateISO||'')) return [];
+    const xc = String(excludeClient||'').trim().toLowerCase();
+    return calEvents().filter(e=>e.date===dateISO && (e.status==='booked' || e.status==='lead') && e.id!==excludeId
+      && !(xc && String(e.client||'').trim().toLowerCase() === xc));   /* the same client's own lead isn't a clash */
+  }
+  /* duplicate-proof quote numbers: a counter doc allocated in a transaction */
+  async function allocQuoteNo(){
+    const yr = new Date().getFullYear();
     try{
-      const snap = await getDocs(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(200)));
-      PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-      /* one-time backfill: number packages created before quote numbers existed */
-      const unnumbered = PKGS.filter(x=>!x.quoteNo).sort((a,b)=>{
-        const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
-        const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
-        return ta - tb;
+      return await runTransaction(db, async t=>{
+        const ref = doc(db,'config','counters');
+        const snap = await t.get(ref);
+        const key = 'quote' + yr;
+        const cur = snap.exists() ? (Number(snap.data()[key])||0) : 0;
+        const localMax = PKGS.map(x=>x.quoteNo||'').filter(q=>q.startsWith('FS-'+yr+'-'))
+          .map(q=>parseInt(q.split('-')[2],10)||0).reduce((a,b)=>Math.max(a,b), 0);
+        const next = Math.max(cur, localMax) + 1;
+        t.set(ref, { [key]: next }, { merge: true });
+        return 'FS-' + yr + '-' + String(next).padStart(3,'0');
       });
-      for(const x of unnumbered){
-        x.quoteNo = nextQuoteNo();
-        try{ await updateDoc(doc(db,'packages',x.id), { quoteNo: x.quoteNo }); }catch(e){}
-      }
-      renderPkgList();
-      renderCalendar();
+    }catch(e){
+      /* local numbering only as a true offline fallback — any other failure must surface, not silently degrade */
+      if(navigator.onLine) throw e;
+      return nextQuoteNo();
+    }
+  }
+
+  let _pkgsUnsub = null, _pkgsBackfilled = false;
+  /* backfill one legacy package: counter + doc in ONE transaction, skipped if another device already numbered it */
+  async function backfillQuoteNo(id){
+    const yr = new Date().getFullYear();
+    return runTransaction(db, async t=>{
+      const cref = doc(db,'config','counters');
+      const pref = doc(db,'packages',id);
+      const cs = await t.get(cref);
+      const ps = await t.get(pref);
+      if(!ps.exists() || ps.data().quoteNo) return ps.exists() ? ps.data().quoteNo : null;
+      const key = 'quote' + yr;
+      const cur = cs.exists() ? (Number(cs.data()[key])||0) : 0;
+      const localMax = PKGS.map(x=>x.quoteNo||'').filter(q=>q.startsWith('FS-'+yr+'-'))
+        .map(q=>parseInt(q.split('-')[2],10)||0).reduce((a,b)=>Math.max(a,b), 0);
+      const next = Math.max(cur, localMax) + 1;
+      const qn = 'FS-' + yr + '-' + String(next).padStart(3,'0');
+      t.set(cref, { [key]: next }, { merge: true });
+      t.update(pref, { quoteNo: qn });
+      return qn;
+    });
+  }
+  function loadPkgs(){
+    if(_pkgsUnsub){ renderPkgList(); renderCalendar(); return; }
+    try{
+      _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(500)), async snap=>{
+        PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        if(!snap.metadata.fromCache) _pkgsFresh = true;
+        renderPkgList();
+        renderCalendar();
+        /* one-time backfill: number packages created before quote numbers existed.
+           Only from a SERVER snapshot — a stale cache image must never renumber docs. */
+        if(!_pkgsBackfilled && !snap.metadata.fromCache){
+          _pkgsBackfilled = true;
+          const unnumbered = PKGS.filter(x=>!x.quoteNo).sort((a,b)=>{
+            const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+            const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+            return ta - tb;
+          });
+          for(const x of unnumbered){
+            try{ const qn = await backfillQuoteNo(x.id); if(qn) x.quoteNo = qn; }
+            catch(e){ break; }   /* offline/denied — retry next session */
+          }
+          if(unnumbered.length) renderPkgList();
+        }
+      }, err=>{
+        try{ if(_pkgsUnsub) _pkgsUnsub(); }catch(e){}
+        _pkgsUnsub = null;   /* let ↻ Refresh resubscribe */
+        $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`;
+      });
     }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
@@ -1118,9 +1282,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let pkgFilterVal = '';
   const PKG_STATES = ['draft','sent','booked','delivered'];
   function renderPkgChips(){
+    const live = livePkgs();
     const counts = {draft:0,sent:0,booked:0,delivered:0};
-    PKGS.forEach(x=>{ const s=x.status||'draft'; counts[s]=(counts[s]||0)+1; });
-    $('#pkgChips').innerHTML = [['','All',PKGS.length], ...PKG_STATES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
+    live.forEach(x=>{ const s=x.status||'draft'; counts[s]=(counts[s]||0)+1; });
+    $('#pkgChips').innerHTML = [['','All',live.length], ...PKG_STATES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${pkgFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
   }
   $('#pkgChips').addEventListener('click', e=>{
@@ -1137,12 +1302,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderPkgStats(){
     const el = $('#pkgStats'); if(!el) return;
-    const confirmed = PKGS.filter(x=>['booked','delivered'].includes(x.status||'draft'));
-    const booked = PKGS.filter(x=>(x.status||'draft')==='booked');
-    const outstanding = confirmed.reduce((s,x)=>s+((x.totals||{}).balance||0),0);
+    const confirmed = livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft'));
+    const booked = livePkgs().filter(x=>(x.status||'draft')==='booked');
+    const outstanding = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
-    const newMonth = PKGS.filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
+    const newMonth = livePkgs().filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
     el.innerHTML = `
       <div class="stat month" data-goto="booked" role="button"><b>${inr(outstanding)}</b><span>left to collect (booked)</span></div>
       <div class="stat" data-goto="booked" role="button"><b>${inr(bookedVal)}</b><span>booked value</span></div>
@@ -1157,34 +1322,73 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
     el.hidden = !next.length;
     if(!next.length) return;
-    el.innerHTML = '<h3>📅 Upcoming shoots</h3>' + next.map(e=>`
+    el.innerHTML = '<h3>📅 Upcoming shoots</h3>' + next.map(e=>{
+      const pk = e.kind === 'pkg' ? PKGS.find(p=>p.id===e.id) : null;
+      const due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
+      return `
       <div class="up-ev" data-goto="${e.date}">
         <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
         <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
-        <i class="dot ${e.status}"></i>
-      </div>`).join('');
+        ${due > 0 ? `<button class="act due" data-paydue="${pk.id}">${inr(due)} due</button>` : `<i class="dot ${e.status}"></i>`}
+      </div>`;
+    }).join('');
   }
   $('#upcoming').addEventListener('click', e=>{
+    const pay = e.target.closest('[data-paydue]');
+    if(pay){ const pk = PKGS.find(p=>p.id===pay.dataset.paydue); if(pk) openPay(pk); return; }
     const row = e.target.closest('[data-goto]'); if(!row) return;
     calSel = row.dataset.goto;
     const d = new Date(calSel+'T00:00'); calY = d.getFullYear(); calM = d.getMonth();
     $('#tabCal').click();
   });
 
+  /* sent quotes that have gone quiet — surfaced on Home every morning */
+  function renderFollowups(){
+    const el = $('#followups'); if(!el) return;
+    const list = livePkgs().filter(x=>(x.status||'draft')==='sent').map(x=>{
+      const since = x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt);
+      return { x, days: daysAgo(since) };
+    }).filter(r=>r.days != null && r.days >= 3)
+      .sort((a,b)=>b.days-a.days).slice(0,6);
+    el.hidden = !list.length;
+    if(!list.length) return;
+    el.innerHTML = '<h3>📤 Quotes needing follow-up</h3>' + list.map(r=>`
+      <div class="up-ev" data-fu="${r.x.id}">
+        <span class="when">${r.days}d ago</span>
+        <span class="what">${esc(r.x.clientName||'—')} <span>· ${esc(r.x.quoteNo||'')} · ${inr((r.x.totals||{}).finalPrice||0)}</span></span>
+        ${r.x.clientPhone ? '<button class="act" data-funudge>WhatsApp</button>' : ''}
+        <button class="act" data-fudone title="Mark followed up">✓</button>
+      </div>`).join('');
+  }
+  $('#followups').addEventListener('click', async e=>{
+    const row = e.target.closest('[data-fu]'); if(!row) return;
+    const x = PKGS.find(p=>p.id===row.dataset.fu); if(!x) return;
+    const nudge = e.target.closest('[data-funudge]'), done = e.target.closest('[data-fudone]');
+    if(!nudge && !done) return;
+    if(nudge && !openWa(waLink(x.clientPhone, waFollowupText(x)))) return;   /* popup blocked → don't reset the counter */
+    try{
+      await settle(updateDoc(doc(db,'packages',x.id), { sentAt: todayISO() }));
+      x.sentAt = todayISO();
+      renderFollowups();
+      if(done) toast('Marked as followed up');
+    }catch(err){ toast('Update failed'); }
+  });
+
   function renderHome(){
     renderPkgStats();
     renderUpcoming();
+    renderFollowups();
     renderHomeBooked();
   }
   function renderHomeBooked(){
     const el = $('#homeBooked'); if(!el) return;
-    /* booked packages + anything delivered in the last 7 days, so a card doesn't vanish the moment it's marked delivered */
+    /* booked (sorted by next shoot) + anything delivered in the last 7 days, so a card doesn't vanish the moment it's marked delivered */
     const cutoff = new Date(Date.now() - 7*864e5).toLocaleDateString('en-CA');
-    const show = PKGS.filter(x=>{
-      const st = x.status||'draft';
-      return st === 'booked' || (st === 'delivered' && (x.deliveredAt||'') >= cutoff);
-    });
-    if(!show.length){ el.innerHTML = '<div class="empty">No booked packages yet.</div>'; return; }
+    const booked = livePkgs().filter(x=>(x.status||'draft')==='booked')
+      .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+    const recent = livePkgs().filter(x=>(x.status||'draft')==='delivered' && (x.deliveredAt||'') >= cutoff);
+    const show = [...booked, ...recent];
+    if(!show.length){ el.innerHTML = '<div class="empty2"><span class="ic">📸</span>No booked packages yet — open a quote and set its status to <b style="color:var(--ok)">booked</b>.</div>'; return; }
     el.innerHTML = show.map(x=>pkgCardHTML(x, expandedHome === x.id)).join('');
   }
 
@@ -1193,8 +1397,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const evn = (x.events||[]).length;
     const tt = x.totals||{};
     const amt = (Number(tt.advance)||0) > 0
-      ? `<span class="amt" title="Balance due / package total">${inr(tt.balance||0)}<em>/${inr(tt.finalPrice||0)}</em></span>`
+      ? `<span class="amt" title="Balance due / package total">${inr(Math.max(0,tt.balance||0))}<em>/${inr(tt.finalPrice||0)}</em></span>`
       : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
+    const nd = st === 'booked' ? nextShootDate(x) : '';
+    const sentDays = st === 'sent' ? daysAgo(x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt)) : null;
     const track = (st === 'booked' || st === 'delivered');
     let prog = '';
     if(track){
@@ -1211,6 +1417,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <i class="dot ${st}"></i>
             <span class="nm">${esc(x.clientName||'—')}</span>
             <span class="src">${evn} event${evn===1?'':'s'}</span>
+            ${nd ? `<span class="src">📅 ${stepDate(nd)}</span>` : ''}
+            ${sentDays != null && sentDays >= 0 ? `<span class="src">📤 ${sentDays}d</span>` : ''}
           </div>
           <div class="l2">
             <span class="qno">${x.quoteNo ? esc(x.quoteNo) : ''}</span>
@@ -1225,6 +1433,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="act" data-edit>Edit</button>
         <button class="act" data-dup>Duplicate</button>
         <button class="act" data-pdfrow>PDF</button>
+        <button class="act" data-wapdf>Send ▷</button>
         <button class="act" data-pay>＋ Payment</button>
         <button class="lead-x" data-delpkg>Delete</button>
       </div>
@@ -1235,12 +1444,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderPkgList(){
     renderHome();
     renderPkgChips();
+    renderTrash();
     const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
-    const list = PKGS.filter(x=>(!f || (x.status||'draft')===f)
-      && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)));
+    let list = livePkgs().filter(x=>(!f || (x.status||'draft')===f)
+      && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)
+          || String(x.quoteNo||'').toLowerCase().includes(q)));
+    if(f === 'booked') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
     if(!list.length){
-      $('#pkgList').innerHTML = PKGS.length
+      $('#pkgList').innerHTML = livePkgs().length
         ? '<div class="empty2"><span class="ic">📦</span>Nothing matches this filter.</div>'
         : '<div class="empty2"><span class="ic">📦</span>No packages yet.<br><button class="goldbar" id="pkgEmptyNew" style="margin-top:.9rem">＋ Create your first package</button></div>';
       return;
@@ -1274,7 +1486,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         patch.status = 'delivered'; patch.deliveredAt = todayISO(); becameDelivered = true;
       }
       try{
-        await updateDoc(doc(db,'packages',id), patch);
+        await settle(updateDoc(doc(db,'packages',id), patch));
         x.delivery = delivery;
         if(becameDelivered){ x.status = 'delivered'; x.deliveredAt = patch.deliveredAt; toast('🎉 Package delivered'); }
         buzz(); renderPkgList();
@@ -1289,20 +1501,37 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-dup]')){
       const copy = JSON.parse(JSON.stringify(x)); delete copy.id;
       copy.status = 'draft';
-      copy.quoteNo = nextQuoteNo();
       copy.payments = [];
-      delete copy.delivery; delete copy.deliveredAt;
+      delete copy.delivery; delete copy.deliveredAt; delete copy.sentAt;
       if(copy.totals){ copy.totals.advance = 0; copy.totals.balance = copy.totals.finalPrice || 0; }
       copy.createdAt = serverTimestamp(); copy.updatedAt = serverTimestamp();
-      try{ await addDoc(collection(db,'packages'), copy); toast('Duplicated as draft'); loadPkgs(); }
+      try{
+        copy.quoteNo = await allocQuoteNo();
+        const ref = doc(collection(db,'packages'));
+        const res = await settle(setDoc(ref, copy));
+        toast(res === 'queued' ? 'Duplicated as draft — will sync' : 'Duplicated as draft');
+        loadPkgs();
+      }
       catch(err){ toast('Duplicate failed'); }
       return;
     }
     if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
+    if(e.target.closest('[data-wapdf]')){ await makePdf(x, true); return; }
     if(e.target.closest('[data-pay]')){ openPay(x); return; }
     if(e.target.closest('[data-delpkg]')){
-      if(!confirm(`Delete the package for "${x.clientName||'this client'}" permanently?`)) return;
-      try{ await deleteDoc(doc(db,'packages',id)); PKGS = PKGS.filter(p=>p.id!==id); renderPkgList(); toast('Package deleted'); }
+      if(!confirm(`Move the package for "${x.clientName||'this client'}" to Trash?`)) return;
+      try{
+        await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
+        x.deleted = true; x.deletedAt = todayISO();
+        renderPkgList();
+        toastUndo('Package moved to Trash', async ()=>{
+          try{
+            await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), updatedAt: serverTimestamp() }));
+            delete x.deleted; delete x.deletedAt;
+            renderPkgList();
+          }catch(err){ toast('Undo failed'); }
+        });
+      }
       catch(err){ toast('Delete failed'); }
     }
   }
@@ -1314,13 +1543,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   (function(){ const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); })();
   function calEvents(){
     const evs = [];
-    PKGS.forEach(pk=>{
+    livePkgs().forEach(pk=>{
       (pk.events||[]).forEach(ev=>{
         if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
           evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'' });
       });
     });
-    LEADS.forEach(l=>{
+    liveLeads().forEach(l=>{
       if(l.status === 'booked' && /^\d{4}-\d{2}-\d{2}$/.test(l.weddingDate||''))
         evs.push({ date: l.weddingDate, title: l.eventType||'Wedding', client: l.name||'', status:'lead', kind:'lead', id: l.id, venue:'' });
     });
@@ -1360,6 +1589,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="act" data-openev>Open</button>
       </div>`).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
   }
+  /* quick month/year jump — tap the calendar title */
+  let jumpY = null;
+  function renderCalJump(){
+    const el = $('#calJump'); if(el.hidden) return;
+    if(jumpY == null) jumpY = calY;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    el.innerHTML = `<div class="yr"><button data-jy="-1">‹</button><b>${jumpY}</b><button data-jy="1">›</button></div>` +
+      months.map((m,i)=>`<button class="mo ${jumpY===calY && i===calM ? 'on':''}" data-jm="${i}">${m}</button>`).join('');
+  }
+  $('#calTitle').addEventListener('click', ()=>{ const el=$('#calJump'); el.hidden = !el.hidden; jumpY = calY; renderCalJump(); });
+  $('#calJump').addEventListener('click', e=>{
+    const jy = e.target.closest('[data-jy]'); if(jy){ jumpY += Number(jy.dataset.jy); renderCalJump(); return; }
+    const jm = e.target.closest('[data-jm]'); if(jm){ calY = jumpY; calM = Number(jm.dataset.jm); $('#calJump').hidden = true; renderCalendar(); }
+  });
   $('#calPrev').addEventListener('click', ()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
   $('#calNext').addEventListener('click', ()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
   $('#calToday').addEventListener('click', ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=n.toLocaleDateString('en-CA'); renderCalendar(); });
@@ -1373,7 +1616,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const pk = PKGS.find(x=>x.id===row.dataset.id);
       if(pk){ $('#tabPkgs').click(); openPkgEdit(pk); }
     }else{
+      const l = LEADS.find(v=>v.id===row.dataset.id);
+      if(l){ $('#leadSearch').value = l.name||''; leadFilterVal = ''; }
       $('#tabLeads').click();
+      renderLeads();
     }
   });
   /* ---------- lead -> package bridge ---------- */
@@ -1412,31 +1658,118 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   const tsDate = t => (t && t.toDate) ? t.toDate().toLocaleDateString('en-CA') : '';
   const stamp = () => new Date().toLocaleDateString('en-CA');
-  $('#expJson').addEventListener('click', ()=>{
-    dl(`fantasy-studio-backup-${stamp()}.json`,
-      JSON.stringify({ exportedAt:new Date().toISOString(), packages:PKGS, leads:LEADS, config:CFG }, null, 1),
-      'application/json'); toast('Backup downloaded');
+  /* exports fetch the FULL collections — the in-memory lists are capped, a backup must not be.
+     Server-first: an offline cache copy is clearly labelled, never passed off as a full backup. */
+  async function fetchAll(){
+    const one = async col => {
+      const q = query(collection(db,col), orderBy('createdAt','desc'));
+      try{ return { snap: await getDocsFromServer(q), partial: false }; }
+      catch(e){ return { snap: await getDocs(q), partial: true }; }
+    };
+    const [p, l] = await Promise.all([one('packages'), one('leads')]);
+    return { pkgs: p.snap.docs.map(d=>({ id:d.id, ...d.data() })),
+             leads: l.snap.docs.map(d=>({ id:d.id, ...d.data() })),
+             partial: p.partial || l.partial };
+  }
+  const partNote = p => p ? ' ⚠ offline copy — may be incomplete' : '';
+  $('#expJson').addEventListener('click', async ()=>{
+    toast('Preparing backup…');
+    try{
+      const { pkgs, leads, partial } = await fetchAll();
+      dl(`fantasy-studio-backup-${stamp()}.json`,
+        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, config:CFG }, null, 1),
+        'application/json');
+      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads${partNote(partial)}`);
+    }catch(err){ toast('Backup failed: ' + (err.code||err.message)); }
   });
-  $('#expPkgs').addEventListener('click', ()=>{
-    const rows = [['QuoteNo','Client','Phone','Status','DeliveryProgress','DeliveredOn','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
-    PKGS.forEach(x=>{ const t=x.totals||{}; const st=x.status||'draft';
-      const di = (st==='booked'||st==='delivered') ? deliveryInfo(x) : null;
-      rows.push([x.quoteNo||'', x.clientName||'', x.clientPhone||'', st,
-      di ? di.doneCount+'/'+di.total : '', st==='delivered' ? (x.deliveredAt||'') : '',
-      (x.events||[]).length, (x.events||[]).map(e=>e.date).filter(Boolean).join(' '), t.gross||0, t.discount||0,
-      t.finalPrice||0, t.advance||0, t.balance||0, tsDate(x.createdAt)]); });
-    dl(`packages-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Packages CSV downloaded');
+  $('#expPkgs').addEventListener('click', async ()=>{
+    toast('Preparing CSV…');
+    try{
+      const { pkgs, partial } = await fetchAll();
+      const live = pkgs.filter(x=>!x.deleted);
+      const rows = [['QuoteNo','Client','Phone','Status','DeliveryProgress','DeliveredOn','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
+      live.forEach(x=>{ const t=x.totals||{}; const st=x.status||'draft';
+        const di = (st==='booked'||st==='delivered') ? deliveryInfo(x) : null;
+        rows.push([x.quoteNo||'', x.clientName||'', x.clientPhone||'', st,
+        di ? di.doneCount+'/'+di.total : '', st==='delivered' ? (x.deliveredAt||'') : '',
+        (x.events||[]).length, (x.events||[]).map(e=>e.date).filter(Boolean).join(' '), t.gross||0, t.discount||0,
+        t.finalPrice||0, t.advance||0, t.balance||0, tsDate(x.createdAt)]); });
+      dl(`packages-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Packages CSV — ${live.length} rows${partNote(partial)}`);
+    }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
   });
-  $('#expPays').addEventListener('click', ()=>{
-    const rows = [['Date','Client','Mode','Amount','QuoteNo']];
-    PKGS.forEach(x=>(x.payments||[]).forEach(pm=>rows.push([pm.date||'', x.clientName||'', pm.mode||'', pm.amount||0, x.quoteNo||''])));
-    dl(`payments-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Payments CSV downloaded');
+  $('#expPays').addEventListener('click', async ()=>{
+    toast('Preparing CSV…');
+    try{
+      const { pkgs, partial } = await fetchAll();
+      /* money records stay in the accounting export even if their package sits in Trash */
+      const rows = [['Date','Client','Mode','Amount','QuoteNo','PackageInTrash']];
+      pkgs.forEach(x=>(x.payments||[]).forEach(pm=>rows.push([pm.date||'', x.clientName||'', pm.mode||'', pm.amount||0, x.quoteNo||'', x.deleted ? 'yes' : ''])));
+      dl(`payments-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Payments CSV — ${rows.length-1} rows${partNote(partial)}`);
+    }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
   });
-  $('#expLeads').addEventListener('click', ()=>{
-    const rows = [['Created','Name','Phone','Source','Status','Events','WeddingDate','QuoteTotal','Message','Notes']];
-    LEADS.forEach(l=>rows.push([tsDate(l.createdAt), l.name||'', l.phone||'', l.source||'', l.status||'new',
-      l.eventType||'', l.weddingDate||'', l.grandTotal||'', l.message||'', l.notes||'']));
-    dl(`leads-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast('Leads CSV downloaded');
+  $('#expLeads').addEventListener('click', async ()=>{
+    toast('Preparing CSV…');
+    try{
+      const { leads, partial } = await fetchAll();
+      const live = leads.filter(l=>!l.deleted);
+      const rows = [['Created','Name','Phone','Source','Status','Events','WeddingDate','QuoteTotal','Message','Notes']];
+      live.forEach(l=>rows.push([tsDate(l.createdAt), l.name||'', l.phone||'', l.source||'', l.status||'new',
+        l.eventType||'', l.weddingDate||'', l.grandTotal||'', l.message||'', l.notes||'']));
+      dl(`leads-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Leads CSV — ${live.length} rows${partNote(partial)}`);
+    }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
+  });
+
+  /* ---------- trash: restore or permanently clear deleted records ---------- */
+  let _purged = false;
+  function renderTrash(){
+    const el = $('#trashList'); if(!el) return;
+    const items = [
+      ...PKGS.filter(x=>x.deleted).map(x=>({ kind:'pkg', id:x.id, label:`📦 ${x.clientName||'—'}${x.quoteNo ? ' · ' + x.quoteNo : ''}`, on:x.deletedAt||'' })),
+      ...LEADS.filter(l=>l.deleted).map(l=>({ kind:'lead', id:l.id, label:`👥 ${l.name||'—'}`, on:l.deletedAt||'' }))
+    ];
+    el.innerHTML = items.length ? items.map(it=>`
+      <div class="up-ev">
+        <span class="what">${esc(it.label)} <span>· deleted ${esc(it.on)}</span></span>
+        <button class="act" data-restore="${it.kind}:${it.id}">Restore</button>
+        <button class="lead-x" data-purge="${it.kind}:${it.id}">✕ Forever</button>
+      </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
+    /* silent 30-day cleanup — only once BOTH lists have arrived fresh from the server,
+       never from a stale cache image (it could hard-delete something restored elsewhere) */
+    if(!_purged && _pkgsFresh && _leadsFresh){
+      _purged = true;
+      [...PKGS.filter(x=>x.deleted), ...LEADS.filter(l=>l.deleted)].forEach(it=>{
+        const d = daysAgo(it.deletedAt);
+        if(d != null && d > 30){
+          const col = PKGS.includes(it) ? 'packages' : 'leads';
+          deleteDoc(doc(db, col, it.id)).catch(()=>{});
+        }
+      });
+    }
+  }
+  $('#trashList').addEventListener('click', async e=>{
+    const rBtn = e.target.closest('[data-restore]');
+    const pBtn = e.target.closest('[data-purge]');
+    if(!rBtn && !pBtn) return;
+    const [kind, id] = (rBtn||pBtn).dataset[rBtn?'restore':'purge'].split(':');
+    const col = kind === 'pkg' ? 'packages' : 'leads';
+    const arr = kind === 'pkg' ? PKGS : LEADS;
+    const it = arr.find(v=>v.id===id); if(!it) return;
+    if(rBtn){
+      try{
+        await settle(updateDoc(doc(db,col,id), { deleted: deleteField(), deletedAt: deleteField() }));
+        delete it.deleted; delete it.deletedAt;
+        renderPkgList(); renderStats(); renderLeads(); renderTrash();
+        toast('Restored ✓');
+      }catch(err){ toast('Restore failed — it may have been permanently deleted elsewhere'); }
+    }else{
+      if(!confirm('Delete forever? This really cannot be undone.')) return;
+      try{
+        await deleteDoc(doc(db,col,id));
+        if(kind==='pkg') PKGS = PKGS.filter(v=>v.id!==id); else LEADS = LEADS.filter(v=>v.id!==id);
+        renderTrash();
+        toast('Deleted forever');
+      }catch(err){ toast('Delete failed'); }
+    }
   });
 
   /* ---------- status picker sheet ---------- */
@@ -1462,15 +1795,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!x){ closeStatus(); return; }
     const next = b.dataset.st;
     if((x.status||'draft') === next){ closeStatus(); return; }
+    if(next === 'booked'){
+      const clashes = (x.events||[]).flatMap(ev=>dateConflicts(ev.date, x.id, x.clientName));
+      if(clashes.length && !confirm(`⚠ Date clash: ${stepDate(clashes[0].date)} already has ${clashes[0].title} (${clashes[0].client})${clashes.length>1 ? ' +' + (clashes.length-1) + ' more' : ''}. Book anyway?`)) return;
+    }
     const patch = { status: next, updatedAt: serverTimestamp() };
     if(next === 'delivered') patch.deliveredAt = todayISO();
     else if(x.deliveredAt) patch.deliveredAt = deleteField();
+    if(next === 'sent') patch.sentAt = todayISO();
     try{
-      await updateDoc(doc(db,'packages',x.id), patch);
+      const res = await settle(updateDoc(doc(db,'packages',x.id), patch));
       x.status = next;
       if(next === 'delivered') x.deliveredAt = patch.deliveredAt; else delete x.deliveredAt;
+      if(next === 'sent') x.sentAt = patch.sentAt;
       buzz(); renderPkgList(); closeStatus();
-      toast(`Status → ${next}`);
+      toast(res === 'queued' ? `Status → ${next} (will sync)` : `Status → ${next}`);
     }catch(err){ toast('Update failed'); }
   });
 
@@ -1479,7 +1818,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function openPay(x){
     payingId = x.id; payMode = 'online';
     $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on');
-    $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr((x.totals||{}).balance||0)} of ${inr((x.totals||{}).finalPrice||0)}`;
+    $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr(Math.max(0,(x.totals||{}).balance||0))} of ${inr((x.totals||{}).finalPrice||0)}`;
     $('#payAmt').value = '';
     const bal = Number((x.totals||{}).balance)||0;
     const fin = Number((x.totals||{}).finalPrice)||0;
@@ -1495,11 +1834,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const hist = (x.payments||[]);
     $('#payHist').innerHTML = hist.length
       ? '<b style="color:var(--gold-b)">Previous payments</b>' + hist.map(pm=>
-          `<div><span>${esc(pm.date||'')} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount||0)}</span></div>`).join('')
+          `<div><span>${esc(pm.date||'')} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(pm.id||'')}" data-amt="${Number(pm.amount)||0}" data-date="${esc(pm.date||'')}" data-mode="${esc(pm.mode||'')}" title="Remove this payment">✕</button></span></div>`).join('')
       : '';
+    const wasOpen = $('#payModal').classList.contains('open');
     $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
     setTimeout(()=>$('#payAmt').focus(), 80);
-    if(!_navFromPop){ try{ history.pushState({view:'pay'}, '', '#packages/pay'); }catch(e){} }
+    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'pay'}, '', '#packages/pay'); }catch(e){} }
   }
   function closePayUI(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
   function closePay(){
@@ -1517,20 +1857,67 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); } });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
+    const btn = $('#paySave'); if(btn.disabled) return;
     const amount = Math.round(Number($('#payAmt').value)||0);
     if(amount <= 0){ toast('Enter the amount received'); $('#payAmt').focus(); return; }
-    const payment = { amount, date: $('#payDate').value || todayISO(), mode: payMode };
-    const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, x.totals||{});
-    tt.advance = (Number(tt.advance)||0) + amount;
-    tt.balance = Math.max(0, (Number(tt.finalPrice)||0) - tt.advance);
-    const payments = [...(x.payments||[]), payment];
+    const payment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+                      amount, date: $('#payDate').value || todayISO(), mode: payMode };
+    btn.disabled = true;
     try{
-      await updateDoc(doc(db,'packages',x.id), { payments, totals: tt, updatedAt: serverTimestamp() });
-      x.payments = payments; x.totals = tt;
+      /* arrayUnion + increment: safe against a stale list on another phone, and queues offline */
+      const res = await settle(updateDoc(doc(db,'packages',x.id), {
+        payments: arrayUnion(payment),
+        'totals.advance': increment(amount),
+        'totals.balance': increment(-amount),
+        updatedAt: serverTimestamp()
+      }));
+      x.payments = [...(x.payments||[]), payment];
+      const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, x.totals||{});
+      tt.advance = (Number(tt.advance)||0) + amount;
+      tt.balance = (Number(tt.finalPrice)||0) - tt.advance;
+      x.totals = tt;
       buzz(); renderPkgList();
       closePay();
-      toast(`${inr(amount)} (${payMode}) recorded — balance ${inr(tt.balance)}`);
+      toast(res === 'queued'
+        ? `${inr(amount)} saved offline — will sync`
+        : `${inr(amount)} (${payMode}) recorded — balance ${inr(Math.max(0,tt.balance))}`);
+      if(x.clientPhone && confirm('Send a WhatsApp receipt to the client?')){
+        openWa(waLink(x.clientPhone, waReceiptText(x, payment, Math.max(0,tt.balance))));
+      }
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ btn.disabled = false; }
+  });
+
+  /* remove a mistaken payment — transaction so totals stay exact (needs signal) */
+  $('#payHist').addEventListener('click', async e=>{
+    const b = e.target.closest('[data-rmpay]'); if(!b) return;
+    const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
+    /* resolve the payment by identity (not row index) — the list may have refreshed since the modal opened */
+    const pm = (x.payments||[]).find(p=>p && (b.dataset.pid ? p.id === b.dataset.pid
+      : (!p.id && Number(p.amount)===Number(b.dataset.amt) && (p.date||'')===b.dataset.date && (p.mode||'')===b.dataset.mode)));
+    if(!pm){ toast('Payment not found — reopen and retry'); return; }
+    if(!confirm(`Remove the ${inr(pm.amount)} payment from ${pm.date}? The balance goes back up.`)) return;
+    try{
+      const arr = await runTransaction(db, async t=>{
+        const ref = doc(db,'packages',x.id);
+        const snap = await t.get(ref);
+        if(!snap.exists()) throw new Error('package not found');
+        const cur = snap.data();
+        const list = [...(cur.payments||[])];
+        const i = pm.id ? list.findIndex(p=>p && p.id === pm.id)
+                        : list.findIndex(p=>p && !p.id && p.amount===pm.amount && p.date===pm.date && p.mode===pm.mode);
+        if(i < 0) throw new Error('payment not found — refresh and retry');
+        list.splice(i, 1);
+        const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, cur.totals||{});
+        tt.advance = Math.max(0, (Number(tt.advance)||0) - (Number(pm.amount)||0));
+        tt.balance = (Number(tt.finalPrice)||0) - tt.advance;
+        t.update(ref, { payments: list, totals: tt, updatedAt: serverTimestamp() });
+        return { list, tt };
+      });
+      x.payments = arr.list; x.totals = arr.tt;
+      renderPkgList(); openPay(x);
+      toast('Payment removed — balance updated');
+    }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
   });
 
   /* ---------- builder ---------- */
@@ -1583,6 +1970,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>Event title</label><input data-f="title" value="${esc(ev.title||'')}" placeholder="e.g. VALIMA RECEPTION" /></div>
         <div class="fld"><label>Date</label><input data-f="date" type="date" value="${esc(ev.date||'')}" /></div>
       </div>
+      <div class="dwarn" data-dwarn hidden></div>
       <div class="fld"><label>Venue (optional)</label><input data-f="venue" value="${esc(ev.venue||'')}" /></div>
       <div class="items">${(ev.items&&ev.items.length?ev.items:[{}]).map(itemRowHTML).join('')}</div>
       <button class="addrow" data-additem>＋ Add Service</button>
@@ -1608,6 +1996,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? Math.round(Number(alb.price)/Number(alb.sheets)) : learnedAlbumRate());
     $('#ppDiscount').value = x ? ((x.totals||{}).discount||0) : 0;
     $('#ppAdvance').value  = x ? ((x.totals||{}).advance||0) : 0;
+    _advanceAtOpen = Number($('#ppAdvance').value)||0;
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
     window.scrollTo(0,0);
@@ -1615,6 +2004,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _pkgBaseline = JSON.stringify(readForm());
   }
   let _pkgBaseline = '';
+  let _advanceAtOpen = 0;
   function pkgDirty(){
     try{ return !$('#pkgEditView').hidden && JSON.stringify(readForm()) !== _pkgBaseline; }
     catch(e){ return false; }
@@ -1667,6 +2057,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   $('#pkgEditView').addEventListener('input', computePkg);
   $('#pkgEditView').addEventListener('change', e=>{
+    if(e.target.matches('[data-f="date"]')){
+      const card = e.target.closest('.pkg-ev');
+      const warn = card && card.querySelector('[data-dwarn]');
+      if(warn){
+        const clashes = dateConflicts(e.target.value, editingId, $('#pcName').value);
+        warn.hidden = !clashes.length;
+        if(clashes.length) warn.textContent =
+          `⚠ ${stepDate(e.target.value)} is already booked: ${clashes[0].title} — ${clashes[0].client}${clashes.length>1 ? ' (+' + (clashes.length-1) + ' more)' : ''}`;
+      }
+    }
     if(e.target.matches('[data-f="service"]')){
       const row = e.target.closest('.itemrow');
       const nameInp = row.querySelector('[data-f="serviceName"]');
@@ -1695,18 +2095,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const d = readForm();
     if(!d.clientName){ toast('Client name is required'); $('#pcName').focus(); return; }
     if(!d.events.length){ toast('Add at least one event with a service'); return; }
+    const btn = $('#pkgSave'); if(btn.disabled) return;
+    btn.disabled = true;
     try{
+      let res;
       if(editingId){
         const existing = PKGS.find(pk=>pk.id===editingId);
+        /* payments may have landed while the editor was open — if the advance field
+           wasn't hand-edited, carry the live figure instead of the stale prefill */
+        const liveAdv = existing ? Number((existing.totals||{}).advance)||0 : 0;
+        if(existing && d.totals.advance === _advanceAtOpen && liveAdv !== _advanceAtOpen){
+          d.totals.advance = Math.min(d.totals.finalPrice, liveAdv);
+          d.totals.balance = d.totals.finalPrice - d.totals.advance;
+        }
         const patch = { ...d, updatedAt: serverTimestamp() };
-        if(existing && !existing.quoteNo) patch.quoteNo = nextQuoteNo();
-        await updateDoc(doc(db,'packages',editingId), patch);
+        if(existing && !existing.quoteNo) patch.quoteNo = await allocQuoteNo();
+        res = await settle(updateDoc(doc(db,'packages',editingId), patch));
       }else{
-        const quoteNo = nextQuoteNo();
-        const ref = await addDoc(collection(db,'packages'), { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const quoteNo = await allocQuoteNo();
+        const ref = doc(collection(db,'packages'));
+        res = await settle(setDoc(ref, { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
         editingId = ref.id;
       }
-      toast('Package saved');
+      toast(res === 'queued' ? 'Saved offline — will sync' : 'Package saved');
       _pkgBaseline = JSON.stringify(readForm());
       /* learn the rates used, so the next quote prefills them automatically */
       try{
@@ -1718,20 +2129,37 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }catch(e){}
       loadPkgs();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ btn.disabled = false; }
   });
 
-  async function makePdf(x){
+  async function makePdf(x, share){
     try{
       toast('Preparing PDF…');
       const { buildQuotePdf } = await import('./pdf-template.js');
       const docPdf = await buildQuotePdf(x, pdfContact(), pdfTerms());
       const safe = String(x.clientName||'Client').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Client';
-      docPdf.save(`Fantasy_Studio_Quote_${safe}.pdf`);
+      const fname = `Fantasy_Studio_Quote_${safe}${x.quoteNo ? '_' + x.quoteNo : ''}.pdf`;
+      if(share){
+        /* hand the PDF straight to WhatsApp via the system share sheet */
+        try{
+          const blob = docPdf.output('blob');
+          const file = new File([blob], fname, { type: 'application/pdf' });
+          if(navigator.canShare && navigator.canShare({ files: [file] })){
+            await navigator.share({ files: [file], title: 'Fantasy Studio Quotation' });
+            return;
+          }
+        }catch(err){ if(err && err.name === 'AbortError') return; }
+        if(x.clientPhone){ if(openWa(waLink(x.clientPhone, waQuoteText(x)))) return; }
+        else toast('Sharing not supported here — downloading instead');
+      }
+      docPdf.save(fname);
     }catch(err){ toast('PDF failed: ' + (err.message||err)); }
   }
   $('#pkgPdf').addEventListener('click', async ()=>{
     const d = readForm();
     if(!d.events.length){ toast('Add at least one event first'); return; }
+    /* keep the saved quote number on PDFs generated from inside the editor */
+    if(editingId){ const ex = PKGS.find(p=>p.id===editingId); if(ex && ex.quoteNo) d.quoteNo = ex.quoteNo; }
     await makePdf(d);
   });
 }
