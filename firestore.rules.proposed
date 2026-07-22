@@ -1,0 +1,130 @@
+rules_version = '2';
+// ============================================================
+// FANTASY STUDIO — PROPOSED combined Firestore rules (DRAFT)
+// Status: NOT DEPLOYED. For review against the live console rules.
+//
+// Covers every collection used by the three studio surfaces
+// (public site, /client/ portal, /admin/) plus LensCal, so this
+// one file can replace the console rules wholesale once approved.
+//
+// Admin identity: custom claim `admin: true` (ideal) OR the
+// bootstrap email allowlist below (works today with zero tooling;
+// remove it once the claim is set via Admin SDK / gcloud).
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true
+        || (request.auth.token.email == 'raqeebgroup1@gmail.com'
+            && request.auth.token.email_verified == true)
+      );
+    }
+
+    // Signed-in client whose verified phone ends with the package's
+    // 10-digit clientPhone (admin stores plain 10 digits; NRI clients
+    // match on the last 10 digits of their international number).
+    function ownsPackage(data) {
+      return signedIn()
+        && request.auth.token.phone_number != null
+        && data.clientPhone is string
+        && data.clientPhone.size() == 10
+        && request.auth.token.phone_number.matches('^[+][0-9]*' + data.clientPhone + '$');
+    }
+
+    // ---- leads: the public site creates enquiries anonymously.
+    // Locked to the exact shape the site sends, with size caps,
+    // so the open write can't be abused as free-form storage.
+    match /leads/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+            ['name','phone','eventType','weddingDate','message','quote',
+             'grandTotal','source','createdAt','status','notes'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 16
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'new'
+        && request.resource.data.notes == '';
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ---- packages: admin everything; clients read only their own.
+    // (Soft-deleted packages stay readable by their owner because the
+    // portal's list query can't prove `deleted` to the rules engine;
+    // the portal filters them out client-side — cosmetic, not a leak
+    // of anyone else's data.)
+    match /packages/{id} {
+      allow read: if isAdmin() || ownsPackage(resource.data);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- site config: readable by everyone (public site pricing,
+    // client portal delivery steps — both read it pre-login).
+    match /config/site {
+      allow get: if true;
+      allow list: if false;
+      allow write: if isAdmin();
+    }
+
+    // ---- quote-number counter and any other config docs: admin only.
+    match /config/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- phoneIndex: pre-OTP "is this number a client?" check.
+    // Individual gets only (doc ids are salted hashes); no listing.
+    match /phoneIndex/{hash} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if isAdmin();
+    }
+
+    // ================= LensCal (unchanged from lenscal/firestore.rules) =================
+
+    match /lenscal_users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /lenscal_availability/{docId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && docId.split('_')[0] == request.auth.uid
+                   && request.resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() && docId.split('_')[0] == request.auth.uid;
+    }
+
+    match /lenscal_connections/{pairId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.users;
+      allow create: if signedIn()
+                    && request.auth.uid in request.resource.data.users
+                    && request.resource.data.requestedBy == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if signedIn() && request.auth.uid in resource.data.users;
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+    }
+
+    match /lenscal_groups/{groupId} {
+      allow read, delete, update: if signedIn() && resource.data.owner == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
+    }
+
+    match /lenscal_broadcasts/{id} {
+      allow read: if signedIn()
+                  && (resource.data.by == request.auth.uid
+                      || request.auth.uid in resource.data.to);
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid;
+      allow update: if signedIn()
+                    && (resource.data.by == request.auth.uid
+                        || (request.auth.uid in resource.data.to
+                            && request.resource.data.diff(resource.data)
+                                 .affectedKeys().hasOnly(['responders'])));
+      allow delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
+  }
+}
