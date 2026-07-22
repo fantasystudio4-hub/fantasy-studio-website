@@ -1223,6 +1223,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return calEvents().filter(e=>e.date===dateISO && (e.status==='booked' || e.status==='lead') && e.id!==excludeId
       && !(xc && String(e.client||'').trim().toLowerCase() === xc));   /* the same client's own lead isn't a clash */
   }
+  /* client phones are stored as plain 10 digits — the portal's security rule
+     matches '+91' + clientPhone exactly, so spaces or +91 would break login */
+  function normPhone(v){
+    const d = String(v||'').replace(/\D/g,'');
+    return (d.length > 10 && d.startsWith('91')) ? d.slice(-10) : d;
+  }
   /* phone index: lets the client portal check "does this number have a booking?"
      BEFORE sending an OTP — stores only a hash, never the number itself */
   async function phoneKey(p){
@@ -1237,10 +1243,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _phoneIdxDone = false;
   function backfillPhoneIndex(){
     if(_phoneIdxDone) return;
-    try{ if(localStorage.getItem('fs_phoneidx_v1')){ _phoneIdxDone = true; return; } }catch(e){}
+    try{ if(localStorage.getItem('fs_phoneidx_v2')){ _phoneIdxDone = true; return; } }catch(e){}
     _phoneIdxDone = true;
-    livePkgs().forEach(x=>ensurePhoneIndex(x.clientPhone));
-    try{ localStorage.setItem('fs_phoneidx_v1','1'); }catch(e){}
+    /* one-time: clean existing packages' phone formats + build the login index */
+    livePkgs().forEach(x=>{
+      const raw = String(x.clientPhone||'');
+      const norm = normPhone(raw);
+      if(norm.length === 10 && norm !== raw){
+        settle(updateDoc(doc(db,'packages',x.id), { clientPhone: norm }));
+        x.clientPhone = norm;
+      }
+      ensurePhoneIndex(norm);
+    });
+    try{ localStorage.setItem('fs_phoneidx_v2','1'); }catch(e){}
   }
 
   /* duplicate-proof quote numbers: a counter doc allocated in a transaction */
@@ -2078,7 +2093,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return {
       clientName: $('#pcName').value.trim(),
       careOf: $('#pcCareOf').value.trim(),
-      clientPhone: $('#pcPhone').value.trim(),
+      clientPhone: normPhone($('#pcPhone').value),
       quoteDate: $('#pcDate').value || todayISO(),
       events,
       album,
