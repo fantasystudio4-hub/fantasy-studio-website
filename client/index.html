@@ -187,7 +187,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 
   <!-- dashboard -->
   <div id="dashView" hidden>
-    <h1 class="hello" id="hello">Salaam!</h1>
+    <h1 class="hello" id="hello">Hi!</h1>
     <p id="helloSub"></p>
     <div id="pkgList"></div>
   </div>
@@ -424,7 +424,7 @@ async function loadPackages(user){
   const pkgs = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>!x.deleted);
   if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
   const name = pkgs[0].clientName || user.displayName || '';
-  $('#hello').textContent = name ? `Salaam, ${name}!` : 'Salaam!';
+  $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
   $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio.`;
   $('#pkgList').innerHTML = pkgs.map(pkgHTML).join('');
   show('dashView');
