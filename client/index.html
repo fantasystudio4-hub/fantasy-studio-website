@@ -37,9 +37,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .fld{margin-bottom:.9rem;text-align:left}
 .fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
 .phwrap{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#171309}
-.phwrap b{display:grid;place-items:center;padding:0 .8em;color:var(--mut);font-weight:500;border-right:1px solid var(--line)}
+.phwrap b{display:grid;place-items:center;padding:0 .1em 0 .7em;color:var(--mut);font-weight:500}
 .phwrap input{flex:1;background:transparent;border:0;color:var(--text);padding:.75em .8em;min-width:0;letter-spacing:.06em}
 .phwrap input:focus{outline:none}
+.phwrap .ccin{flex:0 0 2.6em;width:2.6em;text-align:center;color:var(--mut);border-right:1px solid var(--line);padding:.75em .1em;letter-spacing:.02em}
+.cchint{color:var(--mut);font-size:.68rem;margin-top:.35rem;text-align:left}
 .gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .gbtn:active{transform:scale(.98)}
 .gbtn:disabled{opacity:.7;cursor:default}
@@ -148,7 +150,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 
       <div id="phoneStep">
         <div class="fld"><label>Mobile number</label>
-          <div class="phwrap"><b>+91</b><input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="tel-national" /></div>
+          <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
+          <div class="cchint">Outside India? Change 91 to your country code.</div>
         </div>
         <button class="gbtn" id="sendOtp">Get OTP</button>
         <div class="nobook" id="noBook" hidden>
@@ -166,9 +169,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
       <div id="otpStep" hidden>
         <div class="fld" style="text-align:center"><label style="text-align:center">Enter the OTP sent to <b id="otpTo" style="color:var(--text)"></b></label></div>
         <div class="otp" id="otpBoxes">
-          <input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
+          <input type="tel" inputmode="numeric" autocomplete="one-time-code" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
         </div>
         <button class="gbtn" id="verifyOtp">Verify &amp; Sign In</button>
+        <button class="mini" id="otpResend" type="button">Resend OTP</button>
         <button class="mini" id="otpBack" type="button">← Change number</button>
       </div>
 
@@ -184,15 +188,17 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
       <p>Your bookings are saved under your mobile number — verify it once to find them.</p>
       <div id="linkPhoneStep">
         <div class="fld"><label>Mobile number</label>
-          <div class="phwrap"><b>+91</b><input id="linkPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" /></div>
+          <div class="phwrap"><b>+</b><input id="linkCc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="linkPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" /></div>
+          <div class="cchint">Outside India? Change 91 to your country code.</div>
         </div>
         <button class="gbtn" id="linkSend">Get OTP</button>
       </div>
       <div id="linkOtpStep" hidden>
         <div class="otp" id="linkOtpBoxes">
-          <input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
+          <input type="tel" inputmode="numeric" autocomplete="one-time-code" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
         </div>
         <button class="gbtn" id="linkVerify">Verify</button>
+        <button class="mini" id="linkResend" type="button">Resend OTP</button>
         <button class="mini" id="linkBack" type="button">← Change number</button>
       </div>
       <div class="err" id="linkErr" hidden></div>
@@ -295,24 +301,55 @@ const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='
 const hideErr = sel => { $(sel).hidden = true; };
 
 /* ---------- OTP box behaviour ---------- */
-function wireOtpBoxes(wrapSel){
+function wireOtpBoxes(wrapSel, onFull){
   const boxes = $$(wrapSel + ' input');
+  const full = () => boxes.every(x=>x.value);
   boxes.forEach((b,i)=>{
     b.addEventListener('input', ()=>{
-      b.value = b.value.replace(/\D/g,'').slice(-1);
-      if(b.value && i < boxes.length-1) boxes[i+1].focus();
+      const v = b.value.replace(/\D/g,'');
+      if(v.length > 1){
+        /* SMS autofill / fast paste lands whole code in one box — spread it out */
+        v.split('').slice(0, boxes.length - i).forEach((ch,j)=>boxes[i+j].value = ch);
+        boxes[Math.min(i + v.length, boxes.length) - 1].focus();
+      }else{
+        b.value = v;
+        if(v && i < boxes.length-1) boxes[i+1].focus();
+      }
+      if(full() && onFull) onFull();
     });
     b.addEventListener('keydown', e=>{ if(e.key==='Backspace' && !b.value && i>0) boxes[i-1].focus(); });
     b.addEventListener('paste', e=>{
       const t = (e.clipboardData.getData('text')||'').replace(/\D/g,'');
-      if(t.length >= boxes.length){ e.preventDefault(); boxes.forEach((x,j)=>x.value = t[j]||''); boxes[boxes.length-1].focus(); }
+      if(t.length >= boxes.length){
+        e.preventDefault();
+        boxes.forEach((x,j)=>x.value = t[j]||'');
+        boxes[boxes.length-1].focus();
+        if(full() && onFull) onFull();
+      }
     });
   });
   return () => boxes.map(b=>b.value).join('');
 }
-const otpCode = wireOtpBoxes('#otpBoxes');
-const linkCode = wireOtpBoxes('#linkOtpBoxes');
+/* the 6th digit auto-submits — no extra tap needed */
+const otpCode = wireOtpBoxes('#otpBoxes', ()=>{ const b=$('#verifyOtp'); if(!$('#otpStep').hidden && !b.disabled) b.click(); });
+const linkCode = wireOtpBoxes('#linkOtpBoxes', ()=>{ const b=$('#linkVerify'); if(!$('#linkOtpStep').hidden && !b.disabled) b.click(); });
 const clearBoxes = sel => $$(sel + ' input').forEach(b=>b.value='');
+
+/* resend cooldown — prevents accidental OTP hammering, shows the wait */
+const _cool = new Map();
+function startCooldown(btn, secs = 30){
+  if(!btn) return;
+  clearInterval(_cool.get(btn));
+  let s = secs;
+  btn.disabled = true;
+  btn.textContent = `Resend OTP (${s}s)`;
+  const iv = setInterval(()=>{
+    s--;
+    if(s <= 0){ clearInterval(iv); btn.disabled = false; btn.textContent = 'Resend OTP'; }
+    else btn.textContent = `Resend OTP (${s}s)`;
+  }, 1000);
+  _cool.set(btn, iv);
+}
 
 /* ---------- pre-OTP check: is this number a client at all? ----------
    Reads the hashed phone index so no SMS is wasted on unknown numbers.
@@ -325,6 +362,14 @@ async function phoneKey(p){
 async function isKnownClient(p){
   try{ return (await getDoc(doc(db,'phoneIndex', await phoneKey(p)))).exists(); }
   catch(e){ return true; }
+}
+/* read a country-code + number pair; India keeps strict 10-digit checks,
+   other countries accept 6–14 national digits (NRI clients) */
+function readPhone(ccSel, phSel){
+  const cc = ($(ccSel).value||'').replace(/\D/g,'') || '91';
+  const p  = ($(phSel).value||'').replace(/\D/g,'');
+  const ok = cc === '91' ? p.length === 10 : (p.length >= 6 && p.length <= 14);
+  return { cc, p, ok, full: '+' + cc + p, pretty: '+' + cc + ' ' + p, last10: (cc + p).slice(-10) };
 }
 function showNoBook(p){
   const ph = (contact().phone||'').replace(/\D/g,'');
@@ -341,26 +386,30 @@ function getVerifier(btnId){
   verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
   return verifier;
 }
-$('#sendOtp').addEventListener('click', async ()=>{
+async function doSendLoginOtp(){
   hideErr('#loginErr');
   $('#noBook').hidden = true;
-  const p = ($('#phone').value||'').replace(/\D/g,'');
-  if(p.length !== 10){ showErr('#loginErr','Enter your 10-digit mobile number.'); return; }
+  const ph = readPhone('#cc','#phone');
+  if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
   const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Checking…';
-  if(!(await isKnownClient(p))){
+  if(!(await isKnownClient(ph.last10))){
     btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP';
-    showNoBook('+91 ' + p);
+    showNoBook(ph.pretty);
     return;
   }
   btn.textContent = 'Sending OTP…';
   try{
-    confirmation = await signInWithPhoneNumber(auth, '+91'+p, getVerifier('sendOtp'));
-    $('#otpTo').textContent = '+91 ' + p;
+    confirmation = await signInWithPhoneNumber(auth, ph.full, getVerifier('sendOtp'));
+    $('#otpTo').textContent = ph.pretty;
     $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
     clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
+    startCooldown($('#otpResend'));
+    toast('OTP sent to ' + ph.pretty);
   }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
   finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
-});
+}
+$('#sendOtp').addEventListener('click', doSendLoginOtp);
+$('#otpResend').addEventListener('click', doSendLoginOtp);
 $('#verifyOtp').addEventListener('click', async ()=>{
   hideErr('#loginErr');
   const code = otpCode();
@@ -385,25 +434,29 @@ $('#googleBtn').addEventListener('click', async ()=>{
 
 /* ---------- Google user: verify phone once ---------- */
 let linkConfirm = null, linkVerifier = null;
-$('#linkSend').addEventListener('click', async ()=>{
+async function doSendLinkOtp(){
   hideErr('#linkErr');
-  const p = ($('#linkPhone').value||'').replace(/\D/g,'');
-  if(p.length !== 10){ showErr('#linkErr','Enter your 10-digit mobile number.'); return; }
+  const ph = readPhone('#linkCc','#linkPhone');
+  if(!ph.ok){ showErr('#linkErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
   const btn = $('#linkSend'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Checking…';
-  if(!(await isKnownClient(p))){
+  if(!(await isKnownClient(ph.last10))){
     btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP';
-    showErr('#linkErr','No booking found for +91 ' + p + ' — use the number you gave the studio while booking, or contact us.');
+    showErr('#linkErr','No booking found for ' + ph.pretty + ' — use the number you gave the studio while booking, or contact us.');
     return;
   }
   btn.textContent = 'Sending OTP…';
   try{
     if(!linkVerifier) linkVerifier = new RecaptchaVerifier(auth, 'linkSend', { size: 'invisible' });
-    linkConfirm = await linkWithPhoneNumber(auth.currentUser, '+91'+p, linkVerifier);
+    linkConfirm = await linkWithPhoneNumber(auth.currentUser, ph.full, linkVerifier);
     $('#linkPhoneStep').hidden = true; $('#linkOtpStep').hidden = false;
     clearBoxes('#linkOtpBoxes'); $$('#linkOtpBoxes input')[0].focus();
+    startCooldown($('#linkResend'));
+    toast('OTP sent to ' + ph.pretty);
   }catch(err){ showErr('#linkErr', err); try{ linkVerifier && linkVerifier.clear(); }catch(e){} linkVerifier = null; }
   finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
-});
+}
+$('#linkSend').addEventListener('click', doSendLinkOtp);
+$('#linkResend').addEventListener('click', doSendLinkOtp);
 $('#linkVerify').addEventListener('click', async ()=>{
   hideErr('#linkErr');
   const code = linkCode();
