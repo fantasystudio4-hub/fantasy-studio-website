@@ -552,7 +552,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
       </div>
     </div>
     <div class="sec">
-      <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist — steps containing “Album” or “Cinematic/Teaser” auto-hide for packages without them)</span></h3>
+      <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist — steps containing “Album”, “Cinematic/Teaser”, “Photo” or “Video” auto-hide for packages without those services)</span></h3>
       <div id="dstepList"></div>
       <button class="addrow" id="addDstep">＋ Add step</button>
     </div>
@@ -1168,10 +1168,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     || (x.addons||[]).some(a=>/album/i.test(a))));
   const hasCinema = x => !!(x && ((x.events||[]).some(ev=>(ev.items||[]).some(it=>/cinema/i.test(it.service||'')))
     || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
+  const hasPhoto  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/photo/i.test(it.service||''))));
+  const hasVideo  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/video|cinema/i.test(it.service||''))));
   function stepsFor(x){
     return dSteps().filter(s =>
-      (!/album/i.test(s) || hasAlbum(x)) &&
-      (!/cinematic|teaser/i.test(s) || hasCinema(x)));
+      (!/album/i.test(s)            || hasAlbum(x)) &&
+      (!/cinematic|teaser/i.test(s) || hasCinema(x)) &&
+      (!/photo/i.test(s)            || hasPhoto(x)) &&
+      (!/video/i.test(s)            || hasVideo(x)));
   }
   function deliveryInfo(x){
     const steps = stepsFor(x);

@@ -42,7 +42,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .phwrap input:focus{outline:none}
 .gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .gbtn:active{transform:scale(.98)}
-.gbtn:disabled{opacity:.55;cursor:default}
+.gbtn:disabled{opacity:.7;cursor:default}
+.gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
+@keyframes spin{to{transform:rotate(360deg)}}
 .orline{display:flex;align-items:center;gap:.8rem;margin:1.2rem 0;color:var(--mut);font-size:.72rem;letter-spacing:.15em;text-transform:uppercase}
 .orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line)}
 .googlebtn{width:100%;background:#fff;border:0;color:#1f1f1f;border-radius:40px;padding:.8em;font-size:.9rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.6rem}
@@ -264,7 +266,13 @@ const dSteps  = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySt
 const contact = () => (CFG && CFG.contact) || DEFAULT_CONTACT;
 const hasAlbum  = x => !!(x && ((x.album && (Number(x.album.sheets)>0 || Number(x.album.price)>0)) || (x.addons||[]).some(a=>/album/i.test(a))));
 const hasCinema = x => !!(x && ((x.events||[]).some(ev=>(ev.items||[]).some(it=>/cinema/i.test(it.service||''))) || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
-const stepsFor = x => dSteps().filter(s => (!/album/i.test(s) || hasAlbum(x)) && (!/cinematic|teaser/i.test(s) || hasCinema(x)));
+const hasPhoto  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/photo/i.test(it.service||''))));
+const hasVideo  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/video|cinema/i.test(it.service||''))));
+const stepsFor = x => dSteps().filter(s =>
+  (!/album/i.test(s)            || hasAlbum(x)) &&
+  (!/cinematic|teaser/i.test(s) || hasCinema(x)) &&
+  (!/photo/i.test(s)            || hasPhoto(x)) &&
+  (!/video/i.test(s)            || hasVideo(x)));
 const human = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '';
 loadCfg().catch(()=>{});   /* warm the config so contact buttons show the real number pre-login */
 const shortD = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
@@ -338,29 +346,29 @@ $('#sendOtp').addEventListener('click', async ()=>{
   $('#noBook').hidden = true;
   const p = ($('#phone').value||'').replace(/\D/g,'');
   if(p.length !== 10){ showErr('#loginErr','Enter your 10-digit mobile number.'); return; }
-  const btn = $('#sendOtp'); btn.disabled = true; btn.textContent = 'Checking…';
+  const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Checking…';
   if(!(await isKnownClient(p))){
-    btn.disabled = false; btn.textContent = 'Get OTP';
+    btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP';
     showNoBook('+91 ' + p);
     return;
   }
-  btn.textContent = 'Sending…';
+  btn.textContent = 'Sending OTP…';
   try{
     confirmation = await signInWithPhoneNumber(auth, '+91'+p, getVerifier('sendOtp'));
     $('#otpTo').textContent = '+91 ' + p;
     $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
     clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
   }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
-  finally{ btn.disabled = false; btn.textContent = 'Get OTP'; }
+  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
 });
 $('#verifyOtp').addEventListener('click', async ()=>{
   hideErr('#loginErr');
   const code = otpCode();
   if(code.length !== 6){ showErr('#loginErr','Enter the 6-digit OTP.'); return; }
-  const btn = $('#verifyOtp'); btn.disabled = true;
+  const btn = $('#verifyOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Verifying…';
   try{ await confirmation.confirm(code); }
   catch(err){ showErr('#loginErr', err); }
-  finally{ btn.disabled = false; }
+  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
 });
 $('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
 
@@ -381,33 +389,33 @@ $('#linkSend').addEventListener('click', async ()=>{
   hideErr('#linkErr');
   const p = ($('#linkPhone').value||'').replace(/\D/g,'');
   if(p.length !== 10){ showErr('#linkErr','Enter your 10-digit mobile number.'); return; }
-  const btn = $('#linkSend'); btn.disabled = true; btn.textContent = 'Checking…';
+  const btn = $('#linkSend'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Checking…';
   if(!(await isKnownClient(p))){
-    btn.disabled = false; btn.textContent = 'Get OTP';
+    btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP';
     showErr('#linkErr','No booking found for +91 ' + p + ' — use the number you gave the studio while booking, or contact us.');
     return;
   }
-  btn.textContent = 'Sending…';
+  btn.textContent = 'Sending OTP…';
   try{
     if(!linkVerifier) linkVerifier = new RecaptchaVerifier(auth, 'linkSend', { size: 'invisible' });
     linkConfirm = await linkWithPhoneNumber(auth.currentUser, '+91'+p, linkVerifier);
     $('#linkPhoneStep').hidden = true; $('#linkOtpStep').hidden = false;
     clearBoxes('#linkOtpBoxes'); $$('#linkOtpBoxes input')[0].focus();
   }catch(err){ showErr('#linkErr', err); try{ linkVerifier && linkVerifier.clear(); }catch(e){} linkVerifier = null; }
-  finally{ btn.disabled = false; btn.textContent = 'Get OTP'; }
+  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
 });
 $('#linkVerify').addEventListener('click', async ()=>{
   hideErr('#linkErr');
   const code = linkCode();
   if(code.length !== 6){ showErr('#linkErr','Enter the 6-digit OTP.'); return; }
-  const btn = $('#linkVerify'); btn.disabled = true;
+  const btn = $('#linkVerify'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Verifying…';
   try{
     await linkConfirm.confirm(code);
     await auth.currentUser.getIdToken(true);   /* refresh token so the phone claim is visible to security rules */
     route(auth.currentUser);
   }
   catch(err){ showErr('#linkErr', err); }
-  finally{ btn.disabled = false; }
+  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify'; }
 });
 $('#linkBack').addEventListener('click', ()=>{ $('#linkOtpStep').hidden = true; $('#linkPhoneStep').hidden = false; hideErr('#linkErr'); });
 $('#linkLogout').addEventListener('click', ()=>signOut(auth));
