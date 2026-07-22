@@ -1223,6 +1223,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return calEvents().filter(e=>e.date===dateISO && (e.status==='booked' || e.status==='lead') && e.id!==excludeId
       && !(xc && String(e.client||'').trim().toLowerCase() === xc));   /* the same client's own lead isn't a clash */
   }
+  /* phone index: lets the client portal check "does this number have a booking?"
+     BEFORE sending an OTP — stores only a hash, never the number itself */
+  async function phoneKey(p){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fs:' + String(p||'').replace(/\D/g,'').slice(-10)));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  async function ensurePhoneIndex(phone){
+    const p = String(phone||'').replace(/\D/g,'').slice(-10);
+    if(p.length !== 10) return;
+    try{ setDoc(doc(db,'phoneIndex', await phoneKey(p)), { t: true }, { merge: true }).catch(()=>{}); }catch(e){}
+  }
+  let _phoneIdxDone = false;
+  function backfillPhoneIndex(){
+    if(_phoneIdxDone) return;
+    try{ if(localStorage.getItem('fs_phoneidx_v1')){ _phoneIdxDone = true; return; } }catch(e){}
+    _phoneIdxDone = true;
+    livePkgs().forEach(x=>ensurePhoneIndex(x.clientPhone));
+    try{ localStorage.setItem('fs_phoneidx_v1','1'); }catch(e){}
+  }
+
   /* duplicate-proof quote numbers: a counter doc allocated in a transaction */
   async function allocQuoteNo(){
     const yr = new Date().getFullYear();
@@ -1271,7 +1291,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(500)), async snap=>{
         PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-        if(!snap.metadata.fromCache) _pkgsFresh = true;
+        if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
         renderPkgList();
         renderCalendar();
         /* one-time backfill: number packages created before quote numbers existed.
@@ -2144,6 +2164,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         editingId = ref.id;
       }
       toast(res === 'queued' ? 'Saved offline — will sync' : 'Package saved');
+      if(d.clientPhone) ensurePhoneIndex(d.clientPhone);
       _pkgBaseline = JSON.stringify(readForm());
       /* learn the rates used, so the next quote prefills them automatically */
       try{
