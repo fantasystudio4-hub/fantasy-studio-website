@@ -552,7 +552,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
       </div>
     </div>
     <div class="sec">
-      <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist)</span></h3>
+      <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist — steps containing “Album” or “Cinematic/Teaser” auto-hide for packages without them)</span></h3>
       <div id="dstepList"></div>
       <button class="addrow" id="addDstep">＋ Add step</button>
     </div>
@@ -680,7 +680,7 @@ const DEFAULTS = {
     'Cinematography': 0
   },
   contact: { phone: '+91 86868 68803', website: 'www.fantasystudio.in' },
-  deliverySteps: ['All events shot','Photos edited','Video edited','Cinematic teasers','Album designed','Album printed','Pendrive prepared','Delivered to client'],
+  deliverySteps: ['All events shot','Photos edited','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'],
   quoteTerms: [
     '50% advance to confirm the booking; balance on the event day.',
     'Quotation valid for 7 days from the date above.',
@@ -999,6 +999,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       CFG = snap.exists() ? snap.data() : JSON.parse(JSON.stringify(DEFAULTS));
       if(!snap.exists()) $('#saveMsg').textContent = 'No saved config yet — showing current site defaults. Save All to publish them.';
     }catch(err){ CFG = JSON.parse(JSON.stringify(DEFAULTS)); }
+    /* one-time upgrade: replace the original default checklist with the richer flow.
+       A hand-customized list is left untouched. */
+    const OLD_DSTEPS = ['All events shot','Photos edited','Video edited','Cinematic teasers','Album designed','Album printed','Pendrive prepared','Delivered to client'];
+    if(Array.isArray(CFG.deliverySteps) && JSON.stringify(CFG.deliverySteps) === JSON.stringify(OLD_DSTEPS)){
+      CFG.deliverySteps = DEFAULTS.deliverySteps.slice();
+      try{ setDoc(doc(db,'config','site'), { deliverySteps: CFG.deliverySteps }, { merge: true }); }catch(e){}
+    }
     buildConfigForms();
   }
 
@@ -1153,8 +1160,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- delivery tracker (booked → delivered) ---------- */
   const dSteps = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULTS.deliverySteps);
   const stepDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+  /* album / cinematic steps only appear when the package actually includes them */
+  const hasAlbum  = x => !!(x && ((x.album && (Number(x.album.sheets)>0 || Number(x.album.price)>0))
+    || (x.addons||[]).some(a=>/album/i.test(a))));
+  const hasCinema = x => !!(x && ((x.events||[]).some(ev=>(ev.items||[]).some(it=>/cinema/i.test(it.service||'')))
+    || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
+  function stepsFor(x){
+    return dSteps().filter(s =>
+      (!/album/i.test(s) || hasAlbum(x)) &&
+      (!/cinematic|teaser/i.test(s) || hasCinema(x)));
+  }
   function deliveryInfo(x){
-    const steps = dSteps();
+    const steps = stepsFor(x);
     const done = {};
     (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date||''; });
     const doneCount = steps.filter(s=>s in done).length;
@@ -1483,7 +1500,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
       const had = list.some(d=>d.step === name);
       const delivery = had ? list.filter(d=>d.step !== name) : [...list, { step: name, date: todayISO() }];
-      const steps = dSteps();
+      const steps = stepsFor(x);
       const allDone = steps.length > 0 && steps.every(s=>delivery.some(d=>d.step === s));
       const patch = { delivery, updatedAt: serverTimestamp() };
       let becameDelivered = false;
