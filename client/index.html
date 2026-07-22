@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fantasy Studio — My Booking</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta name="theme-color" content="#B8902B" />
+<style>
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
+  --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
+h1,h2,h3{font-family:var(--serif)}
+button,input{font-family:var(--sans);font-size:16px}
+.wrap{max-width:640px;margin:0 auto;padding:0 14px 60px}
+header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
+.hd svg{width:34px;height:34px;flex:0 0 auto}
+.hd b{font-family:var(--serif);font-size:1.05rem}
+.hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
+.hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
+.hd .back{margin-left:auto;color:var(--mut);font-size:.8rem;text-decoration:none;border:1px solid var(--line);border-radius:30px;padding:.35em 1em}
+.hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)}
+
+.login{max-width:400px;margin:10vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
+.login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
+.login p{color:var(--mut);font-size:.85rem;margin-bottom:1.3rem}
+.fld{margin-bottom:.9rem;text-align:left}
+.fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.phwrap{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#171309}
+.phwrap b{display:grid;place-items:center;padding:0 .8em;color:var(--mut);font-weight:500;border-right:1px solid var(--line)}
+.phwrap input{flex:1;background:transparent;border:0;color:var(--text);padding:.75em .8em;min-width:0;letter-spacing:.06em}
+.phwrap input:focus{outline:none}
+.gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn:active{transform:scale(.98)}
+.gbtn:disabled{opacity:.55;cursor:default}
+.orline{display:flex;align-items:center;gap:.8rem;margin:1.2rem 0;color:var(--mut);font-size:.72rem;letter-spacing:.15em;text-transform:uppercase}
+.orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--line)}
+.googlebtn{width:100%;background:#fff;border:0;color:#1f1f1f;border-radius:40px;padding:.8em;font-size:.9rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.6rem}
+.googlebtn:active{transform:scale(.98)}
+.googlebtn svg{width:19px;height:19px}
+.otp{display:flex;gap:.45rem;justify-content:center;margin:.4rem 0 1rem}
+.otp input{width:44px;height:52px;text-align:center;font-size:1.3rem;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--gold-b)}
+.otp input:focus{outline:none;border-color:var(--gold)}
+.mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
+.err{color:var(--err);font-size:.8rem;margin-top:.8rem}
+.note{color:var(--mut);font-size:.75rem;margin-top:1rem}
+
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:16px;height:90px;margin:1rem 0;position:relative;overflow:hidden}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.08),transparent);animation:shim 1.2s infinite}
+@keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+.hello{margin:1.3rem 0 .4rem;font-size:1.25rem}
+.hello + p{color:var(--mut);font-size:.85rem;margin-bottom:1.1rem}
+.pkg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:1.1rem;overflow:hidden}
+.pkg-h{padding:1rem 1.1rem .8rem;border-bottom:1px dashed var(--line);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.pkg-h h2{font-size:1.15rem;color:#fff;flex:1;min-width:0}
+.pkg-h .qno{color:var(--gold-b);font-size:.75rem;letter-spacing:.06em}
+.chip{border-radius:20px;padding:.22em .85em;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
+.chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
+.chip.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
+.chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
+.chip.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
+.sec{padding: .9rem 1.1rem;border-bottom:1px dashed var(--line)}
+.sec:last-child{border-bottom:0}
+.sec h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
+.ev{margin-bottom:.8rem}
+.ev:last-child{margin-bottom:0}
+.ev b{font-family:var(--serif);color:#fff;font-size:1rem;display:block}
+.ev .evm{color:var(--mut);font-size:.78rem;margin-bottom:.25rem}
+.ev li{list-style:none;display:flex;justify-content:space-between;font-size:.85rem;color:var(--text);padding:.12rem 0}
+.ev li span:last-child{color:var(--mut)}
+.ln{display:flex;justify-content:space-between;padding:.18rem 0;font-size:.9rem}
+.ln span:first-child{color:var(--mut)}
+.ln.big{border-top:1px solid var(--line);margin-top:.4rem;padding-top:.55rem}
+.ln.big span{color:var(--gold-b);font-family:var(--serif);font-weight:700;font-size:1.1rem}
+.ln.due span:last-child{color:var(--gold-b);font-weight:600}
+.addons li{list-style:none;font-size:.85rem;padding:.15rem 0;color:var(--text)}
+.addons li::before{content:"◆";color:var(--gold);font-size:.6rem;margin-right:.55em;vertical-align:1px}
+.payrow{display:flex;justify-content:space-between;font-size:.82rem;color:var(--mut);padding:.2rem 0;border-bottom:1px dashed var(--line)}
+.payrow:last-child{border-bottom:0}
+.payrow b{color:var(--text);font-weight:500}
+.dprog{height:5px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden;margin:.2rem 0 .7rem}
+.dprog i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#9adbb2);border-radius:4px}
+.dstep{display:flex;align-items:center;gap:.55rem;padding:.3rem 0;font-size:.85rem;color:var(--mut)}
+.dstep i{flex:0 0 auto;width:17px;height:17px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:.55rem;color:transparent;font-style:normal}
+.dstep em{margin-left:auto;font-style:normal;font-size:.68rem;opacity:.85}
+.dstep.done{color:var(--text)}
+.dstep.done i{background:var(--ok);border-color:var(--ok);color:#fff}
+.contact{display:flex;gap:.6rem;flex-wrap:wrap}
+.contact a{flex:1;min-width:130px;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.65em 1em;font-size:.85rem}
+.contact a:hover{background:var(--gold);color:#fff}
+.empty{color:var(--mut);text-align:center;padding:2.2rem .8rem;font-size:.92rem}
+.empty .ic{font-size:2.2rem;display:block;margin-bottom:.5rem}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <div><b>Fantasy Studio</b><span>Client Area</span></div>
+    <a class="back" id="backLink" href="../">← Website</a>
+    <button class="out" id="logoutBtn" hidden>Logout</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div id="loadingView"><div class="skel"></div><div class="skel"></div></div>
+
+  <!-- login -->
+  <div id="loginView" hidden>
+    <div class="login">
+      <svg viewBox="0 0 100 100" style="width:54px;height:54px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+      <h1>My Booking</h1>
+      <p>Sign in to see your package, payments &amp; delivery status</p>
+
+      <div id="phoneStep">
+        <div class="fld"><label>Mobile number</label>
+          <div class="phwrap"><b>+91</b><input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="tel-national" /></div>
+        </div>
+        <button class="gbtn" id="sendOtp">Get OTP</button>
+        <div class="orline">or</div>
+        <button class="googlebtn" id="googleBtn" type="button">
+          <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 40.4 44 35 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+          Continue with Google
+        </button>
+      </div>
+
+      <div id="otpStep" hidden>
+        <div class="fld" style="text-align:center"><label style="text-align:center">Enter the OTP sent to <b id="otpTo" style="color:var(--text)"></b></label></div>
+        <div class="otp" id="otpBoxes">
+          <input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
+        </div>
+        <button class="gbtn" id="verifyOtp">Verify &amp; Sign In</button>
+        <button class="mini" id="otpBack" type="button">← Change number</button>
+      </div>
+
+      <div class="err" id="loginErr" hidden></div>
+      <div class="note">Use the same mobile number you gave the studio while booking.</div>
+    </div>
+  </div>
+
+  <!-- google user without a verified phone -->
+  <div id="linkView" hidden>
+    <div class="login">
+      <h1>One last step</h1>
+      <p>Your bookings are saved under your mobile number — verify it once to find them.</p>
+      <div id="linkPhoneStep">
+        <div class="fld"><label>Mobile number</label>
+          <div class="phwrap"><b>+91</b><input id="linkPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" /></div>
+        </div>
+        <button class="gbtn" id="linkSend">Get OTP</button>
+      </div>
+      <div id="linkOtpStep" hidden>
+        <div class="otp" id="linkOtpBoxes">
+          <input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
+        </div>
+        <button class="gbtn" id="linkVerify">Verify</button>
+        <button class="mini" id="linkBack" type="button">← Change number</button>
+      </div>
+      <div class="err" id="linkErr" hidden></div>
+      <button class="mini" id="linkLogout" type="button">Sign out</button>
+    </div>
+  </div>
+
+  <!-- dashboard -->
+  <div id="dashView" hidden>
+    <h1 class="hello" id="hello">Salaam!</h1>
+    <p id="helloSub"></p>
+    <div id="pkgList"></div>
+  </div>
+
+  <div id="emptyView" hidden>
+    <div class="pkg"><div class="empty">
+      <span class="ic">📸</span>
+      No bookings found for <b id="emptyPhone" style="color:var(--text)"></b>.<br />
+      If you booked with a different number, sign out and try that one — or message us and we'll sort it out.
+      <div class="contact" style="margin-top:1.1rem">
+        <a id="emptyCall" href="#">📞 Call the studio</a>
+        <a id="emptyWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<div id="recaptcha-box"></div>
+<div class="toast" id="toast"></div>
+
+<script src="../firebase-config.js"></script>
+<script type="module">
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
+const show = id => { ['loadingView','loginView','linkView','dashView','emptyView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+
+const DEFAULT_STEPS = ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'];
+const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in' };
+
+if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
+  show('loginView'); $('#loginErr').textContent = 'Portal not configured yet.'; $('#loginErr').hidden = false;
+}else{
+const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
+        GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPhoneNumber } =
+  await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+const { getFirestore, collection, doc, getDoc, getDocs, query, where } =
+  await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+const app  = initializeApp(window.FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+try{ await getRedirectResult(auth); }catch(e){}
+
+let CFG = null;
+async function loadCfg(){
+  if(CFG) return CFG;
+  try{ const s = await getDoc(doc(db,'config','site')); CFG = s.exists() ? s.data() : {}; }
+  catch(e){ CFG = {}; }
+  return CFG;
+}
+const dSteps  = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULT_STEPS);
+const contact = () => (CFG && CFG.contact) || DEFAULT_CONTACT;
+const hasAlbum  = x => !!(x && ((x.album && (Number(x.album.sheets)>0 || Number(x.album.price)>0)) || (x.addons||[]).some(a=>/album/i.test(a))));
+const hasCinema = x => !!(x && ((x.events||[]).some(ev=>(ev.items||[]).some(it=>/cinema/i.test(it.service||''))) || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
+const stepsFor = x => dSteps().filter(s => (!/album/i.test(s) || hasAlbum(x)) && (!/cinematic|teaser/i.test(s) || hasCinema(x)));
+const human = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '';
+const shortD = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+
+/* ---------- error helper ---------- */
+function authMsg(err){
+  const c = (err && err.code) || '';
+  if(c.includes('billing-not-enabled') || c.includes('operation-not-allowed'))
+    return 'Phone OTP is not switched on yet — please use Google login, or call the studio.';
+  if(c.includes('invalid-phone-number')) return 'That mobile number does not look right.';
+  if(c.includes('invalid-verification-code')) return 'Wrong OTP — check and try again.';
+  if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
+  if(c.includes('popup-closed') || c.includes('cancelled-popup-request')) return 'Google sign-in was closed before finishing.';
+  if(c.includes('network-request-failed')) return 'No internet — check your connection.';
+  if(c.includes('credential-already-in-use') || c.includes('account-exists'))
+    return 'This mobile number is already linked to another sign-in. Try signing in with Phone OTP directly.';
+  return 'Sign-in failed: ' + (c.replace('auth/','').replace(/-/g,' ') || (err && err.message) || 'unknown error');
+}
+const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false; };
+const hideErr = sel => { $(sel).hidden = true; };
+
+/* ---------- OTP box behaviour ---------- */
+function wireOtpBoxes(wrapSel){
+  const boxes = $$(wrapSel + ' input');
+  boxes.forEach((b,i)=>{
+    b.addEventListener('input', ()=>{
+      b.value = b.value.replace(/\D/g,'').slice(-1);
+      if(b.value && i < boxes.length-1) boxes[i+1].focus();
+    });
+    b.addEventListener('keydown', e=>{ if(e.key==='Backspace' && !b.value && i>0) boxes[i-1].focus(); });
+    b.addEventListener('paste', e=>{
+      const t = (e.clipboardData.getData('text')||'').replace(/\D/g,'');
+      if(t.length >= boxes.length){ e.preventDefault(); boxes.forEach((x,j)=>x.value = t[j]||''); boxes[boxes.length-1].focus(); }
+    });
+  });
+  return () => boxes.map(b=>b.value).join('');
+}
+const otpCode = wireOtpBoxes('#otpBoxes');
+const linkCode = wireOtpBoxes('#linkOtpBoxes');
+const clearBoxes = sel => $$(sel + ' input').forEach(b=>b.value='');
+
+/* ---------- phone OTP sign-in ---------- */
+let confirmation = null, verifier = null;
+function getVerifier(btnId){
+  if(verifier) return verifier;
+  verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
+  return verifier;
+}
+$('#sendOtp').addEventListener('click', async ()=>{
+  hideErr('#loginErr');
+  const p = ($('#phone').value||'').replace(/\D/g,'');
+  if(p.length !== 10){ showErr('#loginErr','Enter your 10-digit mobile number.'); return; }
+  const btn = $('#sendOtp'); btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    confirmation = await signInWithPhoneNumber(auth, '+91'+p, getVerifier('sendOtp'));
+    $('#otpTo').textContent = '+91 ' + p;
+    $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
+    clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
+  }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
+  finally{ btn.disabled = false; btn.textContent = 'Get OTP'; }
+});
+$('#verifyOtp').addEventListener('click', async ()=>{
+  hideErr('#loginErr');
+  const code = otpCode();
+  if(code.length !== 6){ showErr('#loginErr','Enter the 6-digit OTP.'); return; }
+  const btn = $('#verifyOtp'); btn.disabled = true;
+  try{ await confirmation.confirm(code); }
+  catch(err){ showErr('#loginErr', err); }
+  finally{ btn.disabled = false; }
+});
+$('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
+
+/* ---------- Google sign-in ---------- */
+$('#googleBtn').addEventListener('click', async ()=>{
+  hideErr('#loginErr');
+  const provider = new GoogleAuthProvider();
+  try{ await signInWithPopup(auth, provider); }
+  catch(err){
+    if((err.code||'').includes('popup-blocked')){ try{ await signInWithRedirect(auth, provider); return; }catch(e2){ err = e2; } }
+    showErr('#loginErr', err);
+  }
+});
+
+/* ---------- Google user: verify phone once ---------- */
+let linkConfirm = null, linkVerifier = null;
+$('#linkSend').addEventListener('click', async ()=>{
+  hideErr('#linkErr');
+  const p = ($('#linkPhone').value||'').replace(/\D/g,'');
+  if(p.length !== 10){ showErr('#linkErr','Enter your 10-digit mobile number.'); return; }
+  const btn = $('#linkSend'); btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    if(!linkVerifier) linkVerifier = new RecaptchaVerifier(auth, 'linkSend', { size: 'invisible' });
+    linkConfirm = await linkWithPhoneNumber(auth.currentUser, '+91'+p, linkVerifier);
+    $('#linkPhoneStep').hidden = true; $('#linkOtpStep').hidden = false;
+    clearBoxes('#linkOtpBoxes'); $$('#linkOtpBoxes input')[0].focus();
+  }catch(err){ showErr('#linkErr', err); try{ linkVerifier && linkVerifier.clear(); }catch(e){} linkVerifier = null; }
+  finally{ btn.disabled = false; btn.textContent = 'Get OTP'; }
+});
+$('#linkVerify').addEventListener('click', async ()=>{
+  hideErr('#linkErr');
+  const code = linkCode();
+  if(code.length !== 6){ showErr('#linkErr','Enter the 6-digit OTP.'); return; }
+  const btn = $('#linkVerify'); btn.disabled = true;
+  try{
+    await linkConfirm.confirm(code);
+    await auth.currentUser.getIdToken(true);   /* refresh token so the phone claim is visible to security rules */
+    route(auth.currentUser);
+  }
+  catch(err){ showErr('#linkErr', err); }
+  finally{ btn.disabled = false; }
+});
+$('#linkBack').addEventListener('click', ()=>{ $('#linkOtpStep').hidden = true; $('#linkPhoneStep').hidden = false; hideErr('#linkErr'); });
+$('#linkLogout').addEventListener('click', ()=>signOut(auth));
+$('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+
+/* ---------- routing ---------- */
+onAuthStateChanged(auth, user=>{ route(user); });
+function route(user){
+  $('#logoutBtn').hidden = !user;
+  $('#backLink').hidden = !!user;
+  if(!user){ show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true; return; }
+  if(!user.phoneNumber){ show('linkView'); return; }
+  show('loadingView');
+  loadPackages(user).catch(err=>{
+    show('emptyView');
+    fillEmpty(user.phoneNumber);
+    if((err.code||'').includes('permission')){
+      toast('The studio has not opened client access yet — please contact us.');
+    }else{
+      toast('Could not load your booking: ' + (err.code||err.message));
+    }
+  });
+}
+
+/* ---------- data ---------- */
+async function loadPackages(user){
+  await loadCfg();
+  const last10 = String(user.phoneNumber||'').replace(/\D/g,'').slice(-10);
+  const snap = await getDocs(query(collection(db,'packages'), where('clientPhone','==', last10)));
+  const pkgs = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>!x.deleted);
+  if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
+  const name = pkgs[0].clientName || user.displayName || '';
+  $('#hello').textContent = name ? `Salaam, ${name}!` : 'Salaam!';
+  $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio.`;
+  $('#pkgList').innerHTML = pkgs.map(pkgHTML).join('');
+  show('dashView');
+}
+function fillEmpty(phone){
+  $('#emptyPhone').textContent = phone || '';
+  const ph = (contact().phone||'').replace(/\D/g,'');
+  $('#emptyCall').href = 'tel:+' + ph;
+  $('#emptyWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! I cannot find my booking in the client area. My number: ' + (phone||''));
+}
+
+function pkgHTML(x){
+  const st = x.status||'draft';
+  const tt = x.totals||{};
+  const paid = Number(tt.advance)||0;
+  const bal = Math.max(0, Number(tt.balance)||0);
+  const steps = stepsFor(x);
+  const done = {}; (Array.isArray(x.delivery)?x.delivery:[]).forEach(d=>{ if(d && d.step) done[d.step]=d.date||''; });
+  const doneCount = steps.filter(s=>s in done).length;
+  const pct = steps.length ? Math.round(100*doneCount/steps.length) : 0;
+  const ph = (contact().phone||'').replace(/\D/g,'');
+  const events = (x.events||[]).map(ev=>`
+    <div class="ev">
+      <b>${esc(ev.title||'Event')}</b>
+      <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ' · ' + esc(ev.venue) : ''}</div>
+      ${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}
+    </div>`).join('');
+  const alb = (x.album && Number(x.album.sheets)>0)
+    ? `<div class="ln"><span>Premium album</span><span>${Number(x.album.sheets)} sheets</span></div>` : '';
+  const addons = (x.addons||[]).length
+    ? `<div class="sec"><h3>Included extras</h3><ul class="addons">${x.addons.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>` : '';
+  const pays = (x.payments||[]).length
+    ? `<div class="sec"><h3>Payments received</h3>${x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
+  const track = (st==='booked'||st==='delivered') && steps.length
+    ? `<div class="sec"><h3>Delivery progress · ${doneCount}/${steps.length}</h3>
+        <div class="dprog"><i style="width:${pct}%"></i></div>
+        ${steps.map(s=>{ const d = s in done; return `<div class="dstep ${d?'done':''}"><i>✓</i><span>${esc(s)}</span><em>${d?shortD(done[s]):''}</em></div>`; }).join('')}
+      </div>` : '';
+  return `
+  <div class="pkg">
+    <div class="pkg-h">
+      <h2>${esc(x.clientName||'Your package')}</h2>
+      <span class="qno">${esc(x.quoteNo||'')}</span>
+      <span class="chip ${st}">${st}</span>
+    </div>
+    <div class="sec"><h3>Your events</h3>${events || '<div class="evm">Details coming soon.</div>'}</div>
+    ${addons}
+    <div class="sec"><h3>Pricing</h3>
+      ${Number(tt.gross) && Number(tt.discount) ? `<div class="ln"><span>Package total</span><span>${inr(tt.gross)}</span></div>
+      <div class="ln"><span>Discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
+      ${alb}
+      <div class="ln big"><span>Final price</span><span>${inr(tt.finalPrice||0)}</span></div>
+      <div class="ln"><span>Paid so far</span><span>${inr(paid)}</span></div>
+      <div class="ln due"><span>Balance</span><span>${inr(bal)}</span></div>
+    </div>
+    ${pays}
+    ${track}
+    <div class="sec"><h3>Questions?</h3>
+      <div class="contact">
+        <a href="tel:+${ph}">📞 Call the studio</a>
+        <a href="https://wa.me/${ph}?text=${encodeURIComponent('Salaam! About my booking ' + (x.quoteNo||''))}" target="_blank" rel="noopener">WhatsApp us</a>
+      </div>
+    </div>
+  </div>`;
+}
+}
+</script>
+</body>
+</html>
