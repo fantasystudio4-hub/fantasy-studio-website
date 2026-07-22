@@ -196,7 +196,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .cal-jump .mo:hover{border-color:var(--gold);color:var(--gold-b)} }
 
 /* balance-due pill on upcoming shoots */
-.up-ev .due{color:var(--gold-b);border-color:var(--gold);white-space:nowrap}
+.up-ev .due{color:var(--gold-b);border-color:rgba(184,144,43,.55);background:rgba(184,144,43,.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500}
+.up-ev .due:active{background:rgba(184,144,43,.28)}
 
 /* filter chips with counts */
 .fchips{display:flex;gap:.4rem;overflow-x:auto;margin:0 0 .8rem;padding-bottom:2px;scrollbar-width:none}
@@ -1322,9 +1323,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
     el.hidden = !next.length;
     if(!next.length) return;
+    const seenDue = new Set();   /* one due pill per package, on its earliest upcoming event */
     el.innerHTML = '<h3>📅 Upcoming shoots</h3>' + next.map(e=>{
       const pk = e.kind === 'pkg' ? PKGS.find(p=>p.id===e.id) : null;
-      const due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
+      let due = 0;
+      if(pk && !seenDue.has(pk.id)){
+        due = Math.max(0,(pk.totals||{}).balance||0);
+        if(due > 0) seenDue.add(pk.id);
+      }
       return `
       <div class="up-ev" data-goto="${e.date}">
         <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
