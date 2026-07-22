@@ -27,7 +27,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd b{font-family:var(--serif);font-size:1.05rem}
 .hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
-.hd .back{margin-left:auto;color:var(--mut);font-size:.8rem;text-decoration:none;border:1px solid var(--line);border-radius:30px;padding:.35em 1em}
+.hd .back{margin-left:auto;color:var(--mut);font-size:.8rem;text-decoration:none;border:1px solid var(--line);border-radius:30px;padding:.35em 1em;white-space:nowrap}
+.hd .back + .out{margin-left:.5rem}
 .hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)}
 
 .login{max-width:400px;margin:10vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
@@ -93,13 +94,25 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .payrow{display:flex;justify-content:space-between;font-size:.82rem;color:var(--mut);padding:.2rem 0;border-bottom:1px dashed var(--line)}
 .payrow:last-child{border-bottom:0}
 .payrow b{color:var(--text);font-weight:500}
-.dprog{height:5px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden;margin:.2rem 0 .7rem}
+.dprog{height:5px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden;margin:.2rem 0 1rem}
 .dprog i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#9adbb2);border-radius:4px}
-.dstep{display:flex;align-items:center;gap:.55rem;padding:.3rem 0;font-size:.85rem;color:var(--mut)}
-.dstep i{flex:0 0 auto;width:17px;height:17px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:.55rem;color:transparent;font-style:normal}
-.dstep em{margin-left:auto;font-style:normal;font-size:.68rem;opacity:.85}
-.dstep.done{color:var(--text)}
-.dstep.done i{background:var(--ok);border-color:var(--ok);color:#fff}
+/* delivery journey — a connected timeline */
+.tstep{position:relative;display:flex;gap:.85rem;padding:0 0 1.05rem}
+.tstep:last-child{padding-bottom:.1rem}
+.tstep::before{content:"";position:absolute;left:11px;top:24px;bottom:0;width:2px;background:rgba(226,194,117,.18)}
+.tstep:last-child::before{display:none}
+.tstep.done::before{background:rgba(76,175,125,.45)}
+.tnode{position:relative;z-index:1;flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:2px solid var(--line);background:#171309;display:grid;place-items:center;font-size:.6rem;color:transparent;font-style:normal}
+.tstep.done .tnode{background:var(--ok);border-color:var(--ok);color:#fff}
+.tstep.cur .tnode{border-color:var(--gold)}
+.tstep.cur .tnode::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--gold-b);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.tbody{flex:1;min-width:0;padding-top:2px}
+.tbody b{display:block;font-weight:500;font-size:.88rem;color:var(--mut)}
+.tstep.done .tbody b{color:var(--text)}
+.tstep.cur .tbody b{color:var(--gold-b)}
+.tbody em{font-style:normal;font-size:.7rem;color:var(--mut);opacity:.85}
+.vlink{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted rgba(226,194,117,.5)}
 .contact{display:flex;gap:.6rem;flex-wrap:wrap}
 .contact a{flex:1;min-width:130px;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.65em 1em;font-size:.85rem}
 .contact a:hover{background:var(--gold);color:#fff}
@@ -232,7 +245,10 @@ const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhone
 const { getFirestore, collection, doc, getDoc, getDocs, query, where } =
   await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
-const app  = initializeApp(window.FIREBASE_CONFIG);
+/* a NAMED app gives the client portal its own session storage — signing in
+   here never signs the studio out of the admin on the same phone, and the
+   session persists until the client taps Logout themselves */
+const app  = initializeApp(window.FIREBASE_CONFIG, 'client');
 const auth = getAuth(app);
 const db   = getFirestore(app);
 try{ await getRedirectResult(auth); }catch(e){}
@@ -401,7 +417,6 @@ $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
 onAuthStateChanged(auth, user=>{ route(user); });
 function route(user){
   $('#logoutBtn').hidden = !user;
-  $('#backLink').hidden = !!user;
   if(!user){ show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true; return; }
   if(!user.phoneNumber){ show('linkView'); return; }
   show('loadingView');
@@ -449,7 +464,7 @@ function pkgHTML(x){
   const events = (x.events||[]).map(ev=>`
     <div class="ev">
       <b>${esc(ev.title||'Event')}</b>
-      <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ' · ' + esc(ev.venue) : ''}</div>
+      <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
       ${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}
     </div>`).join('');
   const alb = (x.album && Number(x.album.sheets)>0)
@@ -458,10 +473,15 @@ function pkgHTML(x){
     ? `<div class="sec"><h3>Included extras</h3><ul class="addons">${x.addons.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>` : '';
   const pays = (x.payments||[]).length
     ? `<div class="sec"><h3>Payments received</h3>${x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
+  const curStep = steps.find(s=>!(s in done));
   const track = (st==='booked'||st==='delivered') && steps.length
-    ? `<div class="sec"><h3>Delivery progress · ${doneCount}/${steps.length}</h3>
+    ? `<div class="sec"><h3>Delivery journey · ${doneCount}/${steps.length}</h3>
         <div class="dprog"><i style="width:${pct}%"></i></div>
-        ${steps.map(s=>{ const d = s in done; return `<div class="dstep ${d?'done':''}"><i>✓</i><span>${esc(s)}</span><em>${d?shortD(done[s]):''}</em></div>`; }).join('')}
+        ${steps.map(s=>{
+          const d = s in done;
+          const cur = !d && s === curStep && st === 'booked';
+          return `<div class="tstep ${d?'done':''} ${cur?'cur':''}"><i class="tnode">✓</i><div class="tbody"><b>${esc(s)}</b><em>${d ? 'Completed ' + shortD(done[s]) : (cur ? 'In progress' : '')}</em></div></div>`;
+        }).join('')}
       </div>` : '';
   return `
   <div class="pkg">
