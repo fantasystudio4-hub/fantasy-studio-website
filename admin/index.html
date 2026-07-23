@@ -144,6 +144,23 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cal-ev-t span{font-size:.74rem;color:var(--mut)}
 .cal-ev .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.75rem;cursor:pointer}
 
+/* packages page — status accents, pills, money badges, group headers */
+.lead.st-draft{border-left:3px solid #6f6650}
+.lead.st-sent{border-left:3px solid #7fb2e5}
+.lead.st-booked{border-left:3px solid var(--ok)}
+.lead.st-delivered{border-left:3px solid #9adbb2}
+.stpill{margin-left:auto;flex:0 0 auto;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;border-radius:20px;padding:.24em .72em;font-weight:600}
+.stpill.draft{color:#c9c0a8;background:rgba(255,255,255,.07)}
+.stpill.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
+.stpill.booked{color:var(--ok);background:rgba(76,175,125,.13)}
+.stpill.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
+.duelbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:#ffb054;background:rgba(255,176,84,.13);border-radius:14px;padding:.2em .6em;margin-right:.45em;vertical-align:2px;font-weight:600}
+.paidlbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--ok);background:rgba(76,175,125,.13);border-radius:14px;padding:.2em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
+.grp{display:flex;align-items:center;gap:.6rem;margin:1.05rem 0 .5rem;color:var(--mut);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase}
+.grp::after{content:"";flex:1;height:1px;background:var(--line)}
+.grp b{color:var(--gold-b);font-weight:600}
+#pkgList .grp:first-child{margin-top:.15rem}
+
 /* package row actions — even grid, no crowding */
 .pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:0 1rem;padding:.75rem 0 .9rem;border-top:1px dashed var(--line)}
 .pkg-acts button{
@@ -447,7 +464,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
       <div class="fchips" id="pkgChips"></div>
-      <p class="sub" style="margin:0 0 .7rem">Tap a package's status chip to change it — <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>. Booked packages get a delivery checklist.</p>
+      <p class="sub" style="margin:0 0 .7rem">Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>.</p>
       <div id="pkgList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </div>
 
@@ -1497,9 +1514,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const st = x.status||'draft';
     const evn = (x.events||[]).length;
     const tt = x.totals||{};
-    const amt = (Number(tt.advance)||0) > 0
-      ? `<span class="amt" title="Balance due / package total">${inr(Math.max(0,tt.balance||0))}<em>/${inr(tt.finalPrice||0)}</em></span>`
-      : `<span class="amt">${inr(tt.finalPrice||0)}</span>`;
+    const _paid = Number(tt.advance)||0, _bal = Math.max(0, Number(tt.balance)||0), _fin = Number(tt.finalPrice)||0;
+    const amt = _paid > 0
+      ? (_bal > 0
+          ? `<span class="amt" title="Balance due / package total"><em class="duelbl">DUE</em>${inr(_bal)}<em>/${inr(_fin)}</em></span>`
+          : `<span class="amt">${inr(_fin)}<em class="paidlbl">PAID</em></span>`)
+      : `<span class="amt">${inr(_fin)}</span>`;
     const nd = st === 'booked' ? nextShootDate(x) : '';
     const sentDays = st === 'sent' ? daysAgo(x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt)) : null;
     const track = (st === 'booked' || st === 'delivered');
@@ -1511,15 +1531,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `<div class="dl3"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total} steps</b></div>`;
     }
     return `
-    <div class="lead ${open?'open':''}" data-id="${x.id}">
+    <div class="lead st-${st} ${open?'open':''}" data-id="${x.id}">
       <div class="lead-top" data-expand>
         <div class="lt-lines">
           <div class="l1">
-            <i class="dot ${st}"></i>
             <span class="nm">${esc(x.clientName||'—')}</span>
             <span class="src">${evn} event${evn===1?'':'s'}</span>
             ${nd ? `<span class="src">📅 ${stepDate(nd)}</span>` : ''}
             ${sentDays != null && sentDays >= 0 ? `<span class="src">📤 ${sentDays}d</span>` : ''}
+            <span class="stpill ${st}">${st}</span>
           </div>
           <div class="l2">
             <span class="qno">${x.quoteNo ? esc(x.quoteNo) : ''}</span>
@@ -1556,6 +1576,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#pkgList').innerHTML = livePkgs().length
         ? '<div class="empty2"><span class="ic">📦</span>Nothing matches this filter.</div>'
         : '<div class="empty2"><span class="ic">📦</span>No packages yet.<br><button class="goldbar" id="pkgEmptyNew" style="margin-top:.9rem">＋ Create your first package</button></div>';
+      return;
+    }
+    /* "All" view: group by status so the list reads like a pipeline —
+       booked (next shoot first), quotes awaiting a reply, drafts, delivered */
+    if(!f && !q){
+      const GRPS = [['booked','Booked'], ['sent','Sent — awaiting reply'], ['draft','Drafts'], ['delivered','Delivered']];
+      $('#pkgList').innerHTML = GRPS.map(([s, lab])=>{
+        let grp = list.filter(x=>(x.status||'draft')===s);
+        if(!grp.length) return '';
+        if(s === 'booked') grp = [...grp].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+        return `<div class="grp">${lab}<b>${grp.length}</b></div>` + grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
+      }).join('');
       return;
     }
     $('#pkgList').innerHTML = list.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
