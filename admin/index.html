@@ -300,6 +300,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
 textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height:84px}
 .addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.6em;cursor:pointer;font-size:.82rem}
+.termrow{display:flex;gap:.6rem;align-items:flex-start;padding:.42rem .2rem;font-size:.85rem;color:var(--text);cursor:pointer;border-bottom:1px dashed var(--line)}
+.termrow:last-child{border-bottom:0}
+.termrow input{width:17px;height:17px;flex:0 0 auto;margin-top:.15rem;accent-color:var(--gold)}
+.termrow span{flex:1;min-width:0}
+.termrow input:not(:checked) + span{color:var(--mut);text-decoration:line-through;text-decoration-color:rgba(226,194,117,.4)}
 .savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(20,17,10,.97);border-top:1px solid var(--line);padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
 .savebar .in{max-width:860px;margin:0 auto;display:flex;gap:.6rem;align-items:center}
 .savebar .msg{font-size:.78rem;color:var(--mut);flex:1}
@@ -477,6 +482,11 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <div class="prow big"><span>Final price</span><b id="ppFinal">₹0</b></div>
         <div class="prow"><label>Advance received (₹)</label><input id="ppAdvance" type="number" min="0" value="0" /></div>
         <div class="prow"><span>Balance</span><b id="ppBalance">₹0</b></div>
+      </div>
+      <div class="sec">
+        <h3><span class="stepnum">6</span>Terms on this PDF</h3>
+        <p class="sub">Untick anything you don't want printed on this quotation. Edit the master list in Site Config. When an advance is recorded, the payment term automatically becomes the exact ₹ split.</p>
+        <div id="pkgTerms"></div>
       </div>
       <div class="pkg-actions">
         <button class="gbtn" id="pkgSave">Save</button>
@@ -2063,6 +2073,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#ppDiscount').value = x ? ((x.totals||{}).discount||0) : 0;
     $('#ppAdvance').value  = x ? ((x.totals||{}).advance||0) : 0;
     _advanceAtOpen = Number($('#ppAdvance').value)||0;
+    /* terms picker: master list from config; saved packages remember their selection */
+    const chosenTerms = x && Array.isArray(x.pdfTerms) ? x.pdfTerms : null;
+    $('#pkgTerms').innerHTML = pdfTerms().map(tm=>
+      `<label class="termrow"><input type="checkbox" data-pterm ${!chosenTerms || chosenTerms.includes(tm) ? 'checked' : ''} /><span>${esc(tm)}</span></label>`
+    ).join('');
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
     window.scrollTo(0,0);
@@ -2103,6 +2118,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       events,
       album,
       addons: $$('#pkgAddons [data-addon] [data-f="addon"]').map(i=>i.value.trim()).filter(Boolean),
+      pdfTerms: $$('#pkgTerms [data-pterm]').filter(c=>c.checked).map(c=>c.closest('.termrow').querySelector('span').textContent),
       totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance }
     };
   }
@@ -2203,7 +2219,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       toast('Preparing PDF…');
       const { buildQuotePdf } = await import('./pdf-template.js');
-      const docPdf = await buildQuotePdf(x, pdfContact(), pdfTerms());
+      /* a package with a saved term selection prints exactly those terms;
+         older packages (no selection stored) fall back to the master list */
+      const docPdf = await buildQuotePdf(x, pdfContact(), Array.isArray(x.pdfTerms) ? x.pdfTerms : pdfTerms());
       const safe = String(x.clientName||'Client').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Client';
       const fname = `Fantasy_Studio_Quote_${safe}${x.quoteNo ? '_' + x.quoteNo : ''}.pdf`;
       if(share){

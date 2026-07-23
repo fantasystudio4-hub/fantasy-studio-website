@@ -260,8 +260,13 @@ export async function buildQuotePdf(pkg, contact, terms){
 
   /* ---------- flourish + pricing box ---------- */
   const t = pkg.totals || {};
+  const gross = Number(t.gross) || 0;
+  const fin = Number(t.finalPrice) || 0;
+  const disc = Math.max(0, Number(t.discount) || (gross - fin));
+  const hasDisc = disc > 0;                    // no discount → one clean price, no duplicate rows
   const showAdv = (Number(t.advance) || 0) > 0;
-  const boxH = showAdv ? 124 : 80;
+  const bandY0 = 14 + (hasDisc ? 40 : 0);      // band offset inside the box
+  const boxH = bandY0 + 34 + (showAdv ? 56 : 12);
   ensure(16 + boxH + 10);
   flourish(y + 4); y += 16;
 
@@ -272,40 +277,43 @@ export async function buildQuotePdf(pkg, contact, terms){
   [[BX, y], [BX + BW, y], [BX, y + boxH], [BX + BW, y + boxH]].forEach(([x, yy]) => diamond(x, yy, 4, GOLD));
 
   let by = y + 24;
-  const boxRow = (label, val, bold) => {
+  const boxRow = (label, valTxt, bold, rgb) => {
     doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(10.5); doc.setTextColor(...DARK);
     doc.text(label, BX + 18, by);
-    setMoneyFont(bold ? 'bold' : 'normal', 11); doc.setTextColor(...DARK);
-    doc.text(money(val), BX + BW - 18, by, { align: 'right' });
+    setMoneyFont(bold ? 'bold' : 'normal', 11); doc.setTextColor(...(rgb || DARK));
+    doc.text(valTxt, BX + BW - 18, by, { align: 'right' });
     by += 20;
   };
-  boxRow('Total Package Price', t.gross || 0, false);
+  if (hasDisc) {
+    boxRow('Package Total', money(gross), false);
+    boxRow('Discount', '- ' + money(disc), false, GOLDD);
+  }
   // gold band with the final price — the largest number on the page
-  const bandY = by - 10;
+  const bandY = y + bandY0;
   doc.setFillColor(...GOLD);
   doc.rect(BX + 1, bandY, BW - 2, 34, 'F');
   doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
-  doc.text('After Discount', BX + 18, bandY + 22);
+  doc.text(hasDisc ? 'After Discount' : 'Total Package Price', BX + 18, bandY + 22);
   setMoneyFont('bold', 17); doc.setTextColor(...WHITE);
-  doc.text(money(t.finalPrice || 0), BX + BW - 18, bandY + 23, { align: 'right' });
+  doc.text(money(fin), BX + BW - 18, bandY + 23, { align: 'right' });
   // advance + balance sit under the band so the split is unmistakable
   if (showAdv) {
     by = bandY + 34 + 20;
-    boxRow('Advance Received', t.advance || 0, false);
-    boxRow('Balance Due', t.balance || 0, true);
+    boxRow('Advance Received', money(t.advance || 0), false);
+    boxRow('Balance Due', money(t.balance || 0), true);
   }
   y += boxH + 22;
 
   /* ---------- terms ---------- */
   let termList = (terms && terms.length ? terms : []).filter(Boolean).slice();
-  /* advance entered -> the first (payment) term becomes the real split:
+  /* advance entered -> the generic payment term is replaced by the real split:
      remaining on the event day + 10% of the final price at delivery */
   const advAmt = Number(t.advance) || 0;
-  if (advAmt > 0 && termList.length) {
-    const fin = Number(t.finalPrice) || 0;
+  if (advAmt > 0) {
     const delivery = Math.round(fin * 0.10);
     const eventDay = Math.max(0, fin - advAmt - delivery);
-    termList[0] = `Advance received: ${money(advAmt)}. Balance ${money(eventDay)} payable on the event day and ${money(delivery)} (10%) at the time of delivery.`;
+    termList = termList.filter(tm => !/^50% advance/i.test(String(tm)));
+    termList.unshift(`Advance received: ${money(advAmt)}. Balance ${money(eventDay)} payable on the event day and ${money(delivery)} (10%) at the time of delivery.`);
   }
   if (termList.length) {
     ensure(20 + termList.length * 26);
