@@ -703,7 +703,11 @@ const DEFAULTS = {
   contact: { phone: '+91 86868 68803', website: 'www.fantasystudio.in' },
   deliverySteps: ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'],
   quoteTerms: [
-    '50% advance to confirm the booking; balance on the event day.',
+    '50% advance to confirm the booking, 40% on the event day and 10% at the time of delivery.',
+    'Booking is confirmed and dates are blocked only once the advance is received.',
+    'The advance is adjusted in the final bill and is non-refundable if the booking is cancelled after dates are blocked.',
+    'Each service covers one visit of up to 5 hours per event; extended hours are charged extra.',
+    'Raw photos and the fully edited video are delivered on a pendrive after the final payment is cleared.',
     'Quotation valid for 7 days from the date above.',
     'Travel outside Hyderabad city limits charged extra, if applicable.'
   ],
@@ -1178,7 +1182,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   };
   const learnedAlbumRate = () => Number(((CFG && CFG.learnedRates) || {})['__albumPerSheet']) || 400;
   const pdfContact   = () => (CFG && CFG.contact) || DEFAULTS.contact;
-  const pdfTerms     = () => (CFG && Array.isArray(CFG.quoteTerms) && CFG.quoteTerms.length ? CFG.quoteTerms : DEFAULTS.quoteTerms);
+  /* master term list = saved config terms + any newer standard terms they
+     don't have yet, so upgrades surface in the picker without touching
+     the saved config (untick per quote, or edit the list in Site Config) */
+  const pdfTerms     = () => {
+    const own = (CFG && Array.isArray(CFG.quoteTerms)) ? CFG.quoteTerms.filter(Boolean) : [];
+    if(!own.length) return DEFAULTS.quoteTerms.slice();
+    const hasPayTerm = own.some(t => /^50% advance/i.test(t));
+    const extra = DEFAULTS.quoteTerms.filter(t =>
+      !own.includes(t) && !(hasPayTerm && /^50% advance/i.test(t)));
+    return own.concat(extra);
+  };
   const todayISO = () => new Date().toLocaleDateString('en-CA');
 
   /* ---------- delivery tracker (booked → delivered) ---------- */
