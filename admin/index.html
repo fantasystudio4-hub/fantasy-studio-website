@@ -300,6 +300,16 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
 textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height:84px}
 .addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.6em;cursor:pointer;font-size:.82rem}
+.evchips,.svcchips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.1rem 0 .85rem}
+.qchip{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:30px;padding:.45em 1em;font-size:.8rem;cursor:pointer;transition:.15s;font-family:var(--sans)}
+.qchip:active{transform:scale(.95);background:rgba(184,144,43,.22)}
+.qchip small{color:var(--mut);font-size:.85em;margin-left:.35em}
+.copyprev{background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:30px;padding:.5em 1.1em;font-size:.78rem;cursor:pointer;margin:0 0 .75rem;font-family:var(--sans)}
+.copyprev:active{background:rgba(184,144,43,.14)}
+#pkgEvents .pkg-ev:first-child [data-copyprev]{display:none}
+.pkg-total{margin-left:auto;text-align:right;line-height:1.15;align-self:center}
+.pkg-total span{display:block;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.pkg-total b{font-family:var(--serif);font-size:1.3rem;color:var(--gold-b)}
 .termrow{display:flex;gap:.6rem;align-items:flex-start;padding:.42rem .2rem;font-size:.85rem;color:var(--text);cursor:pointer;border-bottom:1px dashed var(--line)}
 .termrow:last-child{border-bottom:0}
 .termrow input{width:17px;height:17px;flex:0 0 auto;margin-top:.15rem;accent-color:var(--gold)}
@@ -492,6 +502,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <button class="gbtn" id="pkgSave">Save</button>
         <button class="mini" id="pkgPdf">Download PDF</button>
         <button class="mini" id="pkgBack">← Back</button>
+        <div class="pkg-total"><span>Final price</span><b id="stickyTotal">₹0</b></div>
       </div>
     </div>
   </div>
@@ -1713,7 +1724,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const sheets = Number(q.albumSheets)||0;
     return {
       clientName: l.name||'', careOf:'', clientPhone: l.phone||'', quoteDate: todayISO(),
-      events: events.length ? events : [{title:'', date:'', venue:'', items:[{}]}],
+      events: events.length ? events : [{title:'', date:'', venue:'', items:[]}],
       album: { sheets, perSheet: sheets>0 ? learnedAlbumRate() : 0, price: sheets * (sheets>0 ? learnedAlbumRate() : 0) },
       addons: [], totals: {}
     };
@@ -2039,6 +2050,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
     </div>`;
   };
+  const EVENT_NAMES = ['MANJE','SANCHAK','MEHNDI','NIKAH','RUKSATI','VALIMA RECEPTION','ENGAGEMENT','BIRTHDAY'];
   const evCardHTML = (ev={}) => `
     <div class="sec pkg-ev">
       <button class="del" data-rmev title="Remove event">✕</button>
@@ -2046,11 +2058,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>Event title</label><input data-f="title" value="${esc(ev.title||'')}" placeholder="e.g. VALIMA RECEPTION" /></div>
         <div class="fld"><label>Date</label><input data-f="date" type="date" value="${esc(ev.date||'')}" /></div>
       </div>
+      <div class="evchips" data-evchips ${ev.title?'hidden':''}>${EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-evname="${esc(n)}">${esc(n)}</button>`).join('')}</div>
       <div class="dwarn" data-dwarn hidden></div>
       <div class="fld"><label>Venue (optional)</label><input data-f="venue" value="${esc(ev.venue||'')}" /></div>
-      <div class="items">${(ev.items&&ev.items.length?ev.items:[{}]).map(itemRowHTML).join('')}</div>
-      <button class="addrow" data-additem>＋ Add Service</button>
+      <button type="button" class="copyprev" data-copyprev>⧉ Same services as previous event</button>
+      <div class="items">${(ev.items||[]).map(itemRowHTML).join('')}</div>
+      <div class="svcchips" data-svcchips></div>
+      <button class="addrow" data-additem>＋ Add custom service</button>
     </div>`;
+  /* one-tap service chips: every configured rate not yet on this event */
+  function refreshSvcChips(card){
+    const box = card.querySelector('[data-svcchips]'); if(!box) return;
+    const used = new Set([...card.querySelectorAll('.itemrow:not([data-addon]) [data-f="service"]')].map(s=>s.value));
+    const rates = allRates();
+    box.innerHTML = Object.keys(rates).filter(n=>!used.has(n)).map(n=>
+      `<button type="button" class="qchip" data-addsvc="${esc(n)}">＋ ${esc(n)}<small>${inr(rates[n])}</small></button>`
+    ).join('');
+  }
+  const refreshAllSvcChips = () => $$('#pkgEvents .pkg-ev').forEach(refreshSvcChips);
+  /* read one card's service rows (used by copy-previous) */
+  function readCardItems(card){
+    return [...card.querySelectorAll('.itemrow')].map(r=>{
+      const sel = r.querySelector('[data-f="service"]').value;
+      const name = sel === '__custom' ? r.querySelector('[data-f="serviceName"]').value.trim() : sel;
+      return { service: name, qty: Math.max(1, Number(r.querySelector('[data-f="qty"]').value)||1),
+               rate: Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0) };
+    }).filter(it=>it.service);
+  }
   const addonRowHTML = (a='') => `
     <div class="itemrow" data-addon style="grid-template-columns:1fr auto">
       <input data-f="addon" value="${esc(a)}" placeholder="e.g. 100 sheets Canvera album (400 photos)" />
@@ -2064,7 +2098,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pcCareOf').value = x ? (x.careOf||'') : '';
     $('#pcPhone').value = x ? (x.clientPhone||'') : '';
     $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
-    $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[{}]}]).map(evCardHTML).join('');
+    $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[]}]).map(evCardHTML).join('');
+    refreshAllSvcChips();
     $('#pkgAddons').innerHTML = ((x && x.addons) || []).map(addonRowHTML).join('');
     const alb = (x && x.album) || {};
     $('#paSheets').value = Number(alb.sheets)||0;
@@ -2135,7 +2170,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#ppGross').textContent = inr(d.totals.gross);
     $('#ppFinal').textContent = inr(d.totals.finalPrice);
     $('#ppBalance').textContent = inr(d.totals.balance);
+    const st = $('#stickyTotal'); if(st) st.textContent = inr(d.totals.finalPrice);
   }
+  /* typing a title by hand hides that card's name chips */
+  $('#pkgEditView').addEventListener('input', e=>{
+    if(e.target.matches('[data-f="title"]')){
+      const chips = e.target.closest('.pkg-ev').querySelector('[data-evchips]');
+      if(chips) chips.hidden = !!e.target.value.trim();
+    }
+  });
 
   $('#pkgEditView').addEventListener('input', computePkg);
   $('#pkgEditView').addEventListener('change', e=>{
@@ -2155,6 +2198,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(e.target.value === '__custom'){ nameInp.hidden = false; nameInp.focus(); }
       else{ nameInp.hidden = true; nameInp.value = '';
         row.querySelector('[data-f="rate"]').value = allRates()[e.target.value] ?? 0; }
+      const card = row.closest('.pkg-ev'); if(card) refreshSvcChips(card);
       computePkg();
     }
   });
@@ -2165,12 +2209,56 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       q.value = Math.max(1, (Number(q.value)||1) + (e.target.closest('[data-qp]') ? 1 : -1));
       computePkg(); return;
     }
-    if(e.target.closest('[data-rmitem]')){ e.target.closest('.itemrow').remove(); computePkg(); return; }
+    if(e.target.closest('[data-rmitem]')){
+      const card = e.target.closest('.pkg-ev');
+      e.target.closest('.itemrow').remove();
+      if(card) refreshSvcChips(card);
+      computePkg(); return;
+    }
     if(e.target.closest('[data-additem]')){ e.target.closest('.pkg-ev').querySelector('.items').insertAdjacentHTML('beforeend', itemRowHTML({})); return; }
     if(e.target.closest('[data-rmev]')){ e.target.closest('.pkg-ev').remove(); computePkg(); return; }
     if(e.target.closest('[data-rmaddon]')){ e.target.closest('[data-addon]').remove(); return; }
+    /* one-tap event name */
+    const en = e.target.closest('[data-evname]');
+    if(en){
+      const card = en.closest('.pkg-ev');
+      card.querySelector('[data-f="title"]').value = en.dataset.evname;
+      card.querySelector('[data-evchips]').hidden = true;
+      computePkg(); return;
+    }
+    /* one-tap service with the configured rate prefilled */
+    const sv = e.target.closest('[data-addsvc]');
+    if(sv){
+      const card = sv.closest('.pkg-ev');
+      const name = sv.dataset.addsvc;
+      card.querySelector('.items').insertAdjacentHTML('beforeend',
+        itemRowHTML({ service: name, qty: 1, rate: Number(allRates()[name])||0 }));
+      refreshSvcChips(card);
+      computePkg(); return;
+    }
+    /* copy the previous event's services onto this one */
+    const cp = e.target.closest('[data-copyprev]');
+    if(cp){
+      const card = cp.closest('.pkg-ev');
+      const prev = card.previousElementSibling;
+      if(prev && prev.classList.contains('pkg-ev')){
+        const items = readCardItems(prev);
+        if(!items.length){ toast('Previous event has no services yet'); return; }
+        card.querySelector('.items').innerHTML = items.map(itemRowHTML).join('');
+        refreshSvcChips(card);
+        computePkg();
+        toast('Services copied from the previous event');
+      }
+      return;
+    }
   });
-  $('#pkgAddEvent').addEventListener('click', ()=>$('#pkgEvents').insertAdjacentHTML('beforeend', evCardHTML({items:[{}]})));
+  $('#pkgAddEvent').addEventListener('click', ()=>{
+    $('#pkgEvents').insertAdjacentHTML('beforeend', evCardHTML({}));
+    const cards = $$('#pkgEvents .pkg-ev');
+    const last = cards[cards.length-1];
+    refreshSvcChips(last);
+    last.scrollIntoView({behavior:'smooth', block:'center'});
+  });
   $('#pkgAddAddon').addEventListener('click', ()=>$('#pkgAddons').insertAdjacentHTML('beforeend', addonRowHTML('')));
 
   $('#pkgSave').addEventListener('click', async ()=>{
