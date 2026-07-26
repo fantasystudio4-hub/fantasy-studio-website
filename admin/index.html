@@ -835,7 +835,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      A Firebase custom claim `admin: true` also works and takes precedence.
      ============================================================ */
   const ADMIN_EMAILS = [
-    // 'you@example.com',
+    'fantasystudio4@gmail.com',
   ];
 
   async function isAdmin(user){
@@ -857,7 +857,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     if(user && !(await isAdmin(user))){
       $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
-      $('#loginErr').textContent = 'This account is not authorised to open the admin panel.';
+      /* Name the rejected account. If the allowlist ever has a typo, this screen
+         tells the owner exactly which address to add instead of leaving them
+         locked out of their own panel with no clue why. */
+      $('#loginErr').textContent = 'This account'
+        + (user.email ? ' (' + user.email + ')' : '')
+        + ' is not authorised to open the admin panel.';
       $('#loginErr').hidden = false;
       try{ await signOut(auth); }catch(e){}
       return;
