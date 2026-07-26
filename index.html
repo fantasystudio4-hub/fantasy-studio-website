@@ -1557,6 +1557,7 @@ const SERVICES = [
 ];
 
 const EVENT_TYPES = ['Manje','Sanchak','Mehndi','Nikah','Ruksati','Valima / Reception','Engagement','Birthday'];
+const SERVICE_KEYS = new Set(SERVICES.map(s=>s.key));
 
 /* ============================================================
    STATE
@@ -1567,6 +1568,30 @@ let state = {
   promo: '',       // validated against PROMO_CODES only — never a raw amount
 };
 let eid = 0;
+
+/* Every event that enters state — from a #q= share link, from localStorage, or
+   from a preset — goes through here first. Share links and localStorage are both
+   attacker-reachable, so the type is whitelisted against EVENT_TYPES, the date is
+   regex-checked, the id is forced numeric and quantities are clamped. This is the
+   root fix for the share-link injection: it also scrubs any payload already sitting
+   in a returning visitor's localStorage.
+   Presets come from the owner's own admin Config, where custom event names are a
+   feature, so they pass trustType=true and keep their name (still escaped at every
+   sink); only length is capped. */
+function normalizeEvent(raw, trustType){
+  const r = raw || {};
+  const type = trustType
+    ? String(r.type||EVENT_TYPES[0]).slice(0,40)
+    : (EVENT_TYPES.indexOf(r.type) !== -1 ? r.type : EVENT_TYPES[0]);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(r.date||'') ? r.date : '';
+  const services = {};
+  Object.keys(r.services||{}).forEach(k=>{
+    if(!SERVICE_KEYS.has(k)) return;             // not a real service — drop it
+    const q = Math.floor(Number(r.services[k]));
+    if(q > 0) services[k] = Math.min(50, q);     // NaN fails this test, so it drops
+  });
+  return { id: ++eid, type, date, services };
+}
 
 /* ---- helpers ---- */
 const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
@@ -1697,7 +1722,7 @@ function buildBreakdownHTML(){
     html += `
       <div class="sum-event">
         <div class="sum-event-h">
-          <span class="en">${ev.type||'Event '+(i+1)}</span>
+          <span class="en">${esc(ev.type||('Event '+(i+1)))}</span>
           <span class="et">${inr(eventTotal(ev))}</span>
         </div>
         <div class="sum-event-h" style="margin-top:-4px"><span class="ed">${dateLbl}</span></div>
@@ -1750,7 +1775,7 @@ function renderSheet(){
     `<div class="sheet-totals">
        <div class="sum-sub"><span>Events Subtotal</span><span>${inr(evSub)}</span></div>
        <div class="sum-sub"><span>Album Subtotal</span><span>${inr(albSub)}</span></div>
-       ${disc>0?`<div class="sum-sub"><span>Promo (${state.promo})</span><span>−${inr(disc)}</span></div>`:''}
+       ${disc>0?`<div class="sum-sub"><span>Promo (${esc(state.promo)})</span><span>−${inr(disc)}</span></div>`:''}
        <div class="grand"><span class="gl">Grand Total</span><span class="gv">${inr(grand)}</span></div>
      </div>`;
 }
@@ -2170,7 +2195,7 @@ function syncPromoUI(){
     if(p){
       inp.value = state.promo;
       status.hidden = false; status.className = 'promo-status ok';
-      status.innerHTML = `✓ ${state.promo} applied — ${p.label||'discount active'} <button type="button" class="promo-remove" aria-label="Remove promo code">Remove ✕</button>`;
+      status.innerHTML = `✓ ${esc(state.promo)} applied — ${esc(p.label||'discount active')} <button type="button" class="promo-remove" aria-label="Remove promo code">Remove ✕</button>`;
     }else{
       status.hidden = true; status.textContent = '';
     }
@@ -2483,7 +2508,7 @@ function renderCompareTable(){
     agg[k] = {};
     PRESETS[k].events.forEach(ev=>{ for(const sk in ev.services){ agg[k][sk] = (agg[k][sk]||0) + ev.services[sk]; } });
   });
-  let h = '<thead><tr><th>Included</th>' + keys.map(k=>`<th>${PRESETS[k].name}</th>`).join('') + '</tr></thead><tbody>';
+  let h = '<thead><tr><th>Included</th>' + keys.map(k=>`<th>${esc(PRESETS[k].name||'')}</th>`).join('') + '</tr></thead><tbody>';
   h += '<tr><td>Events covered</td>' + keys.map(k=>`<td>${PRESETS[k].events.length}</td>`).join('') + '</tr>';
   SERVICES.forEach(sv=>{
     if(!keys.some(k=>agg[k][sv.key])) return;
@@ -2507,10 +2532,10 @@ function renderPresets(){
   const grid = $('#presetGrid'); if(!grid) return;
   grid.innerHTML = Object.keys(PRESETS).map(key=>{
     const p = PRESETS[key];
-    return `<button class="preset" data-preset="${key}" type="button">
-      ${p.tag?`<span class="pk-tag">${p.tag}</span>`:''}
-      <span class="pk-name">${p.name}</span>
-      <span class="pk-desc">${p.desc}</span>
+    return `<button class="preset" data-preset="${esc(key)}" type="button">
+      ${p.tag?`<span class="pk-tag">${esc(p.tag)}</span>`:''}
+      <span class="pk-name">${esc(p.name||'')}</span>
+      <span class="pk-desc">${esc(p.desc||'')}</span>
       <span class="pk-from">Package<b>${inr(presetRawTotal(p))}</b></span>
     </button>`;
   }).join('');
@@ -2535,7 +2560,7 @@ function markCustomised(){
 }
 function applyPreset(key){
   const p = PRESETS[key]; if(!p) return;
-  state.events = p.events.map(ev=>({ id:++eid, type:ev.type, date:'', services:{...ev.services} }));
+  state.events = p.events.map(ev=>normalizeEvent(ev, true));
   state.albumSheets = p.album||0;
   activePresetKey = key;
   markBuilderStarted();
@@ -2776,14 +2801,8 @@ let _shared = null;
 if(location.hash.indexOf('#q=') === 0) _shared = decodeQuote(location.hash.slice(3));
 const saved = loadState();
 if(_shared){
-  state.events = _shared.e.slice(0,12).map(ev=>({
-    id: ++eid,
-    type: String(ev.t||'Event').slice(0,40),
-    date: /^\d{4}-\d{2}-\d{2}$/.test(ev.d) ? ev.d : '',
-    services: Object.fromEntries(Object.entries(ev.s||{})
-      .filter(([k,v])=>PRICES[k] && v>0)
-      .map(([k,v])=>[k, Math.min(50, Math.floor(v))]))
-  }));
+  state.events = _shared.e.slice(0,12)
+    .map(ev=>normalizeEvent({ type: ev.t, date: ev.d, services: ev.s }, false));
   state.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(_shared.a,10)||0));
   state.promo = PROMO_CODES[_shared.p] ? _shared.p : '';
   history.replaceState(null, '', location.pathname + location.search);
@@ -2791,10 +2810,9 @@ if(_shared){
   track('quote_link_opened');
   showToast('Shared quote loaded — feel free to adjust it.');
 }else if(saved && hasContent(saved)){
-  state.events = saved.events.map(e=>({ ...e, services:{...(e.services||{})} }));
-  state.albumSheets = saved.albumSheets||0;
+  state.events = saved.events.slice(0,12).map(e=>normalizeEvent(e, false));
+  state.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(saved.albumSheets,10)||0));
   state.promo = PROMO_CODES[saved.promo] ? saved.promo : '';
-  eid = state.events.reduce((m,e)=>Math.max(m, +e.id||0), 0);
   setTimeout(openWelcomeBack, 350);
 }else{
   seedDefaults();
