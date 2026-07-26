@@ -757,8 +757,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
   catch(e){ db = initializeFirestore(app, {}); }
 
-  /* resolves 'ok' on server ack, 'queued' if the write is still pending after 2.5s (offline) */
-  function settle(p){ p.catch(()=>{}); return Promise.race([ p.then(()=>'ok'), new Promise(res=>setTimeout(()=>res('queued'), 2500)) ]); }
+  /* Resolves 'ok' on server ack, 'queued' if still pending after 2.5s (offline),
+     'denied' if the server actually refused it.
+     The old version swallowed the rejection with p.catch(()=>{}) and then let
+     the 2.5s timer win, so a permission-denied write — one that will NEVER
+     land — was reported to the owner as "saved · will sync". A ₹1,50,000
+     payment could be announced as recorded and simply not exist. */
+  function settle(p){
+    let failed = null;
+    const tracked = p.then(()=>'ok', err=>{ failed = err; return 'denied'; });
+    return Promise.race([
+      tracked,
+      new Promise(res=>setTimeout(()=>res(failed ? 'denied' : 'queued'), 2500))
+    ]);
+  }
+  /* one place that decides what the owner is told about a write */
+  function settleMsg(res, okMsg, queuedMsg){
+    if(res === 'denied') return { ok:false, msg:'NOT saved — the server refused this write. Check your connection and sign-in, then try again.' };
+    if(res === 'queued') return { ok:true,  msg: queuedMsg || 'Saved offline — will sync' };
+    return { ok:true, msg: okMsg || 'Saved ✓' };
+  }
 
   /* ---------- auth ---------- */
   $('#loginForm').addEventListener('submit', async e=>{
@@ -869,13 +887,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let LEADS = [];
   let _leadsUnsub = null, _leadsInit = false, _seenBefore = 0;
   let _leadsFresh = false, _pkgsFresh = false;   /* true once a server (non-cache) snapshot has arrived */
+  /* Hard caps on the live snapshots. These used to be 300/500 with no signal:
+     past that point the oldest records simply vanished from the panel — not in
+     the list, not findable by the search box (which filters the in-memory array
+     only). Backup/Export runs its own uncapped query, so nothing was ever lost
+     from the database itself. Raised, and now the owner is told when the cap is
+     reached instead of quietly seeing a partial list. */
+  const LEADS_CAP = 1000, PKGS_CAP = 1000;
+  let _capWarned = {};
+  function warnIfCapped(kind, n, cap){
+    if(n < cap || _capWarned[kind]) return;
+    _capWarned[kind] = true;
+    toast(`Showing the ${cap} most recent ${kind}. Older ones exist — use Backup & Export to see them all.`);
+  }
   function loadLeads(){
     if(_leadsUnsub){ renderLeads(); return; }
     try{ _seenBefore = Number(localStorage.getItem('fs_leads_seen'))||0; localStorage.setItem('fs_leads_seen', String(Date.now())); }catch(e){}
     try{
-      _leadsUnsub = onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(300)), snap=>{
+      _leadsUnsub = onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(LEADS_CAP)), snap=>{
         const prevIds = new Set(LEADS.map(l=>l.id));
         LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        warnIfCapped('leads', snap.size, LEADS_CAP);
         if(!snap.metadata.fromCache) _leadsFresh = true;
         if(_leadsInit){
           const fresh = LEADS.filter(l=>!prevIds.has(l.id));
@@ -952,7 +984,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         <div class="lead-sub">
           <a href="tel:+91${esc(l.phone||'')}">📞 Call</a>
-          <a href="https://wa.me/91${esc(l.phone||'')}" target="_blank" rel="noopener">WhatsApp</a>
+          <a href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener">WhatsApp</a>
           <button class="lead-x" data-del-lead>Delete</button>
           <span>${when}</span>
           ${l.weddingDate ? `<span>· 💍 ${esc(l.weddingDate)}</span>` : ''}
@@ -1035,12 +1067,30 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- config editor ---------- */
   let CFG = null;
+  /* Set when config/site could not be read. Save All is blocked while true —
+     otherwise the form shows hardcoded DEFAULTS that look exactly like real
+     values, and one tap publishes them over the live site's pricing,
+     testimonials, FAQs, presets, service rates and learned rates. */
+  let _cfgLoadFailed = false;
+  let _cfgLoadedAt = null;          // updatedAt seen at load, for the stale check
+  function setCfgBlocked(blocked, msg){
+    _cfgLoadFailed = blocked;
+    const btn = $('#saveConfig'), m = $('#saveMsg');
+    if(btn) btn.disabled = blocked;
+    if(m){ m.textContent = msg || ''; m.style.color = blocked ? 'var(--err,#e07a6a)' : ''; }
+  }
   async function loadConfig(){
     try{
       const snap = await getDoc(doc(db,'config','site'));
       CFG = snap.exists() ? snap.data() : JSON.parse(JSON.stringify(DEFAULTS));
-      if(!snap.exists()) $('#saveMsg').textContent = 'No saved config yet — showing current site defaults. Save All to publish them.';
-    }catch(err){ CFG = JSON.parse(JSON.stringify(DEFAULTS)); }
+      _cfgLoadedAt = snap.exists() ? (snap.data().updatedAt || null) : null;
+      setCfgBlocked(false, snap.exists() ? '' :
+        'No saved config yet — showing current site defaults. Save All to publish them.');
+    }catch(err){
+      CFG = JSON.parse(JSON.stringify(DEFAULTS));
+      setCfgBlocked(true,
+        'Could not load the live config (' + (err.code||err.message) + '). These are built-in defaults, NOT your live values — do not save. Reconnect and reopen this tab.');
+    }
     /* one-time upgrade: any earlier default checklist becomes the current flow.
        A hand-customized list is left untouched. */
     const OLD_DSTEP_SETS = [
@@ -1133,6 +1183,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   document.addEventListener('click', e=>{ if(e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
 
   $('#saveConfig').addEventListener('click', async ()=>{
+    if(_cfgLoadFailed){
+      toast('Config never loaded — saving now would overwrite your live values with defaults');
+      return;
+    }
     try{
       const prices = {};
       $$('[data-price]').forEach(i=>{ prices[i.dataset.price] = Number(i.value)||0; });
@@ -1170,8 +1224,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       const deliverySteps = $$('[data-dstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       const learnedRates = (CFG && CFG.learnedRates) || {};
-      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates };
-      await setDoc(doc(db,'config','site'), { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, updatedAt: new Date().toISOString() });
+
+      /* Last-write-wins between two devices used to silently discard the other
+         one's edits. Re-read first and refuse if the doc moved under us. */
+      let fresh = null;
+      try{ fresh = await getDoc(doc(db,'config','site')); }catch(e){ fresh = null; }
+      if(fresh && fresh.exists()){
+        const serverAt = fresh.data().updatedAt || null;
+        if(_cfgLoadedAt && serverAt && serverAt !== _cfgLoadedAt){
+          $('#saveMsg').textContent = 'Config was changed on another device since you opened this tab. Reload before saving so you do not overwrite those edits.';
+          $('#saveMsg').style.color = 'var(--err,#e07a6a)';
+          toast('Not saved — config changed elsewhere. Reload first.');
+          return;
+        }
+      }
+      /* The write stays a full overwrite on purpose: merge:true never removes
+         map keys or shortens arrays, so a preset/testimonial/FAQ deleted in the
+         form would silently reappear on the public site. The two guards above
+         (load must have succeeded, doc must not have moved) are what make a
+         full overwrite safe. */
+
+      const stamp = new Date().toISOString();
+      const payload = { prices, presets, testimonials, faqs, serviceRates, contact,
+                        quoteTerms, deliverySteps, learnedRates, updatedAt: stamp };
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, updatedAt: stamp };
+      await setDoc(doc(db,'config','site'), payload);
+      _cfgLoadedAt = stamp;
+      $('#saveMsg').style.color = '';
       $('#saveMsg').textContent = 'Saved — the live site now uses these values.';
       toast('Config published ✓');
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
@@ -1251,7 +1330,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- shared package helpers ---------- */
   const livePkgs = () => PKGS.filter(x=>!x.deleted);
   const daysAgo = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? Math.floor((Date.now() - new Date(d+'T00:00').getTime()) / 864e5) : null;
-  const waLink = (phone, text) => `https://wa.me/91${String(phone||'').replace(/\D/g,'').slice(-10)}?text=${encodeURIComponent(text)}`;
+  const waLink = (numOrPkg, text) => {
+    const n = (numOrPkg && typeof numOrPkg === 'object')
+      ? waNumberFor(numOrPkg)
+      : '91' + String(numOrPkg||'').replace(/\D/g,'').slice(-10);
+    return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
+  };
   function openWa(url){
     const w = window.open(url, '_blank');
     if(!w) toast('Popup blocked — allow popups for this app to open WhatsApp');
@@ -1286,6 +1370,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const d = String(v||'').replace(/\D/g,'');
     return d.length > 10 ? d.slice(-10) : d;
   }
+  /* normPhone throws the country code away, which is right for portal matching
+     but wrong for dialling: waLink used to bolt 91 back onto the last 10 digits,
+     so every WhatsApp message to an NRI client went to a wrong Indian number.
+     Store the full dialling form too, and prefer it when it exists. */
+  function normPhoneFull(v){
+    let d = String(v||'').replace(/\D/g,'');
+    if(d.indexOf('00') === 0) d = d.slice(2);
+    if(d.length <= 10) return '91' + d.replace(/^0+/,'');
+    const cc = d.slice(0, d.length-10).replace(/^0+/,'');
+    return (cc || '91') + d.slice(-10);
+  }
+  const waNumberFor = x => (x && x.clientPhoneFull)
+    ? String(x.clientPhoneFull).replace(/\D/g,'')
+    : '91' + String((x&&x.clientPhone)||'').replace(/\D/g,'').slice(-10);
   /* phone index: lets the client portal check "does this number have a booking?"
      BEFORE sending an OTP — stores only a hash, never the number itself */
   async function phoneKey(p){
@@ -1331,8 +1429,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         return 'FS-' + yr + '-' + String(next).padStart(3,'0');
       });
     }catch(e){
-      /* local numbering only as a true offline fallback — any other failure must surface, not silently degrade */
-      if(navigator.onLine) throw e;
+      /* Transactions need a live server round trip; they never queue offline.
+         navigator.onLine only says "some interface is up", so at a venue on one
+         bar of unusable 2G, or behind a hotel captive portal, it reports true,
+         this rethrew, and pkgSave aborted — the owner could not save a new
+         package AT ALL. Fall back to local numbering for anything that is a
+         connectivity symptom; a genuine error (permission-denied, invalid
+         argument) must still surface rather than silently degrade. */
+      const code = (e && e.code) || '';
+      const connectivity = !navigator.onLine
+        || code === 'unavailable' || code === 'deadline-exceeded'
+        || code === 'resource-exhausted' || code === 'aborted'
+        || code === 'internal' || code === 'cancelled';
+      if(!connectivity) throw e;
       return nextQuoteNo();
     }
   }
@@ -1361,8 +1470,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function loadPkgs(){
     if(_pkgsUnsub){ renderPkgList(); renderCalendar(); return; }
     try{
-      _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(500)), async snap=>{
+      _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(PKGS_CAP)), async snap=>{
         PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        warnIfCapped('packages', snap.size, PKGS_CAP);
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
         renderPkgList();
         renderCalendar();
@@ -1483,7 +1593,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const x = PKGS.find(p=>p.id===row.dataset.fu); if(!x) return;
     const nudge = e.target.closest('[data-funudge]'), done = e.target.closest('[data-fudone]');
     if(!nudge && !done) return;
-    if(nudge && !openWa(waLink(x.clientPhone, waFollowupText(x)))) return;   /* popup blocked → don't reset the counter */
+    if(nudge && !openWa(waLink(x, waFollowupText(x)))) return;   /* popup blocked → don't reset the counter */
     try{
       await settle(updateDoc(doc(db,'packages',x.id), { sentAt: todayISO() }));
       x.sentAt = todayISO();
@@ -1642,7 +1752,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         copy.quoteNo = await allocQuoteNo();
         const ref = doc(collection(db,'packages'));
         const res = await settle(setDoc(ref, copy));
-        toast(res === 'queued' ? 'Duplicated as draft — will sync' : 'Duplicated as draft');
+        toast(res === 'denied' ? 'NOT duplicated — the server refused the write'
+        : res === 'queued' ? 'Duplicated as draft — will sync' : 'Duplicated as draft');
         loadPkgs();
       }
       catch(err){ toast('Duplicate failed'); }
@@ -1938,6 +2049,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(next === 'sent') patch.sentAt = todayISO();
     try{
       const res = await settle(updateDoc(doc(db,'packages',x.id), patch));
+      if(res === 'denied'){
+        toast('Status NOT changed — the server refused the write. Try again.');
+        return;                            /* leave the sheet open, mirror untouched */
+      }
       x.status = next;
       if(next === 'delivered') x.deliveredAt = patch.deliveredAt; else delete x.deliveredAt;
       if(next === 'sent') x.sentAt = patch.sentAt;
@@ -1993,6 +2108,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const btn = $('#paySave'); if(btn.disabled) return;
     const amount = Math.round(Number($('#payAmt').value)||0);
     if(amount <= 0){ toast('Enter the amount received'); $('#payAmt').focus(); return; }
+    /* there was no upper bound at all: a stray extra digit turned ₹15,000 into
+       ₹1,50,000 and was stored without a word */
+    const due = Math.max(0, Number((x.totals||{}).balance) || 0);
+    if(due > 0 && amount > due){
+      const over = amount - due;
+      if(!confirm(`${inr(amount)} is ${inr(over)} more than the ₹${due.toLocaleString('en-IN')} still due on this package.\n\nRecord it anyway?`)){
+        $('#payAmt').focus(); return;
+      }
+    }
     const payment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
                       amount, date: $('#payDate').value || todayISO(), mode: payMode };
     btn.disabled = true;
@@ -2004,6 +2128,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         'totals.balance': increment(-amount),
         updatedAt: serverTimestamp()
       }));
+      /* A refused write must not update the local mirror or close the sheet —
+         the owner would walk away believing a payment was recorded that does
+         not exist anywhere. 'queued' is genuinely fine: Firestore will replay
+         it when the connection returns. */
+      if(res === 'denied'){
+        btn.disabled = false;
+        toast(`NOT saved — the server refused this payment. ${inr(amount)} was not recorded. Check your sign-in and try again.`);
+        return;
+      }
       x.payments = [...(x.payments||[]), payment];
       const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, x.totals||{});
       tt.advance = (Number(tt.advance)||0) + amount;
@@ -2015,7 +2148,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? `${inr(amount)} saved offline — will sync`
         : `${inr(amount)} (${payMode}) recorded — balance ${inr(Math.max(0,tt.balance))}`);
       if(x.clientPhone && confirm('Send a WhatsApp receipt to the client?')){
-        openWa(waLink(x.clientPhone, waReceiptText(x, payment, Math.max(0,tt.balance))));
+        openWa(waLink(x, waReceiptText(x, payment, Math.max(0,tt.balance))));
       }
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
@@ -2195,6 +2328,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       clientName: $('#pcName').value.trim(),
       careOf: $('#pcCareOf').value.trim(),
       clientPhone: normPhone($('#pcPhone').value),
+      clientPhoneFull: normPhoneFull($('#pcPhone').value),
       quoteDate: $('#pcDate').value || todayISO(),
       events,
       album,
@@ -2333,7 +2467,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         res = await settle(setDoc(ref, { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
         editingId = ref.id;
       }
-      toast(res === 'queued' ? 'Saved offline — will sync' : 'Package saved');
+      toast(res === 'denied' ? 'NOT saved — the server refused the write. Your changes are still on screen; try again.'
+        : res === 'queued' ? 'Saved offline — will sync' : 'Package saved');
       if(d.clientPhone) ensurePhoneIndex(d.clientPhone);
       _pkgBaseline = JSON.stringify(readForm());
       /* learn the rates used, so the next quote prefills them automatically */
@@ -2368,7 +2503,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             return;
           }
         }catch(err){ if(err && err.name === 'AbortError') return; }
-        if(x.clientPhone){ if(openWa(waLink(x.clientPhone, waQuoteText(x)))) return; }
+        if(x.clientPhone){ if(openWa(waLink(x, waQuoteText(x)))) return; }
         else toast('Sharing not supported here — downloading instead');
       }
       docPdf.save(fname);
