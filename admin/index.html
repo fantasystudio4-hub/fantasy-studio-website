@@ -272,14 +272,18 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 }
 
 /* payment popup */
-.pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.25s}
-.pay-backdrop.open{opacity:1;pointer-events:auto}
+.pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;visibility:hidden;transition:opacity .25s, visibility 0s linear .25s}
+.pay-backdrop.open{opacity:1;pointer-events:auto;visibility:visible;transition:opacity .25s, visibility 0s}
 .pay-modal{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:130;
   width:min(92vw,360px);background:var(--panel);border:1px solid var(--gold);border-radius:14px;
-  padding:1.4rem 1.2rem;opacity:0;pointer-events:none;transition:.3s;
+  /* opacity:0 alone leaves every control inside a CLOSED sheet in the tab
+     order and the accessibility tree — the payment amount field and the
+     status buttons were reachable while invisible */
+  padding:1.4rem 1.2rem;opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .3s, transform .3s, visibility 0s linear .3s;
 }
-.pay-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.pay-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .3s, transform .3s, visibility 0s}
 .pay-modal h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.2rem}
 .pay-modal .who{font-size:.8rem;color:var(--mut);margin-bottom:.9rem}
 .mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
@@ -287,7 +291,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .mode-pills button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
 .pay-hist{font-size:.75rem;color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
 .pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
-.pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:.85rem;padding:0 .15em;vertical-align:middle}
+.pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:.85rem;padding:.5em .6em;min-width:40px;min-height:40px;vertical-align:middle}
 .pay-close{position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:1.5rem;cursor:pointer}
 @media(max-width:560px){
   .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%)}
@@ -377,6 +381,14 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .mini-f > label{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
 .mini-f.amtf{margin-left:auto;text-align:right}
 .pkg-actions{position:sticky;bottom:0;z-index:40;background:rgba(20,17,10,.97);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 -14px;padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+/* ---- tap targets & minimum readable size (audit) ----
+   Destructive x controls measured 11-21px wide with no padding, and several
+   labels rendered below 10px on a phone the owner uses one-handed. */
+.lead-x,[data-del],[data-purge],[data-restore],.rm{min-width:40px;min-height:40px}
+.lead-x,[data-del]{padding:.45em .6em}
+.tabs button{min-height:52px}
+.tabs button span,.tabs button em{font-size:.68rem}
+.pkg-meta,.pkg-sub,.muted-xs{font-size:.72rem}
 </style>
 </head>
 <body>
@@ -909,6 +921,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   Object.keys(TABS).forEach(id=>{
     $('#'+id).addEventListener('click', ()=>{
+      /* Tapping Packages while the editor was open just re-showed the editor,
+         so there was no way back to the list from the bottom nav — the owner
+         had to use the phone's back gesture. Tapping the tab you are already
+         on now means "take me to the list". */
+      if(id === 'tabPkgs' && !$('#pkgEditView').hidden){
+        if(typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')) return;
+        _pkgBaseline = '';
+        $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
+      }
       showTab(id);
       if(!_navFromPop){ try{ history.pushState({view: VIEW_OF_TAB[id]}, '', '#' + VIEW_OF_TAB[id]); }catch(e){} }
     });
