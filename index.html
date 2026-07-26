@@ -207,9 +207,13 @@ header.nav.scrolled{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1.5rem;
   padding:calc(72px + env(safe-area-inset-top)) 1rem calc(24px + env(safe-area-inset-bottom));
   overflow-y:auto;
-  opacity:0;pointer-events:none;transform:translateY(-12px);transition:.4s;
+  /* visibility:hidden is what actually takes a closed overlay out of the tab order
+     and the accessibility tree — opacity:0 alone leaves every control focusable.
+     Delaying the visibility transition to the end of the fade keeps the animation. */
+  opacity:0;pointer-events:none;visibility:hidden;transform:translateY(-12px);
+  transition:opacity .4s, transform .4s, visibility 0s linear .4s;
 }
-.mobile-menu.open{opacity:1;pointer-events:auto;transform:none}
+.mobile-menu.open{opacity:1;pointer-events:auto;visibility:visible;transform:none;transition:opacity .4s, transform .4s, visibility 0s}
 /* centered when it fits, scrollable when it doesn't (small/landscape phones) */
 .mobile-menu a:first-of-type{margin-top:auto}
 .mobile-menu .mm-close-bottom{margin-bottom:auto}
@@ -429,7 +433,9 @@ header.nav.scrolled{
 .copy-prev:hover{background:rgba(184,144,43,.12);border-style:solid}
 
 /* service rows */
-.svc-list{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+/* minmax(0,1fr) not 1fr: a bare 1fr keeps an automatic min-content floor, which
+   let the longest service name lock the left track and crush the right one. */
+.svc-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
 .svc-toggle{
   display:flex;align-items:center;gap:.7rem;padding:.7rem .85rem;border-radius:8px;
   border:1px solid var(--line);background:#fff;transition:.25s;
@@ -645,6 +651,24 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .reveal{transform:translateY(14px);transition-duration:.4s}
   .reveal.d1{transition-delay:.03s}.reveal.d2{transition-delay:.06s}.reveal.d3{transition-delay:.09s}.reveal.d4{transition-delay:.12s}
 }
+/* The hero holds the LCP element, so it must not wait for the inline script to
+   run the IntersectionObserver — on a mid-range phone that is a blank hero for
+   several hundred ms. These four animate on a CSS keyframe at first paint;
+   `both` leaves them at the finished values, so the observer adding .in later
+   is a harmless no-op. Everything below the fold keeps the scroll-triggered
+   transition. */
+.hero .reveal{animation:heroIn .9s cubic-bezier(.2,.7,.3,1) both}
+.hero .reveal.d1{animation-delay:.08s}
+.hero .reveal.d2{animation-delay:.16s}
+.hero .reveal.d3{animation-delay:.24s}
+@keyframes heroIn{from{opacity:0;transform:translateY(34px)}to{opacity:1;transform:none}}
+@media(max-width:700px){
+  .hero .reveal{animation-duration:.4s}
+  .hero .reveal.d1{animation-delay:.03s}
+  .hero .reveal.d2{animation-delay:.06s}
+  .hero .reveal.d3{animation-delay:.09s}
+  @keyframes heroIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+}
 .sheet-body,.mobile-menu,.cmp-body{overscroll-behavior:contain}
 
 /* ============================================================
@@ -673,7 +697,7 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .svc-card{padding:.9rem .95rem}
   .svc-card h3{font-size:.95rem}
   .svc-card p{font-size:.75rem;line-height:1.4}
-  .svc-list{grid-template-columns:repeat(2,1fr);gap:.55rem}
+  .svc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
   .hero-cta{flex-direction:column;align-items:stretch}
   .hero-cta .btn{width:100%}
   .trust-row{gap:1.2rem 1.8rem}
@@ -811,9 +835,10 @@ section[id]{scroll-margin-top:84px}
   width:min(94vw,780px);max-height:86vh;display:flex;flex-direction:column;
   background:linear-gradient(180deg,#fffdf8,#f7f0e1);border:1px solid var(--gold-bright);
   border-radius:14px;box-shadow:var(--shadow-lg);padding:1.7rem 1.5rem 1.2rem;
-  opacity:0;pointer-events:none;transition:.35s cubic-bezier(.2,.7,.3,1);
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .35s cubic-bezier(.2,.7,.3,1), transform .35s cubic-bezier(.2,.7,.3,1), visibility 0s linear .35s;
 }
-.cmp-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.cmp-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .35s cubic-bezier(.2,.7,.3,1), transform .35s cubic-bezier(.2,.7,.3,1), visibility 0s}
 .cmp-modal h3{font-family:var(--serif);font-size:1.45rem;color:var(--ink);text-align:center;margin-bottom:1rem}
 .cmp-note{font-size:.78rem;color:var(--ink-soft);text-align:center;margin-top:.85rem}
 .pkg-compare-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;flex:1;min-height:0}
@@ -835,9 +860,10 @@ section[id]{scroll-margin-top:84px}
 .quote-sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:970;max-height:82vh;display:flex;flex-direction:column;
   background:linear-gradient(180deg,#fffdf8,#f4eee2);border-radius:22px 22px 0 0;
-  box-shadow:0 -22px 60px rgba(0,0,0,.4);transform:translateY(104%);transition:.4s cubic-bezier(.2,.7,.3,1);
+  box-shadow:0 -22px 60px rgba(0,0,0,.4);transform:translateY(104%);visibility:hidden;
+  transition:transform .4s cubic-bezier(.2,.7,.3,1), visibility 0s linear .4s;
 }
-.quote-sheet.open{transform:none}
+.quote-sheet.open{transform:none;visibility:visible;transition:transform .4s cubic-bezier(.2,.7,.3,1), visibility 0s}
 .sheet-grip{width:42px;height:4px;border-radius:4px;background:var(--line);margin:.7rem auto -.2rem}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;border-bottom:1px solid var(--line)}
 .sheet-head h3{font-family:var(--serif);font-size:1.28rem;color:var(--ink)}
@@ -889,10 +915,11 @@ section[id]{scroll-margin-top:84px}
 .to-top{
   position:fixed;right:22px;bottom:96px;z-index:940;width:46px;height:46px;border-radius:50%;
   background:var(--ink);border:1px solid rgba(226,194,117,.45);color:var(--gold-bright);
-  display:grid;place-items:center;cursor:pointer;opacity:0;pointer-events:none;transform:translateY(10px);
-  transition:.35s;box-shadow:0 10px 26px rgba(0,0,0,.25);
+  display:grid;place-items:center;cursor:pointer;opacity:0;pointer-events:none;visibility:hidden;transform:translateY(10px);
+  transition:opacity .35s, transform .35s, background .35s, color .35s, border-color .35s, visibility 0s linear .35s;
+  box-shadow:0 10px 26px rgba(0,0,0,.25);
 }
-.to-top.show{opacity:1;pointer-events:auto;transform:none}
+.to-top.show{opacity:1;pointer-events:auto;visibility:visible;transform:none;transition:opacity .35s, transform .35s, background .35s, color .35s, border-color .35s, visibility 0s}
 .to-top:hover{background:var(--gold);color:#fff;border-color:var(--gold)}
 .to-top svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
 @media(max-width:860px){.to-top{bottom:calc(160px + env(safe-area-inset-bottom));right:24px}}
@@ -903,10 +930,11 @@ section[id]{scroll-margin-top:84px}
 .lead-modal{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.96);z-index:1250;
   width:min(92vw,430px);background:linear-gradient(180deg,#fffdf8,#f7f0e1);border:1px solid var(--gold-bright);
-  border-radius:14px;box-shadow:var(--shadow-lg);padding:2.1rem 1.9rem 1.7rem;opacity:0;pointer-events:none;
-  transition:.35s cubic-bezier(.2,.7,.3,1);color:var(--ink);text-align:center;
+  border-radius:14px;box-shadow:var(--shadow-lg);padding:2.1rem 1.9rem 1.7rem;opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .35s cubic-bezier(.2,.7,.3,1), transform .35s cubic-bezier(.2,.7,.3,1), visibility 0s linear .35s;
+  color:var(--ink);text-align:center;
 }
-.lead-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.lead-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .35s cubic-bezier(.2,.7,.3,1), transform .35s cubic-bezier(.2,.7,.3,1), visibility 0s}
 .lead-modal .lead-orn{color:var(--gold);font-size:1.35rem;margin-bottom:.2rem}
 .lead-modal h3{font-family:var(--serif);font-size:1.55rem;margin-bottom:.4rem}
 .lead-modal p{font-size:.88rem;color:var(--ink-soft);margin-bottom:1.25rem}
@@ -968,8 +996,9 @@ section[id]{scroll-margin-top:84px}
   .svc-list .svc-meta .pr{font-size:.78rem}
   .svc-list .svc-badge{display:block;width:fit-content;margin:.3em 0 .15em;font-size:.66rem}
   .svc-list .svc-toggle .qty{width:100%;justify-content:space-between;background:#fff;margin-top:auto}
-  .svc-list .svc-toggle .qty button{flex:1 1 auto;width:auto;height:34px}
-  .svc-list .svc-toggle .qty input{flex:0 0 44px;width:44px;height:34px;font-size:16px}
+  /* 44px tall: these are the most-tapped controls on the site */
+  .svc-list .svc-toggle .qty button{flex:1 1 auto;width:auto;min-width:36px;height:44px}
+  .svc-list .svc-toggle .qty input{flex:0 0 40px;width:40px;height:44px;font-size:16px}
 }
 
 /* respect reduced-motion preferences */
