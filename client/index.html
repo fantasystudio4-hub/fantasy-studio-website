@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Fantasy Studio — My Booking</title>
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="../icons/icon-192.png" />
@@ -25,7 +25,7 @@
 body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
 h1,h2,h3{font-family:var(--serif)}
 button,input{font-family:var(--sans);font-size:16px}
-.wrap{max-width:640px;margin:0 auto;padding:0 14px 60px}
+.wrap{max-width:640px;margin:0 auto;padding:0 max(14px,env(safe-area-inset-left)) calc(60px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-right))}
 header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
 .hd svg{width:34px;height:34px;flex:0 0 auto}
@@ -58,7 +58,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .googlebtn:active{transform:scale(.98)}
 .googlebtn svg{width:19px;height:19px}
 .otp{display:flex;gap:.45rem;justify-content:center;margin:.4rem 0 1rem}
-.otp input{width:44px;height:52px;text-align:center;font-size:1.3rem;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--gold-b)}
+/* 6 boxes at a fixed 44px plus gaps overflowed the login card on 360px
+   phones; let them shrink evenly instead while staying a 44px tap target */
+.otp input{flex:1 1 0;min-width:0;max-width:52px;width:auto;height:52px;text-align:center;font-size:1.3rem;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--gold-b)}
 .otp input:focus{outline:none;border-color:var(--gold)}
 .mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
 .err{color:var(--err);font-size:.8rem;margin-top:.8rem}
@@ -91,8 +93,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ev:last-child{margin-bottom:0}
 .ev b{font-family:var(--serif);color:#fff;font-size:1rem;display:block}
 .ev .evm{color:var(--mut);font-size:.78rem;margin-bottom:.25rem}
+.ev ul{list-style:none;margin:0;padding:0}
 .ev li{list-style:none;display:flex;justify-content:space-between;font-size:.85rem;color:var(--text);padding:.12rem 0}
-.ev li span:last-child{color:var(--mut)}
+.ev li span:last-child:not(:first-child){color:var(--mut)}
 .ln{display:flex;justify-content:space-between;padding:.18rem 0;font-size:.9rem}
 .ln span:first-child{color:var(--mut)}
 .ln.big{border-top:1px solid var(--line);margin-top:.4rem;padding-top:.55rem}
@@ -127,8 +130,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .contact a:hover{background:var(--gold);color:#fff}
 .empty{color:var(--mut);text-align:center;padding:2.2rem .8rem;font-size:.92rem}
 .empty .ic{font-size:2.2rem;display:block;margin-bottom:.5rem}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
 .toast.show{opacity:1}
+/* the portal ran shimmer, spinner and the pulsing timeline node regardless */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+/* small text buttons were ~18-20px tall */
+.mini{min-height:44px;padding:.4em .9em}
+.hd .out,.hd .back{min-height:40px;display:inline-flex;align-items:center}
 </style>
 </head>
 <body>
@@ -174,14 +184,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
       <div id="otpStep" hidden>
         <div class="fld" style="text-align:center"><label style="text-align:center">Enter the OTP sent to <b id="otpTo" style="color:var(--text)"></b></label></div>
         <div class="otp" id="otpBoxes">
-          <input type="tel" inputmode="numeric" autocomplete="one-time-code" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
+          <input type="tel" inputmode="numeric" autocomplete="one-time-code" aria-label="OTP digit 1 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 5 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 6 of 6" />
         </div>
         <button class="gbtn" id="verifyOtp">Verify &amp; Sign In</button>
         <button class="mini" id="otpResend" type="button">Resend OTP</button>
         <button class="mini" id="otpBack" type="button">← Change number</button>
       </div>
 
-      <div class="err" id="loginErr" hidden></div>
+      <div class="err" id="loginErr" role="alert" hidden></div>
       <div class="note">Use the same mobile number you gave the studio while booking.</div>
     </div>
   </div>
@@ -200,13 +210,13 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
       </div>
       <div id="linkOtpStep" hidden>
         <div class="otp" id="linkOtpBoxes">
-          <input type="tel" inputmode="numeric" autocomplete="one-time-code" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" /><input type="tel" inputmode="numeric" maxlength="1" />
+          <input type="tel" inputmode="numeric" autocomplete="one-time-code" aria-label="Verification code digit 1 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="Verification code digit 2 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="Verification code digit 3 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="Verification code digit 4 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="Verification code digit 5 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="Verification code digit 6 of 6" />
         </div>
         <button class="gbtn" id="linkVerify">Verify</button>
         <button class="mini" id="linkResend" type="button">Resend OTP</button>
         <button class="mini" id="linkBack" type="button">← Change number</button>
       </div>
-      <div class="err" id="linkErr" hidden></div>
+      <div class="err" id="linkErr" role="alert" hidden></div>
       <button class="mini" id="linkLogout" type="button">Sign out</button>
     </div>
   </div>
@@ -249,6 +259,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 <div id="recaptcha-box"></div>
 <div class="toast" id="toast"></div>
 
+<script>
+/* The portal ships its own manifest ("My Booking") but never registered a
+   service worker, so a client opening the link the studio sent them got no
+   offline shell and no install prompt — it only worked by accident for people
+   who happened to arrive via the homepage nav first. */
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
+}
+</script>
 <script src="../firebase-config.js"></script>
 <script type="module">
 const $ = s => document.querySelector(s);
@@ -265,12 +284,32 @@ const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in
 if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   show('loginView'); $('#loginErr').textContent = 'Portal not configured yet.'; $('#loginErr').hidden = false;
 }else{
-const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
-        GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPhoneNumber } =
-  await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-const { getFirestore, collection, doc, getDoc, getDocs, query, where } =
-  await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+/* These three imports had no try/catch, and #loadingView is the only view that
+   starts visible. On flaky mobile data, a captive-portal wifi, or anywhere
+   www.gstatic.com is slow or blocked, the module rejected, the rest of this
+   script never ran, and the client sat on two shimmering grey boxes forever —
+   no message, no retry, no phone number. Precisely the "my booking has
+   vanished" panic the portal exists to prevent. */
+let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
+    GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPhoneNumber,
+    getFirestore, collection, doc, getDoc, getDocs, query, where;
+try{
+  ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
+  ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
+     GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPhoneNumber } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
+  ({ getFirestore, collection, doc, getDoc, getDocs, query, where } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
+}catch(e){
+  const ph = (DEFAULT_CONTACT.phone||'').replace(/\D/g,'');
+  $('#errTitle').textContent = "We couldn't reach our servers";
+  $('#errText').textContent = 'This is a connection problem, not a problem with your booking — your booking is safe. Please check your internet and try again.';
+  $('#errCall').href = 'tel:+' + ph;
+  $('#errWa').href = 'https://wa.me/' + ph;
+  $('#retryBtn').addEventListener('click', ()=>location.reload());
+  show('errorView');
+  throw e;
+}
 
 /* a NAMED app gives the client portal its own session storage — signing in
    here never signs the studio out of the admin on the same phone, and the
@@ -278,7 +317,11 @@ const { getFirestore, collection, doc, getDoc, getDocs, query, where } =
 const app  = initializeApp(window.FIREBASE_CONFIG, 'client');
 const auth = getAuth(app);
 const db   = getFirestore(app);
-try{ await getRedirectResult(auth); }catch(e){}
+/* A failed Google redirect used to be swallowed entirely: the client came back
+   from Google, landed on the login screen with no explanation, and had no idea
+   why. Hold the error and show it once the login view is up. */
+let _redirectErr = null;
+try{ await getRedirectResult(auth); }catch(e){ _redirectErr = e; }
 
 let CFG = null;
 async function loadCfg(){
@@ -312,9 +355,17 @@ function authMsg(err){
   if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
   if(c.includes('popup-closed') || c.includes('cancelled-popup-request')) return 'Google sign-in was closed before finishing.';
   if(c.includes('network-request-failed')) return 'No internet — check your connection.';
+  if(c.includes('captcha-check-failed') || c.includes('missing-recaptcha'))
+    return 'That security check expired. Tap Resend OTP to get a fresh code.';
+  if(c.includes('code-expired')) return 'That OTP has expired — tap Resend OTP for a new one.';
+  if(c.includes('quota-exceeded')) return 'Too many sign-in attempts today. Please call the studio and we will help.';
+  if(c.includes('user-disabled')) return 'This account has been disabled — please call the studio.';
+  if(c.includes('popup-blocked')) return 'Your browser blocked the Google sign-in window. Allow popups, or use Phone OTP.';
   if(c.includes('credential-already-in-use') || c.includes('account-exists'))
     return 'This mobile number is already linked to another sign-in. Try signing in with Phone OTP directly.';
-  return 'Sign-in failed: ' + (c.replace('auth/','').replace(/-/g,' ') || (err && err.message) || 'unknown error');
+  /* never show a raw Firebase code to a bride — say what to do instead */
+  return 'Sign-in did not go through. Please try again, or call the studio on ' +
+         ((contact().phone) || '+91 86868 68803') + ' and we will sort it out.';
 }
 const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false; };
 const hideErr = sel => { $(sel).hidden = true; };
@@ -385,8 +436,14 @@ async function isKnownClient(p){
 /* read a country-code + number pair; India keeps strict 10-digit checks,
    other countries accept 6–14 national digits (NRI clients) */
 function readPhone(ccSel, phSel){
-  const cc = ($(ccSel).value||'').replace(/\D/g,'') || '91';
-  const p  = ($(phSel).value||'').replace(/\D/g,'');
+  let cc = ($(ccSel).value||'').replace(/\D/g,'') || '91';
+  let p  = ($(phSel).value||'').replace(/\D/g,'');
+  /* Phones autofill the national field as "+91 98765 43210" or "098765 43210",
+     and both used to be rejected outright — the number field would hold 12 or
+     11 digits and fail the strict length check, with an error the client could
+     not act on. Absorb the duplicated country code and the trunk zero. */
+  if(p.length > 10 && p.indexOf(cc) === 0) p = p.slice(cc.length);
+  p = p.replace(/^0+/, '');
   const ok = cc === '91' ? p.length === 10 : (p.length >= 6 && p.length <= 14);
   return { cc, p, ok, full: '+' + cc + p, pretty: '+' + cc + ' ' + p, last10: (cc + p).slice(-10) };
 }
@@ -400,8 +457,13 @@ $('#phone').addEventListener('input', ()=>{ $('#noBook').hidden = true; });
 
 /* ---------- phone OTP sign-in ---------- */
 let confirmation = null, verifier = null;
+/* RecaptchaVerifier.verify() returns the CACHED grecaptcha response until the
+   widget is reset, and that token is single-use. Caching the verifier across
+   sends meant the first "Resend OTP" always failed with captcha-check-failed —
+   exactly when a bride who never got the SMS needs it to work. Tear it down
+   and build a fresh one for every send. */
 function getVerifier(btnId){
-  if(verifier) return verifier;
+  try{ if(verifier) verifier.clear(); }catch(e){}
   verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
   return verifier;
 }
@@ -465,7 +527,8 @@ async function doSendLinkOtp(){
   }
   btn.textContent = 'Sending OTP…';
   try{
-    if(!linkVerifier) linkVerifier = new RecaptchaVerifier(auth, 'linkSend', { size: 'invisible' });
+    try{ if(linkVerifier) linkVerifier.clear(); }catch(e){}
+    linkVerifier = new RecaptchaVerifier(auth, 'linkSend', { size: 'invisible' });
     linkConfirm = await linkWithPhoneNumber(auth.currentUser, ph.full, linkVerifier);
     $('#linkPhoneStep').hidden = true; $('#linkOtpStep').hidden = false;
     clearBoxes('#linkOtpBoxes'); $$('#linkOtpBoxes input')[0].focus();
@@ -497,7 +560,11 @@ $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
 onAuthStateChanged(auth, user=>{ route(user); });
 function route(user){
   $('#logoutBtn').hidden = !user;
-  if(!user){ show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true; return; }
+  if(!user){
+    show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
+    if(_redirectErr){ showErr('#loginErr', _redirectErr); _redirectErr = null; }
+    return;
+  }
   if(!user.phoneNumber){ show('linkView'); return; }
   show('loadingView');
   loadPackages(user).catch(err=>{ showLoadError(err, user); });
@@ -520,7 +587,13 @@ async function loadPackages(user){
   await loadCfg();
   const last10 = String(user.phoneNumber||'').replace(/\D/g,'').slice(-10);
   const snap = await getDocs(query(collection(db,'packages'), where('clientPhone','==', last10)));
-  const pkgs = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>!x.deleted);
+  /* Drafts are the studio's working copy — half-built events, provisional
+     prices and a "balance" nobody has agreed to. Showing them under the words
+     "your booking" the moment a quote is saved against a phone number was
+     alarming and occasionally wrong. Clients see a package once it has actually
+     been sent to them. */
+  const pkgs = snap.docs.map(d=>({ id:d.id, ...d.data() }))
+    .filter(x=>!x.deleted && (x.status||'draft') !== 'draft');
   if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
@@ -553,7 +626,7 @@ function pkgHTML(x){
     <div class="ev">
       <b>${esc(ev.title||'Event')}</b>
       <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
-      ${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}
+      ${(ev.items||[]).length ? `<ul>${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}</ul>` : ''}
     </div>`).join('');
   const alb = (x.album && Number(x.album.sheets)>0)
     ? `<div class="ln"><span>Premium album</span><span>${Number(x.album.sheets)} sheets</span></div>` : '';
