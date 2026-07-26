@@ -1941,7 +1941,7 @@ $('#wbFresh').addEventListener('click', ()=>{
 /* ---- lead capture: identity travels with every WhatsApp quote ---- */
 const LEAD_KEY = 'fs_lead';
 let _leadAction = 'wa';
-function openLeadModal(action){
+function openLeadModal(action, handoff){
   _leadAction = action === 'pdf' ? 'pdf' : 'wa';
   const sub = $('#leadSubmit');
   if(sub){
@@ -1954,7 +1954,7 @@ function openLeadModal(action){
   }catch(e){}
   $('#leadErr').hidden = true;
   $('#leadModal').classList.add('open'); $('#leadBackdrop').classList.add('open');
-  ovOpen('lead');
+  ovOpen('lead', handoff);
   setTimeout(()=>$('#leadName').focus(), 400);   /* after the sheet slide-in, so the keyboard doesn't fight the animation */
 }
 let _leadOpener = null;
@@ -1975,7 +1975,13 @@ document.addEventListener('keydown', e=>{
 
 ['waQuote','mbWa','sheetWa'].forEach(id=>{
   const el = document.getElementById(id); if(!el) return;
-  el.addEventListener('click', e=>{ e.preventDefault(); _leadOpener = el; closeSheet(); openLeadModal('wa'); });
+  el.addEventListener('click', e=>{
+    e.preventDefault(); _leadOpener = el;
+    /* only #sheetWa is inside the sheet; the other two fire with it already closed */
+    const handoff = $('#quoteSheet').classList.contains('open');
+    closeSheet(false, handoff);
+    openLeadModal('wa', handoff);
+  });
 });
 $('#leadClose').addEventListener('click', closeLeadModal);
 $('#leadBackdrop').addEventListener('click', closeLeadModal);
@@ -2579,8 +2585,22 @@ $('#presetGrid').addEventListener('click', e=>{
    ============================================================ */
 /* overlays register a history entry so the phone back gesture closes them
    instead of leaving the page */
-function ovOpen(name){ try{ history.pushState({ov:name}, ''); }catch(e){} }
-function ovClosed(name, fromPop){ if(!fromPop && history.state && history.state.ov === name){ try{ history.back(); }catch(e){} } }
+/* One overlay handing off to another (sheet -> lead modal) must NOT do
+   back()+push: history.back() is async, so its popstate arrives after the new
+   overlay has already pushed, and the popstate handler then closes the overlay
+   that just opened. Instead the incoming overlay REPLACES the outgoing one's
+   entry, so the stack still holds exactly one entry and the back gesture still
+   closes it in one press. */
+function ovOpen(name, handoff){
+  try{
+    if(handoff && history.state && history.state.ov) history.replaceState({ov:name}, '');
+    else history.pushState({ov:name}, '');
+  }catch(e){}
+}
+function ovClosed(name, fromPop, handoff){
+  if(handoff) return;                      // the incoming overlay inherits this entry
+  if(!fromPop && history.state && history.state.ov === name){ try{ history.back(); }catch(e){} }
+}
 window.addEventListener('popstate', ()=>{
   if($('#quoteSheet').classList.contains('open')) closeSheet(true);
   else if($('#mobileMenu').classList.contains('open')) closeMobileMenu(true);
@@ -2588,12 +2608,17 @@ window.addEventListener('popstate', ()=>{
   else if($('#cmpModal').classList.contains('open')) closeCompare(true);
 });
 function openSheet(){ $('#quoteSheet').classList.add('open'); $('#sheetBackdrop').classList.add('open'); document.body.style.overflow='hidden'; ovOpen('sheet'); }
-function closeSheet(fromPop){ if(!$('#quoteSheet').classList.contains('open')) return; $('#quoteSheet').classList.remove('open'); $('#sheetBackdrop').classList.remove('open'); document.body.style.overflow=''; ovClosed('sheet', fromPop); }
+function closeSheet(fromPop, handoff){ if(!$('#quoteSheet').classList.contains('open')) return; $('#quoteSheet').classList.remove('open'); $('#sheetBackdrop').classList.remove('open'); document.body.style.overflow=''; ovClosed('sheet', fromPop, handoff); }
 $('#mbOpen').addEventListener('click', openSheet);
 $('#mbOpen').addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openSheet(); }});
 $('#sheetClose').addEventListener('click', closeSheet);
 $('#sheetBackdrop').addEventListener('click', closeSheet);
-$('#sheetPdf').addEventListener('click', ()=>{ _leadOpener = $('#sheetPdf'); closeSheet(); openLeadModal('pdf'); });
+$('#sheetPdf').addEventListener('click', ()=>{
+  _leadOpener = $('#sheetPdf');
+  const handoff = $('#quoteSheet').classList.contains('open');
+  closeSheet(false, handoff);
+  openLeadModal('pdf', handoff);
+});
 $('#mbPdf').addEventListener('click', ()=>{ _leadOpener = $('#mbPdf'); openLeadModal('pdf'); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); closeCompare(); closeWelcomeBack(); } });
 
