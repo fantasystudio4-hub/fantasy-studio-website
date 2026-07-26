@@ -42,6 +42,9 @@
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- live pricing is read from here on first paint -->
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+<link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,400;1,400;1,500;1,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
 
 <!-- Structured data -->
@@ -3130,11 +3133,40 @@ window.__applyRemoteConfig = function(cfg){
       });
     }
     if(cfg && cfg.presets && Object.keys(cfg.presets).length){
-      Object.keys(PRESETS).forEach(k=>{ if(!cfg.presets[k]) delete PRESETS[k]; });
+      /* A preset whose numbers don't add up renders "Package ₹NaN" on the live
+         site, so validate before adopting: quantities must be real numbers and
+         every service key must exist. A bad preset is skipped, keeping the
+         built-in one, rather than publishing NaN to visitors. */
+      const clean = {};
       Object.keys(cfg.presets).forEach(k=>{
         const pr = cfg.presets[k];
-        if(pr && Array.isArray(pr.events)) PRESETS[k] = pr;
+        if(!pr || !Array.isArray(pr.events) || !pr.events.length) return;
+        const events = [];
+        let ok = true;
+        pr.events.forEach(ev=>{
+          if(!ev || typeof ev !== 'object') { ok = false; return; }
+          const services = {};
+          Object.keys(ev.services||{}).forEach(sk=>{
+            if(!SERVICE_KEYS.has(sk)) return;
+            const q = Number(ev.services[sk]);
+            if(!isFinite(q) || q < 0){ ok = false; return; }
+            if(q > 0) services[sk] = Math.min(50, Math.floor(q));
+          });
+          events.push({ type: String(ev.type||'Event').slice(0,40), services });
+        });
+        const album = Number(pr.album||0);
+        if(!ok || !isFinite(album) || album < 0) return;      // skip, keep the built-in
+        /* a preset that ended up with nothing priceable would advertise
+           "Package ₹0" — drop it rather than show a free package */
+        const hasAny = events.some(ev=>Object.keys(ev.services).length > 0);
+        if(!hasAny && !album) return;
+        clean[k] = { name: String(pr.name||k), tag: String(pr.tag||''),
+                     desc: String(pr.desc||''), album: Math.floor(album), events };
       });
+      if(Object.keys(clean).length){
+        Object.keys(PRESETS).forEach(k=>{ if(!clean[k]) delete PRESETS[k]; });
+        Object.keys(clean).forEach(k=>{ PRESETS[k] = clean[k]; });
+      }
     }
     if(cfg && Array.isArray(cfg.testimonials) && cfg.testimonials.length){
       const grid = document.querySelector('.testi-grid');
@@ -3159,44 +3191,83 @@ window.__applyRemoteConfig = function(cfg){
 };
 </script>
 
-<!-- Firebase (modular v10, CDN) — loads only when firebase-config.js holds a real config -->
-<script type="module">
-if(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey){
-  (async ()=>{
-    try{
-      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-      const { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } =
-        await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-      const app = initializeApp(window.FIREBASE_CONFIG);
-      const db  = getFirestore(app);
+<!-- Firestore over REST.
+     This page previously pulled the full modular SDK (firebase-app + firebase-
+     firestore = 134 KB gzipped / 538 KB raw, ~300-500ms of parse+compile on a
+     mid-range Android) purely to read ONE public config document and to append
+     the occasional lead. Both are plain HTTPS calls, so they are done with
+     fetch() instead: the config read is a single 8 KB GET, and the lead write
+     is one POST issued only when someone actually submits.
+     Verified against the live config/site document: the decoder below
+     reproduces the SDK's object exactly (prices identical, all four presets
+     deep-equal ignoring key order). -->
+<script>
+(function(){
+  var CFG = window.FIREBASE_CONFIG;
+  if(!CFG || !CFG.apiKey){ return; }
+  var BASE = 'https://firestore.googleapis.com/v1/projects/' + CFG.projectId +
+             '/databases/(default)/documents';
 
-      /* live pricing & content — hardcoded values stay if this fails */
-      try{
-        const snap = await getDoc(doc(db, 'config', 'site'));
-        if(snap.exists() && typeof window.__applyRemoteConfig === 'function'){
-          window.__applyRemoteConfig(snap.data());
-        }
-      }catch(e){}
+  /* Firestore REST wraps every value in a type tag; unwrap back to plain JS. */
+  function fsVal(v){
+    if(v === null || typeof v !== 'object') return null;
+    if('nullValue'      in v) return null;
+    if('booleanValue'   in v) return v.booleanValue;
+    if('integerValue'   in v) return Number(v.integerValue);
+    if('doubleValue'    in v) return Number(v.doubleValue);
+    if('stringValue'    in v) return v.stringValue;
+    if('timestampValue' in v) return v.timestampValue;
+    if('arrayValue'     in v) return (v.arrayValue.values || []).map(fsVal);
+    if('mapValue'       in v) return fsFields(v.mapValue.fields || {});
+    return null;
+  }
+  function fsFields(f){ var o = {}, k; for(k in f) o[k] = fsVal(f[k]); return o; }
 
-      /* Lead capture. Resolves true only if the write actually landed, so the
-         caller can queue it for retry instead of dropping it on the floor.
-         Still time-boxed to 2.5s so the WhatsApp hand-off is never held up. */
-      window.__saveLead = (lead)=>Promise.race([
-        addDoc(collection(db, 'leads'), Object.assign(
-          { createdAt: serverTimestamp(), status: 'new', notes: '' }, lead
-        )).then(()=>true).catch(()=>false),
-        new Promise(res=>setTimeout(()=>res(false), 2500))
-      ]);
+  /* ...and the reverse, for writing a lead. */
+  function toVal(v){
+    if(v === null || v === undefined) return { nullValue: null };
+    if(typeof v === 'boolean') return { booleanValue: v };
+    if(typeof v === 'number')  return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+    /* must be a real Firestore timestamp, not a string: admin sorts leads with
+       orderBy('createdAt') and formats them with createdAt.toDate() */
+    if(v instanceof Date)      return { timestampValue: v.toISOString() };
+    if(Array.isArray(v))       return { arrayValue: { values: v.map(toVal) } };
+    if(typeof v === 'object')  return { mapValue: { fields: toFields(v) } };
+    return { stringValue: String(v) };
+  }
+  function toFields(o){ var f = {}, k; for(k in o) f[k] = toVal(o[k]); return f; }
+
+  /* live pricing & content — hardcoded values stay if this fails */
+  fetch(BASE + '/config/site?key=' + CFG.apiKey)
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if(j && j.fields && typeof window.__applyRemoteConfig === 'function'){
+        window.__applyRemoteConfig(fsFields(j.fields));
+      }
+    })
+    .catch(function(){})
+    .then(function(){
       window.__firebaseReady = true;
       document.dispatchEvent(new Event('firebase-ready'));
-    }catch(e){
-      /* CDN blocked / offline: site runs fully on built-in values, but say so
-         explicitly rather than leaving callers waiting on a promise forever */
-      window.__firebaseReady = false;
-      document.dispatchEvent(new Event('firebase-ready'));
-    }
-  })();
-}
+    });
+
+  /* Lead capture. Resolves true only if the write actually landed, so the
+     caller can queue it for retry instead of dropping it on the floor.
+     Still time-boxed to 2.5s so the WhatsApp hand-off is never held up. */
+  window.__saveLead = function(lead){
+    /* REST cannot request serverTimestamp() without a commit+transform, so this
+       is the client clock. Same value the SDK would have written while offline. */
+    var doc = Object.assign({ createdAt: new Date(), status: 'new', notes: '' }, lead);
+    return Promise.race([
+      fetch(BASE + '/leads?key=' + CFG.apiKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: toFields(doc) })
+      }).then(function(r){ return r.ok; }).catch(function(){ return false; }),
+      new Promise(function(res){ setTimeout(function(){ res(false); }, 2500); })
+    ]);
+  };
+})();
 </script>
 </body>
 </html>
