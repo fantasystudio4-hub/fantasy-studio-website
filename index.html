@@ -1915,7 +1915,9 @@ function buildQuoteText(lead){
   if(lead && (lead.name || lead.phone)){
     L.push('');
     if(lead.name)  L.push('Name: ' + lead.name);
-    if(lead.phone) L.push('Phone: ' + lead.phone);
+    /* full international form so an NRI enquiry is callable straight from the chat */
+    if(lead.phoneFull) L.push('Phone: +' + lead.phoneFull);
+    else if(lead.phone) L.push('Phone: ' + lead.phone);
   }
   L.push('----------------');
   const evs = sortedQuoteEvents();
@@ -2085,10 +2087,81 @@ function restoreOpener(){
 $('#leadClose').addEventListener('click', closeLeadModal);
 $('#leadBackdrop').addEventListener('click', closeLeadModal);
 
-function buildLeadDoc(name, phone){
+/* Phone handling for a studio that genuinely has NRI clients.
+   Admin and the client portal already store/match on the last 10 digits of any
+   country's number; the two public forms were still hard-rejecting anything
+   that was not exactly 10 digits (or 91 + 10), so a relative in the Gulf, the
+   UK or the US could not send an enquiry at all. Returns null when the number
+   cannot plausibly be a phone number. */
+function parsePhone(raw){
+  let digits = String(raw||'').replace(/\D/g,'');
+  if(digits.indexOf('00') === 0) digits = digits.slice(2);     // 00 = international prefix
+  if(digits.length < 10 || digits.length > 15) return null;    // E.164 bounds
+  const last10 = digits.slice(-10);                            // what admin stores
+  let cc = digits.length > 10 ? digits.slice(0, digits.length-10) : '';
+  /* a leading 0 is a national trunk prefix, not a country code — "098765 43210"
+     is an Indian number typed the way phones autofill it, not country code 0 */
+  cc = cc.replace(/^0+/, '');
+  if(!cc) cc = '91';
+  return { digits, last10, cc, e164: cc + last10 };
+}
+
+/* ---- lead capture that does not lose leads ----
+   Three ways an enquiry used to vanish with no signal to anyone:
+   (1) __saveLead is only defined after the Firebase SDK import AND the config
+       fetch resolve — on Indian mobile data that window is seconds long, and
+       every submit inside it was skipped by a `typeof === 'function'` guard;
+   (2) addDoc's rejection was swallowed by .catch(()=>{});
+   (3) the 2.5s race resolved identically whether the write landed or not.
+   Now: wait for the SDK if it is still coming, and if the write does not land,
+   park the lead in localStorage and retry it on the next visit. The WhatsApp
+   hand-off is unchanged, so the owner still gets the message either way. */
+const LEAD_QUEUE_KEY = 'fs_lead_queue_v1';
+function queueLead(doc){
+  try{
+    const q = JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY) || '[]');
+    q.push({ doc, at: Date.now() });
+    localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(q.slice(-20)));
+  }catch(e){}
+}
+function firebaseReady(waitMs){
+  if(typeof window.__firebaseReady === 'boolean') return Promise.resolve(window.__firebaseReady);
+  if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey) return Promise.resolve(false);
+  return new Promise(res=>{
+    const done = ()=>{ clearTimeout(t); res(!!window.__firebaseReady); };
+    const t = setTimeout(()=>{ document.removeEventListener('firebase-ready', done); res(false); }, waitMs);
+    document.addEventListener('firebase-ready', done, { once:true });
+  });
+}
+async function saveLeadReliably(doc){
+  const ready = await firebaseReady(4000);        /* the window that used to drop leads */
+  if(!ready || typeof window.__saveLead !== 'function'){ queueLead(doc); return false; }
+  let ok = false;
+  try{ ok = await window.__saveLead(doc); }catch(e){ ok = false; }
+  if(!ok) queueLead(doc);
+  return ok;
+}
+async function flushLeadQueue(){
+  let q;
+  try{ q = JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY) || '[]'); }catch(e){ return; }
+  if(!q.length) return;
+  if(!(await firebaseReady(8000)) || typeof window.__saveLead !== 'function') return;
+  const left = [];
+  for(const item of q){
+    let ok = false;
+    try{ ok = await window.__saveLead(item.doc); }catch(e){ ok = false; }
+    if(!ok) left.push(item);
+  }
+  try{
+    if(left.length) localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(left));
+    else localStorage.removeItem(LEAD_QUEUE_KEY);
+  }catch(e){}
+}
+
+function buildLeadDoc(name, phone, phoneFull){
   const evs = sortedQuoteEvents();
   return {
-    name, phone,
+    name, phone, phoneFull: phoneFull || '',
     eventType: evs.map(v=>v.type).join(', '),
     weddingDate: (evs.find(v=>v.date)||{}).date || '',
     message: '',
@@ -2104,26 +2177,32 @@ function buildLeadDoc(name, phone){
 $('#leadForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const name = $('#leadName').value.trim();
-  const digits = $('#leadPhone').value.replace(/\D/g,'');
-  const phone = (digits.length===12 && digits.startsWith('91')) ? digits.slice(2) : digits;
   const err = $('#leadErr');
-  if(name.length < 2){ err.textContent = 'Please enter your name.'; err.hidden = false; $('#leadName').focus(); return; }
-  if(phone.length !== 10){ err.textContent = 'Please enter a valid 10-digit mobile number.'; err.hidden = false; $('#leadPhone').focus(); return; }
-  const lead = { name, phone };
+  const fail = (msg, field)=>{
+    err.textContent = msg; err.hidden = false;
+    field.setAttribute('aria-invalid','true'); field.setAttribute('aria-describedby','leadErr'); field.focus();
+  };
+  if(name.length < 2){ fail('Please enter your name.', $('#leadName')); return; }
+  const ph = parsePhone($('#leadPhone').value);
+  if(!ph){ fail('Please enter a valid mobile number with country code (e.g. +91 98765 43210).', $('#leadPhone')); return; }
+  $('#leadName').removeAttribute('aria-invalid'); $('#leadPhone').removeAttribute('aria-invalid');
+  err.hidden = true;
+  const phone = ph.last10;                 // stored the same way admin stores it
+  const lead = { name, phone, phoneFull: ph.e164 };
   try{ localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); }catch(e2){}
   const sub = $('#leadSubmit');
   if(sub && sub.disabled) return;   /* phone double-tap → one lead, one tab */
   if(sub) sub.disabled = true;
   setTimeout(()=>{ if(sub) sub.disabled = false; }, 3000);
   if(_leadAction === 'pdf'){
-    if(typeof window.__saveLead === 'function'){ try{ await window.__saveLead(buildLeadDoc(name, phone)); }catch(e3){} }
+    await saveLeadReliably(buildLeadDoc(name, phone, ph.e164));
     fireAdsConversion('contact');
     closeLeadModal();
     downloadQuotePDF();   // reads the saved lead, so 'Prepared for' is always filled
   }else{
     // open the tab synchronously (keeps the user gesture), save the lead, then point it at WhatsApp
     const waWin = window.open('', '_blank');
-    if(typeof window.__saveLead === 'function'){ try{ await window.__saveLead(buildLeadDoc(name, phone)); }catch(e3){} }
+    await saveLeadReliably(buildLeadDoc(name, phone, ph.e164));
     const url = waUrl(lead);
     let opened = true;
     if(waWin && !waWin.closed){ waWin.location.href = url; }
@@ -2147,7 +2226,12 @@ document.addEventListener('click', e=>{
   const qb = e.target.closest('.qty button');
   if(qb){
     const row = qb.closest('.svc-toggle');
+    /* the album stepper is also a .qty button but lives outside any .svc-toggle
+       and has its own handlers — without this guard every album +/- tap threw
+       "Cannot read properties of null (reading 'dataset')" */
+    if(!row) return;
     const ev  = findEvent(row.dataset.ev);
+    if(!ev) return;
     const key = row.dataset.svc;
     let q = ev.services[key] || 0;                    // read current qty (default 0)
     q += (qb.dataset.act === 'inc' ? 1 : -1);         // + adds 1, − subtracts 1
@@ -2769,34 +2853,40 @@ function observeReveals(){
 $('#enquiryForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const name = $('#cName').value.trim();
-  const phone= $('#cPhone').value.trim();
-  const digits = phone.replace(/\D/g,'');
-  const p10 = (digits.length === 12 && digits.startsWith('91')) ? digits.slice(2) : digits;
-  if(p10.length !== 10){ showToast('Please enter a valid 10-digit mobile number.'); $('#cPhone').focus(); return; }
+  const ph = parsePhone($('#cPhone').value);
+  if(!ph){
+    showToast('Please enter a valid mobile number with country code (e.g. +91 98765 43210).');
+    $('#cPhone').setAttribute('aria-invalid','true'); $('#cPhone').focus();
+    return;
+  }
+  $('#cPhone').removeAttribute('aria-invalid');
+  const p10 = ph.last10;
   const btn = e.target.querySelector('button[type="submit"]');
   if(btn && btn.disabled) return;
   const date = $('#cDate').value;
   const type = $('#cEvent').value;
   const msg  = $('#cMsg').value.trim();
-  let t = `*New Enquiry — Fantasy Studio*\n\nName: ${name}\nPhone: ${phone}\n`;
+  let t = `*New Enquiry — Fantasy Studio*\n\nName: ${name}\nPhone: +${ph.e164}\n`;
   if(date) t+=`Wedding Date: ${new Date(date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}\n`;
   if(type) t+=`Event: ${type}\n`;
   if(msg)  t+=`\nMessage: ${msg}\n`;
   if(btn) btn.disabled = true;
   try{
     const waWin = window.open('', '_blank');
-    if(typeof window.__saveLead === 'function'){
-      try{
-        await window.__saveLead({ name, phone: p10, eventType: type||'', weddingDate: date||'',
-          message: msg||'', quote: null, grandTotal: null, source: 'contact_form' });
-      }catch(e2){}
-    }
+    await saveLeadReliably({ name, phone: p10, phoneFull: ph.e164, eventType: type||'',
+      weddingDate: date||'', message: msg||'', quote: null, grandTotal: null, source: 'contact_form' });
     fireAdsConversion('contact');
     const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t)}`;
+    let opened = true;
     if(waWin && !waWin.closed){ waWin.location.href = url; }
-    else{
-      const w2 = window.open(url, '_blank');
-      if(!w2) showToast('Popup blocked — please allow popups, or WhatsApp us at +91 86868 68803.');
+    else{ opened = !!window.open(url, '_blank'); }
+    if(opened){
+      /* the form gave no feedback and never reset, so people submitted twice */
+      showToast("Enquiry sent — we'll reply shortly. Opening WhatsApp…");
+      e.target.reset();
+      const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;
+    }else{
+      showToast('Popup blocked — please allow popups, or WhatsApp us at +91 86868 68803.');
     }
   }finally{ if(btn) btn.disabled = false; }
 });
@@ -2970,6 +3060,9 @@ if(_shared){
   }catch(e){}
 })();
 
+/* retry any enquiry that could not be written on a previous visit */
+flushLeadQueue();
+
 /* iPhones never auto-prompt to install — teach the gesture, once */
 (function(){
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -3085,14 +3178,23 @@ if(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey){
         }
       }catch(e){}
 
-      /* silent lead capture — resolves within 2.5s no matter what */
+      /* Lead capture. Resolves true only if the write actually landed, so the
+         caller can queue it for retry instead of dropping it on the floor.
+         Still time-boxed to 2.5s so the WhatsApp hand-off is never held up. */
       window.__saveLead = (lead)=>Promise.race([
         addDoc(collection(db, 'leads'), Object.assign(
           { createdAt: serverTimestamp(), status: 'new', notes: '' }, lead
-        )).catch(()=>{}),
-        new Promise(res=>setTimeout(res, 2500))
+        )).then(()=>true).catch(()=>false),
+        new Promise(res=>setTimeout(()=>res(false), 2500))
       ]);
-    }catch(e){ /* CDN blocked / offline: site runs fully on built-in values */ }
+      window.__firebaseReady = true;
+      document.dispatchEvent(new Event('firebase-ready'));
+    }catch(e){
+      /* CDN blocked / offline: site runs fully on built-in values, but say so
+         explicitly rather than leaving callers waiting on a promise forever */
+      window.__firebaseReady = false;
+      document.dispatchEvent(new Event('firebase-ready'));
+    }
   })();
 }
 </script>
