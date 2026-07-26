@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
 <!-- ============ SEO ============ -->
 <title>Fantasy Studio — Wedding Photography & Cinematography in Hyderabad</title>
@@ -681,11 +681,25 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .mobile-bar{display:flex}   /* show price bar as soon as the sidebar drops */
   body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
   .wa-fab{bottom:calc(96px + env(safe-area-inset-bottom))}
+  /* the sticky price bar is the CTA from here down, so the nav pill is redundant
+     — dropping it is what lets the full link row still fit at 861px */
+  .nav-cta{display:none}
+}
+/* The full nav row needs ~1218px to fit on one line, but the burger only takes
+   over at 860px. In between (every iPad landscape, 1024/1152 desktops, a 1280px
+   laptop at 110% zoom) the wordmark and the first link wrapped to two lines.
+   Tighten the row rather than move the burger up — moving it would change the
+   navigation structure. */
+@media(max-width:1220px){
+  .nav-links{gap:1.15rem}
+  .nav-links a{font-size:.74rem;letter-spacing:.05em}
+  .nav-cta{padding:.65em 1.15em;font-size:.7rem}
+  .logo-text b,.logo-text span{white-space:nowrap}
+  .logo-mark{width:36px;height:36px}
 }
 @media(max-width:860px){
   .nav-links{display:none}
   .burger{display:flex}
-  .nav-cta{display:none}
   .testi-grid{grid-template-columns:1fr}
   .form-row{grid-template-columns:1fr}
   .mobile-bar{display:flex}
@@ -876,7 +890,11 @@ section[id]{scroll-margin-top:84px}
 .quote-sheet .promo-status.ok{color:#1f7a3d}
 .quote-sheet .promo-status.err{color:#b04030}
 .sheet-foot{padding:1rem 1.4rem calc(1rem + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:.7rem}
-.sheet-foot .btn{flex:1;padding:1em 1.2em}
+/* .btn sets white-space:nowrap and flex items default to min-width:auto, so
+   without min-width:0 these two pills cannot shrink and the row overflowed the
+   screen — "Download PDF" was clipped by the bezel at 360px. */
+.sheet-foot .btn{flex:1 1 0;min-width:0;padding:1em .7em}
+@media(max-width:400px){.sheet-foot .btn{font-size:.78rem;letter-spacing:.02em;padding:1em .5em}}
 @media(min-width:1081px){.quote-sheet,.sheet-backdrop{display:none!important}}
 @media(max-width:900px){.preset-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){
@@ -909,7 +927,7 @@ section[id]{scroll-margin-top:84px}
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
 .toast .t-close{border:0;background:none;color:#b3a98f;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.9em .5em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
-@media(max-width:860px){.toast{bottom:calc(100px + env(safe-area-inset-bottom))}}
+@media(max-width:1080px){.toast{bottom:calc(100px + env(safe-area-inset-bottom))}}
 
 /* ---- back to top ---- */
 .to-top{
@@ -922,7 +940,10 @@ section[id]{scroll-margin-top:84px}
 .to-top.show{opacity:1;pointer-events:auto;visibility:visible;transform:none;transition:opacity .35s, transform .35s, background .35s, color .35s, border-color .35s, visibility 0s}
 .to-top:hover{background:var(--gold);color:#fff;border-color:var(--gold)}
 .to-top svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
-@media(max-width:860px){.to-top{bottom:calc(160px + env(safe-area-inset-bottom));right:24px}}
+/* must track the same 1080px breakpoint that lifts .wa-fab and shows the mobile
+   price bar — at 861-1080px both buttons sat at bottom:96px right:22px and the
+   higher-z WhatsApp FAB swallowed every back-to-top tap. */
+@media(max-width:1080px){.to-top{bottom:calc(160px + env(safe-area-inset-bottom));right:24px}}
 
 /* ---- lead capture modal ---- */
 .lead-backdrop{position:fixed;inset:0;z-index:1240;background:rgba(10,8,4,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.3s}
