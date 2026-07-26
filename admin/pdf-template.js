@@ -30,8 +30,15 @@ async function ensureJsPDF(){
   jsPDFCtor = window.jspdf.jsPDF;
 }
 
-async function fetchFontB64(url){
-  const r = await fetch(url);
+async function fetchFontB64(url, timeoutMs){
+  /* Two ~500 KB TTFs with no timeout: on a stalled connection buildQuotePdf
+     hung long enough for the tap's user-activation window to expire, which is
+     what made navigator.share() throw NotAllowedError and drop the PDF. */
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const t = ctl ? setTimeout(() => ctl.abort(), timeoutMs || 8000) : null;
+  let r;
+  try { r = await fetch(url, ctl ? { signal: ctl.signal } : undefined); }
+  finally { if (t) clearTimeout(t); }
   if (!r.ok) throw new Error('font http ' + r.status);
   const buf = new Uint8Array(await r.arrayBuffer());
   let bin = '';
@@ -40,8 +47,15 @@ async function fetchFontB64(url){
   return btoa(bin);
 }
 
+let fontsPromise = null;
 async function ensureFonts(){
-  if (fontsReady !== null) return fontsReady;
+  if (fontsReady === true) return true;
+  /* A single failure used to latch fontsReady=false for the whole session, so
+     every later PDF silently printed "Rs." instead of ₹ until the app was
+     reloaded. A retry is allowed on the next PDF; concurrent calls share one
+     in-flight fetch instead of each pulling ~1 MB. */
+  if (fontsPromise) return fontsPromise;
+  fontsPromise = (async () => {
   try {
     /* pinned release tag — @main is a moving target and could silently change PDF output */
     const base = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@v20201206-phase3/hinted/ttf/NotoSans/';
@@ -51,8 +65,13 @@ async function ensureFonts(){
     ]);
     fontB64.normal = n; fontB64.bold = b;
     fontsReady = true;
-  } catch (e) { fontsReady = false; }
+  } catch (e) {
+    fontsReady = false;
+    fontsPromise = null;          // let the next PDF try again
+  }
   return fontsReady;
+  })();
+  return fontsPromise;
 }
 
 function fmtDateHuman(iso){

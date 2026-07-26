@@ -806,13 +806,58 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   window.addEventListener('offline', ()=>{ updNet(); toast('Offline — changes will sync when signal returns'); });
   updNet();
   $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
-  onAuthStateChanged(auth, user=>{
+
+  /* ============================================================
+     WHO CAN OPEN THIS PANEL
+     ------------------------------------------------------------
+     The gate used to be `if(user)` — ANY account in the Firebase project got
+     the full owner console. A wedding client who signs in at /client/ with
+     Google shares the same origin and auth session, and /lenscal/ creates an
+     account for any email+password typed into it. Whether they could read the
+     DATA depended only on the Firestore console rules, which are not in this
+     repo.
+
+     >>> PUT THE EMAIL YOU SIGN IN WITH HERE. <<<
+     While this list is EMPTY the gate stays OFF and behaves exactly as before,
+     so shipping this can never lock anyone out — it just shows a warning.
+     A Firebase custom claim `admin: true` also works and takes precedence.
+     ============================================================ */
+  const ADMIN_EMAILS = [
+    // 'you@example.com',
+  ];
+
+  async function isAdmin(user){
+    if(!ADMIN_EMAILS.length) return true;          // gate not configured yet
+    const email = String(user.email||'').trim().toLowerCase();
+    if(ADMIN_EMAILS.some(e=>String(e).trim().toLowerCase() === email)) return true;
+    /* Claim check is a network call on a cold token. If it throws we must NOT
+       lock the owner out on a train — fall back to the email list, which is
+       already satisfied above, so reaching here means genuinely not an admin. */
+    try{
+      const tok = await user.getIdTokenResult();
+      return tok && tok.claims && tok.claims.admin === true;
+    }catch(e){ return false; }
+  }
+
+  onAuthStateChanged(auth, async user=>{
     if(!user && _leadsUnsub){ try{ _leadsUnsub(); }catch(e){} _leadsUnsub = null; _leadsInit = false; }
     if(!user && _pkgsUnsub){ try{ _pkgsUnsub(); }catch(e){} _pkgsUnsub = null; }
+
+    if(user && !(await isAdmin(user))){
+      $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
+      $('#loginErr').textContent = 'This account is not authorised to open the admin panel.';
+      $('#loginErr').hidden = false;
+      try{ await signOut(auth); }catch(e){}
+      return;
+    }
+
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
     if(user){
+      if(!ADMIN_EMAILS.length){
+        toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
+      }
       loadLeads(); loadConfig(); loadPkgs();
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
@@ -849,10 +894,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabConfig:'config' };
   const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', config:'tabConfig' };
   let _navFromPop = false;
+  /* Switching tabs kept the previous tab's scroll offset, so arriving at a tab
+     part-way down the page was routine. Remember each tab's own position. */
+  let _tabScroll = {}, _curTab = null;
   function showTab(id){
+    if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
     if(id === 'tabCal') renderCalendar();
     if(id === 'tabHome' && typeof renderHome === 'function') renderHome();
+    if(_curTab !== id){
+      _curTab = id;
+      requestAnimationFrame(()=>window.scrollTo(0, _tabScroll[id] || 0));
+    }
   }
   Object.keys(TABS).forEach(id=>{
     $('#'+id).addEventListener('click', ()=>{
@@ -887,6 +940,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let LEADS = [];
   let _leadsUnsub = null, _leadsInit = false, _seenBefore = 0;
   let _leadsFresh = false, _pkgsFresh = false;   /* true once a server (non-cache) snapshot has arrived */
+  /* true once ANY snapshot has arrived (cache or server). renderHome() runs
+     synchronously at boot, before either listener has fired, so the panel used
+     to greet the owner with "No booked packages yet" and ₹0 on every cold
+     start — indistinguishable from genuinely having no work. */
+  let _leadsLoaded = false, _pkgsLoaded = false;
   /* Hard caps on the live snapshots. These used to be 300/500 with no signal:
      past that point the oldest records simply vanished from the panel — not in
      the list, not findable by the search box (which filters the in-memory array
@@ -908,6 +966,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const prevIds = new Set(LEADS.map(l=>l.id));
         LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         warnIfCapped('leads', snap.size, LEADS_CAP);
+        _leadsLoaded = true;
         if(!snap.metadata.fromCache) _leadsFresh = true;
         if(_leadsInit){
           const fresh = LEADS.filter(l=>!prevIds.has(l.id));
@@ -966,7 +1025,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)
           || String(l.eventType||'').toLowerCase().includes(q)));
     if(!list.length){
-      $('#leadList').innerHTML = LEADS.some(l=>!l.deleted)
+      $('#leadList').innerHTML = !_leadsLoaded
+        ? '<div class="skel"></div><div class="skel"></div>'
+        : LEADS.some(l=>!l.deleted)
         ? '<div class="empty2"><span class="ic">👥</span>No leads match this filter.</div>'
         : '<div class="empty2"><span class="ic">👥</span>No leads yet — new enquiries from the website appear here instantly.</div>';
       return;
@@ -1473,6 +1534,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(PKGS_CAP)), async snap=>{
         PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         warnIfCapped('packages', snap.size, PKGS_CAP);
+        _pkgsLoaded = true;
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
         renderPkgList();
         renderCalendar();
@@ -1616,7 +1678,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
     const recent = livePkgs().filter(x=>(x.status||'draft')==='delivered' && (x.deliveredAt||'') >= cutoff);
     const show = [...booked, ...recent];
-    if(!show.length){ el.innerHTML = '<div class="empty2"><span class="ic">📸</span>No booked packages yet — open a quote and set its status to <b style="color:var(--ok)">booked</b>.</div>'; return; }
+    if(!show.length){
+      el.innerHTML = _pkgsLoaded
+        ? '<div class="empty2"><span class="ic">📸</span>No booked packages yet — open a quote and set its status to <b style="color:var(--ok)">booked</b>.</div>'
+        : '<div class="skel"></div><div class="skel"></div>';
+      return;
+    }
     el.innerHTML = show.map(x=>pkgCardHTML(x, expandedHome === x.id)).join('');
   }
 
@@ -1983,10 +2050,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _purged = true;
       [...PKGS.filter(x=>x.deleted), ...LEADS.filter(l=>l.deleted)].forEach(it=>{
         const d = daysAgo(it.deletedAt);
-        if(d != null && d > 30){
-          const col = PKGS.includes(it) ? 'packages' : 'leads';
-          deleteDoc(doc(db, col, it.id)).catch(()=>{});
-        }
+        if(d == null || d <= 30) return;
+        const col = PKGS.includes(it) ? 'packages' : 'leads';
+        /* A package with recorded payments is a financial record. Auto-purging
+           it after 30 days destroyed the only history of money received, with
+           no prompt and no way back. Those are kept in Trash until the owner
+           deletes them deliberately with the ✕ Forever button. */
+        if(col === 'packages' && Array.isArray(it.payments) && it.payments.length) return;
+        deleteDoc(doc(db, col, it.id)).catch(()=>{});
       });
     }
   }
@@ -2006,7 +2077,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('Restored ✓');
       }catch(err){ toast('Restore failed — it may have been permanently deleted elsewhere'); }
     }else{
-      if(!confirm('Delete forever? This really cannot be undone.')) return;
+      const paid = kind==='pkg' && Array.isArray(it.payments) && it.payments.length
+        ? `\n\nThis package has ${it.payments.length} recorded payment(s) totalling ${inr(it.payments.reduce((n,p)=>n+(Number(p.amount)||0),0))}. That payment history will be destroyed.`
+        : '';
+      if(!confirm('Delete forever? This really cannot be undone.' + paid)) return;
       try{
         await deleteDoc(doc(db,col,id));
         if(kind==='pkg') PKGS = PKGS.filter(v=>v.id!==id); else LEADS = LEADS.filter(v=>v.id!==id);
@@ -2323,7 +2397,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const gross = events.reduce((s,ev)=>s + ev.items.reduce((a,it)=>a + it.qty*it.rate, 0), 0) + album.price;
     const discount = Math.min(gross, Math.max(0, Number($('#ppDiscount').value)||0));
     const finalPrice = gross - discount;
-    const advance = Math.min(finalPrice, Math.max(0, Number($('#ppAdvance').value)||0));
+    /* The advance used to be clamped to the new final price. Drop a package's
+       price below what the client has already paid and totals.advance was
+       quietly reduced to match, desyncing it from the payment list and erasing
+       the overpayment. Recorded payments are the source of truth: never report
+       less than what was actually received. */
+    const _editing = editingId ? PKGS.find(v=>v.id===editingId) : null;
+    const _paid = _editing && Array.isArray(_editing.payments)
+      ? _editing.payments.reduce((n,p)=>n + (Number(p.amount)||0), 0) : 0;
+    const _typed = Math.max(0, Number($('#ppAdvance').value)||0);
+    const advance = Math.max(_paid, Math.min(finalPrice, _typed));
     return {
       clientName: $('#pcName').value.trim(),
       careOf: $('#pcCareOf').value.trim(),
@@ -2503,8 +2586,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             return;
           }
         }catch(err){ if(err && err.name === 'AbortError') return; }
-        if(x.clientPhone){ if(openWa(waLink(x, waQuoteText(x)))) return; }
-        else toast('Sharing not supported here — downloading instead');
+        /* No file-level share (desktop, or the tap's activation window expired
+           while the fonts downloaded). This used to open WhatsApp with a
+           text-only message and RETURN, throwing away the PDF that had just
+           been built — the owner believed a quotation had been sent when the
+           client only ever got text. Keep the file, then open the chat. */
+        docPdf.save(fname);
+        if(x.clientPhone && openWa(waLink(x, waQuoteText(x)))){
+          toast('PDF downloaded — attach it in the WhatsApp chat that just opened');
+        }else{
+          toast('PDF downloaded — this browser cannot share files directly');
+        }
+        return;
       }
       docPdf.save(fname);
     }catch(err){ toast('PDF failed: ' + (err.message||err)); }
