@@ -2799,6 +2799,33 @@ if(_shared){
 }else{
   seedDefaults();
 }
+/* returning client? the portal keeps them signed in (named app 'client'),
+   so read its saved session from Firebase's IndexedDB store and relabel
+   the nav "Login" link to "My Booking" — the link itself never changes */
+(async function(){
+  try{
+    if(!window.FIREBASE_CONFIG || !window.indexedDB || !indexedDB.databases) return;
+    /* only look — never create the DB; that's the auth SDK's job */
+    const dbs = await indexedDB.databases();
+    if(!dbs.some(d=>d && d.name === 'firebaseLocalStorageDb')) return;
+    const req = indexedDB.open('firebaseLocalStorageDb');
+    req.onsuccess = ()=>{
+      const db = req.result;
+      try{
+        if(![...db.objectStoreNames].includes('firebaseLocalStorage')){ db.close(); return; }
+        const all = db.transaction('firebaseLocalStorage','readonly').objectStore('firebaseLocalStorage').getAll();
+        all.onsuccess = ()=>{
+          const signedIn = (all.result||[]).some(r=>r && typeof r.fbase_key === 'string'
+            && r.fbase_key.indexOf('authUser') !== -1 && r.fbase_key.indexOf(':client') !== -1 && r.value);
+          if(signedIn) $$('a[href="client/"]').forEach(a=>{ a.textContent = 'My Booking'; });
+          db.close();
+        };
+        all.onerror = ()=>{ try{ db.close(); }catch(e){} };
+      }catch(e){ try{ db.close(); }catch(e2){} }
+    };
+  }catch(e){}
+})();
+
 /* iPhones never auto-prompt to install — teach the gesture, once */
 (function(){
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
