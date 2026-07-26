@@ -1,35 +1,40 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets. */
-const CACHE = 'fs-cache-v7';
+const CACHE = 'fs-cache-v8';
+const PREFIX = 'fs-cache-';
+// Only the public shell. The admin and client apps used to be precached here,
+// which cost every first-time visitor ~133 KB for two pages they will never
+// open; both are cached on their own first visit by the asset path below.
 const PRECACHE = [
   './',
-  'admin/',
-  'client/',
-  'client/manifest.webmanifest',
   'manifest.webmanifest',
-  'og.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',
   'icons/apple-touch-icon.png',
-  'admin/manifest.webmanifest',
-  'icons/admin-192.png',
-  'icons/admin-512.png',
-  'icons/admin-maskable-512.png',
-  'icons/admin-apple.png',
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      // addAll is atomic: one 404 aborts the whole install and NOTHING gets
+      // cached. Add individually so a single bad entry cannot leave the site
+      // with no offline copy at all.
+      .then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => {}))))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      // CacheStorage is origin-scoped, not scope-scoped, so an unqualified
+      // sweep here deleted LensCal's cache (and its sweep deleted ours).
+      // Only ever retire our own older versions.
+      .then(keys => Promise.all(
+        keys.filter(k => k.startsWith(PREFIX) && k !== CACHE).map(k => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -49,8 +54,13 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(req)
         .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+          // only store a good response: a 404/500 page was being kept as the
+          // offline copy, so a transient server error became the page the user
+          // saw every time they opened the site offline afterwards
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() => caches.match(req).then(m => m || caches.match('./')))

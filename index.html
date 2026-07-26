@@ -62,7 +62,8 @@
   "foundingDate": "2012",
   "address": {
     "@type": "PostalAddress",
-    "addressLocality": "Malakpet, Hyderabad",
+    "streetAddress": "Malakpet",
+    "addressLocality": "Hyderabad",
     "addressRegion": "Telangana",
     "addressCountry": "IN"
   },
@@ -73,7 +74,7 @@
   "sameAs": ["https://www.instagram.com/fantasy_studio_official"]
 }
 </script>
-<script type="application/ld+json">
+<script type="application/ld+json" id="faqSchema">
 {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How do I book Fantasy Studio for my wedding?", "acceptedAnswer": {"@type": "Answer", "text": "Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery."}}, {"@type": "Question", "name": "What are the payment terms?", "acceptedAnswer": {"@type": "Answer", "text": "50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF."}}, {"@type": "Question", "name": "Do you have female photographers for the bridal side?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are ₹8,000 per head per event (₹6,000 photography charge + ₹2,000 female shooter pardah coverage premium). You can add them to any event directly in the Package Builder."}}, {"@type": "Question", "name": "Will we get the raw photos too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package."}}, {"@type": "Question", "name": "Can I customise a ready-made package?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things."}}, {"@type": "Question", "name": "How does the premium album work?", "acceptedAnswer": {"@type": "Answer", "text": "Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly."}}, {"@type": "Question", "name": "Which events do you cover?", "acceptedAnswer": {"@type": "Answer", "text": "Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage."}}]}
 </script>
 
@@ -1107,7 +1108,10 @@ section[id]{scroll-margin-top:84px}
   <div class="hero-dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap hero-inner">
     <div class="ornament reveal"><i></i><span>Est. 2012 — 14 Years of Artistry</span><i></i></div>
-    <h1 class="reveal d1">FANTASY STUDIO</h1>
+    <!-- the wordmark stays the visible H1; the suffix gives crawlers and screen
+         readers the service + city the page actually ranks for, with no visual
+         change (.sr-only is absolutely positioned, so layout is untouched) -->
+    <h1 class="reveal d1">FANTASY STUDIO<span class="sr-only"> — Wedding Photography &amp; Cinematography in Hyderabad</span></h1>
     <p class="tagline reveal d2">Wedding Photography · Cinematography · <b>Candid</b> · Drone</p>
     <div class="hero-cta reveal d3">
       <a href="#builder" class="btn btn-gold">Build Your Package</a>
@@ -3181,6 +3185,20 @@ window.__applyRemoteConfig = function(cfg){
       const list = document.querySelector('.faq-list');
       if(list) list.innerHTML = cfg.faqs.map(f=>`
         <details class="faq-item"><summary>${esc(f.q||'')}</summary><p>${esc(f.a||'')}</p></details>`).join('');
+      /* Keep the FAQPage structured data matching what the page actually shows.
+         Google's FAQPage policy requires the marked-up Q&A to be visible, and a
+         stale block meant an obsolete lady-shooter or album price stayed in the
+         index after the owner changed it in Config. */
+      const sc = document.getElementById('faqSchema');
+      if(sc){
+        sc.textContent = JSON.stringify({
+          '@context':'https://schema.org', '@type':'FAQPage',
+          mainEntity: cfg.faqs.filter(f=>f && f.q && f.a).map(f=>({
+            '@type':'Question', name:String(f.q),
+            acceptedAnswer:{ '@type':'Answer', text:String(f.a) }
+          }))
+        });
+      }
     }
     renderPresets();
     renderCompareTable();

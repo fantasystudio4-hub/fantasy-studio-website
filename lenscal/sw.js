@@ -22,7 +22,11 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      // CacheStorage is origin-scoped: without the prefix filter this wiped the
+      // main site's 'fs-cache-*' every time LensCal's worker activated.
+      .then(keys => Promise.all(
+        keys.filter(k => k.startsWith('lenscal-') && k !== CACHE).map(k => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });

@@ -1,3 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /client/
+Disallow: /lenscal/
+
 Sitemap: https://www.fantasystudio.in/sitemap.xml
