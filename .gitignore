@@ -3,3 +3,11 @@
 
 # macOS
 .DS_Store
+
+# Internal docs — the whole repo is deployed to the public domain, so anything
+# tracked here is served at https://www.fantasystudio.in/<filename>.
+# Security notes and draft rules must never be committed.
+PHASE0-AUDIT.md
+AUDIT-*.md
+firestore.rules.proposed
+*.local.md
