@@ -23,10 +23,17 @@
 # Source & internal docs — never site assets. This is what removes
 # lenscal/SETUP.md and lenscal/firestore.rules (and the root firestore.rules)
 # from the public domain, where they were previously served.
+# Vercel only applies the bare patterns to root-level files (verified live:
+# /firestore.rules 404'd while /lenscal/firestore.rules stayed up), so every
+# pattern needs an explicit **/ recursive twin.
 *.md
+**/*.md
 *.rules
+**/*.rules
 *.rules.proposed
+**/*.rules.proposed
 *.local.md
+**/*.local.md
 
 # NOTE: firebase-config.js is intentionally NOT excluded — the site needs it at
 # runtime, and a Firebase web config is public by design (it is not a secret;
