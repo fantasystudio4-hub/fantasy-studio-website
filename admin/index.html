@@ -160,6 +160,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .grp::after{content:"";flex:1;height:1px;background:var(--line)}
 .grp b{color:var(--gold-b);font-weight:600}
 #pkgList .grp:first-child{margin-top:.15rem}
+.grp.tog{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:.3rem 0}
+.grp.tog .car{display:inline-block;transition:transform .15s;color:var(--gold-b);font-size:.62rem}
+.grp.tog.closed .car{transform:rotate(-90deg)}
+.grp.tog:active{opacity:.65}
 
 /* package row actions — even grid, no crowding */
 .pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:0 1rem;padding:.75rem 0 .9rem;border-top:1px dashed var(--line)}
@@ -476,7 +480,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
       <div class="fchips" id="pkgChips"></div>
-      <p class="sub" style="margin:0 0 .7rem">Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>.</p>
+      <p class="sub" style="margin:0 0 .7rem">Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>.</p>
       <div id="pkgList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </div>
 
@@ -1765,6 +1769,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
+  /* which pipeline groups are open in the "All" view — remembered per device */
+  let _pkgGrpsOpen = null;
+  function pkgGrpsOpen(){
+    if(!_pkgGrpsOpen){
+      try{ _pkgGrpsOpen = JSON.parse(localStorage.getItem('fs_pkg_grps')||'null'); }catch(err){}
+      if(!_pkgGrpsOpen || typeof _pkgGrpsOpen !== 'object') _pkgGrpsOpen = { booked:true, sent:false, draft:false, delivered:false };
+    }
+    return _pkgGrpsOpen;
+  }
+  function togglePkgGrp(s){
+    const o = pkgGrpsOpen(); o[s] = !o[s];
+    try{ localStorage.setItem('fs_pkg_grps', JSON.stringify(o)); }catch(err){}
+    renderPkgList();
+  }
+
   function renderPkgList(){
     renderHome();
     renderPkgChips();
@@ -1782,14 +1801,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     /* "All" view: group by status so the list reads like a pipeline —
-       booked (next shoot first), quotes awaiting a reply, drafts, delivered */
+       booked (next shoot first), quotes awaiting a reply, drafts, delivered.
+       Each group collapses (tap the header); only Booked starts open so the
+       list stays short. The choice is remembered on this device. */
     if(!f && !q){
       const GRPS = [['booked','Booked'], ['sent','Sent — awaiting reply'], ['draft','Drafts'], ['delivered','Delivered']];
+      const open = pkgGrpsOpen();
       $('#pkgList').innerHTML = GRPS.map(([s, lab])=>{
         let grp = list.filter(x=>(x.status||'draft')===s);
         if(!grp.length) return '';
         if(s === 'booked') grp = [...grp].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
-        return `<div class="grp">${lab}<b>${grp.length}</b></div>` + grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
+        const isOpen = !!open[s];
+        return `<div class="grp tog ${isOpen?'':'closed'}" data-grp="${s}" role="button" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${grp.length}</b></div>`
+          + (isOpen ? grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '');
       }).join('');
       return;
     }
@@ -1798,6 +1822,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   async function pkgCardAction(e){
     if(e.target.closest('#pkgEmptyNew')){ openPkgEdit(null); return; }
+    const gh = e.target.closest('[data-grp]');
+    if(gh){ togglePkgGrp(gh.dataset.grp); return; }
     const card = e.target.closest('.lead'); if(!card) return;
     const id = card.dataset.id;
     const inHome = !!card.closest('#homeBooked');
