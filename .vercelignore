@@ -1,0 +1,33 @@
+# Files Vercel must NOT serve on the public production site.
+# ---------------------------------------------------------------------------
+# Vercel deploys this repo as a static site, which means every file in it is
+# fetchable at https://www.fantasystudio.in/<path> unless excluded here. This
+# list keeps source, internal, and authorization-model files off the public
+# domain. (It mirrors the exclude list in .github/workflows/deploy-pages.yml so
+# both deploy targets behave the same.)
+#
+# Pattern syntax is .gitignore-style. Anything listed here is omitted from the
+# deployment bundle; it does not affect the git repo or local dev.
+
+# Version control / tooling internals
+.git
+.github/
+.claude/
+.gitignore
+.vercelignore
+
+# OS cruft
+.DS_Store
+**/.DS_Store
+
+# Source & internal docs — never site assets. This is what removes
+# lenscal/SETUP.md and lenscal/firestore.rules (and the root firestore.rules)
+# from the public domain, where they were previously served.
+*.md
+*.rules
+*.rules.proposed
+*.local.md
+
+# NOTE: firebase-config.js is intentionally NOT excluded — the site needs it at
+# runtime, and a Firebase web config is public by design (it is not a secret;
+# the security boundary is firestore.rules, deployed in the Firebase console).
