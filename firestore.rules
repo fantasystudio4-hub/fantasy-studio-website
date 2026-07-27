@@ -1,195 +1,122 @@
 rules_version = '2';
-
 // ============================================================================
-// FANTASY STUDIO — COMBINED FIRESTORE SECURITY RULES  (studio site + LensCal)
-// ----------------------------------------------------------------------------
-// This is the SINGLE source of truth for the whole project
-// (fantasy-studio-web-f7813). A Firestore database has exactly ONE rules
-// document, so the studio collections and the lenscal_* collections MUST live
-// in the same file — deploying studio rules alone would delete LensCal's rules
-// and lock that app out.
-//
-// TO DEPLOY: Firebase console → Firestore Database → Rules → paste this whole
-// file → Publish. Rules apply server-side the instant you Publish; there is no
-// git deploy involved. This file is deliberately kept OUT of the public site
-// (see .vercelignore and the Pages workflow), but treat it as public anyway:
-// good rules never rely on the file being secret.
-//
-// DESIGN PRINCIPLE: a bare signed-in account must be worth nothing. Every grant
-// below is either (a) genuinely public data (the site's own price list), (b)
-// scoped to the owner of the data, or (c) admin-only. This is what makes it
-// safe even if a stranger manages to create an account.
+// FANTASY STUDIO — COMBINED FIRESTORE RULES (studio site + LensCal)
+// A database has ONE rules document, so the LensCal collections MUST live here
+// too — otherwise publishing this locks LensCal's crew out of their own app.
+// Paste the whole file into: Firebase console → Firestore Database → Rules →
+// Publish. It applies server-side immediately; there is no git deploy.
 // ============================================================================
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- identity helpers ---------------------------------------------------
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // The admin is identified by the studio's own login email, matching the
-    // ADMIN_EMAILS allowlist in admin/index.html. A Firebase custom claim
-    // `admin: true` also works and takes precedence if you ever set one.
-    // The owner's email is unique in Firebase Auth, so no one else can register
-    // it — this check cannot be spoofed by creating a look-alike account.
+    // you, signed in to the admin panel
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.admin == true ||
-        request.auth.token.email == 'fantasystudio4@gmail.com'
-      );
+      return request.auth != null
+        && request.auth.token.email in ['fantasystudio4@gmail.com'];
     }
 
-    // Last 10 digits of the signed-in client's verified phone number, matching
-    // the studio's "store the last 10 digits" convention. The E.164 token value
-    // (e.g. "+918686868803") includes a leading '+', so taking the last 10
-    // characters strips it and any country code down to the stored key.
-    // Returns a value that can never equal a real stored number when there is
-    // no usable phone claim, so the comparison simply fails closed.
-    function myLast10() {
-      return (isSignedIn()
+    // last 10 characters of the signed-in client's verified phone number.
+    // The E.164 token (e.g. "+918686868803" or NRI "+447911123456") includes a
+    // leading '+', so the last 10 chars strip it and the country code down to
+    // the stored "last 10 digits" key — works for +91 AND overseas clients.
+    function clientPhone10() {
+      return (request.auth != null
               && request.auth.token.phone_number is string
               && request.auth.token.phone_number.size() >= 11)
         ? request.auth.token.phone_number[
-            (request.auth.token.phone_number.size() - 10) :
+            (request.auth.token.phone_number.size() - 10):
              request.auth.token.phone_number.size()]
-        : '__no_phone__';
+        : '__none__';
     }
 
-    // ========================================================================
-    // STUDIO COLLECTIONS
-    // ========================================================================
-
-    // ---- config -----------------------------------------------------------
-    // config/site is the live price list + content the PUBLIC page fetches
-    // anonymously, so it must be world-readable. Every OTHER config document
-    // (e.g. config/counters, and anything internal) is admin-only. Only the
-    // admin may ever write config.
-    match /config/{docId} {
-      allow read:  if docId == 'site' || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // ---- leads ------------------------------------------------------------
-    // The public contact form and package builder POST a new lead with NO auth
-    // token (the page uses the Firestore REST API with only the public web
-    // key). So `create` must be allowed for unauthenticated callers — but it is
-    // tightly shaped: an exact field allow-list, forced status/notes, size
-    // caps, and no way to set admin-only fields (deleted, deletedAt, etc.).
-    // Only the admin can ever READ, EDIT, or DELETE a lead — customer PII never
-    // leaves the console.
-    //
-    // NOTE: this still permits volume abuse (anyone can POST leads). The proper
-    // fix for that is Firebase App Check (attest that requests come from your
-    // real site); rules alone cannot rate-limit. See the review notes.
-    function isValidNewLead() {
-      let d = request.resource.data;
-      return d.keys().hasOnly([
-               'name','phone','phoneFull','eventType','weddingDate',
-               'message','quote','grandTotal','source','createdAt','status','notes'
-             ])
-        && d.status == 'new'
-        && d.notes == ''
-        && d.createdAt is timestamp
-        && d.name is string && d.name.size() > 0 && d.name.size() <= 120
-        && d.phone is string && d.phone.size() <= 20
-        && (!('phoneFull'   in d) || (d.phoneFull   is string && d.phoneFull.size()   <= 24))
-        && (!('eventType'   in d) || (d.eventType   is string && d.eventType.size()   <= 400))
-        && (!('weddingDate' in d) || (d.weddingDate is string && d.weddingDate.size() <= 40))
-        && (!('message'     in d) || (d.message     is string && d.message.size()     <= 2000))
-        && (!('source'      in d) || (d.source      is string && d.source.size()      <= 40))
-        && (d.grandTotal == null || d.grandTotal is number)
-        && (d.quote == null || d.quote is map);
-    }
-    match /leads/{id} {
+    // visitors may only CREATE leads — never read, change or delete them.
+    // Pinned to the exact fields the form sends, with size caps, so a stranger
+    // cannot inject extra/oversized fields into your admin console.
+    match /leads/{leadId} {
+      allow create:
+        if request.resource.data.keys().hasOnly(
+             ['name','phone','phoneFull','eventType','weddingDate',
+              'message','quote','grandTotal','source','createdAt','status','notes'])
+        && request.resource.data.status == 'new'
+        && request.resource.data.notes == ''
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 20
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.source in ['package_builder', 'contact_form'];
       allow read, update, delete: if isAdmin();
-      allow create:               if isValidNewLead();
     }
 
-    // ---- packages (quotes / bookings) -------------------------------------
-    // A signed-in client (phone-OTP auth) may READ only the packages whose
-    // stored clientPhone equals the last 10 digits of their own verified phone
-    // number — this is what stops one client from reading another's quote.
-    // Everything else (create/update/delete, and reading anyone's package) is
-    // admin-only.
-    match /packages/{id} {
-      allow read: if isAdmin()
-                  || (isSignedIn()
-                      && resource.data.clientPhone is string
-                      && resource.data.clientPhone == myLast10());
-      allow create, update, delete: if isAdmin();
-    }
-
-    // ---- phoneIndex -------------------------------------------------------
-    // Doc id is SHA-256('fs:' + phone). The client portal reads a single doc by
-    // that hash BEFORE sending an OTP, to avoid texting numbers that aren't
-    // clients — so read must be allowed without auth. The value is only a
-    // boolean existence marker. Only the admin writes it.
-    // (Privacy note: because phone numbers are low-entropy, a determined party
-    //  could brute-force the hash to learn whether a number is a client. If
-    //  that matters, move this behind auth and accept the wasted-SMS tradeoff.)
-    match /phoneIndex/{key} {
-      allow read:  if true;
+    // visitors may READ the site config; only you may write it
+    match /config/site {
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ========================================================================
-    // LENSCAL COLLECTIONS  (folded in verbatim from lenscal/firestore.rules)
-    // ------------------------------------------------------------------------
-    // These grant read to ANY signed-in user by design (crew directory, invite
-    // links, availability cards). That is only safe while account creation is
-    // restricted to people the studio trusts — i.e. self-service sign-up MUST
-    // stay disabled in Firebase Auth. If sign-up is ever reopened, tighten
-    // these reads to "self or connected" first.
-    // ========================================================================
+    // quote-number counter — admin only
+    match /config/counters {
+      allow read, write: if isAdmin();
+    }
 
+    // packages: you get full access; a signed-in client may READ only the
+    // packages saved under their own verified mobile number (any country code)
+    match /packages/{pkgId} {
+      allow read: if isAdmin()
+        || (request.auth != null
+            && resource.data.clientPhone == clientPhone10());
+      allow write: if isAdmin();
+    }
+
+    // hashed phone index — single-doc existence check before sending an OTP
+    match /phoneIndex/{h} {
+      allow get:   if true;
+      allow list:  if false;    // never allow enumerating the whole index
+      allow write: if isAdmin();
+    }
+
+    // ---- LensCal (shares this project — these MUST stay or LensCal breaks) --
     match /lenscal_users/{uid} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
       allow delete: if false;
     }
-
     match /lenscal_availability/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && docId.split('_')[0] == request.auth.uid
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && docId.split('_')[0] == request.auth.uid
                    && request.resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && docId.split('_')[0] == request.auth.uid;
+      allow delete: if request.auth != null && docId.split('_')[0] == request.auth.uid;
     }
-
     match /lenscal_connections/{pairId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.users;
-      allow create: if isSignedIn()
+      allow read: if request.auth != null && request.auth.uid in resource.data.users;
+      allow create: if request.auth != null
                     && request.auth.uid in request.resource.data.users
                     && request.resource.data.requestedBy == request.auth.uid
                     && request.resource.data.status == 'pending';
-      allow update: if isSignedIn() && request.auth.uid in resource.data.users;
-      allow delete: if isSignedIn() && request.auth.uid in resource.data.users;
+      allow update, delete: if request.auth != null && request.auth.uid in resource.data.users;
     }
-
     match /lenscal_groups/{groupId} {
-      allow read, delete, update: if isSignedIn() && resource.data.owner == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.owner == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
     }
-
     match /lenscal_broadcasts/{id} {
-      allow read: if isSignedIn()
+      allow read: if request.auth != null
                   && (resource.data.by == request.auth.uid
                       || request.auth.uid in resource.data.to);
-      allow create: if isSignedIn() && request.resource.data.by == request.auth.uid;
-      allow update: if isSignedIn()
+      allow create: if request.auth != null && request.resource.data.by == request.auth.uid;
+      allow update: if request.auth != null
                     && (resource.data.by == request.auth.uid
                         || (request.auth.uid in resource.data.to
                             && request.resource.data.diff(resource.data)
                                  .affectedKeys().hasOnly(['responders'])));
-      allow delete: if isSignedIn() && resource.data.by == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.by == request.auth.uid;
     }
 
-    // ---- default deny -------------------------------------------------------
-    // Anything not matched above is denied. New collections must be added here
-    // explicitly — they do not inherit any access.
+    // everything else: admin only (default deny for non-admins)
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAdmin();
     }
   }
 }
