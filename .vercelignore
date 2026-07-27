@@ -3,8 +3,8 @@
 # Vercel deploys this repo as a static site, which means every file in it is
 # fetchable at https://www.fantasystudio.in/<path> unless excluded here. This
 # list keeps source, internal, and authorization-model files off the public
-# domain. (It mirrors the exclude list in .github/workflows/deploy-pages.yml so
-# both deploy targets behave the same.)
+# domain. (Vercel is the only deploy target — the GitHub Pages mirror and its
+# workflow were removed in Jul 2026.)
 #
 # Pattern syntax is .gitignore-style. Anything listed here is omitted from the
 # deployment bundle; it does not affect the git repo or local dev.
