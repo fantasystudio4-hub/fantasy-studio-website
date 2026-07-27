@@ -1,8 +1,8 @@
 /* LensCal — auth service. Phone OTP first, email/password fallback. */
 import {
   auth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
-} from '../firebase.js';
+  signInWithEmailAndPassword, signOut,
+} from '../firebase.js';   /* createUserWithEmailAndPassword deliberately not imported */
 import { DEFAULT_COUNTRY_CODE } from '../config.js';
 
 let confirmationResult = null;
@@ -45,21 +45,43 @@ export async function confirmOtp(code) {
   return cred.user;
 }
 
+/* Sign in only — this never creates an account.
+   It used to: an unknown email+password was silently turned into a new
+   account. LensCal shares Firebase project fantasy-studio-web-f7813 with the
+   studio site, so every account minted here is an authenticated identity
+   against the same database that holds the studio's leads, client phone
+   numbers and payment history. Whether such an account can actually READ that
+   data is decided by the Firestore console rules, so this is defence in depth,
+   not the whole defence — but it removes the free, unattended way in.
+
+   It also removed an enumeration oracle: a registered email with a wrong
+   password answered "Wrong password for this email" while an unknown email
+   silently succeeded, so anyone could test which addresses had accounts. Both
+   cases now return the same message.
+
+   Accounts are created by the studio: Firebase console → Authentication →
+   Users → Add user. To restore self-serve sign-up, add a deliberate
+   "Create account" flow — but do the Firestore rules first, or it reopens
+   exactly this hole with an extra click in front of it. */
 export async function emailSignIn(email, password) {
   try {
     return (await signInWithEmailAndPassword(auth, email, password)).user;
   } catch (e) {
-    // Auto-create the account on first sign-in (fallback path is meant
-    // to be as low-friction as OTP).
-    if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-      try {
-        return (await createUserWithEmailAndPassword(auth, email, password)).user;
-      } catch (e2) {
-        if (e2.code === 'auth/email-already-in-use') throw new Error('Wrong password for this email');
-        throw e2;
-      }
+    const c = e && e.code;
+    if (c === 'auth/user-not-found' || c === 'auth/wrong-password'
+        || c === 'auth/invalid-credential' || c === 'auth/invalid-email') {
+      throw new Error('Email or password is incorrect. Ask the studio to set up your account if you do not have one.');
     }
-    throw e;
+    if (c === 'auth/too-many-requests') {
+      throw new Error('Too many attempts — wait a few minutes and try again.');
+    }
+    if (c === 'auth/user-disabled') {
+      throw new Error('This account has been disabled. Contact the studio.');
+    }
+    if (c === 'auth/network-request-failed') {
+      throw new Error('No internet — check your connection.');
+    }
+    throw new Error('Sign-in failed. Please try again, or contact the studio.');
   }
 }
 

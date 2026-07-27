@@ -72,7 +72,7 @@ export function renderLogin(root) {
             }
           },
         }, 'Continue'),
-        el('p.auth-hint', {}, 'New here? Same button creates your account.'),
+        el('p.auth-hint', {}, 'Accounts are set up by Fantasy Studio — contact the studio if you need one.'),
         el('button.btn.btn-ghost.btn-full', { onclick: () => { mode = 'phone'; draw(); } }, '← Use phone OTP'),
       );
     }
