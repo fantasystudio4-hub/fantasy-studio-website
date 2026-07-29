@@ -104,6 +104,21 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .paytotal{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:.5rem;padding-top:.55rem;font-size:.95rem}
 .paytotal b{color:var(--gold-b);font-family:var(--serif)}
 
+/* member analytics — stat tiles + a single-series monthly column chart */
+.stats2{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;margin:0 0 .9rem}
+@media(min-width:520px){.stats2{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.6rem .5rem;text-align:center;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.stat b{font-family:var(--serif);font-size:1.15rem;color:var(--gold-b);display:block;line-height:1.25}
+.stat span{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.paytotal + .paytotal{border-top:0;margin-top:0;padding-top:.15rem}
+.bars{display:flex;align-items:stretch;gap:8px;height:118px;margin:.5rem 0 .1rem}
+.bcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.bcol b{font-size:.6rem;color:var(--text);font-weight:500;white-space:nowrap}
+.bcol i{display:block;width:100%;max-width:34px;background:linear-gradient(180deg,#E2C275,#8E6E1E);border-radius:4px 4px 0 0}
+.bcol.zero i{background:rgba(226,194,117,.12);border-radius:4px}
+.bcol span{font-size:.62rem;color:var(--mut)}
+.rolechips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem}
+.rolechips b{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.72rem;font-weight:500}
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;color:var(--mut);font-size:.88rem;margin:1rem 0}
 .bigic{font-size:2rem;display:block;margin-bottom:.4rem}
 .toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
@@ -195,6 +210,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div id="appView" hidden>
     <h1 class="hello" id="hello"></h1>
     <p id="helloSub"></p>
+    <div class="stats2" id="crewStats" hidden></div>
+    <div class="paycard" id="anaCard" hidden>
+      <h3>📊 My last 6 months</h3>
+      <div class="bars" id="anaBars"></div>
+      <div class="rolechips" id="anaRoles"></div>
+    </div>
+    <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
     <div id="pastWrap" hidden>
       <div class="grp tog closed" id="pastTog" role="button" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
@@ -203,6 +225,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <div class="paycard" id="payCard" hidden>
       <h3>💰 My payments</h3>
       <div id="payRows"></div>
+      <div class="paytotal"><span>Received so far</span><b id="payGot"></b></div>
       <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
       <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
     </div>
@@ -470,9 +493,60 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
+  /* compact Indian money for bar labels: ₹950 · ₹12k · ₹1.5L */
+  const shMoney = n => n >= 100000 ? '₹' + (n/100000).toFixed(1).replace(/\.0$/,'') + 'L'
+                    : n >= 1000   ? '₹' + Math.round(n/1000) + 'k'
+                    : '₹' + n;
+
+  /* everything a member would want to know about their own work, computed
+     from their own assignment docs — nothing extra is fetched */
+  function renderAnalytics(){
+    const has = _asgsLoaded && ASGS.length > 0;
+    $('#crewStats').hidden = !has;
+    $('#anaCard').hidden = !has;
+    if(!has) return;
+    const today = todayISO();
+    const done = ASGS.filter(a=>(a.date||'') && a.date < today);
+    const up = ASGS.filter(a=>(a.date||'') >= today);
+    const received = ASGS.filter(a=>(a.pay||{}).paid).reduce((s,a)=>s+(Number(a.pay.amount)||0), 0);
+    const due = ASGS.filter(a=>Number((a.pay||{}).amount) > 0 && !(a.pay||{}).paid)
+                    .reduce((s,a)=>s+(Number(a.pay.amount)||0), 0);
+    $('#crewStats').innerHTML = `
+      <div class="stat"><b>${done.length}</b><span>events done</span></div>
+      <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
+      <div class="stat"><b>${inr(received)}</b><span>received</span></div>
+      <div class="stat"><b>${inr(due)}</b><span>to receive</span></div>`;
+    /* last 6 months, current included — pay booked per event month */
+    const now = new Date();
+    const months = [];
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: d.toLocaleDateString('en-CA').slice(0,7),
+                    lab: d.toLocaleDateString('en-IN', { month:'short' }), amt: 0, n: 0 });
+    }
+    ASGS.forEach(a=>{
+      const m = months.find(x=>x.key === (a.date||'').slice(0,7));
+      if(m){ m.amt += Number((a.pay||{}).amount)||0; m.n++; }
+    });
+    const max = Math.max(...months.map(m=>m.amt), 1);
+    $('#anaBars').innerHTML = months.map(m=>`
+      <div class="bcol ${m.amt ? '' : 'zero'}" role="img" aria-label="${m.lab}: ${inr(m.amt)} across ${m.n} event${m.n===1?'':'s'}">
+        <b>${m.amt ? shMoney(m.amt) : ''}</b>
+        <i style="height:${m.amt ? Math.max(6, Math.round(m.amt / max * 68)) : 3}px"></i>
+        <span>${m.lab}</span>
+      </div>`).join('');
+    const roles = {};
+    ASGS.forEach(a=>{ const r = String(a.role||'').trim(); if(r) roles[r] = (roles[r]||0) + 1; });
+    const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
+    $('#anaRoles').innerHTML = `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>`
+      + Object.entries(roles).sort((a,b)=>b[1]-a[1])
+          .map(([r,n])=>`<b>${esc(r.replace(/\b\w/g,c=>c.toUpperCase()))} × ${n}</b>`).join('');
+  }
+
   function render(){
     if(!ME) return;
     $('#hello').textContent = `Hi ${(ME.name||'').split(' ')[0] || 'there'} 👋`;
+    renderAnalytics();
     const today = todayISO();
     const up = ASGS.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
     const past = ASGS.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
@@ -480,6 +554,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#helloSub').textContent = up.length
       ? `${up.length} upcoming event${up.length===1?'':'s'}${toConfirm ? ` — ${toConfirm} waiting for your confirmation` : ' — all confirmed ✓'}`
       : 'No upcoming events assigned to you right now.';
+    $('#upHead').hidden = !up.length;
+    $('#upCount').textContent = up.length;
     $('#upList').innerHTML = up.length ? up.map(a=>asgCard(a, false)).join('')
       : (_asgsLoaded ? '<div class="empty">Nothing scheduled yet — new assignments from Fantasy Studio will appear here.</div>'
                      : '<div class="skel"></div><div class="skel"></div>');
@@ -500,6 +576,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>`;
       }).join('');
       const due = withPay.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+      const got = withPay.filter(a=>(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+      $('#payGot').textContent = inr(got);
       $('#payDue').textContent = inr(due);
     }
   }
