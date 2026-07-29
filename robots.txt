@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /client/
+Disallow: /team/
 
 Sitemap: https://www.fantasystudio.in/sitemap.xml

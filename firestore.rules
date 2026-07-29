@@ -87,11 +87,14 @@ service cloud.firestore {
         : '__none__';
     }
 
-    // team members — created and managed only by the admin. An employee may
-    // GET (never LIST) their own profile doc, matched by sign-in email.
+    // team members — created and managed only by the admin. An employee reads
+    // their own profile via  where('email','==', <their email>)  — the rules
+    // engine only permits list queries whose filter provably satisfies the
+    // email match, so nobody can enumerate the team (same proven pattern as
+    // the packages/clientPhone rule above).
     match /team/{memberId} {
-      allow get: if isAdmin() || resource.data.email == staffEmail();
-      allow list, create, update, delete: if isAdmin();
+      allow read: if isAdmin() || resource.data.email == staffEmail();
+      allow create, update, delete: if isAdmin();
     }
 
     // per-member per-event assignments (schedule + pay). Employees can read

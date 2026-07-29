@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Fantasy Studio — Crew</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="FS Crew" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta name="theme-color" content="#B8902B" />
+<style>
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
+  --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
+h1,h2,h3{font-family:var(--serif)}
+button,input{font-family:var(--sans);font-size:16px}
+.wrap{max-width:640px;margin:0 auto;padding:0 max(14px,env(safe-area-inset-left)) calc(60px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-right))}
+header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
+.hd svg{width:34px;height:34px;flex:0 0 auto}
+.hd b{font-family:var(--serif);font-size:1.05rem}
+.hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
+.hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
+.hd .out:hover{border-color:var(--gold);color:var(--gold-b)}
+
+.login{max-width:400px;margin:10vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
+.login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
+.login p{color:var(--mut);font-size:.85rem;margin-bottom:1.3rem}
+.fld{margin-bottom:.9rem;text-align:left}
+.fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.fld input{width:100%;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.75em .8em}
+.fld input:focus{outline:none;border-color:var(--gold)}
+.pwrap{position:relative}
+.pwrap input{padding-right:2.9em}
+.pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:8px}
+.pwrap button svg{width:19px;height:19px}
+.gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn:active{transform:scale(.98)}
+.gbtn:disabled{opacity:.7;cursor:default}
+.mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
+.err{color:var(--err);font-size:.8rem;margin-top:.8rem}
+.note{color:var(--mut);font-size:.75rem;margin-top:1rem}
+
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:16px;height:90px;margin:1rem 0;position:relative;overflow:hidden}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.08),transparent);animation:shim 1.2s infinite}
+@keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+.hello{margin:1.3rem 0 .1rem;font-size:1.25rem}
+.hello + p{color:var(--mut);font-size:.85rem;margin-bottom:1.1rem}
+.grp{display:flex;align-items:center;gap:.6rem;margin:1.2rem 0 .5rem;color:var(--mut);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase}
+.grp::after{content:"";flex:1;height:1px;background:var(--line)}
+.grp b{color:var(--gold-b);font-weight:600}
+.grp.tog{cursor:pointer;user-select:none;padding:.3rem 0}
+.grp.tog .car{display:inline-block;transition:transform .15s;color:var(--gold-b);font-size:.62rem}
+.grp.tog.closed .car{transform:rotate(-90deg)}
+
+.asg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:.9rem;padding:1rem 1.1rem}
+.asg.past{opacity:.75}
+.asg-h{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.asg-h .when{font-family:var(--serif);color:var(--gold-b);font-size:1rem;white-space:nowrap}
+.asg-h b{font-family:var(--serif);color:#fff;font-size:1.05rem}
+.asg-h .chip{margin-left:auto;border-radius:20px;padding:.22em .8em;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.chip.seen{color:var(--ok);background:rgba(76,175,125,.13)}
+.chip.wait{color:#ffb054;background:rgba(255,176,84,.13)}
+.asg .ln{display:flex;justify-content:space-between;gap:.8rem;padding:.16rem 0;font-size:.88rem}
+.asg .ln span:first-child{color:var(--mut);flex:0 0 auto}
+.asg .ln span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
+.asg .lines{margin-top:.5rem}
+.asg .notes{margin-top:.5rem;background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text)}
+.asg .notes b{color:var(--gold-b);font-weight:500}
+.ackbtn{width:100%;margin-top:.8rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.75em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
+.ackbtn:active{transform:scale(.98)}
+.ackbtn:disabled{opacity:.7;cursor:default}
+.ackdone{margin-top:.8rem;text-align:center;color:var(--ok);font-size:.82rem}
+
+.paycard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;margin-bottom:.9rem}
+.paycard h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
+.payrow{display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:var(--mut);padding:.32rem 0;border-bottom:1px dashed var(--line)}
+.payrow:last-of-type{border-bottom:0}
+.payrow .ev2{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.payrow .ev2 span{color:var(--mut)}
+.payrow .amt{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
+.paypill{flex:0 0 auto;border-radius:14px;padding:.2em .7em;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.paypill.yes{color:var(--ok);background:rgba(76,175,125,.13)}
+.paypill.no{color:#ffb054;background:rgba(255,176,84,.13)}
+.paytotal{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:.5rem;padding-top:.55rem;font-size:.95rem}
+.paytotal b{color:var(--gold-b);font-family:var(--serif)}
+
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;color:var(--mut);font-size:.88rem;margin:1rem 0}
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:1}
+.net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
+.hd .net + .out{margin-left:.45rem}
+</style>
+</head>
+<body>
+
+<header hidden id="hdr">
+  <div class="hd">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <div><b>Fantasy Studio</b><span>Crew</span></div>
+    <span class="net" id="netDot" hidden>offline</span>
+    <button class="out" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<!-- sign in — accounts are created by Fantasy Studio, there is NO sign-up
+     here. A wrong password shows an error and never creates anything. -->
+<div class="wrap" id="loginView" hidden>
+  <div class="login">
+    <svg viewBox="0 0 100 100" style="width:56px;height:56px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <h1>Crew Sign In</h1>
+    <p>For Fantasy Studio team members</p>
+    <form id="loginForm">
+      <div class="fld"><label>Email</label><input type="email" id="email" autocomplete="username" required /></div>
+      <div class="fld"><label>Password</label>
+        <div class="pwrap">
+          <input type="password" id="pass" autocomplete="current-password" required />
+          <button type="button" id="passEye" aria-label="Show password" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="gbtn" type="submit" id="loginBtn">Sign In</button>
+      <button type="button" class="mini" id="forgotPw">Forgot password?</button>
+      <div class="err" id="loginErr" hidden></div>
+      <div class="note">Your account is set up by Fantasy Studio. No account yet? Ask the studio to add you — you cannot register here.</div>
+    </form>
+  </div>
+</div>
+
+<!-- signed in, but this account is not a team member -->
+<div class="wrap" id="gateView" hidden>
+  <div class="login">
+    <h1>Not a crew account</h1>
+    <p id="gateWho"></p>
+    <div class="note">This account is not linked to any Fantasy Studio team member. If you work with the studio, ask them to add this exact email to the team list, then sign in again.</div>
+    <button class="gbtn" id="gateOut" style="margin-top:1.1rem">Sign out</button>
+  </div>
+</div>
+
+<!-- main -->
+<div class="wrap" id="appView" hidden>
+  <h1 class="hello" id="hello"></h1>
+  <p id="helloSub"></p>
+  <div id="upList"><div class="skel"></div><div class="skel"></div></div>
+  <div id="pastWrap" hidden>
+    <div class="grp tog closed" id="pastTog" role="button" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
+    <div id="pastList" hidden></div>
+  </div>
+  <div class="paycard" id="payCard" hidden>
+    <h3>💰 My payments</h3>
+    <div id="payRows"></div>
+    <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
+    <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../firebase-config.js"></script>
+<script type="module">
+const $ = s => document.querySelector(s);
+const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : (d||'—');
+const fmtShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : (d||'—');
+const fmtTime = t => {
+  const m = /^(\d{2}):(\d{2})$/.exec(t||''); if(!m) return t||'';
+  const h = Number(m[1]);
+  return `${((h+11)%12)+1}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+
+if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
+  document.body.innerHTML = '<div class="wrap"><div class="empty">Not configured yet.</div></div>';
+}else{
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const { getFirestore, collection, doc, updateDoc, query, where, onSnapshot, serverTimestamp } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+  const app  = initializeApp(window.FIREBASE_CONFIG);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
+  window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
+
+  /* ---------- sign in (NEVER sign up — see LensCal post-mortem: an unknown
+     email+password must fail loudly, not silently create an account) ---------- */
+  $('#loginForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    $('#loginErr').hidden = true;
+    const btn = $('#loginBtn'); btn.disabled = true;
+    try{ await signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#pass').value); }
+    catch(err){
+      const code = String(err.code||'');
+      $('#loginErr').textContent = /invalid-credential|wrong-password|user-not-found/.test(code)
+        ? 'Wrong email or password — or your account has not been set up yet. Contact Fantasy Studio if you need access.'
+        : 'Sign-in failed: ' + code.replace('auth/','').replace(/-/g,' ');
+      $('#loginErr').hidden = false;
+    }
+    finally{ btn.disabled = false; }
+  });
+  $('#passEye').addEventListener('click', ()=>{
+    const p = $('#pass');
+    p.type = p.type === 'password' ? 'text' : 'password';
+    p.focus();
+  });
+  $('#forgotPw').addEventListener('click', async ()=>{
+    const email = $('#email').value.trim();
+    if(!email){ toast('Type your email above first'); $('#email').focus(); return; }
+    try{ await sendPasswordResetEmail(auth, email); toast('Password reset link sent to ' + email); }
+    catch(err){ toast('Could not send: ' + String(err.code||'').replace('auth/','').replace(/-/g,' ')); }
+  });
+  $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+  $('#gateOut').addEventListener('click', ()=>signOut(auth));
+
+  /* ---------- data ---------- */
+  let ME = null, ASGS = [];
+  let _meUnsub = null, _asgsUnsub = null, _meLoaded = false, _asgsLoaded = false;
+  let _pastOpen = false;
+
+  function stopData(){
+    if(_meUnsub){ try{ _meUnsub(); }catch(e){} _meUnsub = null; }
+    if(_asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
+    ME = null; ASGS = []; _meLoaded = false; _asgsLoaded = false;
+  }
+
+  function show(view){
+    $('#loginView').hidden = view !== 'login';
+    $('#gateView').hidden = view !== 'gate';
+    $('#appView').hidden = view !== 'app';
+    $('#hdr').hidden = view === 'login';
+  }
+
+  onAuthStateChanged(auth, user=>{
+    stopData();
+    if(!user){ show('login'); return; }
+    const email = String(user.email||'').trim().toLowerCase();
+    if(!email){
+      /* e.g. a phone-OTP client account wandered in — nothing here for them */
+      $('#gateWho').textContent = 'This sign-in has no email address.';
+      show('gate');
+      return;
+    }
+    show('app');
+    /* both queries are constrained to this email — exactly what the Firestore
+       rules require; anything broader is refused by the server */
+    _meUnsub = onSnapshot(query(collection(db,'team'), where('email','==',email)), snap=>{
+      _meLoaded = true;
+      ME = snap.docs.length ? { id: snap.docs[0].id, ...snap.docs[0].data() } : null;
+      if(!ME){
+        $('#gateWho').textContent = user.email || '';
+        show('gate');
+        return;
+      }
+      render();
+    }, err=>{
+      /* permission-denied here means "not a team member" (rules refused the
+         query) — same gate as an empty result, never a broken-looking page */
+      $('#gateWho').textContent = user.email || '';
+      show('gate');
+    });
+    _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberEmail','==',email)), snap=>{
+      _asgsLoaded = true;
+      ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      render();
+    }, err=>{
+      _asgsLoaded = true; ASGS = [];
+      render();
+    });
+  });
+
+  /* ---------- render ---------- */
+  function asgCard(a, past){
+    const seen = a.status === 'acknowledged';
+    return `
+    <div class="asg ${past?'past':''}">
+      <div class="asg-h">
+        <span class="when">${esc(fmtShort(a.date))}</span>
+        <b>${esc(a.eventTitle||'Event')}</b>
+        <span class="chip ${seen?'seen':'wait'}">${seen ? '✓ confirmed' : 'please confirm'}</span>
+      </div>
+      <div class="lines">
+        <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}</span></div>
+        ${a.clientName ? `<div class="ln"><span>Client</span><span>${esc(a.clientName)}</span></div>` : ''}
+        ${a.venue ? `<div class="ln"><span>Venue</span><span>${esc(a.venue)}</span></div>` : ''}
+        ${a.callTime ? `<div class="ln"><span>Call time</span><span>${esc(fmtTime(a.callTime))}</span></div>` : ''}
+        <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
+      </div>
+      ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
+      ${past ? '' : (seen
+        ? `<div class="ackdone">✓ You confirmed this${a.ackAt && a.ackAt.toDate ? ' on ' + a.ackAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</div>`
+        : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)}
+    </div>`;
+  }
+
+  function render(){
+    if(!ME) return;
+    $('#hello').textContent = `Hi ${(ME.name||'').split(' ')[0] || 'there'} 👋`;
+    const today = todayISO();
+    const up = ASGS.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
+    const past = ASGS.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
+    const toConfirm = up.filter(a=>a.status !== 'acknowledged').length;
+    $('#helloSub').textContent = up.length
+      ? `${up.length} upcoming event${up.length===1?'':'s'}${toConfirm ? ` — ${toConfirm} waiting for your confirmation` : ' — all confirmed ✓'}`
+      : 'No upcoming events assigned to you right now.';
+    $('#upList').innerHTML = up.length ? up.map(a=>asgCard(a, false)).join('')
+      : (_asgsLoaded ? '<div class="empty">Nothing scheduled yet — new assignments from Fantasy Studio will appear here.</div>'
+                     : '<div class="skel"></div><div class="skel"></div>');
+    $('#pastWrap').hidden = !past.length;
+    $('#pastCount').textContent = past.length;
+    $('#pastList').hidden = !_pastOpen;
+    $('#pastTog').classList.toggle('closed', !_pastOpen);
+    if(past.length && _pastOpen) $('#pastList').innerHTML = past.map(a=>asgCard(a, true)).join('');
+    /* payments — view-only */
+    const withPay = ASGS.filter(a=>Number((a.pay||{}).amount) > 0).sort((a,b)=>a.date<b.date?1:-1);
+    $('#payCard').hidden = !withPay.length;
+    if(withPay.length){
+      $('#payRows').innerHTML = withPay.map(a=>{
+        const p = a.pay||{};
+        return `<div class="payrow">
+          <span class="ev2">${esc(fmtShort(a.date))} · ${esc(a.eventTitle||'Event')}${a.clientName ? ` <span>· ${esc(a.clientName)}</span>` : ''}</span>
+          <span class="amt">${inr(p.amount)}</span>
+          <span class="paypill ${p.paid?'yes':'no'}">${p.paid ? 'paid' + (p.paidDate ? ' ' + fmtShort(p.paidDate) : '') : 'due'}</span>
+        </div>`;
+      }).join('');
+      const due = withPay.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+      $('#payDue').textContent = inr(due);
+    }
+  }
+
+  $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });
+
+  /* the ONE write this page can make: acknowledge an assignment */
+  $('#upList').addEventListener('click', async e=>{
+    const b = e.target.closest('[data-ack]'); if(!b || b.disabled) return;
+    const a = ASGS.find(v=>v.id===b.dataset.ack); if(!a) return;
+    b.disabled = true; b.textContent = 'Confirming…';
+    try{
+      await updateDoc(doc(db,'assignments',a.id), { status:'acknowledged', ackAt: serverTimestamp() });
+      a.status = 'acknowledged';
+      render();
+      toast('Confirmed ✓ — the studio can see it');
+    }catch(err){
+      b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment";
+      toast(navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal');
+    }
+  });
+}
+</script>
+</body>
+</html>
