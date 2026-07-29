@@ -393,6 +393,34 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .tabs button{min-height:52px}
 .tabs button span,.tabs button em{font-size:.68rem}
 .pkg-meta,.pkg-sub,.muted-xs{font-size:.72rem}
+
+/* ---- team tab ---- */
+.tm-ev{border:1px solid var(--line);border-radius:12px;padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:rgba(255,255,255,.02)}
+.tm-ev-h{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.tm-ev-h .when{font-family:var(--serif);color:var(--gold-b);font-size:.85rem;white-space:nowrap}
+.tm-ev-h b{font-family:var(--serif);color:#fff;font-size:.92rem}
+.tm-ev-h .cl{color:var(--mut);font-size:.78rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-ev-h .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .85em;font-size:.75rem;cursor:pointer;white-space:nowrap}
+.tm-need{font-size:.7rem;color:var(--mut);margin:.25rem 0 .1rem}
+.tm-need b{color:var(--gold-b);font-weight:500}
+.tm-need b.miss{color:#ffb054}
+.tm-crew{display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px dashed var(--line);font-size:.8rem;cursor:pointer}
+.tm-crew:first-of-type{margin-top:.35rem}
+.tm-crew .nm2{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-crew .rl{color:var(--mut);font-size:.7rem;white-space:nowrap}
+.tm-crew .ackpill{margin-left:auto;flex:0 0 auto;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border-radius:14px;padding:.22em .65em;font-weight:600}
+.ackpill.seen{color:var(--ok);background:rgba(76,175,125,.13)}
+.ackpill.wait{color:#c9c0a8;background:rgba(255,255,255,.07)}
+.ackpill.stale{color:#ffb054;background:rgba(255,176,84,.13)}
+.tm-inactive .what{opacity:.55}
+.pm-row{display:flex;align-items:center;gap:.55rem;padding:.42rem 0;border-bottom:1px dashed var(--line);font-size:.8rem}
+.pm-row:last-child{border-bottom:0}
+.pm-row .ev2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.pm-row .ev2 span{color:var(--mut)}
+.pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
+.pm-row .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.72rem;cursor:pointer;white-space:nowrap}
+.pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
+.as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
 </style>
 </head>
 <body>
@@ -449,6 +477,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <button id="tabCal"><i>📅</i><span>Calendar</span></button>
     <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
+    <button id="tabTeam"><i>🎬</i><span>Team</span></button>
     <button id="tabConfig"><i>⚙️</i><span>Config</span></button>
   </div>
 
@@ -561,6 +590,25 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div id="calDetail"><div class="empty">Tap a date to see its events.</div></div>
   </div>
 
+  <div id="teamView" hidden>
+    <div class="stats" id="teamStats"></div>
+    <div class="sec" style="padding:.9rem 1rem">
+      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.2rem">📅 Upcoming events</h3>
+      <p class="sub" style="margin:0 0 .6rem">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
+      <div id="teamEvents"></div>
+    </div>
+    <div class="sec" style="padding:.9rem 1rem">
+      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">👥 Team members</h3>
+      <div id="teamMembers"></div>
+      <button class="addrow" id="tmAdd">＋ Add team member</button>
+    </div>
+    <div class="sec" style="padding:.9rem 1rem">
+      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.2rem">💰 Pay tracker</h3>
+      <p class="sub" style="margin:0 0 .6rem">Every assignment with its pay, per member. Tap a section title to open it, then mark events paid as you settle up.</p>
+      <div id="teamPay"></div>
+    </div>
+  </div>
+
   <div id="configView" hidden>
     <div class="sec">
       <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days)</span></h3>
@@ -656,6 +704,38 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
   <h3>Package Status</h3>
   <div class="who" id="stWho"></div>
   <div class="st-opts" id="stOpts"></div>
+</div>
+
+<div class="pay-backdrop" id="tmBackdrop"></div>
+<div class="pay-modal" id="tmModal" role="dialog" aria-modal="true" aria-label="Team member">
+  <button class="pay-close" id="tmClose" type="button" aria-label="Close">&times;</button>
+  <h3 id="tmTitle">Team Member</h3>
+  <div class="fld"><label>Name</label><input id="tmName" autocomplete="off" /></div>
+  <div class="fld"><label>Usual role</label>
+    <select id="tmRole"></select>
+  </div>
+  <div class="fld"><label>Phone</label><input id="tmPhone" inputmode="tel" autocomplete="off" /></div>
+  <div class="fld"><label>Email <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(their employee-page login)</span></label>
+    <input id="tmEmail" type="email" autocomplete="off" /></div>
+  <div class="fld"><label>Pay per event (₹)</label><input id="tmRate" type="number" min="0" inputmode="numeric" /></div>
+  <button class="gbtn" id="tmSave" type="button">Save</button>
+  <button class="mini" id="tmToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
+</div>
+
+<div class="pay-backdrop" id="asBackdrop"></div>
+<div class="pay-modal" id="asModal" role="dialog" aria-modal="true" aria-label="Assign crew">
+  <button class="pay-close" id="asClose" type="button" aria-label="Close">&times;</button>
+  <h3 id="asTitle">Assign Crew</h3>
+  <div class="who" id="asWho"></div>
+  <div class="fld"><label>Team member</label><select id="asMember"></select></div>
+  <div class="as-warn" id="asConflict" hidden></div>
+  <div class="fld"><label>Role for this event</label><select id="asRole"></select></div>
+  <div class="fld"><label>Call time</label><input id="asCall" type="time" /></div>
+  <div class="fld"><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" /></div>
+  <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
+    <textarea id="asNotes" rows="2"></textarea></div>
+  <button class="gbtn" id="asSave" type="button">Save Assignment</button>
+  <button class="mini" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -856,6 +936,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   onAuthStateChanged(auth, async user=>{
     if(!user && _leadsUnsub){ try{ _leadsUnsub(); }catch(e){} _leadsUnsub = null; _leadsInit = false; }
     if(!user && _pkgsUnsub){ try{ _pkgsUnsub(); }catch(e){} _pkgsUnsub = null; }
+    if(!user && _teamUnsub){ try{ _teamUnsub(); }catch(e){} _teamUnsub = null; }
+    if(!user && _asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
 
     if(user && !(await isAdmin(user))){
       $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
@@ -877,7 +959,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!ADMIN_EMAILS.length){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
       }
-      loadLeads(); loadConfig(); loadPkgs();
+      loadLeads(); loadConfig(); loadPkgs(); loadTeam();
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
       showTab(fromHash);
@@ -909,9 +991,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   refreshInstallBtn();
 
   /* ---------- tabs ---------- */
-  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabConfig:'configView' };
-  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabConfig:'config' };
-  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', config:'tabConfig' };
+  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView' };
+  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabTeam:'team', tabConfig:'config' };
+  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', team:'tabTeam', config:'tabConfig' };
   let _navFromPop = false;
   /* Switching tabs kept the previous tab's scroll offset, so arriving at a tab
      part-way down the page was routine. Remember each tab's own position. */
@@ -920,6 +1002,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
     if(id === 'tabCal') renderCalendar();
+    if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
     if(id === 'tabHome' && typeof renderHome === 'function') renderHome();
     if(_curTab !== id){
       _curTab = id;
@@ -953,6 +1036,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(v !== 'pkgedit') _pkgBaseline = '';
       if(typeof closePayUI === 'function') closePayUI();
       if(typeof closeStatusUI === 'function') closeStatusUI();
+      if(typeof closeTmUI === 'function') closeTmUI();
+      if(typeof closeAsUI === 'function') closeAsUI();
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -1786,6 +1871,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderHome();
     renderPkgChips();
     renderTrash();
+    if(typeof renderTeam === 'function' && !$('#teamView').hidden) renderTeam();
     const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
     let list = livePkgs().filter(x=>(!f || (x.status||'draft')===f)
@@ -1943,12 +2029,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!calSel){ box.innerHTML = '<div class="empty">Tap a date to see its events.</div>'; return; }
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-    box.innerHTML = `<div class="sec"><h3>${human}</h3>` + (evs.length ? evs.map(e=>`
+    box.innerHTML = `<div class="sec"><h3>${human}</h3>` + (evs.length ? evs.map(e=>{
+      const crew = e.kind === 'pkg' ? ASGS.filter(a=>a.pkgId===e.id && a.date===e.date) : [];
+      return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
         <i class="dot ${e.status}"></i>
-        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${esc(e.client)}${e.venue?' · '+esc(e.venue):''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="act" data-openev>Open</button>
-      </div>`).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
+      </div>`;
+    }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
   }
   /* quick month/year jump — tap the calendar title */
   let jumpY = null;
@@ -2004,6 +2093,481 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
   }
 
+  /* ============================================================
+     TEAM — members, per-event crew assignments, crew pay
+     Data lives in two collections:
+       team/{id}         one doc per member (email = employee-page login)
+       assignments/{id}  one doc per member-per-event; carries denormalised
+                         event details + pay so the employee page never has
+                         to read packages. Employees may only flip
+                         status→acknowledged (enforced in Firestore rules).
+     ============================================================ */
+  const TEAM_ROLES = ['photographer','videographer','editor','drone operator','assistant'];
+  const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase());
+  let TEAM = [], ASGS = [];
+  let _teamUnsub = null, _asgsUnsub = null, _teamLoaded = false, _asgsLoaded = false;
+  const TEAM_CAP = 500, ASGS_CAP = 2000;
+  const memberById = id => TEAM.find(m=>m.id===id);
+  const activeTeam = () => TEAM.filter(m=>m.active !== false);
+  $('#tmRole').innerHTML = TEAM_ROLES.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('');
+  $('#asRole').innerHTML = TEAM_ROLES.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('');
+
+  function loadTeam(){
+    if(_teamUnsub && _asgsUnsub){ renderTeam(); return; }
+    if(!_teamUnsub){
+      try{
+        _teamUnsub = onSnapshot(query(collection(db,'team'), orderBy('createdAt','desc'), limit(TEAM_CAP)), snap=>{
+          TEAM = snap.docs.map(d=>({ id:d.id, ...d.data() }))
+            .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+          warnIfCapped('team members', snap.size, TEAM_CAP);
+          _teamLoaded = true;
+          renderTeam();
+        }, err=>{
+          try{ if(_teamUnsub) _teamUnsub(); }catch(e){} _teamUnsub = null;
+          $('#teamMembers').innerHTML = `<div class="empty">Could not load team (${esc(err.code||err.message)})</div>`;
+        });
+      }catch(err){ $('#teamMembers').innerHTML = `<div class="empty">Could not load team (${esc(err.code||err.message)})</div>`; }
+    }
+    if(!_asgsUnsub){
+      try{
+        _asgsUnsub = onSnapshot(query(collection(db,'assignments'), orderBy('date','desc'), limit(ASGS_CAP)), snap=>{
+          ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+          warnIfCapped('assignments', snap.size, ASGS_CAP);
+          _asgsLoaded = true;
+          renderTeam();
+          if(!$('#calView').hidden) renderCalDetail();
+        }, err=>{
+          try{ if(_asgsUnsub) _asgsUnsub(); }catch(e){} _asgsUnsub = null;
+          $('#teamEvents').innerHTML = `<div class="empty">Could not load assignments (${esc(err.code||err.message)})</div>`;
+        });
+      }catch(err){ $('#teamEvents').innerHTML = `<div class="empty">Could not load assignments (${esc(err.code||err.message)})</div>`; }
+    }
+  }
+
+  /* booked-package events from today onward, soonest first */
+  function teamUpcoming(){
+    const today = todayISO();
+    const rows = [];
+    livePkgs().filter(x=>(x.status||'draft')==='booked').forEach(pk=>{
+      (pk.events||[]).forEach((ev,idx)=>{
+        if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') && ev.date >= today) rows.push({ pk, ev, idx });
+      });
+    });
+    return rows.sort((a,b)=>a.ev.date<b.ev.date?-1:1);
+  }
+  /* crew whose stored date matches this exact event */
+  const evCrew = (pkId, date) => ASGS.filter(a=>a.pkgId===pkId && a.date===date);
+  /* crew pointing at this package but at a date the package no longer has —
+     the event was edited after assigning. Shown with a sync button. */
+  const staleCrew = pk => ASGS.filter(a=>a.pkgId===pk.id
+    && !(pk.events||[]).some(ev=>ev.date===a.date));
+
+  function neededRoles(ev){
+    const n = {};
+    (ev.items||[]).forEach(it=>{
+      const s = String(it.service||'').toLowerCase(), q = Number(it.qty)||1;
+      if(/photo/.test(s)) n.photographer = (n.photographer||0)+q;
+      else if(/video|cinema/.test(s)) n.videographer = (n.videographer||0)+q;
+      if(/drone/.test(s)) n['drone operator'] = (n['drone operator']||0)+q;
+    });
+    return n;
+  }
+
+  function crewRowHTML(a, extra){
+    const seen = a.status === 'acknowledged';
+    return `
+      <div class="tm-crew" data-asedit="${a.id}">
+        <span class="nm2">${esc(a.memberName||'—')}</span>
+        <span class="rl">${esc(roleLabel(a.role))}${a.callTime ? ' · call ' + esc(a.callTime) : ''}${(a.pay||{}).amount ? ' · ' + inr(a.pay.amount) : ''}</span>
+        ${extra || `<span class="ackpill ${seen?'seen':'wait'}">${seen?'✓ seen':'⏳ not seen'}</span>`}
+      </div>`;
+  }
+
+  function renderTeamEvents(){
+    const el = $('#teamEvents'); if(!el) return;
+    const rows = teamUpcoming();
+    if(!rows.length){
+      el.innerHTML = (_pkgsLoaded && _asgsLoaded)
+        ? '<div class="empty" style="padding:.4rem 0">No upcoming booked events. Events appear here once a package is <b style="color:var(--ok)">booked</b> and its dates are set.</div>'
+        : '<div class="skel"></div><div class="skel"></div>';
+      return;
+    }
+    const staleShown = new Set();
+    el.innerHTML = rows.map(({pk, ev, idx})=>{
+      const crew = evCrew(pk.id, ev.date);
+      const need = neededRoles(ev);
+      const needTotal = Object.values(need).reduce((a,b)=>a+b, 0);
+      const needTxt = Object.entries(need).map(([r,q])=>`${q}× ${roleLabel(r)}`).join(' · ');
+      /* stale crew (event date was edited after assigning) surfaces once per
+         package, on its first upcoming row, with a one-tap re-sync */
+      let stale = [];
+      if(!staleShown.has(pk.id)){ stale = staleCrew(pk); if(stale.length) staleShown.add(pk.id); }
+      return `
+      <div class="tm-ev">
+        <div class="tm-ev-h">
+          <span class="when">${stepDate(ev.date)}</span>
+          <b>${esc(ev.title||'Event')}</b>
+          <span class="cl">· ${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
+          <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
+        </div>
+        ${needTotal || crew.length ? `<div class="tm-need">${needTxt ? `Needs <b>${esc(needTxt)}</b> — ` : ''}<b class="${crew.length < needTotal ? 'miss' : ''}">${crew.length ? crew.length + ' assigned' : 'no crew yet'}</b></div>` : ''}
+        ${crew.map(a=>crewRowHTML(a)).join('')}
+        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="act" data-assync="${a.id}" data-aspk="${pk.id}" data-asev="${idx}">Sync</button>`)).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  let _tmShowInactive = false;
+  function renderTeamMembers(){
+    const el = $('#teamMembers'); if(!el) return;
+    if(!TEAM.length){
+      el.innerHTML = _teamLoaded
+        ? '<div class="empty" style="padding:.4rem 0">No team members yet — add your shooters, editors and assistants below.</div>'
+        : '<div class="skel"></div>';
+      return;
+    }
+    const act = TEAM.filter(m=>m.active !== false);
+    const inact = TEAM.filter(m=>m.active === false);
+    const row = m => `
+      <div class="up-ev ${m.active === false ? 'tm-inactive' : ''}" data-tmedit="${m.id}">
+        <span class="what"><b>${esc(m.name||'—')}</b> <span>· ${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${m.email ? '' : ' · ⚠ no login email'}</span></span>
+        ${m.phone ? `<a class="act" style="text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.28em .7em;font-size:.75rem" href="tel:${esc(m.phone)}" onclick="event.stopPropagation()">📞</a>` : ''}
+        <button class="act" data-tmedit2>Edit</button>
+      </div>`;
+    el.innerHTML = act.map(row).join('')
+      + (inact.length ? `<div class="grp tog ${_tmShowInactive?'':'closed'}" data-tmgrp role="button" aria-expanded="${_tmShowInactive}"><span class="car">▾</span>Inactive<b>${inact.length}</b></div>` + (_tmShowInactive ? inact.map(row).join('') : '') : '');
+  }
+
+  let _payOpen = new Set();
+  function renderTeamPay(){
+    const el = $('#teamPay'); if(!el) return;
+    if(!ASGS.length){
+      el.innerHTML = _asgsLoaded
+        ? '<div class="empty" style="padding:.4rem 0">Nothing here yet — pay rows appear as you assign crew to events.</div>'
+        : '<div class="skel"></div>';
+      return;
+    }
+    const byMember = {};
+    ASGS.forEach(a=>{ (byMember[a.memberId] = byMember[a.memberId]||[]).push(a); });
+    el.innerHTML = Object.entries(byMember).map(([mid, list])=>{
+      const m = memberById(mid);
+      const name = (m && m.name) || list[0].memberName || '—';
+      const unpaid = list.filter(a=>!(a.pay||{}).paid);
+      const due = unpaid.reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+      const open = _payOpen.has(mid);
+      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : 'all paid ✓'}</b></div>`;
+      if(!open) return head;
+      const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
+        const p = a.pay||{};
+        const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
+        return `
+        <div class="pm-row">
+          <span class="ev2">${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')} <span>· ${esc(a.clientName||'')}</span></span>
+          <span class="amt2">${inr((p.amount)||0)}</span>
+          ${p.paid
+            ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to mark unpaid">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
+            : `<button class="act" data-mkpaid="${a.id}">Mark paid</button>`}
+        </div>`;
+      }).join('');
+      return head + rows;
+    }).join('');
+  }
+
+  function renderTeamStats(){
+    const el = $('#teamStats'); if(!el) return;
+    const due = ASGS.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+    const up = teamUpcoming();
+    const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date).length).length;
+    el.innerHTML = `
+      <div class="stat month"><b>${inr(due)}</b><span>crew pay due</span></div>
+      <div class="stat"><b>${up.length}</b><span>upcoming events</span></div>
+      <div class="stat"><b>${unfilled}</b><span>with no crew</span></div>
+      <div class="stat"><b>${activeTeam().length}</b><span>active members</span></div>`;
+  }
+
+  function renderTeam(){
+    if(!$('#teamView')) return;
+    renderTeamStats();
+    renderTeamEvents();
+    renderTeamMembers();
+    renderTeamPay();
+  }
+
+  /* ---------- member add / edit sheet ---------- */
+  let _tmEditId = null;
+  function openTm(m){
+    _tmEditId = m ? m.id : null;
+    $('#tmTitle').textContent = m ? 'Edit Team Member' : 'Add Team Member';
+    $('#tmName').value = m ? (m.name||'') : '';
+    $('#tmRole').value = m && TEAM_ROLES.includes(m.role) ? m.role : TEAM_ROLES[0];
+    $('#tmPhone').value = m ? (m.phone||'') : '';
+    $('#tmEmail').value = m ? (m.email||'') : '';
+    $('#tmRate').value = m && m.defaultRate ? m.defaultRate : '';
+    const tog = $('#tmToggle');
+    tog.hidden = !m;
+    if(m){
+      const off = m.active === false;
+      tog.textContent = off ? 'Reactivate this member' : 'Deactivate (keeps their history)';
+      tog.style.color = off ? 'var(--ok)' : 'var(--err)';
+    }
+    $('#tmModal').classList.add('open'); $('#tmBackdrop').classList.add('open');
+    setTimeout(()=>$('#tmName').focus(), 80);
+    if(!_navFromPop){ try{ history.pushState({view:'tmsheet'}, '', '#team/member'); }catch(e){} }
+  }
+  function closeTmUI(){ $('#tmModal').classList.remove('open'); $('#tmBackdrop').classList.remove('open'); _tmEditId = null; }
+  function closeTm(){
+    if(history.state && history.state.view === 'tmsheet'){ history.back(); }
+    else closeTmUI();
+  }
+  $('#tmClose').addEventListener('click', closeTm);
+  $('#tmBackdrop').addEventListener('click', closeTm);
+  $('#tmAdd').addEventListener('click', ()=>openTm(null));
+  $('#tmSave').addEventListener('click', async ()=>{
+    const btn = $('#tmSave'); if(btn.disabled) return;
+    const name = $('#tmName').value.trim();
+    if(!name){ toast('Name is required'); $('#tmName').focus(); return; }
+    const email = $('#tmEmail').value.trim().toLowerCase();
+    if(email && !/^\S+@\S+\.\S+$/.test(email)){ toast('That email does not look right'); $('#tmEmail').focus(); return; }
+    if(email && TEAM.some(m=>m.id !== _tmEditId && String(m.email||'').toLowerCase() === email)
+       && !confirm('Another member already uses this email — both would share one employee login. Save anyway?')) return;
+    const data = { name, role: $('#tmRole').value, phone: $('#tmPhone').value.trim(), email,
+                   defaultRate: Math.max(0, Math.round(Number($('#tmRate').value)||0)), updatedAt: serverTimestamp() };
+    btn.disabled = true;
+    try{
+      if(_tmEditId){
+        const old = TEAM.find(m=>m.id===_tmEditId);
+        const res = await settle(updateDoc(doc(db,'team',_tmEditId), data));
+        const sm = settleMsg(res, 'Member saved ✓');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        /* the employee page matches assignments by memberEmail, and shows
+           memberName — keep existing assignment docs in step when either changes */
+        if(old && (String(old.email||'').toLowerCase() !== email || (old.name||'') !== name)){
+          const mine = ASGS.filter(a=>a.memberId===_tmEditId);
+          await Promise.allSettled(mine.map(a=>updateDoc(doc(db,'assignments',a.id),
+            { memberName: name, memberEmail: email, updatedAt: serverTimestamp() })));
+          mine.forEach(a=>{ a.memberName = name; a.memberEmail = email; });
+        }
+        Object.assign(old||{}, data, { updatedAt: null });
+      }else{
+        const ref = doc(collection(db,'team'));
+        const res = await settle(setDoc(ref, { ...data, active: true, createdAt: serverTimestamp() }));
+        const sm = settleMsg(res, 'Member added ✓');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        TEAM.push({ id: ref.id, ...data, active: true });
+        TEAM.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+      }
+      renderTeam();
+      closeTm();
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ btn.disabled = false; }
+  });
+  $('#tmToggle').addEventListener('click', async ()=>{
+    const m = TEAM.find(v=>v.id===_tmEditId); if(!m) return;
+    const next = !(m.active === false);   /* true → deactivate */
+    try{
+      const res = await settle(updateDoc(doc(db,'team',m.id), { active: !next, updatedAt: serverTimestamp() }));
+      const sm = settleMsg(res, next ? 'Member deactivated' : 'Member reactivated');
+      toast(sm.msg);
+      if(!sm.ok) return;
+      m.active = !next;
+      renderTeam();
+      closeTm();
+    }catch(err){ toast('Update failed'); }
+  });
+  $('#teamMembers').addEventListener('click', e=>{
+    const g = e.target.closest('[data-tmgrp]');
+    if(g){ _tmShowInactive = !_tmShowInactive; renderTeamMembers(); return; }
+    const row = e.target.closest('[data-tmedit]'); if(!row) return;
+    const m = TEAM.find(v=>v.id===row.dataset.tmedit);
+    if(m) openTm(m);
+  });
+
+  /* ---------- assign sheet ---------- */
+  let _asEditId = null, _asCtx = null;
+  function asgConflicts(mid, date, excludeId){
+    return ASGS.filter(a=>a.memberId===mid && a.date===date && a.id!==excludeId);
+  }
+  function refreshAsConflict(){
+    const box = $('#asConflict');
+    const mid = $('#asMember').value;
+    const cs = (mid && _asCtx) ? asgConflicts(mid, _asCtx.date, _asEditId) : [];
+    box.hidden = !cs.length;
+    if(cs.length){
+      const c = cs[0];
+      box.textContent = `⚠ Already on ${c.eventTitle||'an event'} (${c.clientName||'—'}) this same date${cs.length>1 ? ' +' + (cs.length-1) + ' more' : ''}. You can still save if this is intentional.`;
+    }
+  }
+  function fillAsMembers(selectedId){
+    const opts = activeTeam();
+    $('#asMember').innerHTML = '<option value="">— pick a member —</option>'
+      + opts.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${esc(m.name||'—')} · ${esc(roleLabel(m.role))}</option>`).join('');
+  }
+  function openAs(ctx, a){
+    _asEditId = a ? a.id : null;
+    _asCtx = ctx;
+    $('#asTitle').textContent = a ? 'Edit Assignment' : 'Assign Crew';
+    $('#asWho').textContent = `${ctx.eventTitle||'Event'} · ${ctx.clientName||'—'} · ${stepDate(ctx.date)||ctx.date}${ctx.venue ? ' · ' + ctx.venue : ''}`;
+    fillAsMembers(a ? a.memberId : '');
+    $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role : TEAM_ROLES[0];
+    $('#asCall').value = a ? (a.callTime||'') : '';
+    $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
+    $('#asNotes').value = a ? (a.notes||'') : '';
+    $('#asRemove').hidden = !a;
+    refreshAsConflict();
+    $('#asModal').classList.add('open'); $('#asBackdrop').classList.add('open');
+    if(!_navFromPop){ try{ history.pushState({view:'assheet'}, '', '#team/assign'); }catch(e){} }
+  }
+  function closeAsUI(){ $('#asModal').classList.remove('open'); $('#asBackdrop').classList.remove('open'); _asEditId = null; _asCtx = null; }
+  function closeAs(){
+    if(history.state && history.state.view === 'assheet'){ history.back(); }
+    else closeAsUI();
+  }
+  $('#asClose').addEventListener('click', closeAs);
+  $('#asBackdrop').addEventListener('click', closeAs);
+  $('#asMember').addEventListener('change', ()=>{
+    const m = memberById($('#asMember').value);
+    if(m){
+      if(TEAM_ROLES.includes(m.role)) $('#asRole').value = m.role;
+      if(!_asEditId && m.defaultRate) $('#asAmt').value = m.defaultRate;
+    }
+    refreshAsConflict();
+  });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeTm(); closeAs(); } });
+
+  $('#asSave').addEventListener('click', async ()=>{
+    const btn = $('#asSave'); if(btn.disabled || !_asCtx) return;
+    const m = memberById($('#asMember').value);
+    if(!m){ toast('Pick a team member'); return; }
+    const cs = asgConflicts(m.id, _asCtx.date, _asEditId);
+    if(cs.length && !confirm(`${m.name||'This member'} is already on ${cs[0].eventTitle||'an event'} (${cs[0].clientName||'—'}) on ${stepDate(_asCtx.date)||_asCtx.date}. Assign anyway?`)) return;
+    const amt = Math.max(0, Math.round(Number($('#asAmt').value)||0));
+    const base = {
+      memberId: m.id, memberName: m.name||'', memberEmail: String(m.email||'').trim().toLowerCase(),
+      pkgId: _asCtx.pkgId, quoteNo: _asCtx.quoteNo||'', clientName: _asCtx.clientName||'',
+      eventTitle: _asCtx.eventTitle||'', date: _asCtx.date||'', venue: _asCtx.venue||'',
+      callTime: $('#asCall').value||'', role: $('#asRole').value||m.role||'',
+      notes: $('#asNotes').value.trim(), updatedAt: serverTimestamp()
+    };
+    btn.disabled = true;
+    try{
+      if(_asEditId){
+        const old = ASGS.find(v=>v.id===_asEditId);
+        const patch = { ...base, 'pay.amount': amt };
+        /* details the member already acknowledged have changed — they must
+           confirm again, so the ✓ never silently means an outdated plan */
+        const reset = old && old.status === 'acknowledged'
+          && (old.memberId !== base.memberId || old.callTime !== base.callTime
+              || old.role !== base.role || old.venue !== base.venue || old.date !== base.date);
+        if(reset){ patch.status = 'assigned'; patch.ackAt = deleteField(); }
+        const res = await settle(updateDoc(doc(db,'assignments',_asEditId), patch));
+        const sm = settleMsg(res, reset ? 'Saved — the member will be asked to confirm again' : 'Assignment saved ✓');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        if(old){ Object.assign(old, base, { updatedAt: null }); old.pay = { ...(old.pay||{}), amount: amt }; if(reset){ old.status='assigned'; delete old.ackAt; } }
+      }else{
+        const ref = doc(collection(db,'assignments'));
+        const res = await settle(setDoc(ref, { ...base, pay: { amount: amt, paid: false, paidDate: '', mode: '' },
+                                               status: 'assigned', createdAt: serverTimestamp() }));
+        const sm = settleMsg(res, `${m.name||'Member'} assigned ✓`);
+        toast(sm.msg);
+        if(!sm.ok) return;
+        ASGS.unshift({ id: ref.id, ...base, pay: { amount: amt, paid: false, paidDate: '', mode: '' }, status: 'assigned' });
+      }
+      buzz(); renderTeam();
+      closeAs();
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ btn.disabled = false; }
+  });
+
+  $('#asRemove').addEventListener('click', async ()=>{
+    const a = ASGS.find(v=>v.id===_asEditId); if(!a) return;
+    if(!confirm(`Remove ${a.memberName||'this member'} from ${a.eventTitle||'this event'}?`)) return;
+    const saved = { ...a }; delete saved.id;
+    try{
+      await deleteDoc(doc(db,'assignments',a.id));
+      ASGS = ASGS.filter(v=>v.id!==a.id);
+      renderTeam();
+      closeAs();
+      toastUndo('Assignment removed', async ()=>{
+        try{
+          await settle(setDoc(doc(db,'assignments',a.id), { ...saved, updatedAt: serverTimestamp() }));
+          loadTeam();
+        }catch(err){ toast('Undo failed'); }
+      });
+    }catch(err){ toast('Remove failed'); }
+  });
+
+  $('#teamEvents').addEventListener('click', e=>{
+    const add = e.target.closest('[data-asadd]');
+    const sync = e.target.closest('[data-assync]');
+    const edit = e.target.closest('[data-asedit]');
+    const evCtx = btn => {
+      const pk = PKGS.find(p=>p.id===btn.dataset.aspk); if(!pk) return null;
+      const ev = (pk.events||[])[Number(btn.dataset.asev)]; if(!ev) return null;
+      return { pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+               eventTitle: ev.title||'', date: ev.date||'', venue: ev.venue||'' };
+    };
+    if(add){ const ctx = evCtx(add); if(ctx) openAs(ctx, null); return; }
+    if(sync){
+      const a = ASGS.find(v=>v.id===sync.dataset.assync); const ctx = evCtx(sync);
+      if(!a || !ctx) return;
+      (async ()=>{
+        try{
+          const patch = { eventTitle: ctx.eventTitle, date: ctx.date, venue: ctx.venue,
+                          status: 'assigned', ackAt: deleteField(), updatedAt: serverTimestamp() };
+          const res = await settle(updateDoc(doc(db,'assignments',a.id), patch));
+          const sm = settleMsg(res, 'Assignment synced to the new event details — the member will confirm again');
+          toast(sm.msg);
+          if(!sm.ok) return;
+          Object.assign(a, { eventTitle: ctx.eventTitle, date: ctx.date, venue: ctx.venue, status: 'assigned' });
+          delete a.ackAt;
+          renderTeam();
+        }catch(err){ toast('Sync failed'); }
+      })();
+      return;
+    }
+    if(edit){
+      const a = ASGS.find(v=>v.id===edit.dataset.asedit); if(!a) return;
+      openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
+               eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
+    }
+  });
+
+  /* ---------- pay tracker ---------- */
+  async function setAsgPaid(id, paid){
+    const a = ASGS.find(v=>v.id===id); if(!a) return;
+    const patch = paid
+      ? { 'pay.paid': true, 'pay.paidDate': todayISO(), updatedAt: serverTimestamp() }
+      : { 'pay.paid': false, 'pay.paidDate': '', updatedAt: serverTimestamp() };
+    try{
+      const res = await settle(updateDoc(doc(db,'assignments',id), patch));
+      const sm = settleMsg(res, paid ? `${inr((a.pay||{}).amount||0)} to ${a.memberName||'—'} marked paid` : 'Marked unpaid');
+      toast(sm.msg);
+      if(!sm.ok) return;
+      a.pay = { ...(a.pay||{}), paid, paidDate: paid ? todayISO() : '' };
+      renderTeam();
+    }catch(err){ toast('Update failed'); }
+  }
+  $('#teamPay').addEventListener('click', e=>{
+    const g = e.target.closest('[data-pmgrp]');
+    if(g){
+      const id = g.dataset.pmgrp;
+      _payOpen.has(id) ? _payOpen.delete(id) : _payOpen.add(id);
+      renderTeamPay(); return;
+    }
+    const mk = e.target.closest('[data-mkpaid]');
+    if(mk){
+      const a = ASGS.find(v=>v.id===mk.dataset.mkpaid); if(!a) return;
+      if(confirm(`Mark ${inr((a.pay||{}).amount||0)} to ${a.memberName||'—'} as PAID today (${a.eventTitle||'event'}, ${stepDate(a.date)||a.date})?`))
+        setAsgPaid(a.id, true);
+      return;
+    }
+    const un = e.target.closest('[data-unpaid]');
+    if(un && confirm('Mark this back as UNPAID?')) setAsgPaid(un.dataset.unpaid, false);
+  });
+
   /* ---------- export / backup ---------- */
   function dl(filename, text, type){
     const b = new Blob([text], {type});
@@ -2027,20 +2591,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{ return { snap: await getDocsFromServer(q), partial: false }; }
       catch(e){ return { snap: await getDocs(q), partial: true }; }
     };
-    const [p, l] = await Promise.all([one('packages'), one('leads')]);
+    const [p, l, t, a] = await Promise.all([one('packages'), one('leads'), one('team'), one('assignments')]);
     return { pkgs: p.snap.docs.map(d=>({ id:d.id, ...d.data() })),
              leads: l.snap.docs.map(d=>({ id:d.id, ...d.data() })),
-             partial: p.partial || l.partial };
+             team: t.snap.docs.map(d=>({ id:d.id, ...d.data() })),
+             asgs: a.snap.docs.map(d=>({ id:d.id, ...d.data() })),
+             partial: p.partial || l.partial || t.partial || a.partial };
   }
   const partNote = p => p ? ' ⚠ offline copy — may be incomplete' : '';
   $('#expJson').addEventListener('click', async ()=>{
     toast('Preparing backup…');
     try{
-      const { pkgs, leads, partial } = await fetchAll();
+      const { pkgs, leads, team, asgs, partial } = await fetchAll();
       dl(`fantasy-studio-backup-${stamp()}.json`,
-        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, config:CFG }, null, 1),
+        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, team, assignments:asgs, config:CFG }, null, 1),
         'application/json');
-      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads${partNote(partial)}`);
+      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads, ${team.length} team, ${asgs.length} assignments${partNote(partial)}`);
     }catch(err){ toast('Backup failed: ' + (err.code||err.message)); }
   });
   $('#expPkgs').addEventListener('click', async ()=>{

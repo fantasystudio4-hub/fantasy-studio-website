@@ -77,6 +77,38 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // the signed-in employee's email, lowercased — the key that links a
+    // Firebase Auth account to admin-created team/assignment docs. An account
+    // with no matching doc (e.g. a stranger who self-registered via the raw
+    // API) matches nothing and falls to default-deny everywhere.
+    function staffEmail() {
+      return (request.auth != null && request.auth.token.email is string)
+        ? request.auth.token.email.lower()
+        : '__none__';
+    }
+
+    // team members — created and managed only by the admin. An employee may
+    // GET (never LIST) their own profile doc, matched by sign-in email.
+    match /team/{memberId} {
+      allow get: if isAdmin() || resource.data.email == staffEmail();
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // per-member per-event assignments (schedule + pay). Employees can read
+    // ONLY their own docs, and the ONLY write they can ever make is flipping
+    // status to 'acknowledged' (+ the server-time ack stamp) on their own doc
+    // — never pay, never dates, never anyone else's.
+    match /assignments/{assignId} {
+      allow read: if isAdmin() || resource.data.memberEmail == staffEmail();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (resource.data.memberEmail == staffEmail()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status','ackAt'])
+            && request.resource.data.status == 'acknowledged'
+            && request.resource.data.ackAt == request.time);
+    }
+
     // everything else (incl. legacy lenscal_* data): admin only — default deny
     match /{document=**} {
       allow read, write: if isAdmin();
