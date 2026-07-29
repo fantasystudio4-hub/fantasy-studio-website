@@ -24,7 +24,7 @@
 [hidden]{display:none!important}
 body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
 h1,h2,h3{font-family:var(--serif)}
-button,input{font-family:var(--sans);font-size:16px}
+button,input,textarea{font-family:var(--sans);font-size:16px}
 .wrap{max-width:640px;margin:0 auto;padding:0 max(14px,env(safe-area-inset-left)) calc(60px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-right))}
 header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
@@ -34,20 +34,27 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
 .hd .out:hover{border-color:var(--gold);color:var(--gold-b)}
 
-.login{max-width:400px;margin:10vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
+.login{max-width:400px;margin:8vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
 .login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
 .login p{color:var(--mut);font-size:.85rem;margin-bottom:1.3rem}
 .fld{margin-bottom:.9rem;text-align:left}
 .fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
-.fld input{width:100%;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.75em .8em}
-.fld input:focus{outline:none;border-color:var(--gold)}
-.pwrap{position:relative}
-.pwrap input{padding-right:2.9em}
-.pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:8px}
-.pwrap button svg{width:19px;height:19px}
+.fld input,.fld textarea{width:100%;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.75em .8em}
+.fld input:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
+.phwrap{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#171309}
+.phwrap b{display:grid;place-items:center;padding:0 .1em 0 .7em;color:var(--mut);font-weight:500}
+.phwrap input{flex:1;background:transparent;border:0;color:var(--text);padding:.75em .8em;min-width:0;letter-spacing:.06em}
+.phwrap input:focus{outline:none}
+.phwrap .ccin{flex:0 0 2.6em;width:2.6em;text-align:center;color:var(--mut);border-right:1px solid var(--line);padding:.75em .1em;letter-spacing:.02em}
+.cchint{color:var(--mut);font-size:.68rem;margin-top:.35rem;text-align:left}
 .gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .gbtn:active{transform:scale(.98)}
 .gbtn:disabled{opacity:.7;cursor:default}
+.gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.otp{display:flex;gap:.45rem;justify-content:center;margin:.4rem 0 1rem}
+.otp input{flex:1 1 0;min-width:0;max-width:52px;width:auto;height:52px;text-align:center;font-size:1.3rem;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--gold-b)}
+.otp input:focus{outline:none;border-color:var(--gold)}
 .mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
 .err{color:var(--err);font-size:.8rem;margin-top:.8rem}
 .note{color:var(--mut);font-size:.75rem;margin-top:1rem}
@@ -98,6 +105,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .paytotal b{color:var(--gold-b);font-family:var(--serif)}
 
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;color:var(--mut);font-size:.88rem;margin:1rem 0}
+.bigic{font-size:2rem;display:block;margin-bottom:.4rem}
 .toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
 .toast.show{opacity:1}
 .net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
@@ -106,76 +114,104 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 </head>
 <body>
 
-<header hidden id="hdr">
+<header id="hdr">
   <div class="hd">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Crew</span></div>
     <span class="net" id="netDot" hidden>offline</span>
-    <button class="out" id="logoutBtn">Logout</button>
+    <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
 
-<!-- sign in — accounts are created by Fantasy Studio, there is NO sign-up
-     here. A wrong password shows an error and never creates anything. -->
-<div class="wrap" id="loginView" hidden>
-  <div class="login">
-    <svg viewBox="0 0 100 100" style="width:56px;height:56px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
-    <h1>Crew Sign In</h1>
-    <p>For Fantasy Studio team members</p>
-    <form id="loginForm">
-      <div class="fld"><label>Email</label><input type="email" id="email" autocomplete="username" required /></div>
-      <div class="fld"><label>Password</label>
-        <div class="pwrap">
-          <input type="password" id="pass" autocomplete="current-password" required />
-          <button type="button" id="passEye" aria-label="Show password" tabindex="-1">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
+<div class="wrap">
+
+  <div id="loadingView"><div class="skel"></div><div class="skel"></div></div>
+
+  <!-- phone OTP sign in — same flow crew already know from the client portal -->
+  <div id="loginView" hidden>
+    <div class="login">
+      <svg viewBox="0 0 100 100" style="width:54px;height:54px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+      <h1>Crew Sign In</h1>
+      <p>For Fantasy Studio team members</p>
+      <div id="phoneStep">
+        <div class="fld"><label>Mobile number</label>
+          <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
+          <div class="cchint">Outside India? Change 91 to your country code.</div>
         </div>
+        <button class="gbtn" id="sendOtp">Get OTP</button>
       </div>
-      <button class="gbtn" type="submit" id="loginBtn">Sign In</button>
-      <button type="button" class="mini" id="forgotPw">Forgot password?</button>
-      <div class="err" id="loginErr" hidden></div>
-      <div class="note">Your account is set up by Fantasy Studio. No account yet? Ask the studio to add you — you cannot register here.</div>
-    </form>
+      <div id="otpStep" hidden>
+        <div class="fld" style="text-align:center"><label style="text-align:center">Enter the OTP sent to <b id="otpTo" style="color:var(--text)"></b></label></div>
+        <div class="otp" id="otpBoxes">
+          <input type="tel" inputmode="numeric" autocomplete="one-time-code" aria-label="OTP digit 1 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 5 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 6 of 6" />
+        </div>
+        <button class="gbtn" id="verifyOtp">Verify &amp; Sign In</button>
+        <button class="mini" id="otpResend" type="button">Resend OTP</button>
+        <button class="mini" id="otpBack" type="button">← Change number</button>
+      </div>
+      <div class="err" id="loginErr" role="alert" hidden></div>
+      <div class="note">Use your own mobile number — if you're not on the team list yet, you can request to join after signing in.</div>
+    </div>
   </div>
-</div>
 
-<!-- signed in, but this account is not a team member -->
-<div class="wrap" id="gateView" hidden>
-  <div class="login">
-    <h1>Not a crew account</h1>
-    <p id="gateWho"></p>
-    <div class="note">This account is not linked to any Fantasy Studio team member. If you work with the studio, ask them to add this exact email to the team list, then sign in again.</div>
-    <button class="gbtn" id="gateOut" style="margin-top:1.1rem">Sign out</button>
+  <!-- signed in, not a member yet → ask to join -->
+  <div id="requestView" hidden>
+    <div class="login">
+      <h1>Join the crew</h1>
+      <p>Your number <b id="reqPhone" style="color:var(--text)"></b> isn't on the Fantasy Studio team list yet. Send a request and the studio will add you.</p>
+      <div class="fld"><label>Your name</label><input id="reqName" autocomplete="name" maxlength="80" /></div>
+      <div class="fld"><label>Message <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional — e.g. your role)</span></label>
+        <textarea id="reqNote" rows="2" maxlength="300" placeholder="e.g. Photographer — worked the Ayesha wedding"></textarea></div>
+      <button class="gbtn" id="reqSend">Request to Join</button>
+      <div class="err" id="reqErr" hidden></div>
+    </div>
   </div>
-</div>
 
-<!-- main -->
-<div class="wrap" id="appView" hidden>
-  <h1 class="hello" id="hello"></h1>
-  <p id="helloSub"></p>
-  <div id="upList"><div class="skel"></div><div class="skel"></div></div>
-  <div id="pastWrap" hidden>
-    <div class="grp tog closed" id="pastTog" role="button" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
-    <div id="pastList" hidden></div>
+  <!-- request sent, waiting for the studio -->
+  <div id="pendingView" hidden>
+    <div class="login">
+      <span class="bigic">⏳</span>
+      <h1>Request sent</h1>
+      <p id="pendingWho"></p>
+      <div class="note">Fantasy Studio has your request. The moment they add you, this page unlocks by itself — you can also tell them on WhatsApp to speed it up. No need to sign in again.</div>
+    </div>
   </div>
-  <div class="paycard" id="payCard" hidden>
-    <h3>💰 My payments</h3>
-    <div id="payRows"></div>
-    <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
-    <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
+
+  <!-- member dashboard -->
+  <div id="appView" hidden>
+    <h1 class="hello" id="hello"></h1>
+    <p id="helloSub"></p>
+    <div id="upList"><div class="skel"></div><div class="skel"></div></div>
+    <div id="pastWrap" hidden>
+      <div class="grp tog closed" id="pastTog" role="button" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
+      <div id="pastList" hidden></div>
+    </div>
+    <div class="paycard" id="payCard" hidden>
+      <h3>💰 My payments</h3>
+      <div id="payRows"></div>
+      <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
+      <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
+    </div>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
+<script>
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
+}
+</script>
 <script src="../firebase-config.js"></script>
 <script type="module">
 const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
+const show = id => { ['loadingView','loginView','requestView','pendingView','appView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
 const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : (d||'—');
 const fmtShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : (d||'—');
 const fmtTime = t => {
@@ -189,105 +225,214 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   document.body.innerHTML = '<div class="wrap"><div class="empty">Not configured yet.</div></div>';
 }else{
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } =
+  const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, updateDoc, query, where, onSnapshot, serverTimestamp } =
+  const { getFirestore, collection, doc, setDoc, updateDoc, query, where, onSnapshot, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
-  const app  = initializeApp(window.FIREBASE_CONFIG);
+  /* a NAMED app gives the crew page its own session storage — signing in here
+     never touches the studio's admin session or a client-portal session on
+     the same phone */
+  const app  = initializeApp(window.FIREBASE_CONFIG, 'crew');
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
-
-  /* ---------- sign in (NEVER sign up — see LensCal post-mortem: an unknown
-     email+password must fail loudly, not silently create an account) ---------- */
-  $('#loginForm').addEventListener('submit', async e=>{
-    e.preventDefault();
-    $('#loginErr').hidden = true;
-    const btn = $('#loginBtn'); btn.disabled = true;
-    try{ await signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#pass').value); }
-    catch(err){
-      const code = String(err.code||'');
-      $('#loginErr').textContent = /invalid-credential|wrong-password|user-not-found/.test(code)
-        ? 'Wrong email or password — or your account has not been set up yet. Contact Fantasy Studio if you need access.'
-        : 'Sign-in failed: ' + code.replace('auth/','').replace(/-/g,' ');
-      $('#loginErr').hidden = false;
-    }
-    finally{ btn.disabled = false; }
-  });
-  $('#passEye').addEventListener('click', ()=>{
-    const p = $('#pass');
-    p.type = p.type === 'password' ? 'text' : 'password';
-    p.focus();
-  });
-  $('#forgotPw').addEventListener('click', async ()=>{
-    const email = $('#email').value.trim();
-    if(!email){ toast('Type your email above first'); $('#email').focus(); return; }
-    try{ await sendPasswordResetEmail(auth, email); toast('Password reset link sent to ' + email); }
-    catch(err){ toast('Could not send: ' + String(err.code||'').replace('auth/','').replace(/-/g,' ')); }
-  });
   $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
-  $('#gateOut').addEventListener('click', ()=>signOut(auth));
 
-  /* ---------- data ---------- */
-  let ME = null, ASGS = [];
-  let _meUnsub = null, _asgsUnsub = null, _meLoaded = false, _asgsLoaded = false;
-  let _pastOpen = false;
+  /* ---------- helpers shared with the client portal ---------- */
+  function authMsg(err){
+    const c = (err && err.code) || '';
+    if(c.includes('invalid-phone-number')) return 'That mobile number does not look right.';
+    if(c.includes('invalid-verification-code')) return 'Wrong OTP — check and try again.';
+    if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
+    if(c.includes('network-request-failed')) return 'No internet — check your connection.';
+    if(c.includes('captcha-check-failed') || c.includes('missing-recaptcha'))
+      return 'That security check expired. Tap Resend OTP to get a fresh code.';
+    if(c.includes('code-expired')) return 'That OTP has expired — tap Resend OTP for a new one.';
+    if(c.includes('quota-exceeded')) return 'Too many sign-in attempts today — tell the studio and try later.';
+    if(c.includes('user-disabled')) return 'This account has been disabled — talk to the studio.';
+    return 'Sign-in did not go through. Please try again, or tell the studio.';
+  }
+  const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false; };
+  const hideErr = sel => { $(sel).hidden = true; };
 
-  function stopData(){
-    if(_meUnsub){ try{ _meUnsub(); }catch(e){} _meUnsub = null; }
-    if(_asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
-    ME = null; ASGS = []; _meLoaded = false; _asgsLoaded = false;
+  function wireOtpBoxes(wrapSel, onFull){
+    const boxes = $$(wrapSel + ' input');
+    const full = () => boxes.every(x=>x.value);
+    boxes.forEach((b,i)=>{
+      b.addEventListener('input', ()=>{
+        const v = b.value.replace(/\D/g,'');
+        if(v.length > 1){
+          v.split('').slice(0, boxes.length - i).forEach((ch,j)=>boxes[i+j].value = ch);
+          boxes[Math.min(i + v.length, boxes.length) - 1].focus();
+        }else{
+          b.value = v;
+          if(v && i < boxes.length-1) boxes[i+1].focus();
+        }
+        if(full() && onFull) onFull();
+      });
+      b.addEventListener('keydown', e=>{ if(e.key==='Backspace' && !b.value && i>0) boxes[i-1].focus(); });
+      b.addEventListener('paste', e=>{
+        const t = (e.clipboardData.getData('text')||'').replace(/\D/g,'');
+        if(t.length >= boxes.length){
+          e.preventDefault();
+          boxes.forEach((x,j)=>x.value = t[j]||'');
+          boxes[boxes.length-1].focus();
+          if(full() && onFull) onFull();
+        }
+      });
+    });
+    return () => boxes.map(b=>b.value).join('');
+  }
+  const otpCode = wireOtpBoxes('#otpBoxes', ()=>{ const b=$('#verifyOtp'); if(!$('#otpStep').hidden && !b.disabled) b.click(); });
+  const clearBoxes = sel => $$(sel + ' input').forEach(b=>b.value='');
+
+  const _cool = new Map();
+  function startCooldown(btn, secs = 30){
+    if(!btn) return;
+    clearInterval(_cool.get(btn));
+    let s = secs;
+    btn.disabled = true;
+    btn.textContent = `Resend OTP (${s}s)`;
+    const iv = setInterval(()=>{
+      s--;
+      if(s <= 0){ clearInterval(iv); btn.disabled = false; btn.textContent = 'Resend OTP'; }
+      else btn.textContent = `Resend OTP (${s}s)`;
+    }, 1000);
+    _cool.set(btn, iv);
   }
 
-  function show(view){
-    $('#loginView').hidden = view !== 'login';
-    $('#gateView').hidden = view !== 'gate';
-    $('#appView').hidden = view !== 'app';
-    $('#hdr').hidden = view === 'login';
+  /* India keeps strict 10-digit checks, other countries 6–14 national digits;
+     absorbs a duplicated country code and the trunk zero (same as the portal) */
+  function readPhone(ccSel, phSel){
+    let cc = ($(ccSel).value||'').replace(/\D/g,'') || '91';
+    let p  = ($(phSel).value||'').replace(/\D/g,'');
+    if(p.length > 10 && p.indexOf(cc) === 0) p = p.slice(cc.length);
+    p = p.replace(/^0+/, '');
+    const ok = cc === '91' ? p.length === 10 : (p.length >= 6 && p.length <= 14);
+    return { cc, p, ok, full: '+' + cc + p, pretty: '+' + cc + ' ' + p, last10: (cc + p).slice(-10) };
+  }
+
+  /* ---------- phone OTP sign-in ---------- */
+  let confirmation = null, verifier = null;
+  /* fresh verifier per send — a cached grecaptcha token is single-use and
+     breaks the first Resend (same fix the client portal carries) */
+  function getVerifier(btnId){
+    try{ if(verifier) verifier.clear(); }catch(e){}
+    verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
+    return verifier;
+  }
+  async function doSendOtp(){
+    hideErr('#loginErr');
+    const ph = readPhone('#cc','#phone');
+    if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
+    const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
+    try{
+      confirmation = await signInWithPhoneNumber(auth, ph.full, getVerifier('sendOtp'));
+      $('#otpTo').textContent = ph.pretty;
+      $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
+      clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
+      startCooldown($('#otpResend'));
+      toast('OTP sent to ' + ph.pretty);
+    }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
+    finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
+  }
+  $('#sendOtp').addEventListener('click', doSendOtp);
+  $('#otpResend').addEventListener('click', doSendOtp);
+  $('#verifyOtp').addEventListener('click', async ()=>{
+    hideErr('#loginErr');
+    const code = otpCode();
+    if(code.length !== 6){ showErr('#loginErr','Enter the 6-digit OTP.'); return; }
+    const btn = $('#verifyOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Verifying…';
+    try{ await confirmation.confirm(code); }
+    catch(err){ showErr('#loginErr', err); }
+    finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
+  });
+  $('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
+
+  /* ---------- data + routing ---------- */
+  let ME = null, ASGS = [], REQ = null;
+  let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null;
+  let _meLoaded = false, _asgsLoaded = false, _reqLoaded = false;
+  let _pastOpen = false, _phone10 = '', _pretty = '';
+
+  function stopData(){
+    [_meUnsub, _asgsUnsub, _reqUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
+    _meUnsub = _asgsUnsub = _reqUnsub = null;
+    ME = null; ASGS = []; REQ = null;
+    _meLoaded = _asgsLoaded = _reqLoaded = false;
+  }
+
+  function route(){
+    if(!_meLoaded || !_reqLoaded){ show('loadingView'); return; }
+    if(ME){ show('appView'); render(); return; }
+    if(REQ){
+      $('#pendingWho').textContent = `${REQ.name||''} · ${_pretty}`;
+      show('pendingView');
+      return;
+    }
+    $('#reqPhone').textContent = _pretty;
+    show('requestView');
   }
 
   onAuthStateChanged(auth, user=>{
     stopData();
-    if(!user){ show('login'); return; }
-    const email = String(user.email||'').trim().toLowerCase();
-    if(!email){
-      /* e.g. a phone-OTP client account wandered in — nothing here for them */
-      $('#gateWho').textContent = 'This sign-in has no email address.';
-      show('gate');
+    $('#logoutBtn').hidden = !user;
+    if(!user){
+      show('loginView');
+      $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
       return;
     }
-    show('app');
-    /* both queries are constrained to this email — exactly what the Firestore
-       rules require; anything broader is refused by the server */
-    _meUnsub = onSnapshot(query(collection(db,'team'), where('email','==',email)), snap=>{
+    if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
+    _phone10 = user.phoneNumber.slice(-10);
+    _pretty = user.phoneNumber;
+    show('loadingView');
+    /* all three are pinned to this verified phone / this uid — exactly what
+       the Firestore rules require; anything broader is refused server-side */
+    _meUnsub = onSnapshot(query(collection(db,'team'), where('phone10','==',_phone10)), snap=>{
       _meLoaded = true;
-      ME = snap.docs.length ? { id: snap.docs[0].id, ...snap.docs[0].data() } : null;
-      if(!ME){
-        $('#gateWho').textContent = user.email || '';
-        show('gate');
-        return;
-      }
-      render();
-    }, err=>{
-      /* permission-denied here means "not a team member" (rules refused the
-         query) — same gate as an empty result, never a broken-looking page */
-      $('#gateWho').textContent = user.email || '';
-      show('gate');
-    });
-    _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberEmail','==',email)), snap=>{
+      const docs = snap.docs.filter(d=>d.data().active !== false);
+      ME = docs.length ? { id: docs[0].id, ...docs[0].data() } : null;
+      route();
+    }, err=>{ _meLoaded = true; ME = null; route(); });
+    _reqUnsub = onSnapshot(doc(db,'teamRequests',user.uid), snap=>{
+      _reqLoaded = true;
+      REQ = snap.exists() ? snap.data() : null;
+      route();
+    }, err=>{ _reqLoaded = true; REQ = null; route(); });
+    _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberPhone10','==',_phone10)), snap=>{
       _asgsLoaded = true;
       ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-      render();
-    }, err=>{
-      _asgsLoaded = true; ASGS = [];
-      render();
-    });
+      if(ME) render();
+    }, err=>{ _asgsLoaded = true; ASGS = []; if(ME) render(); });
   });
 
-  /* ---------- render ---------- */
+  /* ---------- join request ---------- */
+  $('#reqSend').addEventListener('click', async ()=>{
+    hideErr('#reqErr');
+    const name = $('#reqName').value.trim();
+    if(!name){ showErr('#reqErr','Type your name first.'); $('#reqName').focus(); return; }
+    const u = auth.currentUser; if(!u) return;
+    const btn = $('#reqSend'); btn.disabled = true; btn.classList.add('busy');
+    try{
+      await setDoc(doc(db,'teamRequests',u.uid), {
+        name, note: $('#reqNote').value.trim().slice(0,300),
+        phone10: _phone10, phoneFull: u.phoneNumber,
+        status: 'pending', createdAt: serverTimestamp()
+      });
+      toast('Request sent ✓');
+      /* the snapshot listener flips the view; nothing else to do */
+    }catch(err){
+      showErr('#reqErr', navigator.onLine
+        ? 'Could not send the request — please try again, or WhatsApp the studio directly.'
+        : 'You are offline — try again when you have signal.');
+    }
+    finally{ btn.disabled = false; btn.classList.remove('busy'); }
+  });
+
+  /* ---------- member dashboard ---------- */
   function asgCard(a, past){
     const seen = a.status === 'acknowledged';
     return `
@@ -329,7 +474,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pastList').hidden = !_pastOpen;
     $('#pastTog').classList.toggle('closed', !_pastOpen);
     if(past.length && _pastOpen) $('#pastList').innerHTML = past.map(a=>asgCard(a, true)).join('');
-    /* payments — view-only */
     const withPay = ASGS.filter(a=>Number((a.pay||{}).amount) > 0).sort((a,b)=>a.date<b.date?1:-1);
     $('#payCard').hidden = !withPay.length;
     if(withPay.length){
@@ -348,7 +492,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });
 
-  /* the ONE write this page can make: acknowledge an assignment */
+  /* the ONE write a member can make: acknowledge an assignment */
   $('#upList').addEventListener('click', async e=>{
     const b = e.target.closest('[data-ack]'); if(!b || b.disabled) return;
     const a = ASGS.find(v=>v.id===b.dataset.ack); if(!a) return;

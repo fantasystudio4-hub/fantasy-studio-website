@@ -15,7 +15,8 @@ service cloud.firestore {
         && request.auth.token.email in ['fantasystudio4@gmail.com'];
     }
 
-    // last 10 characters of the signed-in client's verified phone number.
+    // last 10 characters of the signed-in user's verified phone number —
+    // used for clients (packages) AND crew (team/assignments/teamRequests).
     // The E.164 token (e.g. "+918686868803" or NRI "+447911123456") includes a
     // leading '+', so the last 10 chars strip it and the country code down to
     // the stored "last 10 digits" key — works for +91 AND overseas clients.
@@ -77,39 +78,54 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // the signed-in employee's email, lowercased — the key that links a
-    // Firebase Auth account to admin-created team/assignment docs. An account
-    // with no matching doc (e.g. a stranger who self-registered via the raw
-    // API) matches nothing and falls to default-deny everywhere.
-    function staffEmail() {
-      return (request.auth != null && request.auth.token.email is string)
-        ? request.auth.token.email.lower()
-        : '__none__';
-    }
-
-    // team members — created and managed only by the admin. An employee reads
-    // their own profile via  where('email','==', <their email>)  — the rules
-    // engine only permits list queries whose filter provably satisfies the
-    // email match, so nobody can enumerate the team (same proven pattern as
-    // the packages/clientPhone rule above).
+    // team members — created and managed only by the admin (approving a crew
+    // request just means the admin creates this doc). A signed-in crew member
+    // reads their own card via  where('phone10','==', <their last-10>)  —
+    // the rules engine only permits queries whose filter provably satisfies
+    // the phone match, so nobody can enumerate the team (same proven pattern
+    // as the packages/clientPhone rule above).
     match /team/{memberId} {
-      allow read: if isAdmin() || resource.data.email == staffEmail();
+      allow read: if isAdmin() || resource.data.phone10 == clientPhone10();
       allow create, update, delete: if isAdmin();
     }
 
-    // per-member per-event assignments (schedule + pay). Employees can read
-    // ONLY their own docs, and the ONLY write they can ever make is flipping
-    // status to 'acknowledged' (+ the server-time ack stamp) on their own doc
-    // — never pay, never dates, never anyone else's.
+    // per-member per-event assignments (schedule + pay). A crew member can
+    // read ONLY their own docs, and the ONLY write they can ever make is
+    // flipping status to 'acknowledged' (+ the server-time ack stamp) on
+    // their own doc — never pay, never dates, never anyone else's.
     match /assignments/{assignId} {
-      allow read: if isAdmin() || resource.data.memberEmail == staffEmail();
+      allow read: if isAdmin() || resource.data.memberPhone10 == clientPhone10();
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
-        || (resource.data.memberEmail == staffEmail()
+        || (resource.data.memberPhone10 == clientPhone10()
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['status','ackAt'])
             && request.resource.data.status == 'acknowledged'
             && request.resource.data.ackAt == request.time);
+    }
+
+    // join requests from the crew page. One per signed-in account (doc id is
+    // the auth uid), the phone is pinned to the OTP-verified number, and the
+    // fields are pinned + size-capped so nothing arbitrary can be injected
+    // into the admin console. Only the admin can approve/dismiss (update/
+    // delete); the requester can re-read their own request to see it pending.
+    match /teamRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(
+             ['name','note','phone10','phoneFull','status','createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.phoneFull is string
+        && request.resource.data.phoneFull.size() <= 20;
+      allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow list, update, delete: if isAdmin();
     }
 
     // everything else (incl. legacy lenscal_* data): admin only — default deny
