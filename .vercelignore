@@ -20,12 +20,10 @@
 .DS_Store
 **/.DS_Store
 
-# Source & internal docs — never site assets. This is what removes
-# lenscal/SETUP.md and lenscal/firestore.rules (and the root firestore.rules)
-# from the public domain, where they were previously served.
-# Vercel only applies the bare patterns to root-level files (verified live:
-# /firestore.rules 404'd while /lenscal/firestore.rules stayed up), so every
-# pattern needs an explicit **/ recursive twin.
+# Source & internal docs — never site assets. This is what keeps the root
+# firestore.rules (and any nested docs) off the public domain.
+# Vercel only applies the bare patterns to root-level files (verified live in
+# Jul 2026), so every pattern needs an explicit **/ recursive twin.
 *.md
 **/*.md
 *.rules

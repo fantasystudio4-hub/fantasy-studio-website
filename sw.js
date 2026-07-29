@@ -30,7 +30,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       // CacheStorage is origin-scoped, not scope-scoped, so an unqualified
-      // sweep here deleted LensCal's cache (and its sweep deleted ours).
+      // sweep would delete every app's cache on this origin, not just ours.
       // Only ever retire our own older versions.
       .then(keys => Promise.all(
         keys.filter(k => k.startsWith(PREFIX) && k !== CACHE).map(k => caches.delete(k))

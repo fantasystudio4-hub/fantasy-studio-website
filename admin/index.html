@@ -828,10 +828,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      ------------------------------------------------------------
      The gate used to be `if(user)` — ANY account in the Firebase project got
      the full owner console. A wedding client who signs in at /client/ with
-     Google shares the same origin and auth session, and /lenscal/ creates an
-     account for any email+password typed into it. Whether they could read the
-     DATA depended only on the Firestore console rules, which are not in this
-     repo.
+     Google shares the same origin and auth session. Whether they could read
+     the DATA depended only on the Firestore console rules.
 
      >>> PUT THE EMAIL YOU SIGN IN WITH HERE. <<<
      While this list is EMPTY the gate stays OFF and behaves exactly as before,
