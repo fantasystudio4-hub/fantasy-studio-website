@@ -719,6 +719,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <input id="tmEmail" type="email" autocomplete="off" /></div>
   <div class="fld"><label>Pay per event (₹)</label><input id="tmRate" type="number" min="0" inputmode="numeric" /></div>
   <button class="gbtn" id="tmSave" type="button">Save</button>
+  <button class="mini" id="tmReset" type="button" hidden style="width:100%;margin-top:.55rem">📧 Send password setup / reset email</button>
   <button class="mini" id="tmToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
 
@@ -839,7 +840,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#setupView').hidden = false;
 }else{
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } =
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
+          createUserWithEmailAndPassword, setPersistence, inMemoryPersistence } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
           collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField,
@@ -2112,6 +2114,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#tmRole').innerHTML = TEAM_ROLES.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('');
   $('#asRole').innerHTML = TEAM_ROLES.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('');
 
+  /* ---------- employee logins ----------
+     Creating a login with the PRIMARY auth instance would sign the owner out
+     and sign the brand-new employee in. A second named app instance has its
+     own auth state (kept in memory only), so the owner's session is never
+     touched. The account gets a random throwaway password nobody ever sees;
+     the employee sets their real one via the reset email sent right after. */
+  let _staffApp = null;
+  function staffAuth(){
+    if(!_staffApp) _staffApp = initializeApp(window.FIREBASE_CONFIG, 'staff-login-create');
+    return getAuth(_staffApp);
+  }
+  async function ensureStaffLogin(email){
+    const a2 = staffAuth();
+    try{ await setPersistence(a2, inMemoryPersistence); }catch(e){}
+    const alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const throwaway = Array.from(crypto.getRandomValues(new Uint8Array(24)), b=>alpha[b % alpha.length]).join('') + '#a1';
+    try{
+      await createUserWithEmailAndPassword(a2, email, throwaway);
+      try{ await signOut(a2); }catch(e){}
+      await sendPasswordResetEmail(auth, email);
+      return 'created';
+    }catch(err){
+      if(err && err.code === 'auth/email-already-in-use') return 'exists';
+      throw err;
+    }
+  }
+
   function loadTeam(){
     if(_teamUnsub && _asgsUnsub){ renderTeam(); return; }
     if(!_teamUnsub){
@@ -2303,6 +2332,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tmPhone').value = m ? (m.phone||'') : '';
     $('#tmEmail').value = m ? (m.email||'') : '';
     $('#tmRate').value = m && m.defaultRate ? m.defaultRate : '';
+    $('#tmReset').hidden = !(m && m.email);
     const tog = $('#tmToggle');
     tog.hidden = !m;
     if(m){
@@ -2333,9 +2363,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const data = { name, role: $('#tmRole').value, phone: $('#tmPhone').value.trim(), email,
                    defaultRate: Math.max(0, Math.round(Number($('#tmRate').value)||0)), updatedAt: serverTimestamp() };
     btn.disabled = true;
+    let prevEmail = null;
     try{
       if(_tmEditId){
         const old = TEAM.find(m=>m.id===_tmEditId);
+        prevEmail = old ? String(old.email||'').toLowerCase() : null;
         const res = await settle(updateDoc(doc(db,'team',_tmEditId), data));
         const sm = settleMsg(res, 'Member saved ✓');
         toast(sm.msg);
@@ -2360,8 +2392,37 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       renderTeam();
       closeTm();
+      /* auto-create their login + send the set-password email, so adding a
+         member here is the ONLY step — no Firebase-console visit needed */
+      if(email && email !== prevEmail){
+        try{
+          const r = await ensureStaffLogin(email);
+          toast(r === 'created'
+            ? `Login created — password-setup email sent to ${email}`
+            : 'Saved ✓ — a login for this email already existed');
+        }catch(err){
+          toast('Member saved, but the login could not be created ('
+            + String(err.code||err.message||'').replace('auth/','')
+            + '). Open the member and tap “Send password setup / reset email” to retry.');
+        }
+      }
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
+  });
+  /* resend — also self-heals a member whose login was never created (e.g.
+     added before this existed, or saved while offline) */
+  $('#tmReset').addEventListener('click', async ()=>{
+    const b = $('#tmReset'); if(b.disabled) return;
+    const m = TEAM.find(v=>v.id===_tmEditId);
+    const email = m ? String(m.email||'').trim().toLowerCase() : '';
+    if(!email){ toast('Save the member with an email first'); return; }
+    b.disabled = true;
+    try{
+      const r = await ensureStaffLogin(email);
+      if(r === 'exists') await sendPasswordResetEmail(auth, email);
+      toast(`Password email sent to ${email} — ask them to check spam too`);
+    }catch(err){ toast('Could not send: ' + String(err.code||err.message||'').replace('auth/','')); }
+    finally{ b.disabled = false; }
   });
   $('#tmToggle').addEventListener('click', async ()=>{
     const m = TEAM.find(v=>v.id===_tmEditId); if(!m) return;
