@@ -421,6 +421,28 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pm-row .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.72rem;cursor:pointer;white-space:nowrap}
 .pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
 .as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
+
+/* ==== polish pass: one visual system across admin / crew / client ====
+   Depth on surfaces, a signature gold hairline under the header, unified
+   focus rings and button shadows. Keep these values in step with the same
+   block in /team/ and /client/. */
+header{border-bottom:0}
+header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
+.sec,.lead,.login,.stat,.tm-ev{box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.pay-modal{box-shadow:0 18px 48px rgba(0,0,0,.5)}
+.fld input:focus,.fld select:focus,.fld textarea:focus,.bar input[type=search]:focus,.lead-det textarea:focus,.prow input:focus,.itemrow select:focus,.itemrow input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18);outline:none}
+.gbtn,.goldbar{box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active,.goldbar:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
+.stat{transition:border-color .2s, transform .15s}
+.stat[data-fs]:active,.stat[data-goto]:active{transform:scale(.97)}
+/* phones: active bottom-nav tab gets a soft gold pill, not just a tint */
+@media(max-width:699px){
+  .tabs button.on{background:rgba(184,144,43,.14)}
+}
+/* phones: the payment/status/member/assign sheets get a grab handle */
+@media(max-width:560px){
+  .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:rgba(226,194,117,.35);margin:-.4rem auto .85rem}
+}
 </style>
 </head>
 <body>
@@ -495,8 +517,8 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
     <div class="stats" id="pkgStats"></div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
-    <div class="sec" style="padding:.9rem 1rem">
-      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">Booked &amp; recent deliveries</h3>
+    <div class="sec">
+      <h3>📸 Booked &amp; recent deliveries</h3>
       <div id="homeBooked"><div class="skel"></div><div class="skel"></div></div>
     </div>
   </div>
@@ -592,24 +614,25 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
   <div id="teamView" hidden>
     <div class="stats" id="teamStats"></div>
-    <div class="sec" style="padding:.9rem 1rem" id="teamReqSec" hidden>
-      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.2rem">🙋 Join requests</h3>
-      <p class="sub" style="margin:0 0 .6rem">People who signed in on the crew page and asked to join. Approving opens a member card with their details filled in.</p>
+    <div class="sec" id="teamReqSec" hidden>
+      <h3>🙋 Join requests</h3>
+      <p class="sub">People who signed in on the crew page and asked to join. Approving opens a member card with their details filled in.</p>
       <div id="teamReqs"></div>
     </div>
-    <div class="sec" style="padding:.9rem 1rem">
-      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.2rem">📅 Upcoming events</h3>
-      <p class="sub" style="margin:0 0 .6rem">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
+    <div class="sec">
+      <h3>📅 Upcoming events</h3>
+      <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
       <div id="teamEvents"></div>
     </div>
-    <div class="sec" style="padding:.9rem 1rem">
-      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.5rem">👥 Team members</h3>
+    <div class="sec">
+      <h3>👥 Team members</h3>
+      <p class="sub">Their phone number is their crew-page login.</p>
       <div id="teamMembers"></div>
       <button class="addrow" id="tmAdd">＋ Add team member</button>
     </div>
-    <div class="sec" style="padding:.9rem 1rem">
-      <h3 style="color:var(--gold-b);font-size:.95rem;margin-bottom:.2rem">💰 Pay tracker</h3>
-      <p class="sub" style="margin:0 0 .6rem">Every assignment with its pay, per member. Tap a section title to open it, then mark events paid as you settle up.</p>
+    <div class="sec">
+      <h3>💰 Pay tracker</h3>
+      <p class="sub">Every assignment with its pay, per member. Tap a name to open it, then mark events paid as you settle up.</p>
       <div id="teamPay"></div>
     </div>
   </div>

@@ -110,6 +110,20 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .toast.show{opacity:1}
 .net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
 .hd .net + .out{margin-left:.45rem}
+
+/* ==== polish pass: one visual system across admin / crew / client ==== */
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+header{border-bottom:0}
+header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
+.login,.asg,.paycard,.empty{box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.fld input:focus,.fld textarea:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.phwrap:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.gbtn,.ackbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active,.ackbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
+/* the very next event stands out from the rest of the schedule */
+#upList .asg:first-child{border-color:rgba(226,194,117,.55)}
+#upList .asg:first-child .asg-h .when{font-size:1.1rem}
 </style>
 </head>
 <body>

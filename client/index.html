@@ -134,6 +134,17 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* small text buttons were ~18-20px tall */
 .mini{min-height:44px;padding:.4em .9em}
 .hd .out,.hd .back{min-height:40px;display:inline-flex;align-items:center}
+
+/* ==== polish pass: one visual system across admin / crew / client ==== */
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+header{border-bottom:0}
+header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
+.login,.pkg,.skel{box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.fld input:focus,.fld textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.phwrap:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.gbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
 </style>
 </head>
 <body>
