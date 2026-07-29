@@ -1,7 +1,7 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets. */
-const CACHE = 'fs-cache-v9';
+const CACHE = 'fs-cache-v10';
 const PREFIX = 'fs-cache-';
 // Only the public shell. The admin and client apps used to be precached here,
 // which cost every first-time visitor ~133 KB for two pages they will never

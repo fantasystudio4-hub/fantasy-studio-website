@@ -2344,9 +2344,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
         const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
+        /* editors self-report editing progress from the crew page */
+        const scissors = !/editor/i.test(a.role||'') ? ''
+          : a.workDone ? '<span title="Editing completed — marked by the editor" style="color:var(--ok)">✂✓ </span>'
+          : (a.date||'') < todayISO() ? '<span title="Editing not marked complete yet" style="color:#ffb054">✂… </span>'
+          : '';
         return `
         <div class="pm-row">
-          <span class="ev2">${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')} <span>· ${esc(a.clientName||'')}</span></span>
+          <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')} <span>· ${esc(a.clientName||'')}</span></span>
           <span class="amt2">${inr((p.amount)||0)}</span>
           ${p.paid
             ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to mark unpaid">Paid ${esc(stepDate(p.paidDate)||'')}</button>`

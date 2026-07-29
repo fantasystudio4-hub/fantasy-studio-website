@@ -90,6 +90,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ackbtn:active{transform:scale(.98)}
 .ackbtn:disabled{opacity:.7;cursor:default}
 .ackdone{margin-top:.8rem;text-align:center;color:var(--ok);font-size:.82rem}
+.undobtn{background:none;border:0;color:var(--mut);text-decoration:underline;cursor:pointer;font-size:.76rem;padding:.2em .4em}
 
 .paycard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;margin-bottom:.9rem}
 .paycard h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
@@ -490,6 +491,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${past ? '' : (seen
         ? `<div class="ackdone">✓ You confirmed this${a.ackAt && a.ackAt.toDate ? ' on ' + a.ackAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</div>`
         : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)}
+      ${past && /editor/i.test(a.role||'') ? (a.workDone
+        ? `<div class="ackdone">✂️ Editing completed${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
+        : `<button class="ackbtn" data-workdone="${a.id}">✂️ Mark editing complete</button>`) : ''}
     </div>`;
   }
 
@@ -583,6 +587,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });
+
+  /* editors tick off finished edits on past events — the studio sees it live */
+  $('#pastList').addEventListener('click', async e=>{
+    const done = e.target.closest('[data-workdone]');
+    const undo = e.target.closest('[data-workundo]');
+    if(!done && !undo) return;
+    const id = done ? done.dataset.workdone : undo.dataset.workundo;
+    const a = ASGS.find(v=>v.id===id); if(!a) return;
+    if(done){ if(done.disabled) return; done.disabled = true; done.textContent = 'Saving…'; }
+    try{
+      await updateDoc(doc(db,'assignments',id), { workDone: !!done, workDoneAt: serverTimestamp() });
+      a.workDone = !!done;
+      delete a.workDoneAt;   /* the server timestamp arrives with the next snapshot */
+      render();
+      toast(done ? 'Editing marked complete ✓ — the studio can see it' : 'Marked as still editing');
+    }catch(err){
+      render();
+      toast(navigator.onLine ? 'Could not save — try again' : 'You are offline — try again with signal');
+    }
+  });
 
   /* the ONE write a member can make: acknowledge an assignment */
   $('#upList').addEventListener('click', async e=>{

@@ -90,18 +90,25 @@ service cloud.firestore {
     }
 
     // per-member per-event assignments (schedule + pay). A crew member can
-    // read ONLY their own docs, and the ONLY write they can ever make is
-    // flipping status to 'acknowledged' (+ the server-time ack stamp) on
-    // their own doc — never pay, never dates, never anyone else's.
+    // read ONLY their own docs, and the only writes they can ever make on
+    // their own doc are (1) confirming they've seen it and (2) ticking or
+    // unticking "editing complete" — never pay, never dates, never anyone
+    // else's.
     match /assignments/{assignId} {
       allow read: if isAdmin() || resource.data.memberPhone10 == clientPhone10();
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
         || (resource.data.memberPhone10 == clientPhone10()
-            && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status','ackAt'])
-            && request.resource.data.status == 'acknowledged'
-            && request.resource.data.ackAt == request.time);
+            && (
+              (request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['status','ackAt'])
+               && request.resource.data.status == 'acknowledged'
+               && request.resource.data.ackAt == request.time)
+              || (request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['workDone','workDoneAt'])
+                  && request.resource.data.workDone is bool
+                  && request.resource.data.workDoneAt == request.time)
+            ));
     }
 
     // join requests from the crew page. One per signed-in account (doc id is
