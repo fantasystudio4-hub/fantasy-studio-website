@@ -79,6 +79,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .chip{border-radius:20px;padding:.22em .85em;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
 .chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
 .chip.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
+.chip.unconfirmed{color:#cf8d85;background:rgba(207,127,118,.13)}
 .chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
 .chip.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
 /* one-line amount summary — package / paid / balance at a glance */
@@ -656,7 +657,7 @@ function pkgHTML(x){
     <div class="pkg-h">
       <h2>${esc(x.clientName||'Your package')}</h2>
       <span class="qno">${esc(x.quoteNo||'')}</span>
-      <span class="chip ${st}">${st}</span>
+      <span class="chip ${st}">${st === 'unconfirmed' ? 'not confirmed' : st}</span>
     </div>
     <div class="sums" data-sums role="button" title="See full pricing" aria-label="See full pricing">
       <div><b>${inr(tt.finalPrice||0)}</b><span>package</span></div>
