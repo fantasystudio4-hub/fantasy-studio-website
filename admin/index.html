@@ -186,7 +186,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .pkg-acts .act:active{background:rgba(184,144,43,.18)}
 .pkg-acts .lead-x{background:rgba(224,122,106,.08);border:1px solid transparent;color:var(--err)}
 .pkg-acts .lead-x:active{background:var(--err);color:#fff}
-@media(min-width:700px){.pkg-acts{grid-template-columns:repeat(7,1fr)}}
+@media(min-width:700px){.pkg-acts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
 
 /* delivery tracker */
 .dprog{height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
@@ -520,6 +520,17 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ev-e em{display:block;font-style:normal;color:var(--mut);font-size:.74rem;margin-top:.1rem}
 .ev-acts{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.95rem}
 .ev-acts .mini{flex:1;margin-top:0;min-width:104px}
+
+/* ==== ease-of-use pass: quick-actions FAB, Home search, Config jump chips ==== */
+.fab{position:fixed;right:16px;bottom:calc(64px + env(safe-area-inset-bottom) + 12px);z-index:60;width:54px;height:54px;border-radius:50%;border:0;background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:0 8px 22px rgba(142,110,30,.5);transition:transform .12s}
+.fab:active{transform:scale(.92)}
+@media(hover:hover){ .fab:hover{filter:brightness(1.1)} }
+@media(min-width:700px){ .fab{bottom:24px} }
+#homeResults{padding:.8rem 1rem}
+#homeResults .up-ev .when{min-width:30px;font-size:1rem}
+#homeResults .stpill{margin-left:0}
+#cfgJump{position:sticky;top:62px;z-index:30;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
+#configView .sec{scroll-margin-top:118px}
 </style>
 </head>
 <body>
@@ -579,6 +590,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
   </div>
+  <button class="fab" id="fabBtn" hidden aria-label="Quick actions" title="Quick actions">⚡</button>
 
   <div id="leadsView">
     <div class="stats" id="stats"></div>
@@ -591,6 +603,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   </div>
 
   <div id="homeView">
+    <div class="bar" style="margin:1rem 0 .8rem">
+      <input id="homeSearch" type="search" placeholder="🔍 Find any client — name, phone or quote #…" />
+    </div>
+    <div class="sec upco" id="homeResults" hidden></div>
     <div class="stats" id="pkgStats"></div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
@@ -716,6 +732,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   </div>
 
   <div id="configView" hidden>
+    <div class="fchips" id="cfgJump"></div>
     <div class="sec">
       <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days)</span></h3>
       <div id="trashList"></div>
@@ -864,6 +881,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <h3>📅 Upcoming shoots</h3>
   <div class="who" id="upWho"></div>
   <div id="upBody"></div>
+</div>
+
+<div class="pay-backdrop" id="qaBackdrop"></div>
+<div class="pay-modal" id="qaModal" role="dialog" aria-modal="true" aria-label="Quick actions">
+  <button class="pay-close" id="qaClose" type="button" aria-label="Close">&times;</button>
+  <h3>⚡ Quick Actions</h3>
+  <div class="who" id="qaWho"></div>
+  <div class="st-opts" id="qaOpts"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1128,7 +1153,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa'];
   function pushView(view, hash){
     if(_navFromPop) return;
     try{
@@ -1143,6 +1168,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function showTab(id){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
+    const fab = $('#fabBtn'); if(fab) fab.hidden = (id !== 'tabHome');   /* quick actions live on Home */
     if(id === 'tabCal') renderCalendar();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
     if(id === 'tabHome' && typeof renderHome === 'function') renderHome();
@@ -1191,6 +1217,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeFinUI === 'function') closeFinUI();
       if(typeof closeEvUI === 'function') closeEvUI();
       if(typeof closeUpUI === 'function') closeUpUI();
+      if(typeof closeQaUI === 'function') closeQaUI();
       /* landing on a sheet's own entry (forward button / stray entry): the
          sheets are closed above — stay on the current tab instead of
          teleporting to Home */
@@ -2073,6 +2100,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="act" data-pdfrow>PDF</button>
         <button class="act" data-wapdf>Send ▷</button>
         <button class="act" data-pay>＋ Payment</button>
+        ${x.clientPhone ? `<button class="act" data-call>📞 Call</button>
+        <button class="act" data-wachat>WhatsApp</button>` : ''}
         <button class="lead-x" data-delpkg>Delete</button>
       </div>
       ${track && open ? trackerHTML(x) : ''}
@@ -2192,6 +2221,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
     if(e.target.closest('[data-wapdf]')){ await makePdf(x, true); return; }
     if(e.target.closest('[data-pay]')){ openPay(x); return; }
+    if(e.target.closest('[data-call]')){ location.href = 'tel:+' + waNumberFor(x); return; }
+    if(e.target.closest('[data-wachat]')){ openWa('https://wa.me/' + waNumberFor(x)); return; }
     if(e.target.closest('[data-delpkg]')){
       if(!confirm(`Move the package for "${x.clientName||'this client'}" to Trash?`)) return;
       try{
@@ -3137,7 +3168,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#payBackdrop').addEventListener('click', closePay);
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
   $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); } });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); } });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
@@ -3452,6 +3483,116 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   $('#upClose').addEventListener('click', closeUpList);
   $('#upBackdrop').addEventListener('click', closeUpList);
+
+  /* ---------- quick actions — the ⚡ button on Home ---------- */
+  function openQa(){
+    renderQaMain();
+    const wasOpen = $('#qaModal').classList.contains('open');
+    $('#qaModal').classList.add('open'); $('#qaBackdrop').classList.add('open');
+    if(!wasOpen) pushView('qa', '#quick');
+  }
+  function closeQaUI(){ $('#qaModal').classList.remove('open'); $('#qaBackdrop').classList.remove('open'); }
+  function closeQa(){
+    if(history.state && history.state.view === 'qa'){ history.back(); }
+    else closeQaUI();
+  }
+  function renderQaMain(){
+    $('#qaWho').textContent = 'The things you do most — one tap away';
+    $('#qaOpts').innerHTML = `
+      <button type="button" data-qa-new>📦 New package / quotation</button>
+      <button type="button" data-qa-pay>💰 Record a payment</button>
+      <button type="button" data-qa-today>📅 Today's calendar</button>
+      <button type="button" data-qa-member>🎬 Add a team member</button>`;
+  }
+  function renderQaPay(){
+    const list = livePkgs()
+      .filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0)
+      .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; })
+      .slice(0,12);
+    $('#qaWho').textContent = 'Who paid you? Tap the client to record it';
+    $('#qaOpts').innerHTML = (list.length
+      ? list.map(x=>`<button type="button" data-qa-pick="${x.id}"><i class="dot ${x.status||'draft'}"></i>${esc(x.clientName||'—')}<em>${inr(Math.max(0,(x.totals||{}).balance||0))} due</em></button>`).join('')
+      : '<div class="empty" style="padding:.6rem 0">Nothing is due — every balance is clear 🎉</div>')
+      + '<button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>';
+  }
+  $('#qaOpts').addEventListener('click', e=>{
+    if(e.target.closest('[data-qa-new]')){ closeQaUI(); $('#tabPkgs').click(); openPkgEdit(null); return; }
+    if(e.target.closest('[data-qa-pay]')){ renderQaPay(); return; }
+    if(e.target.closest('[data-qa-back]')){ renderQaMain(); return; }
+    const pick = e.target.closest('[data-qa-pick]');
+    if(pick){ const x = PKGS.find(p=>p.id===pick.dataset.qaPick); closeQaUI(); if(x) openPay(x); return; }
+    if(e.target.closest('[data-qa-today]')){
+      closeQaUI();
+      const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); calSel = n.toLocaleDateString('en-CA');
+      $('#tabCal').click();
+      return;
+    }
+    if(e.target.closest('[data-qa-member]')){ closeQaUI(); $('#tabTeam').click(); openTm(null); return; }
+  });
+  $('#fabBtn').addEventListener('click', openQa);
+  $('#qaClose').addEventListener('click', closeQa);
+  $('#qaBackdrop').addEventListener('click', closeQa);
+
+  /* ---------- Home global search: packages + leads in one box ---------- */
+  function renderHomeSearch(){
+    const box = $('#homeResults'); if(!box) return;
+    const q = ($('#homeSearch').value||'').trim().toLowerCase();
+    if(!q){ box.hidden = true; box.innerHTML = ''; return; }
+    const pk = livePkgs().filter(x=>String(x.clientName||'').toLowerCase().includes(q)
+      || String(x.clientPhone||'').includes(q) || String(x.quoteNo||'').toLowerCase().includes(q)).slice(0,6);
+    const ld = liveLeads().filter(l=>String(l.name||'').toLowerCase().includes(q)
+      || String(l.phone||'').includes(q)).slice(0,4);
+    box.hidden = false;
+    box.innerHTML = '<h3>🔍 Results</h3>' + ((pk.length || ld.length)
+      ? pk.map(x=>`
+          <div class="up-ev" data-hspkg="${x.id}" role="button">
+            <span class="when">📦</span>
+            <span class="what">${esc(x.clientName||'—')} <span>· ${esc(x.quoteNo||'')} · ${inr((x.totals||{}).finalPrice||0)}</span></span>
+            <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
+          </div>`).join('')
+        + ld.map(l=>`
+          <div class="up-ev" data-hslead="${l.id}" role="button">
+            <span class="when">👤</span>
+            <span class="what">${esc(l.name||'—')} <span>· lead${l.eventType ? ' · ' + esc(l.eventType) : ''}</span></span>
+            <i class="dot lead"></i>
+          </div>`).join('')
+      : '<div class="empty" style="padding:.6rem 0">No match. New enquiries land in the Leads tab.</div>');
+  }
+  $('#homeSearch').addEventListener('input', renderHomeSearch);
+  $('#homeResults').addEventListener('click', e=>{
+    const p = e.target.closest('[data-hspkg]');
+    if(p){
+      const x = PKGS.find(v=>v.id===p.dataset.hspkg); if(!x) return;
+      expandedPkg = x.id; pkgFilterVal = '';
+      $('#pkgSearch').value = x.quoteNo || x.clientName || '';
+      $('#tabPkgs').click(); renderPkgList();
+      return;
+    }
+    const l = e.target.closest('[data-hslead]');
+    if(l){
+      const ld = LEADS.find(v=>v.id===l.dataset.hslead);
+      if(ld){ $('#leadSearch').value = ld.name || ld.phone || ''; leadFilterVal = ''; }
+      $('#tabLeads').click(); renderLeads();
+    }
+  });
+
+  /* ---------- Config quick-jump chips — that page is LONG ---------- */
+  (function(){
+    const jump = $('#cfgJump'); if(!jump) return;
+    const secs = $$('#configView .sec');
+    jump.innerHTML = secs.map((s,i)=>{
+      const h = s.querySelector('h3'); if(!h) return '';
+      const label = ((h.childNodes[0] && h.childNodes[0].textContent) || h.textContent || '').trim();
+      if(!label) return '';
+      if(!s.id) s.id = 'cfgSec' + i;
+      return `<button type="button" data-cfgjump="${s.id}">${esc(label)}</button>`;
+    }).join('');
+    jump.addEventListener('click', e=>{
+      const b = e.target.closest('[data-cfgjump]'); if(!b) return;
+      const s = document.getElementById(b.dataset.cfgjump);
+      if(s) s.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+  })();
 
   /* ---------- builder ---------- */
   $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
