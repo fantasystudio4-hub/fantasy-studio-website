@@ -1120,6 +1120,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabTeam:'team', tabConfig:'config' };
   const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', team:'tabTeam', config:'tabConfig' };
   let _navFromPop = false;
+  /* Sheet/modal history states. Pushing a new state while one of these is
+     current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
+     in history, costing dead back-presses that dumped the user on Home.
+     pushView REPLACES a modal entry instead of stacking on top of it. */
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist'];
+  function pushView(view, hash){
+    if(_navFromPop) return;
+    try{
+      const cur = history.state && history.state.view;
+      if(MODAL_VIEWS.includes(cur)) history.replaceState({view}, '', hash);
+      else history.pushState({view}, '', hash);
+    }catch(e){}
+  }
   /* Switching tabs kept the previous tab's scroll offset, so arriving at a tab
      part-way down the page was routine. Remember each tab's own position. */
   let _tabScroll = {}, _curTab = null;
@@ -1146,7 +1159,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
       }
       showTab(id);
-      if(!_navFromPop){ try{ history.pushState({view: VIEW_OF_TAB[id]}, '', '#' + VIEW_OF_TAB[id]); }catch(e){} }
+      pushView(VIEW_OF_TAB[id], '#' + VIEW_OF_TAB[id]);
     });
   });
   /* phone back button navigates within the app instead of exiting */
@@ -1154,11 +1167,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _navFromPop = true;
     try{
       const v = (e.state && e.state.view) || 'home';
-      if(v !== 'pkgedit' && typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
-        try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e2){}
-        return;
+      /* Close the editor honestly: prompt ONLY when the form is genuinely
+         dirty (the baseline is cleared only at the moment the editor really
+         closes — clearing it earlier made pristine forms look dirty forever). */
+      if(v !== 'pkgedit' && !$('#pkgEditView').hidden){
+        const visible = !$('#pkgView').hidden;
+        if(typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
+          try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e2){}
+          if(!visible){ showTab('tabPkgs'); $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false; }
+          return;
+        }
+        _pkgBaseline = '';
+        $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
       }
-      if(v !== 'pkgedit') _pkgBaseline = '';
       if(typeof closePayUI === 'function') closePayUI();
       if(typeof closeStatusUI === 'function') closeStatusUI();
       if(typeof closeTmUI === 'function') closeTmUI();
@@ -1166,6 +1187,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeFinUI === 'function') closeFinUI();
       if(typeof closeEvUI === 'function') closeEvUI();
       if(typeof closeUpUI === 'function') closeUpUI();
+      /* landing on a sheet's own entry (forward button / stray entry): the
+         sheets are closed above — stay on the current tab instead of
+         teleporting to Home */
+      if(MODAL_VIEWS.includes(v)) return;
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -1260,6 +1285,31 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderLeads(){
     renderLeadChips();
+    /* Live snapshots re-render this list at any moment — a new lead arriving
+       must not collapse the card the owner is reading or erase a half-typed
+       note. Capture open cards, unsaved note drafts and the caret; restore
+       them after the rebuild. */
+    const _open = new Set($$('#leadList .lead').filter(c=>{ const d=c.querySelector('.lead-det'); return d && !d.hidden; }).map(c=>c.dataset.id));
+    const _drafts = {};
+    $$('#leadList .lead [data-notes]').forEach(t=>{ const c=t.closest('.lead'); if(c) _drafts[c.dataset.id] = t.value; });
+    const _ae = document.activeElement;
+    const _focusCard = (_ae && _ae.matches && _ae.matches('#leadList [data-notes]')) ? _ae.closest('.lead') : null;
+    const _focusId = _focusCard ? _focusCard.dataset.id : null;
+    const _caret = _focusId ? _ae.selectionStart : 0;
+    const _restore = ()=>{
+      $$('#leadList .lead').forEach(c=>{
+        const id = c.dataset.id;
+        if(_open.has(id)){ const d=c.querySelector('.lead-det'); if(d) d.hidden = false; }
+        if(id in _drafts){
+          const t = c.querySelector('[data-notes]');
+          if(t && t.value !== _drafts[id]) t.value = _drafts[id];
+        }
+      });
+      if(_focusId){
+        const t = document.querySelector(`#leadList .lead[data-id="${_focusId}"] [data-notes]`);
+        if(t){ t.focus(); try{ t.setSelectionRange(_caret, _caret); }catch(e){} }
+      }
+    };
     const f = leadFilterVal;
     const q = ($('#leadSearch').value||'').trim().toLowerCase();
     const list = LEADS.filter(l=>!l.deleted && (!f || (l.status||'new')===f)
@@ -1297,6 +1347,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="lead-det" hidden>${leadDetailHTML(l)}</div>
       </div>`;
     }).join('');
+    _restore();
   }
 
   function leadDetailHTML(l){
@@ -1333,12 +1384,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!confirm(`Move the lead "${(l&&l.name)||'this lead'}" to Trash?`)) return;
       const id = card.dataset.id;
       try{
-        await settle(updateDoc(doc(db,'leads',id), { deleted: true, deletedAt: todayISO() }));
+        const res = await settle(updateDoc(doc(db,'leads',id), { deleted: true, deletedAt: todayISO() }));
+        if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         if(l){ l.deleted = true; l.deletedAt = todayISO(); }
         renderStats(); renderLeads(); renderTrash();
         toastUndo('Lead moved to Trash', async ()=>{
           try{
-            await settle(updateDoc(doc(db,'leads',id), { deleted: deleteField(), deletedAt: deleteField() }));
+            const r2 = await settle(updateDoc(doc(db,'leads',id), { deleted: deleteField(), deletedAt: deleteField() }));
+            if(r2 === 'denied'){ toast('Undo failed — the server refused the write'); return; }
             if(l){ delete l.deleted; delete l.deletedAt; }
             renderStats(); renderLeads(); renderTrash();
           }catch(err){ toast('Undo failed'); }
@@ -1382,6 +1435,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(m){ m.textContent = msg || ''; m.style.color = blocked ? 'var(--err,#e07a6a)' : ''; }
   }
   async function loadConfig(){
+    /* Save All must stay locked until the live values are actually on screen —
+       a fast first tap used to publish empty forms over the live config. */
+    setCfgBlocked(true, 'Loading the live config…');
     try{
       const snap = await getDoc(doc(db,'config','site'));
       CFG = snap.exists() ? snap.data() : JSON.parse(JSON.stringify(DEFAULTS));
@@ -1549,12 +1605,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const stamp = new Date().toISOString();
       const payload = { prices, presets, testimonials, faqs, serviceRates, contact,
                         quoteTerms, deliverySteps, learnedRates, updatedAt: stamp };
+      /* settle() so an offline save answers instead of hanging forever, and a
+         refused write is reported instead of pretending it published */
+      const res = await settle(setDoc(doc(db,'config','site'), payload));
+      if(res === 'denied'){
+        toast('NOT saved — the server refused the config write. Check your sign-in and try again.');
+        return;
+      }
       CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, updatedAt: stamp };
-      await setDoc(doc(db,'config','site'), payload);
       _cfgLoadedAt = stamp;
       $('#saveMsg').style.color = '';
-      $('#saveMsg').textContent = 'Saved — the live site now uses these values.';
-      toast('Config published ✓');
+      $('#saveMsg').textContent = res === 'queued'
+        ? 'Saved offline — it will publish the moment you are back online.'
+        : 'Saved — the live site now uses these values.';
+      toast(res === 'queued' ? 'Config saved offline — will publish when online' : 'Config published ✓');
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
   });
 
@@ -1710,7 +1774,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         settle(updateDoc(doc(db,'packages',x.id), { clientPhone: norm }));
         x.clientPhone = norm;
       }
-      ensurePhoneIndex(norm);
+      if((x.status||'draft') !== 'draft') ensurePhoneIndex(norm);   /* drafts don't unlock the portal pre-check */
     });
     try{ localStorage.setItem('fs_phoneidx_v2','1'); }catch(e){}
   }
@@ -1852,9 +1916,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const today = new Date().toLocaleDateString('en-CA');
     _upEvents = calEvents()
       .filter(e=>e.date >= today && (e.status === 'booked' || e.status === 'lead'))   // confirmed bookings only
-      .sort((a,b)=>a.date<b.date?-1:1);
+      .sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);   /* 0 on equal dates — same-day events must not swap between refreshes */
     el.hidden = !_upEvents.length;
-    if(!_upEvents.length){ if($('#evModal').classList.contains('open')) closeEvUI(); return; }
+    if(!_upEvents.length){
+      if($('#evModal').classList.contains('open')) closeEvUI();
+      if($('#upModal').classList.contains('open')) closeUpUI();
+      return;
+    }
     const e0 = _upEvents[0];
     const pk = e0.kind === 'pkg' ? PKGS.find(p=>p.id===e0.id) : null;
     const due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
@@ -1882,7 +1950,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       ${rows}
       ${_upEvents.length > 5 ? `<button class="upall" data-uplist type="button">＋ ${_upEvents.length-5} more — complete list</button>` : ''}`;
-    if($('#evModal').classList.contains('open')) renderEv();   /* live data landed while the sheet was open */
+    if($('#evModal').classList.contains('open')){
+      /* live data landed while the sheet was open — re-find the SAME shoot in
+         the rebuilt list so the sheet never silently switches events */
+      if(_evKey){ const ni = _upEvents.findIndex(x=>evKeyOf(x) === _evKey); if(ni >= 0) _evIdx = ni; }
+      renderEv();
+    }
     if($('#upModal').classList.contains('open')) renderUpList();
   }
   $('#upcoming').addEventListener('click', e=>{
@@ -2114,12 +2187,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-delpkg]')){
       if(!confirm(`Move the package for "${x.clientName||'this client'}" to Trash?`)) return;
       try{
-        await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
+        const res = await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
+        if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         x.deleted = true; x.deletedAt = todayISO();
         renderPkgList();
         toastUndo('Package moved to Trash', async ()=>{
           try{
-            await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), updatedAt: serverTimestamp() }));
+            const r2 = await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), updatedAt: serverTimestamp() }));
+            if(r2 === 'denied'){ toast('Undo failed — the server refused the write'); return; }
             delete x.deleted; delete x.deletedAt;
             renderPkgList();
           }catch(err){ toast('Undo failed'); }
@@ -2264,7 +2339,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const memberPhone10 = m => m ? (m.phone10 || phone10Of(m.phone)) : '';
 
   function loadTeam(){
-    if(_teamUnsub && _asgsUnsub){ renderTeam(); return; }
+    /* keep going past this early-return check for the reqs listener below —
+       after a transient error it used to stay dead until a full reload */
+    if(_teamUnsub && _asgsUnsub && _reqsUnsub){ renderTeam(); return; }
+    if(_teamUnsub && _asgsUnsub) renderTeam();
     if(!_teamUnsub){
       try{
         _teamUnsub = onSnapshot(query(collection(db,'team'), orderBy('createdAt','desc'), limit(TEAM_CAP)), snap=>{
@@ -2314,7 +2392,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') && ev.date >= today) rows.push({ pk, ev, idx });
       });
     });
-    return rows.sort((a,b)=>a.ev.date<b.ev.date?-1:1);
+    return rows.sort((a,b)=>a.ev.date<b.ev.date?-1:a.ev.date>b.ev.date?1:0);
   }
   /* crew whose stored date matches this exact event */
   const evCrew = (pkId, date) => ASGS.filter(a=>a.pkgId===pkId && a.date===date);
@@ -2520,7 +2598,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     $('#tmModal').classList.add('open'); $('#tmBackdrop').classList.add('open');
     setTimeout(()=>$('#tmName').focus(), 80);
-    if(!_navFromPop){ try{ history.pushState({view:'tmsheet'}, '', '#team/member'); }catch(e){} }
+    pushView('tmsheet', '#team/member');
   }
   function closeTmUI(){ $('#tmModal').classList.remove('open'); $('#tmBackdrop').classList.remove('open'); _tmEditId = null; _tmFromReq = null; }
   function closeTm(){
@@ -2555,8 +2633,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            changes (also heals docs from before the phone-login switch) */
         if(old && (memberPhone10(old) !== p10 || (old.name||'') !== name)){
           const mine = ASGS.filter(a=>a.memberId===_tmEditId);
-          await Promise.allSettled(mine.map(a=>updateDoc(doc(db,'assignments',a.id),
-            { memberName: name, memberPhone10: p10, updatedAt: serverTimestamp() })));
+          /* settle() each write — raw updateDoc promises never resolve while
+             offline, which froze this sheet mid-save until signal returned */
+          await Promise.allSettled(mine.map(a=>settle(updateDoc(doc(db,'assignments',a.id),
+            { memberName: name, memberPhone10: p10, updatedAt: serverTimestamp() }))));
           mine.forEach(a=>{ a.memberName = name; a.memberPhone10 = p10; });
         }
         Object.assign(old||{}, data, { updatedAt: null });
@@ -2635,7 +2715,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asRemove').hidden = !a;
     refreshAsConflict();
     $('#asModal').classList.add('open'); $('#asBackdrop').classList.add('open');
-    if(!_navFromPop){ try{ history.pushState({view:'assheet'}, '', '#team/assign'); }catch(e){} }
+    pushView('assheet', '#team/assign');
   }
   function closeAsUI(){ $('#asModal').classList.remove('open'); $('#asBackdrop').classList.remove('open'); _asEditId = null; _asCtx = null; }
   function closeAs(){
@@ -2729,8 +2809,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
     if(add){ const ctx = evCtx(add); if(ctx) openAs(ctx, null); return; }
     if(sync){
-      const a = ASGS.find(v=>v.id===sync.dataset.assync); const ctx = evCtx(sync);
-      if(!a || !ctx) return;
+      const a = ASGS.find(v=>v.id===sync.dataset.assync);
+      const pk = PKGS.find(p=>p.id===sync.dataset.aspk);
+      if(!a || !pk) return;
+      /* The stale row renders under the package's FIRST upcoming event, so the
+         row's index must not decide where the assignment goes — in a
+         multi-event package that rewrote crew onto the wrong function. Resolve
+         the target from the assignment itself: same title first, then the only
+         event, then the only upcoming one; anything still ambiguous is a
+         human call. */
+      const evs = (pk.events||[]).filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''));
+      const title = String(a.eventTitle||'').trim().toLowerCase();
+      const byTitle = evs.filter(ev=>String(ev.title||'').trim().toLowerCase() === title);
+      const upEvs = evs.filter(ev=>ev.date >= todayISO());
+      const target = byTitle.length === 1 ? byTitle[0]
+                   : evs.length === 1 ? evs[0]
+                   : upEvs.length === 1 ? upEvs[0]
+                   : null;
+      if(!target){
+        toast('This package has several events — remove this assignment (tap the name) and re-assign on the correct event.');
+        return;
+      }
+      const ctx = { pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+                    eventTitle: target.title||'', date: target.date||'', venue: target.venue||'' };
       (async ()=>{
         try{
           const patch = { eventTitle: ctx.eventTitle, date: ctx.date, venue: ctx.venue,
@@ -2805,15 +2906,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      Server-first: an offline cache copy is clearly labelled, never passed off as a full backup. */
   async function fetchAll(){
     const one = async col => {
-      const q = query(collection(db,col), orderBy('createdAt','desc'));
+      /* no orderBy: Firestore silently EXCLUDES documents that lack the
+         ordered field, so legacy docs without createdAt vanished from
+         backups. Fetch everything and sort in memory instead. */
+      const q = query(collection(db,col));
       try{ return { snap: await getDocsFromServer(q), partial: false }; }
       catch(e){ return { snap: await getDocs(q), partial: true }; }
     };
+    const ts = d => (d.createdAt && d.createdAt.toMillis) ? d.createdAt.toMillis() : 0;
+    const sortNew = arr => arr.sort((a,b)=>ts(b)-ts(a));
     const [p, l, t, a] = await Promise.all([one('packages'), one('leads'), one('team'), one('assignments')]);
-    return { pkgs: p.snap.docs.map(d=>({ id:d.id, ...d.data() })),
-             leads: l.snap.docs.map(d=>({ id:d.id, ...d.data() })),
-             team: t.snap.docs.map(d=>({ id:d.id, ...d.data() })),
-             asgs: a.snap.docs.map(d=>({ id:d.id, ...d.data() })),
+    return { pkgs: sortNew(p.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
+             leads: sortNew(l.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
+             team: sortNew(t.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
+             asgs: sortNew(a.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
              partial: p.partial || l.partial || t.partial || a.partial };
   }
   const partNote = p => p ? ' ⚠ offline copy — may be incomplete' : '';
@@ -2821,10 +2927,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     toast('Preparing backup…');
     try{
       const { pkgs, leads, team, asgs, partial } = await fetchAll();
+      /* fetch the config fresh — CFG can be built-in DEFAULTS when the load
+         failed, and a backup of defaults masquerading as the live config is
+         worse than no config at all */
+      let cfgOut = null, cfgNote = '';
+      try{ const cs = await getDoc(doc(db,'config','site')); cfgOut = cs.exists() ? cs.data() : null; }
+      catch(e){
+        if(_cfgLoadFailed){ cfgOut = null; cfgNote = 'live config unavailable at export time — NOT included; do not restore config from this file'; }
+        else cfgOut = CFG;
+      }
       dl(`fantasy-studio-backup-${stamp()}.json`,
-        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, team, assignments:asgs, config:CFG }, null, 1),
+        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, team, assignments:asgs, config:cfgOut, ...(cfgNote?{configNote:cfgNote}:{}) }, null, 1),
         'application/json');
-      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads, ${team.length} team, ${asgs.length} assignments${partNote(partial)}`);
+      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads, ${team.length} team, ${asgs.length} assignments${partNote(partial)}${cfgNote ? ' ⚠ config missing' : ''}`);
     }catch(err){ toast('Backup failed: ' + (err.code||err.message)); }
   });
   $('#expPkgs').addEventListener('click', async ()=>{
@@ -2905,7 +3020,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const it = arr.find(v=>v.id===id); if(!it) return;
     if(rBtn){
       try{
-        await settle(updateDoc(doc(db,col,id), { deleted: deleteField(), deletedAt: deleteField() }));
+        const res = await settle(updateDoc(doc(db,col,id), { deleted: deleteField(), deletedAt: deleteField() }));
+        if(res === 'denied'){ toast('NOT restored — the server refused this write. Check your sign-in and try again.'); return; }
         delete it.deleted; delete it.deletedAt;
         renderPkgList(); renderStats(); renderLeads(); renderTrash();
         toast('Restored ✓');
@@ -2932,7 +3048,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#stOpts').innerHTML = PKG_STATES.map(s=>`
       <button data-st="${s}" class="${(x.status||'draft')===s?'on':''}"><i class="dot ${s}"></i>${s}${(x.status||'draft')===s?'<em>current</em>':''}</button>`).join('');
     $('#stModal').classList.add('open'); $('#stBackdrop').classList.add('open');
-    if(!_navFromPop){ try{ history.pushState({view:'stsheet'}, '', '#packages/status'); }catch(e){} }
+    pushView('stsheet', '#packages/status');
   }
   function closeStatusUI(){ $('#stModal').classList.remove('open'); $('#stBackdrop').classList.remove('open'); statusId = null; }
   function closeStatus(){
@@ -2964,6 +3080,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       x.status = next;
       if(next === 'delivered') x.deliveredAt = patch.deliveredAt; else delete x.deliveredAt;
       if(next === 'sent') x.sentAt = patch.sentAt;
+      /* leaving draft = this phone becomes a real client — open the portal's
+         pre-OTP check for them now (drafts are deliberately not indexed) */
+      if(next !== 'draft' && x.clientPhone) ensurePhoneIndex(x.clientPhone);
       buzz(); renderPkgList(); closeStatus();
       toast(res === 'queued' ? `Status → ${next} (will sync)` : `Status → ${next}`);
     }catch(err){ toast('Update failed'); }
@@ -2995,7 +3114,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const wasOpen = $('#payModal').classList.contains('open');
     $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
     setTimeout(()=>$('#payAmt').focus(), 80);
-    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'pay'}, '', '#packages/pay'); }catch(e){} }
+    if(!wasOpen) pushView('pay', '#packages/pay');
   }
   function closePayUI(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
   function closePay(){
@@ -3114,7 +3233,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderFin();
     const wasOpen = $('#finModal').classList.contains('open');
     $('#finModal').classList.add('open'); $('#finBackdrop').classList.add('open');
-    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'fin'}, '', '#money'); }catch(e){} }
+    if(!wasOpen) pushView('fin', '#money');
   }
   function closeFinUI(){ $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); }
   function closeFin(){
@@ -3170,14 +3289,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#finBackdrop').addEventListener('click', closeFin);
 
   /* ---------- upcoming shoot sheet: full event + package detail ---------- */
-  let _evIdx = 0;
+  let _evIdx = 0, _evKey = null;
+  const evKeyOf = e => e ? `${e.kind}|${e.id}|${e.date}|${e.title}` : null;
   function openEv(i){
     if(!_upEvents.length) return;
     _evIdx = Math.max(0, Math.min(i, _upEvents.length-1));
     renderEv();
     const wasOpen = $('#evModal').classList.contains('open');
     $('#evModal').classList.add('open'); $('#evBackdrop').classList.add('open');
-    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'ev'}, '', '#event'); }catch(e){} }
+    if(!wasOpen) pushView('ev', '#event');
   }
   function closeEvUI(){ $('#evModal').classList.remove('open'); $('#evBackdrop').classList.remove('open'); }
   function closeEv(){
@@ -3187,6 +3307,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderEv(){
     if(_evIdx > _upEvents.length-1) _evIdx = Math.max(0, _upEvents.length-1);
     const ev = _upEvents[_evIdx]; if(!ev) return;
+    _evKey = evKeyOf(ev);
     $('#evNav').innerHTML = `
       <button data-evn="-1" type="button" ${_evIdx===0?'disabled':''} aria-label="Previous event">‹</button>
       <b>Upcoming shoot ${_evIdx+1} of ${_upEvents.length}</b>
@@ -3288,7 +3409,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderUpList();
     const wasOpen = $('#upModal').classList.contains('open');
     $('#upModal').classList.add('open'); $('#upBackdrop').classList.add('open');
-    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'uplist'}, '', '#upcoming'); }catch(e){} }
+    if(!wasOpen) pushView('uplist', '#upcoming');
   }
   function closeUpUI(){ $('#upModal').classList.remove('open'); $('#upBackdrop').classList.remove('open'); }
   function closeUpList(){
@@ -3328,9 +3449,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
   $('#pkgBack').addEventListener('click', ()=>{
     if(pkgDirty() && !confirm('Discard unsaved changes?')) return;
+    /* close the editor BEFORE history.back() — the popstate handler re-checks
+       dirtiness, and an already-hidden editor is what tells it "already
+       answered", instead of a second spurious prompt */
     _pkgBaseline = '';
+    $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
     if(history.state && history.state.view === 'pkgedit'){ history.back(); }
-    else { $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
   });
 
   function rateOptions(selected){
@@ -3433,7 +3557,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
     window.scrollTo(0,0);
-    if(!_navFromPop){ try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e){} }
+    pushView('pkgedit', '#packages/edit');
     _pkgBaseline = JSON.stringify(readForm());
   }
   let _pkgBaseline = '';
@@ -3592,6 +3716,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const d = readForm();
     if(!d.clientName){ toast('Client name is required'); $('#pcName').focus(); return; }
     if(!d.events.length){ toast('Add at least one event with a service'); return; }
+    /* the client portal matches on the LAST 10 DIGITS — a one-digit typo here
+       silently locks the client out of their booking with no error anywhere */
+    const rawPhone = $('#pcPhone').value.trim();
+    if(rawPhone && d.clientPhone.length !== 10
+       && !confirm(`⚠ "${rawPhone}" doesn't look like a complete mobile number (${d.clientPhone.length} digits).\n\nThe client portal finds bookings by the last 10 digits of the client's number — with this one, the client will NOT be able to log in.\n\nSave anyway?`)){
+      $('#pcPhone').focus();
+      return;
+    }
     const btn = $('#pkgSave'); if(btn.disabled) return;
     btn.disabled = true;
     try{
@@ -3616,7 +3748,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       toast(res === 'denied' ? 'NOT saved — the server refused the write. Your changes are still on screen; try again.'
         : res === 'queued' ? 'Saved offline — will sync' : 'Package saved');
-      if(d.clientPhone) ensurePhoneIndex(d.clientPhone);
+      /* only non-drafts feed the portal's "is this a client?" pre-check —
+         indexing a draft made strangers pass the check, burn a real OTP and
+         then hit "No bookings found" (the portal hides drafts) */
+      const _st = (PKGS.find(pk=>pk.id===editingId)||{}).status || 'draft';
+      if(d.clientPhone && _st !== 'draft') ensurePhoneIndex(d.clientPhone);
       _pkgBaseline = JSON.stringify(readForm());
       /* learn the rates used, so the next quote prefills them automatically */
       try{

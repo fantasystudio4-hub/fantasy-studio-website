@@ -212,6 +212,18 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
   </div>
 
+  <!-- load failed (network / permissions) — a member must never be misrouted
+       into the "request to join" flow because of a server-side error -->
+  <div id="errorView" hidden>
+    <div class="login">
+      <span class="bigic">⚠️</span>
+      <h1>Couldn't load your crew page</h1>
+      <p id="errWhat"></p>
+      <button class="gbtn" id="errRetry" type="button">Try again</button>
+      <div class="note">If this keeps happening, tell the studio directly — it's a problem on our side, not with your account.</div>
+    </div>
+  </div>
+
   <!-- member dashboard -->
   <div id="appView" hidden>
     <h1 class="hello" id="hello"></h1>
@@ -255,7 +267,7 @@ const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
-const show = id => { ['loadingView','loginView','requestView','pendingView','appView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+const show = id => { ['loadingView','loginView','requestView','pendingView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
 const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : (d||'—');
 const fmtShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : (d||'—');
 const fmtTime = t => {
@@ -400,6 +412,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let ME = null, ASGS = [], REQ = null;
   let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null;
   let _meLoaded = false, _asgsLoaded = false, _reqLoaded = false;
+  let _meErr = null, _reqErr = null;
   let _pastOpen = false, _phone10 = '', _pretty = '';
 
   function stopData(){
@@ -407,11 +420,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _meUnsub = _asgsUnsub = _reqUnsub = null;
     ME = null; ASGS = []; REQ = null;
     _meLoaded = _asgsLoaded = _reqLoaded = false;
+    _meErr = _reqErr = null;
   }
 
   function route(){
     if(!_meLoaded || !_reqLoaded){ show('loadingView'); return; }
     if(ME){ show('appView'); render(); return; }
+    /* a listener ERROR is a server/connection problem, not "you're not on the
+       team" — showing the join-request flow here misled real members */
+    if(_meErr || _reqErr){
+      const code = ((_meErr||_reqErr||{}).code)||'';
+      $('#errWhat').textContent = code.includes('permission')
+        ? 'Crew access is switched off on the server right now. The studio needs to update its access settings — nothing is wrong with your account.'
+        : 'This looks like a connection problem. Check your internet and try again — your account is fine.';
+      show('errorView');
+      return;
+    }
     if(REQ){
       $('#pendingWho').textContent = `${REQ.name||''} · ${_pretty}`;
       show('pendingView');
@@ -420,6 +444,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#reqPhone').textContent = _pretty;
     show('requestView');
   }
+  $('#errRetry').addEventListener('click', ()=>location.reload());
 
   onAuthStateChanged(auth, user=>{
     stopData();
@@ -436,16 +461,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* all three are pinned to this verified phone / this uid — exactly what
        the Firestore rules require; anything broader is refused server-side */
     _meUnsub = onSnapshot(query(collection(db,'team'), where('phone10','==',_phone10)), snap=>{
-      _meLoaded = true;
+      _meLoaded = true; _meErr = null;
       const docs = snap.docs.filter(d=>d.data().active !== false);
       ME = docs.length ? { id: docs[0].id, ...docs[0].data() } : null;
       route();
-    }, err=>{ _meLoaded = true; ME = null; route(); });
+    }, err=>{ _meLoaded = true; ME = null; _meErr = err; route(); });
     _reqUnsub = onSnapshot(doc(db,'teamRequests',user.uid), snap=>{
-      _reqLoaded = true;
+      _reqLoaded = true; _reqErr = null;
       REQ = snap.exists() ? snap.data() : null;
       route();
-    }, err=>{ _reqLoaded = true; REQ = null; route(); });
+    }, err=>{ _reqLoaded = true; REQ = null; _reqErr = err; route(); });
     _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberPhone10','==',_phone10)), snap=>{
       _asgsLoaded = true;
       ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -484,7 +509,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="asg-h">
         <span class="when">${esc(fmtShort(a.date))}</span>
         <b>${esc(a.eventTitle||'Event')}</b>
-        <span class="chip ${seen?'seen':'wait'}">${seen ? '✓ confirmed' : 'please confirm'}</span>
+        ${past
+          ? (seen ? '<span class="chip seen">✓ confirmed</span>' : '')
+          : `<span class="chip ${seen?'seen':'wait'}">${seen ? '✓ confirmed' : 'please confirm'}</span>`}
       </div>
       <div class="lines">
         <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}</span></div>
