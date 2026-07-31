@@ -460,7 +460,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
 /* ==== next-shoot card (Home) ==== */
 .upco h3{display:flex;align-items:baseline;gap:.5rem}
-.upmore{margin-left:auto;color:var(--mut);font-size:.68rem;font-weight:400;font-family:var(--sans);letter-spacing:.04em}
+.upmore{margin-left:auto;background:none;border:0;cursor:pointer;color:var(--mut);font-size:.68rem;font-weight:400;font-family:var(--sans);letter-spacing:.04em;padding:.2em 0}
+.upmore:active{color:var(--gold-b)}
+@media(hover:hover){ .upmore:hover{color:var(--gold-b)} }
+.up-next + .up-ev{margin-top:.5rem}
+.up-ev[data-open-ev],#upBody .up-ev{cursor:pointer}
+.upall{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin-top:.6rem;font-family:var(--sans)}
+.upall:active{background:rgba(184,144,43,.14)}
+@media(hover:hover){ .upall:hover{border-color:var(--gold)} }
 .up-next{display:flex;align-items:center;gap:.75rem;background:rgba(184,144,43,.08);border:1px solid rgba(226,194,117,.4);border-radius:14px;padding:.75rem .9rem;cursor:pointer;margin-top:.3rem;transition:transform .12s,border-color .2s}
 .up-next:active{transform:scale(.985)}
 @media(hover:hover){ .up-next:hover{border-color:var(--gold)} }
@@ -847,6 +854,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div id="evBody"></div>
 </div>
 
+<div class="pay-backdrop" id="upBackdrop"></div>
+<div class="pay-modal fin" id="upModal" role="dialog" aria-modal="true" aria-label="All upcoming shoots">
+  <button class="pay-close" id="upClose" type="button" aria-label="Close">&times;</button>
+  <h3>📅 Upcoming shoots</h3>
+  <div class="who" id="upWho"></div>
+  <div id="upBody"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1150,6 +1165,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeAsUI === 'function') closeAsUI();
       if(typeof closeFinUI === 'function') closeFinUI();
       if(typeof closeEvUI === 'function') closeEvUI();
+      if(typeof closeUpUI === 'function') closeUpUI();
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -1845,7 +1861,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const d = new Date(e0.date+'T00:00');
     const days = Math.round((d - new Date(today+'T00:00'))/864e5);
     const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days · ${d.toLocaleDateString('en-IN',{weekday:'short'})}`;
-    el.innerHTML = `<h3>📅 Next shoot${_upEvents.length>1 ? `<span class="upmore">${_upEvents.length} upcoming ›</span>` : ''}</h3>
+    /* the very next shoot as the hero card, the following 4 as compact rows,
+       and a ＋ button for the complete list once there are more than 5 */
+    const rows = _upEvents.slice(1, 5).map((e,i)=>`
+      <div class="up-ev" data-open-ev="${i+1}" role="button">
+        <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
+        <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
+        <i class="dot ${e.status}"></i>
+      </div>`).join('');
+    el.innerHTML = `<h3>📅 Next shoot${_upEvents.length>1 ? `<button class="upmore" data-uplist type="button">${_upEvents.length} upcoming ›</button>` : ''}</h3>
       <div class="up-next" data-open-ev="0" role="button" aria-label="Open event details">
         <div class="un-when"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
         <div class="un-mid">
@@ -1855,10 +1879,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         ${due > 0 ? `<span class="due">${inr(due)} due</span>` : `<i class="dot ${e0.status}"></i>`}
         <span class="chev2">›</span>
-      </div>`;
+      </div>
+      ${rows}
+      ${_upEvents.length > 5 ? `<button class="upall" data-uplist type="button">＋ ${_upEvents.length-5} more — complete list</button>` : ''}`;
     if($('#evModal').classList.contains('open')) renderEv();   /* live data landed while the sheet was open */
+    if($('#upModal').classList.contains('open')) renderUpList();
   }
   $('#upcoming').addEventListener('click', e=>{
+    if(e.target.closest('[data-uplist]')){ openUpList(); return; }
     const open = e.target.closest('[data-open-ev]');
     if(open) openEv(Number(open.dataset.openEv)||0);
   });
@@ -2982,7 +3010,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#payBackdrop').addEventListener('click', closePay);
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
   $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); } });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); } });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
@@ -3251,6 +3279,50 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   $('#evClose').addEventListener('click', closeEv);
   $('#evBackdrop').addEventListener('click', closeEv);
+
+  /* ---------- complete upcoming-shoots list ----------
+     Opened from the ＋ button (or the "N upcoming" chip) on Home; tapping a
+     row jumps into the full event + package sheet at that shoot. */
+  function openUpList(){
+    if(!_upEvents.length) return;
+    renderUpList();
+    const wasOpen = $('#upModal').classList.contains('open');
+    $('#upModal').classList.add('open'); $('#upBackdrop').classList.add('open');
+    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'uplist'}, '', '#upcoming'); }catch(e){} }
+  }
+  function closeUpUI(){ $('#upModal').classList.remove('open'); $('#upBackdrop').classList.remove('open'); }
+  function closeUpList(){
+    if(history.state && history.state.view === 'uplist'){ history.back(); }
+    else closeUpUI();
+  }
+  function renderUpList(){
+    if(!_upEvents.length){ closeUpUI(); return; }
+    $('#upWho').textContent = `${_upEvents.length} confirmed event${_upEvents.length===1?'':'s'} ahead`;
+    const today = todayISO();
+    let lastMonth = '';
+    $('#upBody').innerHTML = _upEvents.map((e,i)=>{
+      const d = new Date(e.date+'T00:00');
+      const mon = d.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+      const head = mon !== lastMonth ? `<div class="finh">${mon}</div>` : '';
+      lastMonth = mon;
+      const pk = e.kind === 'pkg' ? PKGS.find(p=>p.id===e.id) : null;
+      const due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
+      const days = Math.round((d - new Date(today+'T00:00'))/864e5);
+      return head + `
+      <div class="up-ev" data-goev="${i}" role="button">
+        <span class="when">${d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
+        <span class="what">${esc(e.title)} <span>· ${esc(e.client)}${days===0 ? ' · today' : days===1 ? ' · tomorrow' : ''}</span></span>
+        ${due > 0 ? `<span class="due">${inr(due)}</span>` : `<i class="dot ${e.status}"></i>`}
+      </div>`;
+    }).join('');
+  }
+  $('#upBody').addEventListener('click', e=>{
+    const r = e.target.closest('[data-goev]'); if(!r) return;
+    closeUpUI();
+    openEv(Number(r.dataset.goev)||0);
+  });
+  $('#upClose').addEventListener('click', closeUpList);
+  $('#upBackdrop').addEventListener('click', closeUpList);
 
   /* ---------- builder ---------- */
   $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
