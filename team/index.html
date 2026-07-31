@@ -120,6 +120,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .bcol span{font-size:.62rem;color:var(--mut)}
 .rolechips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem}
 .rolechips b{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.72rem;font-weight:500}
+.rolechips.yrs{margin-top:.65rem;padding-top:.65rem;border-top:1px dashed var(--line)}
+/* the money tiles jump you straight to the payments list */
+.stat[data-pay]{cursor:pointer;transition:border-color .2s,transform .12s}
+.stat[data-pay]:active{transform:scale(.97)}
+@media(hover:hover){ .stat[data-pay]:hover{border-color:var(--gold)} }
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;color:var(--mut);font-size:.88rem;margin:1rem 0}
 .bigic{font-size:2rem;display:block;margin-bottom:.4rem}
 .toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
@@ -216,6 +221,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <h3>📊 My last 6 months</h3>
       <div class="bars" id="anaBars"></div>
       <div class="rolechips" id="anaRoles"></div>
+      <div class="rolechips yrs" id="anaYears" title="Year-wise earnings"></div>
     </div>
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
@@ -518,8 +524,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#crewStats').innerHTML = `
       <div class="stat"><b>${done.length}</b><span>events done</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
-      <div class="stat"><b>${inr(received)}</b><span>received</span></div>
-      <div class="stat"><b>${inr(due)}</b><span>to receive</span></div>`;
+      <div class="stat" data-pay role="button" title="See payment details"><b>${inr(received)}</b><span>received</span></div>
+      <div class="stat" data-pay role="button" title="See payment details"><b>${inr(due)}</b><span>to receive</span></div>`;
     /* last 6 months, current included — pay booked per event month */
     const now = new Date();
     const months = [];
@@ -545,6 +551,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#anaRoles').innerHTML = `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>`
       + Object.entries(roles).sort((a,b)=>b[1]-a[1])
           .map(([r,n])=>`<b>${esc(r.replace(/\b\w/g,c=>c.toUpperCase()))} × ${n}</b>`).join('');
+    /* year-wise earnings — every year the member has worked, newest first */
+    const byYr = {};
+    ASGS.forEach(a=>{
+      const y = (a.date||'').slice(0,4);
+      if(/^\d{4}$/.test(y)){ byYr[y] = byYr[y]||{ amt:0, n:0 }; byYr[y].amt += Number((a.pay||{}).amount)||0; byYr[y].n++; }
+    });
+    const yrs = Object.keys(byYr).sort().reverse();
+    $('#anaYears').hidden = yrs.length < 1;
+    $('#anaYears').innerHTML = yrs
+      .map(y=>`<b>📆 ${y} · ${inr(byYr[y].amt)} · ${byYr[y].n} event${byYr[y].n===1?'':'s'}</b>`).join('');
   }
 
   function render(){
@@ -587,6 +603,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });
+
+  /* the received / to-receive tiles take the member straight to the payment list */
+  $('#crewStats').addEventListener('click', e=>{
+    const t = e.target.closest('[data-pay]'); if(!t) return;
+    const pc = $('#payCard');
+    if(!pc || pc.hidden){ toast('No payments recorded yet'); return; }
+    pc.scrollIntoView({ behavior:'smooth', block:'start' });
+  });
 
   /* editors tick off finished edits on past events — the studio sees it live */
   $('#pastList').addEventListener('click', async e=>{

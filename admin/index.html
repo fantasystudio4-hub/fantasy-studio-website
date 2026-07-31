@@ -29,13 +29,21 @@ button,input,select,textarea{font-family:var(--sans);font-size:16px}
 
 /* header */
 header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.hd{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
+.hd{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.7rem 14px}
 .hd svg{width:34px;height:34px;flex:0 0 auto}
+.hd .ttl{flex:1;min-width:0}
+.hd .ttl b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .hd b{font-family:var(--serif);font-size:1.05rem}
 .hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
-.hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
+.hd .out{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;min-height:36px}
 .hd .out:active{border-color:var(--gold)}
-.hd .inst{margin-left:.45rem;border-color:var(--gold);color:var(--gold-b)}
+.hd .inst{border-color:var(--gold);color:var(--gold-b)}
+/* Config lives in the header beside Logout — the bottom nav keeps 5 tabs */
+.hd .cfg{padding:.35em .8em;display:inline-flex;align-items:center;gap:.3em}
+.hd .cfg i{font-style:normal;font-size:.95rem;line-height:1}
+.hd .cfg.on{border-color:var(--gold);color:var(--gold-b);background:rgba(184,144,43,.16)}
+@media(max-width:389px){ .hd .cfg em{display:none} }
+.hd .cfg em{font-style:normal}
 
 /* login */
 .login{max-width:360px;margin:16vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.8rem 1.5rem;text-align:center}
@@ -197,8 +205,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .dstep:hover{background:rgba(255,255,255,.04)} .dstep:hover i{border-color:var(--gold)} }
 
 /* offline chip + forgot password + undo toast */
-.net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
-.hd .net + .out{margin-left:.45rem}
+.net{flex:0 0 auto;background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
 .linky{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;display:block;margin:-.2rem 0 .8rem;padding:0}
 .linky:active{color:var(--gold-b)}
 .toast button{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.15em .85em;margin-left:.6em;cursor:pointer;font-size:.8rem}
@@ -217,7 +224,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .cal-jump .mo:hover{border-color:var(--gold);color:var(--gold-b)} }
 
 /* balance-due pill on upcoming shoots */
-.up-ev .due{color:var(--gold-b);border-color:rgba(184,144,43,.55);background:rgba(184,144,43,.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500}
+.up-ev .due,.up-next .due{color:var(--gold-b);border:1px solid rgba(184,144,43,.55);background:rgba(184,144,43,.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500;border-radius:20px}
 .up-ev .due:active{background:rgba(184,144,43,.28)}
 
 /* filter chips with counts */
@@ -443,6 +450,66 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(max-width:560px){
   .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:rgba(226,194,117,.35);margin:-.4rem auto .85rem}
 }
+
+/* ==== money tiles: "left to collect" + "booked value" share one line ==== */
+#pkgStats{grid-template-columns:repeat(2,1fr)}
+@media(min-width:700px){ #pkgStats{grid-template-columns:repeat(4,1fr)} }
+.stat.money{position:relative;background:linear-gradient(135deg,rgba(201,163,71,.2),rgba(142,110,30,.15));cursor:pointer}
+.stat.money b{font-size:1.3rem}
+.stat.money::after{content:"📊";position:absolute;top:5px;right:7px;font-size:.6rem;opacity:.75}
+
+/* ==== next-shoot card (Home) ==== */
+.upco h3{display:flex;align-items:baseline;gap:.5rem}
+.upmore{margin-left:auto;color:var(--mut);font-size:.68rem;font-weight:400;font-family:var(--sans);letter-spacing:.04em}
+.up-next{display:flex;align-items:center;gap:.75rem;background:rgba(184,144,43,.08);border:1px solid rgba(226,194,117,.4);border-radius:14px;padding:.75rem .9rem;cursor:pointer;margin-top:.3rem;transition:transform .12s,border-color .2s}
+.up-next:active{transform:scale(.985)}
+@media(hover:hover){ .up-next:hover{border-color:var(--gold)} }
+.un-when{flex:0 0 auto;text-align:center;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.3rem .55rem;min-width:52px}
+.un-when b{display:block;font-family:var(--serif);font-size:1.35rem;color:var(--gold-b);line-height:1.1}
+.un-when span{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.un-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:.06rem}
+.un-mid b{font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.un-mid span{font-size:.75rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.un-mid .un-days{color:var(--gold-b);font-size:.7rem;letter-spacing:.04em}
+.up-next .chev2{color:var(--mut);font-size:1.2rem;flex:0 0 auto}
+
+/* ==== analytics + event sheets (reuse the payment modal shell) ==== */
+.pay-modal.fin{width:min(94vw,420px);max-height:86vh;overflow:auto;overscroll-behavior:contain}
+@media(max-width:560px){ .pay-modal.fin{width:100%;max-height:88vh} }
+.fintiles{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:.2rem 0 .9rem}
+.fintiles .stat{padding:.55rem .3rem}
+.fintiles .stat b{font-size:.95rem}
+.finyr{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .55rem}
+.finyr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.3em .85em;font-size:1rem}
+.finyr b{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.05rem}
+.finsplit{display:flex;gap:.7rem;flex-wrap:wrap;margin:0 0 .55rem;font-size:.72rem;color:var(--mut)}
+.finsplit b{color:var(--gold-b);font-weight:500}
+.finrow{display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
+.finrow:last-child{border-bottom:0}
+.finrow .mo{flex:0 0 34px;color:var(--mut)}
+.finrow .fbar{flex:1;height:13px;border-radius:7px;background:rgba(255,255,255,.06);overflow:hidden}
+.finrow .fbar i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#E2C275);border-radius:7px}
+.finrow .amt3{flex:0 0 auto;font-family:var(--serif);color:var(--gold-b);white-space:nowrap;min-width:62px;text-align:right}
+.finrow .n3{flex:0 0 20px;color:var(--mut);font-size:.64rem;text-align:right}
+.finrow.yr{cursor:pointer}
+.finrow.yr .mo{flex-basis:42px;color:var(--text)}
+.finrow.yr.on{background:rgba(184,144,43,.09)}
+@media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
+.finh{color:var(--gold-b);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
+.ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
+.ev-nav b{flex:1;text-align:center;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600}
+.ev-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.32em .95em;font-size:1rem;min-width:44px}
+.ev-nav button:disabled{opacity:.3;cursor:default}
+.ln2{display:flex;justify-content:space-between;gap:.7rem;padding:.24rem 0;font-size:.84rem;border-bottom:1px dashed var(--line)}
+.ln2 span:first-child{color:var(--mut);flex:0 0 auto}
+.ln2 span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
+.ev-e{border:1px solid var(--line);border-radius:10px;padding:.5rem .7rem;margin-bottom:.45rem;background:#171309}
+.ev-e.cur{border-color:rgba(226,194,117,.55);background:rgba(184,144,43,.1)}
+.ev-e b{font-family:var(--serif);color:#fff;display:block;font-size:.92rem}
+.ev-e span{display:block;color:var(--gold-b);font-size:.74rem}
+.ev-e em{display:block;font-style:normal;color:var(--mut);font-size:.74rem;margin-top:.1rem}
+.ev-acts{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.95rem}
+.ev-acts .mini{flex:1;margin-top:0;min-width:104px}
 </style>
 </head>
 <body>
@@ -450,10 +517,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 <header hidden id="hdr">
   <div class="hd">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
-    <div><b>Fantasy Studio</b><span>Admin Panel</span></div>
+    <div class="ttl"><b>Fantasy Studio</b><span>Admin Panel</span></div>
     <span class="net" id="netDot" hidden>offline</span>
-    <button class="out" id="logoutBtn">Logout</button>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
+    <button class="out cfg" id="tabConfig" title="Site Config" aria-label="Site Config"><i>⚙️</i><em>Config</em></button>
+    <button class="out" id="logoutBtn">Logout</button>
   </div>
 </header>
 
@@ -500,7 +568,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
-    <button id="tabConfig"><i>⚙️</i><span>Config</span></button>
   </div>
 
   <div id="leadsView">
@@ -763,6 +830,21 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
   <button class="mini" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
+</div>
+
+<div class="pay-backdrop" id="finBackdrop"></div>
+<div class="pay-modal fin" id="finModal" role="dialog" aria-modal="true" aria-label="Money analytics">
+  <button class="pay-close" id="finClose" type="button" aria-label="Close">&times;</button>
+  <h3>💰 Money Analytics</h3>
+  <div class="who" id="finWho"></div>
+  <div id="finBody"></div>
+</div>
+
+<div class="pay-backdrop" id="evBackdrop"></div>
+<div class="pay-modal fin" id="evModal" role="dialog" aria-modal="true" aria-label="Event details">
+  <button class="pay-close" id="evClose" type="button" aria-label="Close">&times;</button>
+  <div class="ev-nav" id="evNav"></div>
+  <div id="evBody"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1066,6 +1148,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeStatusUI === 'function') closeStatusUI();
       if(typeof closeTmUI === 'function') closeTmUI();
       if(typeof closeAsUI === 'function') closeAsUI();
+      if(typeof closeFinUI === 'function') closeFinUI();
+      if(typeof closeEvUI === 'function') closeEvUI();
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
@@ -1719,6 +1803,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     pkgFilterVal = b.dataset.f; renderPkgList();
   });
   $('#pkgStats').addEventListener('click', e=>{
+    const f = e.target.closest('[data-fin]');
+    if(f){ openFin(); return; }
     const t = e.target.closest('[data-goto]'); if(!t) return;
     if(!$('#pkgEditView').hidden) return;   // don't yank the user out of an open editor
     pkgFilterVal = t.dataset.goto;
@@ -1734,43 +1820,47 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
     const newMonth = livePkgs().filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
+    /* the two money tiles share one line — tapping either opens the money analytics sheet */
     el.innerHTML = `
-      <div class="stat month" data-goto="booked" role="button"><b>${inr(outstanding)}</b><span>left to collect (booked)</span></div>
-      <div class="stat" data-goto="booked" role="button"><b>${inr(bookedVal)}</b><span>booked value</span></div>
+      <div class="stat money" data-fin role="button" title="Open money analytics"><b>${inr(outstanding)}</b><span>left to collect</span></div>
+      <div class="stat money" data-fin role="button" title="Open money analytics"><b>${inr(bookedVal)}</b><span>booked value</span></div>
       <div class="stat" data-goto="booked" role="button"><b>${booked.length}</b><span>booked</span></div>
       <div class="stat" data-goto="" role="button"><b>${newMonth}</b><span>new this month</span></div>`;
   }
+  /* one shoot at a time: the very next event as a single tappable card —
+     tapping it opens the full event + package sheet, with ‹ › to browse
+     the rest of the upcoming schedule without leaving Home */
+  let _upEvents = [];
   function renderUpcoming(){
     const el = $('#upcoming'); if(!el) return;
     const today = new Date().toLocaleDateString('en-CA');
-    const next = calEvents()
+    _upEvents = calEvents()
       .filter(e=>e.date >= today && (e.status === 'booked' || e.status === 'lead'))   // confirmed bookings only
-      .sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
-    el.hidden = !next.length;
-    if(!next.length) return;
-    const seenDue = new Set();   /* one due pill per package, on its earliest upcoming event */
-    el.innerHTML = '<h3>📅 Upcoming shoots</h3>' + next.map(e=>{
-      const pk = e.kind === 'pkg' ? PKGS.find(p=>p.id===e.id) : null;
-      let due = 0;
-      if(pk && !seenDue.has(pk.id)){
-        due = Math.max(0,(pk.totals||{}).balance||0);
-        if(due > 0) seenDue.add(pk.id);
-      }
-      return `
-      <div class="up-ev" data-goto="${e.date}">
-        <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
-        <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
-        ${due > 0 ? `<button class="act due" data-paydue="${pk.id}">${inr(due)} due</button>` : `<i class="dot ${e.status}"></i>`}
+      .sort((a,b)=>a.date<b.date?-1:1);
+    el.hidden = !_upEvents.length;
+    if(!_upEvents.length){ if($('#evModal').classList.contains('open')) closeEvUI(); return; }
+    const e0 = _upEvents[0];
+    const pk = e0.kind === 'pkg' ? PKGS.find(p=>p.id===e0.id) : null;
+    const due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
+    const d = new Date(e0.date+'T00:00');
+    const days = Math.round((d - new Date(today+'T00:00'))/864e5);
+    const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days · ${d.toLocaleDateString('en-IN',{weekday:'short'})}`;
+    el.innerHTML = `<h3>📅 Next shoot${_upEvents.length>1 ? `<span class="upmore">${_upEvents.length} upcoming ›</span>` : ''}</h3>
+      <div class="up-next" data-open-ev="0" role="button" aria-label="Open event details">
+        <div class="un-when"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
+        <div class="un-mid">
+          <b>${esc(e0.title)}</b>
+          <span>${esc(e0.client)}${e0.venue ? ' · 📍 ' + esc(e0.venue) : ''}</span>
+          <span class="un-days">${when}</span>
+        </div>
+        ${due > 0 ? `<span class="due">${inr(due)} due</span>` : `<i class="dot ${e0.status}"></i>`}
+        <span class="chev2">›</span>
       </div>`;
-    }).join('');
+    if($('#evModal').classList.contains('open')) renderEv();   /* live data landed while the sheet was open */
   }
   $('#upcoming').addEventListener('click', e=>{
-    const pay = e.target.closest('[data-paydue]');
-    if(pay){ const pk = PKGS.find(p=>p.id===pay.dataset.paydue); if(pk) openPay(pk); return; }
-    const row = e.target.closest('[data-goto]'); if(!row) return;
-    calSel = row.dataset.goto;
-    const d = new Date(calSel+'T00:00'); calY = d.getFullYear(); calM = d.getMonth();
-    $('#tabCal').click();
+    const open = e.target.closest('[data-open-ev]');
+    if(open) openEv(Number(open.dataset.openEv)||0);
   });
 
   /* sent quotes that have gone quiet — surfaced on Home every morning */
@@ -2892,7 +2982,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#payBackdrop').addEventListener('click', closePay);
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
   $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); } });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); } });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
@@ -2975,6 +3065,192 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast('Payment removed — balance updated');
     }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
   });
+
+  /* ---------- money analytics sheet ----------
+     Everything is computed from recorded payments (amount + date + mode) and
+     package totals — the same numbers the stat tiles show, just broken down
+     month-wise and year-wise. */
+  let finYear = null;
+  function finPayments(){
+    const rows = [];
+    livePkgs().forEach(x=>(x.payments||[]).forEach(pm=>{
+      if(!pm) return;
+      rows.push({ amt: Number(pm.amount)||0, date: String(pm.date||''), mode: pm.mode||'' });
+    }));
+    return rows;
+  }
+  function openFin(){
+    const yrs = [...new Set(finPayments().map(p=>p.date.slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort();
+    const cur = String(new Date().getFullYear());
+    if(finYear == null) finYear = Number(yrs.includes(cur) || !yrs.length ? cur : yrs[yrs.length-1]);
+    renderFin();
+    const wasOpen = $('#finModal').classList.contains('open');
+    $('#finModal').classList.add('open'); $('#finBackdrop').classList.add('open');
+    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'fin'}, '', '#money'); }catch(e){} }
+  }
+  function closeFinUI(){ $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); }
+  function closeFin(){
+    if(history.state && history.state.view === 'fin'){ history.back(); }
+    else closeFinUI();
+  }
+  function renderFin(){
+    const pays = finPayments();
+    const confirmed = livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft'));
+    const outstanding = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
+    const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
+    const allGot = pays.reduce((s,p)=>s+p.amt,0);
+    const y = String(finYear);
+    const inYr = pays.filter(p=>p.date.slice(0,4)===y);
+    const got = inYr.reduce((s,p)=>s+p.amt,0);
+    const online = inYr.filter(p=>p.mode==='online').reduce((s,p)=>s+p.amt,0);
+    const cash = inYr.filter(p=>p.mode==='cash').reduce((s,p)=>s+p.amt,0);
+    const months = [...Array(12)].map(()=>({ amt:0, n:0 }));
+    inYr.forEach(p=>{ const m = Number(p.date.slice(5,7))-1; if(m>=0 && m<12){ months[m].amt+=p.amt; months[m].n++; } });
+    const max = Math.max(...months.map(m=>m.amt), 1);
+    const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const byYr = {};
+    pays.forEach(p=>{ const yy=p.date.slice(0,4); if(/^\d{4}$/.test(yy)){ byYr[yy]=byYr[yy]||{amt:0,n:0}; byYr[yy].amt+=p.amt; byYr[yy].n++; } });
+    const yrs = Object.keys(byYr).sort().reverse();
+    const ymax = Math.max(...yrs.map(yy=>byYr[yy].amt), 1);
+    $('#finWho').textContent = 'From recorded payments & booked packages';
+    $('#finBody').innerHTML = `
+      <div class="fintiles">
+        <div class="stat"><b>${inr(outstanding)}</b><span>to collect</span></div>
+        <div class="stat"><b>${inr(bookedVal)}</b><span>booked value</span></div>
+        <div class="stat"><b>${inr(allGot)}</b><span>collected · all time</span></div>
+      </div>
+      <div class="finyr">
+        <button data-fy="-1" type="button" aria-label="Previous year">‹</button>
+        <b>${esc(y)} · ${inr(got)}</b>
+        <button data-fy="1" type="button" aria-label="Next year">›</button>
+      </div>
+      <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inYr.length}</b> payment${inYr.length===1?'':'s'}</span></div>
+      ${months.map((m,i)=>`
+        <div class="finrow"><span class="mo">${MN[i]}</span><span class="fbar"><i style="width:${m.amt?Math.max(2,Math.round(m.amt/max*100)):0}%"></i></span><span class="amt3">${m.amt?inr(m.amt):'—'}</span><span class="n3">${m.n||''}</span></div>`).join('')}
+      <div class="finh">Year-wise</div>
+      ${yrs.length ? yrs.map(yy=>`
+        <div class="finrow yr ${yy===y?'on':''}" data-fyr="${yy}" role="button" title="Show ${yy} month-wise"><span class="mo">${yy}</span><span class="fbar"><i style="width:${Math.max(2,Math.round(byYr[yy].amt/ymax*100))}%"></i></span><span class="amt3">${inr(byYr[yy].amt)}</span><span class="n3">${byYr[yy].n}</span></div>`).join('')
+      : '<div class="empty" style="padding:.6rem 0">No payments recorded yet — record one from any package with ＋ Payment.</div>'}`;
+  }
+  $('#finBody').addEventListener('click', e=>{
+    const fy = e.target.closest('[data-fy]');
+    if(fy){ finYear = Number(finYear) + Number(fy.dataset.fy); renderFin(); return; }
+    const yr = e.target.closest('[data-fyr]');
+    if(yr){ finYear = Number(yr.dataset.fyr); renderFin(); }
+  });
+  $('#finClose').addEventListener('click', closeFin);
+  $('#finBackdrop').addEventListener('click', closeFin);
+
+  /* ---------- upcoming shoot sheet: full event + package detail ---------- */
+  let _evIdx = 0;
+  function openEv(i){
+    if(!_upEvents.length) return;
+    _evIdx = Math.max(0, Math.min(i, _upEvents.length-1));
+    renderEv();
+    const wasOpen = $('#evModal').classList.contains('open');
+    $('#evModal').classList.add('open'); $('#evBackdrop').classList.add('open');
+    if(!_navFromPop && !wasOpen){ try{ history.pushState({view:'ev'}, '', '#event'); }catch(e){} }
+  }
+  function closeEvUI(){ $('#evModal').classList.remove('open'); $('#evBackdrop').classList.remove('open'); }
+  function closeEv(){
+    if(history.state && history.state.view === 'ev'){ history.back(); }
+    else closeEvUI();
+  }
+  function renderEv(){
+    if(_evIdx > _upEvents.length-1) _evIdx = Math.max(0, _upEvents.length-1);
+    const ev = _upEvents[_evIdx]; if(!ev) return;
+    $('#evNav').innerHTML = `
+      <button data-evn="-1" type="button" ${_evIdx===0?'disabled':''} aria-label="Previous event">‹</button>
+      <b>Upcoming shoot ${_evIdx+1} of ${_upEvents.length}</b>
+      <button data-evn="1" type="button" ${_evIdx===_upEvents.length-1?'disabled':''} aria-label="Next event">›</button>`;
+    const d = new Date(ev.date+'T00:00');
+    const human = d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    if(ev.kind === 'lead'){
+      const l = LEADS.find(v=>v.id===ev.id);
+      $('#evBody').innerHTML = `
+        <h3 style="color:var(--gold-b)">${esc(ev.title)}</h3>
+        <div class="who">${human}</div>
+        <div class="ln2"><span>Client</span><span>${esc(ev.client||'—')}</span></div>
+        ${l && l.phone ? `<div class="ln2"><span>Phone</span><span>${esc(l.phone)}</span></div>` : ''}
+        ${l && l.grandTotal ? `<div class="ln2"><span>Quoted</span><span>${inr(l.grandTotal)}</span></div>` : ''}
+        <div class="ln2"><span>Source</span><span>Booked lead — no package yet</span></div>
+        <div class="ev-acts">
+          ${l ? '<button class="mini" type="button" data-evlead>Open lead</button>' : ''}
+          <button class="mini" type="button" data-evcal>Calendar</button>
+        </div>`;
+      return;
+    }
+    const pk = PKGS.find(p=>p.id===ev.id);
+    if(!pk){ $('#evBody').innerHTML = '<div class="empty">Package not found — it may have been deleted.</div>'; return; }
+    const st = pk.status||'draft';
+    const tt = pk.totals||{};
+    const paid = Number(tt.advance)||0, bal = Math.max(0,Number(tt.balance)||0), fin = Number(tt.finalPrice)||0;
+    const crew = ASGS.filter(a=>a.pkgId===pk.id && a.date===ev.date);
+    const events = (pk.events||[]).map(e2=>{
+      const cur = e2.date === ev.date;
+      const svcs = (e2.items||[]).map(it=>`${esc(it.service)}${Number(it.qty)>1?' ×'+Number(it.qty):''}`).join(', ');
+      return `<div class="ev-e ${cur?'cur':''}">
+        <b>${esc(e2.title||'Event')}${cur ? ' · this shoot' : ''}</b>
+        <span>${e2.date ? esc(stepDate(e2.date)) : 'date TBD'}${e2.venue ? ' · 📍 '+esc(e2.venue) : ''}</span>
+        ${svcs ? `<em>${svcs}</em>` : ''}
+      </div>`;
+    }).join('');
+    const pays = (pk.payments||[]).length
+      ? `<div class="finh">Payments received</div>` + pk.payments.map(pm=>
+          `<div class="ln2"><span>${esc(stepDate(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount)}</span></div>`).join('')
+      : '';
+    $('#evBody').innerHTML = `
+      <h3 style="color:var(--gold-b)">${esc(pk.clientName||'—')} <span class="stpill ${st}">${st}</span></h3>
+      <div class="who">${human}${pk.quoteNo ? ' · ' + esc(pk.quoteNo) : ''}${pk.clientPhone ? ' · 📞 ' + esc(pk.clientPhone) : ''}</div>
+      <div class="fintiles">
+        <div class="stat"><b>${inr(fin)}</b><span>package</span></div>
+        <div class="stat"><b>${inr(paid)}</b><span>paid</span></div>
+        <div class="stat"><b ${bal>0?'style="color:#ffb054"':''}>${inr(bal)}</b><span>balance</span></div>
+      </div>
+      <div class="finh">All events in this package</div>
+      ${events || '<div class="empty" style="padding:.4rem 0">No events yet.</div>'}
+      ${crew.length ? `<div class="finh">Crew on ${esc(stepDate(ev.date))}</div>` + crew.map(a=>
+        `<div class="ln2"><span>${esc(a.memberName||'—')}</span><span>${esc(a.role||'')}${a.callTime ? ' · ' + esc(a.callTime) : ''}</span></div>`).join('') : ''}
+      ${pays}
+      <div class="ev-acts">
+        ${bal > 0 ? `<button class="mini" type="button" data-evpay>＋ Payment</button>` : ''}
+        <button class="mini" type="button" data-evopen>Open package</button>
+        <button class="mini" type="button" data-evcal>Calendar</button>
+      </div>`;
+  }
+  $('#evNav').addEventListener('click', e=>{
+    const b = e.target.closest('[data-evn]'); if(!b || b.disabled) return;
+    openEv(_evIdx + Number(b.dataset.evn));
+  });
+  $('#evBody').addEventListener('click', e=>{
+    const ev = _upEvents[_evIdx]; if(!ev) return;
+    if(e.target.closest('[data-evpay]')){
+      const pk = PKGS.find(p=>p.id===ev.id);
+      if(pk){ closeEvUI(); openPay(pk); }
+      return;
+    }
+    if(e.target.closest('[data-evopen]')){
+      const pk = PKGS.find(p=>p.id===ev.id);
+      if(pk){ closeEvUI(); $('#tabPkgs').click(); openPkgEdit(pk); }
+      return;
+    }
+    if(e.target.closest('[data-evlead]')){
+      const l = LEADS.find(v=>v.id===ev.id);
+      closeEvUI();
+      if(l){ $('#leadSearch').value = l.name||''; leadFilterVal = ''; }
+      $('#tabLeads').click();
+      renderLeads();
+      return;
+    }
+    if(e.target.closest('[data-evcal]')){
+      closeEvUI();
+      calSel = ev.date;
+      const d = new Date(ev.date+'T00:00'); calY = d.getFullYear(); calM = d.getMonth();
+      $('#tabCal').click();
+    }
+  });
+  $('#evClose').addEventListener('click', closeEv);
+  $('#evBackdrop').addEventListener('click', closeEv);
 
   /* ---------- builder ---------- */
   $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
