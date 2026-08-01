@@ -506,12 +506,16 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .finrow.yr{cursor:pointer}
 .finrow.yr .mo{flex-basis:58px;color:var(--text)}
 .finrow.yr.on{background:rgba(184,144,43,.09)}
-/* quarterly + annual rows (FY view) */
-.finrow.qtr .mo{flex-basis:58px;color:var(--text);line-height:1.1}
-.finrow.qtr .mo em{display:block;font-style:normal;font-size:.54rem;color:var(--mut);letter-spacing:.02em}
-.finrow.annual{background:rgba(184,144,43,.09);border-radius:8px;border-bottom:0;padding:.36rem .3rem;margin-top:.15rem}
-.finrow.annual .mo{flex-basis:58px;color:var(--gold-b);font-weight:600}
-.finrow.annual .amt3{font-size:.9rem}
+/* billed / collected / balance table rows in Money Analytics */
+.ledrow.finled b{flex-basis:76px;font-size:.72rem}
+.ledrow.finled .l-ev{font-size:.76rem}
+.ledrow.finled .l-ev span{color:var(--mut);font-size:.62rem}
+.ledrow.finled.hd b{font-size:.56rem}
+.ledrow.finled.annual{background:rgba(184,144,43,.1);border-radius:8px;border-bottom:0;padding:.4rem .3rem;margin:.15rem 0 .1rem}
+.ledrow.finled.annual .l-ev{color:var(--gold-b);font-weight:600}
+.ledrow.finled.on{background:rgba(184,144,43,.09)}
+.ledrow.finled[data-fyr]{cursor:pointer}
+@media(hover:hover){ .ledrow.finled[data-fyr]:hover .l-ev{color:var(--gold-b)} }
 @media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
 .finh{color:var(--gold-b);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
 .ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
@@ -3767,28 +3771,46 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     const allGot = pays.reduce((s,p)=>s+p.amt,0);
     const y = Number(finYear);
+    /* cash-flow splits for the selected FY (by payment date) */
     const inFy = pays.filter(p=>fyStartOf(p.date) === y);
     const got = inFy.reduce((s,p)=>s+p.amt,0);
     const online = inFy.filter(p=>p.mode==='online').reduce((s,p)=>s+p.amt,0);
     const cash = inFy.filter(p=>p.mode==='cash').reduce((s,p)=>s+p.amt,0);
-    /* months in FISCAL order Apr → Mar */
+    /* ---- the systematic table: every period shows Billed / Collected / Balance,
+       from confirmed bookings anchored to their first event date ---- */
+    const anchor = x => {
+      const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+      return ds[0] || (/^\d{4}-\d{2}-\d{2}$/.test(x.quoteDate||'') ? x.quoteDate : tsDate(x.createdAt));
+    };
+    const jobs = confirmed.map(x=>({
+      d: anchor(x),
+      billed: Number((x.totals||{}).finalPrice)||0,
+      recv: Math.max(0, Number((x.totals||{}).advance)||0),
+      due: Math.max(0, Number((x.totals||{}).balance)||0)
+    })).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.d||''));
+    const Z = () => ({ billed:0, recv:0, due:0, n:0 });
+    const addTo = (o,r) => { o.billed+=r.billed; o.recv+=r.recv; o.due+=r.due; o.n++; };
     const FMN = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
-    const months = FMN.map(()=>({ amt:0, n:0 }));
-    inFy.forEach(p=>{ const m = Number(p.date.slice(5,7)); const idx = (m+8)%12; months[idx].amt+=p.amt; months[idx].n++; });
-    const max = Math.max(...months.map(m=>m.amt), 1);
-    /* quarterly roll-up */
+    const months = FMN.map(Z);
+    const byFy = {};
+    jobs.forEach(r=>{
+      const fy = fyStartOf(r.d);
+      byFy[fy] = byFy[fy] || Z(); addTo(byFy[fy], r);
+      if(fy === y){ const idx = (Number(r.d.slice(5,7))+8)%12; addTo(months[idx], r); }
+    });
     const QL = ['Q1','Q2','Q3','Q4'], QR = ['Apr–Jun','Jul–Sep','Oct–Dec','Jan–Mar'];
     const qs = [0,1,2,3].map(qi=>{
-      const sl = months.slice(qi*3, qi*3+3);
-      return { amt: sl.reduce((s,m)=>s+m.amt,0), n: sl.reduce((s,m)=>s+m.n,0) };
+      const sl = months.slice(qi*3, qi*3+3), o = Z();
+      sl.forEach(m=>{ o.billed+=m.billed; o.recv+=m.recv; o.due+=m.due; o.n+=m.n; });
+      return o;
     });
-    const qmax = Math.max(...qs.map(q=>q.amt), 1);
-    /* FY-wise history */
-    const byFy = {};
-    pays.forEach(p=>{ const fy = fyStartOf(p.date); byFy[fy] = byFy[fy]||{ amt:0, n:0 }; byFy[fy].amt+=p.amt; byFy[fy].n++; });
+    const fyTot = byFy[y] || Z();
     const fys = Object.keys(byFy).map(Number).sort((a,b)=>b-a);
-    const ymax = Math.max(...fys.map(fy=>byFy[fy].amt), 1);
-    $('#finWho').textContent = 'Financial-year view (Apr–Mar) — from recorded payments & booked packages';
+    const amt = v => v ? inr(v) : '—';
+    const row3 = (label, o, cls='', attrs='') => `
+      <div class="ledrow finled ${cls}" ${attrs}><span class="l-ev">${label}</span><b>${amt(o.billed)}</b><b style="color:var(--ok)">${amt(o.recv)}</b><b class="${o.due>0?'neg':''}">${amt(o.due)}</b></div>`;
+    const HD = '<div class="ledrow finled hd"><span class="l-ev">Period</span><b>Billed</b><b>Collected</b><b>Balance</b></div>';
+    $('#finWho').textContent = 'Financial-year view (Apr–Mar) — billed / collected / balance per period, from confirmed bookings by event date';
     $('#finBody').innerHTML = `
       <div class="fintiles">
         <div class="stat"><b>${inr(outstanding)}</b><span>to collect</span></div>
@@ -3797,23 +3819,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <div class="finyr">
         <button data-fy="-1" type="button" aria-label="Previous financial year">‹</button>
-        <b>${fyLabel(y)} · ${inr(got)}</b>
+        <b>${fyLabel(y)}</b>
         <button data-fy="1" type="button" aria-label="Next financial year">›</button>
       </div>
-      <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'}</span></div>
+      <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'} this FY</span></div>
       ${(()=>{ const b = inFy.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
                return b > 0 ? `<div class="finsplit"><span>💍 Direct <b>${inr(got - b)}</b></span><span>🏢 Studio <b>${inr(b)}</b></span></div>` : ''; })()}
       <div class="finh">Quarterly · ${fyLabel(y)}</div>
-      ${qs.map((q,i)=>`
-        <div class="finrow qtr"><span class="mo" title="${QR[i]}">${QL[i]}<em>${QR[i]}</em></span><span class="fbar"><i style="width:${q.amt?Math.max(2,Math.round(q.amt/qmax*100)):0}%"></i></span><span class="amt3">${q.amt?inr(q.amt):'—'}</span><span class="n3">${q.n||''}</span></div>`).join('')}
-      <div class="finrow annual"><span class="mo">FY</span><span class="fbar"><i style="width:${got?100:0}%"></i></span><span class="amt3">${inr(got)}</span><span class="n3">${inFy.length||''}</span></div>
-      <div class="finh">Month-wise</div>
-      ${months.map((m,i)=>`
-        <div class="finrow"><span class="mo">${FMN[i]}</span><span class="fbar"><i style="width:${m.amt?Math.max(2,Math.round(m.amt/max*100)):0}%"></i></span><span class="amt3">${m.amt?inr(m.amt):'—'}</span><span class="n3">${m.n||''}</span></div>`).join('')}
+      ${HD}
+      ${qs.map((q,i)=>row3(`${QL[i]} <span>${QR[i]}</span>`, q)).join('')}
+      ${row3('Annual', fyTot, 'annual')}
+      <div class="finh">Month-wise · ${fyLabel(y)}</div>
+      ${HD}
+      ${months.map((m,i)=>row3(FMN[i], m)).join('')}
       <div class="finh">Annual · financial years</div>
-      ${fys.length ? fys.map(fy=>`
-        <div class="finrow yr ${fy===y?'on':''}" data-fyr="${fy}" role="button" title="Show ${fyLabel(fy)} quarter-wise"><span class="mo">${fy}-${String((fy+1)%100).padStart(2,'0')}</span><span class="fbar"><i style="width:${Math.max(2,Math.round(byFy[fy].amt/ymax*100))}%"></i></span><span class="amt3">${inr(byFy[fy].amt)}</span><span class="n3">${byFy[fy].n}</span></div>`).join('')
-      : '<div class="empty" style="padding:.6rem 0">No payments recorded yet — record one from any package with ＋ Payment.</div>'}`;
+      ${fys.length ? HD + fys.map(fy=>row3(`${fy}-${String((fy+1)%100).padStart(2,'0')}`, byFy[fy], fy===y?'on':'', `data-fyr="${fy}" role="button" title="Show ${fyLabel(fy)} quarter-wise"`)).join('')
+      : '<div class="empty" style="padding:.6rem 0">No confirmed bookings yet — this table fills in as packages are booked.</div>'}`;
   }
   $('#finBody').addEventListener('click', e=>{
     const fy = e.target.closest('[data-fy]');
