@@ -504,8 +504,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .finrow .amt3{flex:0 0 auto;font-family:var(--serif);color:var(--gold-b);white-space:nowrap;min-width:62px;text-align:right}
 .finrow .n3{flex:0 0 20px;color:var(--mut);font-size:.64rem;text-align:right}
 .finrow.yr{cursor:pointer}
-.finrow.yr .mo{flex-basis:42px;color:var(--text)}
+.finrow.yr .mo{flex-basis:58px;color:var(--text)}
 .finrow.yr.on{background:rgba(184,144,43,.09)}
+/* quarterly + annual rows (FY view) */
+.finrow.qtr .mo{flex-basis:58px;color:var(--text);line-height:1.1}
+.finrow.qtr .mo em{display:block;font-style:normal;font-size:.54rem;color:var(--mut);letter-spacing:.02em}
+.finrow.annual{background:rgba(184,144,43,.09);border-radius:8px;border-bottom:0;padding:.36rem .3rem;margin-top:.15rem}
+.finrow.annual .mo{flex-basis:58px;color:var(--gold-b);font-weight:600}
+.finrow.annual .amt3{font-size:.9rem}
 @media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
 .finh{color:var(--gold-b);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
 .ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
@@ -3726,10 +3732,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }));
     return rows;
   }
+  /* corporate-style reporting: Indian financial year (Apr–Mar) with
+     Q1 Apr–Jun · Q2 Jul–Sep · Q3 Oct–Dec · Q4 Jan–Mar and an annual total.
+     finYear holds the FY START year (2026 = FY 2026-27). */
+  const fyStartOf = ds => { const yy = Number(ds.slice(0,4)), mm = Number(ds.slice(5,7)); return mm >= 4 ? yy : yy - 1; };
+  const fyLabel = yy => `FY ${yy}-${String((yy+1)%100).padStart(2,'0')}`;
   function openFin(){
-    const yrs = [...new Set(finPayments().map(p=>p.date.slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort();
-    const cur = String(new Date().getFullYear());
-    if(finYear == null) finYear = Number(yrs.includes(cur) || !yrs.length ? cur : yrs[yrs.length-1]);
+    if(finYear == null){
+      const now = new Date();
+      finYear = (now.getMonth()+1) >= 4 ? now.getFullYear() : now.getFullYear()-1;
+    }
     renderFin();
     const wasOpen = $('#finModal').classList.contains('open');
     $('#finModal').classList.add('open'); $('#finBackdrop').classList.add('open');
@@ -3741,25 +3753,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     else closeFinUI();
   }
   function renderFin(){
-    const pays = finPayments();
+    const pays = finPayments().filter(p=>/^\d{4}-\d{2}-\d{2}/.test(p.date));
     const confirmed = livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft'));
     const outstanding = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     const allGot = pays.reduce((s,p)=>s+p.amt,0);
-    const y = String(finYear);
-    const inYr = pays.filter(p=>p.date.slice(0,4)===y);
-    const got = inYr.reduce((s,p)=>s+p.amt,0);
-    const online = inYr.filter(p=>p.mode==='online').reduce((s,p)=>s+p.amt,0);
-    const cash = inYr.filter(p=>p.mode==='cash').reduce((s,p)=>s+p.amt,0);
-    const months = [...Array(12)].map(()=>({ amt:0, n:0 }));
-    inYr.forEach(p=>{ const m = Number(p.date.slice(5,7))-1; if(m>=0 && m<12){ months[m].amt+=p.amt; months[m].n++; } });
+    const y = Number(finYear);
+    const inFy = pays.filter(p=>fyStartOf(p.date) === y);
+    const got = inFy.reduce((s,p)=>s+p.amt,0);
+    const online = inFy.filter(p=>p.mode==='online').reduce((s,p)=>s+p.amt,0);
+    const cash = inFy.filter(p=>p.mode==='cash').reduce((s,p)=>s+p.amt,0);
+    /* months in FISCAL order Apr → Mar */
+    const FMN = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+    const months = FMN.map(()=>({ amt:0, n:0 }));
+    inFy.forEach(p=>{ const m = Number(p.date.slice(5,7)); const idx = (m+8)%12; months[idx].amt+=p.amt; months[idx].n++; });
     const max = Math.max(...months.map(m=>m.amt), 1);
-    const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const byYr = {};
-    pays.forEach(p=>{ const yy=p.date.slice(0,4); if(/^\d{4}$/.test(yy)){ byYr[yy]=byYr[yy]||{amt:0,n:0}; byYr[yy].amt+=p.amt; byYr[yy].n++; } });
-    const yrs = Object.keys(byYr).sort().reverse();
-    const ymax = Math.max(...yrs.map(yy=>byYr[yy].amt), 1);
-    $('#finWho').textContent = 'From recorded payments & booked packages';
+    /* quarterly roll-up */
+    const QL = ['Q1','Q2','Q3','Q4'], QR = ['Apr–Jun','Jul–Sep','Oct–Dec','Jan–Mar'];
+    const qs = [0,1,2,3].map(qi=>{
+      const sl = months.slice(qi*3, qi*3+3);
+      return { amt: sl.reduce((s,m)=>s+m.amt,0), n: sl.reduce((s,m)=>s+m.n,0) };
+    });
+    const qmax = Math.max(...qs.map(q=>q.amt), 1);
+    /* FY-wise history */
+    const byFy = {};
+    pays.forEach(p=>{ const fy = fyStartOf(p.date); byFy[fy] = byFy[fy]||{ amt:0, n:0 }; byFy[fy].amt+=p.amt; byFy[fy].n++; });
+    const fys = Object.keys(byFy).map(Number).sort((a,b)=>b-a);
+    const ymax = Math.max(...fys.map(fy=>byFy[fy].amt), 1);
+    $('#finWho').textContent = 'Financial-year view (Apr–Mar) — from recorded payments & booked packages';
     $('#finBody').innerHTML = `
       <div class="fintiles">
         <div class="stat"><b>${inr(outstanding)}</b><span>to collect</span></div>
@@ -3767,18 +3788,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="stat"><b>${inr(allGot)}</b><span>collected · all time</span></div>
       </div>
       <div class="finyr">
-        <button data-fy="-1" type="button" aria-label="Previous year">‹</button>
-        <b>${esc(y)} · ${inr(got)}</b>
-        <button data-fy="1" type="button" aria-label="Next year">›</button>
+        <button data-fy="-1" type="button" aria-label="Previous financial year">‹</button>
+        <b>${fyLabel(y)} · ${inr(got)}</b>
+        <button data-fy="1" type="button" aria-label="Next financial year">›</button>
       </div>
-      <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inYr.length}</b> payment${inYr.length===1?'':'s'}</span></div>
-      ${(()=>{ const b = inYr.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
+      <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'}</span></div>
+      ${(()=>{ const b = inFy.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
                return b > 0 ? `<div class="finsplit"><span>💍 Direct <b>${inr(got - b)}</b></span><span>🏢 Studio <b>${inr(b)}</b></span></div>` : ''; })()}
+      <div class="finh">Quarterly · ${fyLabel(y)}</div>
+      ${qs.map((q,i)=>`
+        <div class="finrow qtr"><span class="mo" title="${QR[i]}">${QL[i]}<em>${QR[i]}</em></span><span class="fbar"><i style="width:${q.amt?Math.max(2,Math.round(q.amt/qmax*100)):0}%"></i></span><span class="amt3">${q.amt?inr(q.amt):'—'}</span><span class="n3">${q.n||''}</span></div>`).join('')}
+      <div class="finrow annual"><span class="mo">FY</span><span class="fbar"><i style="width:${got?100:0}%"></i></span><span class="amt3">${inr(got)}</span><span class="n3">${inFy.length||''}</span></div>
+      <div class="finh">Month-wise</div>
       ${months.map((m,i)=>`
-        <div class="finrow"><span class="mo">${MN[i]}</span><span class="fbar"><i style="width:${m.amt?Math.max(2,Math.round(m.amt/max*100)):0}%"></i></span><span class="amt3">${m.amt?inr(m.amt):'—'}</span><span class="n3">${m.n||''}</span></div>`).join('')}
-      <div class="finh">Year-wise</div>
-      ${yrs.length ? yrs.map(yy=>`
-        <div class="finrow yr ${yy===y?'on':''}" data-fyr="${yy}" role="button" title="Show ${yy} month-wise"><span class="mo">${yy}</span><span class="fbar"><i style="width:${Math.max(2,Math.round(byYr[yy].amt/ymax*100))}%"></i></span><span class="amt3">${inr(byYr[yy].amt)}</span><span class="n3">${byYr[yy].n}</span></div>`).join('')
+        <div class="finrow"><span class="mo">${FMN[i]}</span><span class="fbar"><i style="width:${m.amt?Math.max(2,Math.round(m.amt/max*100)):0}%"></i></span><span class="amt3">${m.amt?inr(m.amt):'—'}</span><span class="n3">${m.n||''}</span></div>`).join('')}
+      <div class="finh">Annual · financial years</div>
+      ${fys.length ? fys.map(fy=>`
+        <div class="finrow yr ${fy===y?'on':''}" data-fyr="${fy}" role="button" title="Show ${fyLabel(fy)} quarter-wise"><span class="mo">${fy}-${String((fy+1)%100).padStart(2,'0')}</span><span class="fbar"><i style="width:${Math.max(2,Math.round(byFy[fy].amt/ymax*100))}%"></i></span><span class="amt3">${inr(byFy[fy].amt)}</span><span class="n3">${byFy[fy].n}</span></div>`).join('')
       : '<div class="empty" style="padding:.6rem 0">No payments recorded yet — record one from any package with ＋ Payment.</div>'}`;
   }
   $('#finBody').addEventListener('click', e=>{
