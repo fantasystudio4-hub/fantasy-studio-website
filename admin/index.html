@@ -531,6 +531,30 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 #homeResults .stpill{margin-left:0}
 #cfgJump{position:sticky;top:62px;z-index:30;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
 #configView .sec{scroll-margin-top:118px}
+
+/* ==== B2B partner studios ==== */
+#b2bStats{grid-template-columns:repeat(2,1fr);margin-top:1rem}
+@media(min-width:700px){ #b2bStats{grid-template-columns:repeat(4,1fr)} }
+.stu-top{display:flex;align-items:center;gap:.55rem;padding:.85rem 1rem .5rem;cursor:pointer;flex-wrap:wrap}
+.stu-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
+.stu-top .src{font-size:.72rem;color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stu-top .chev2{color:var(--mut);font-size:1.1rem}
+.stu-call{text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.28em .7em;font-size:.75rem;color:var(--gold-b)}
+.stu-chips{display:flex;gap:.4rem;flex-wrap:wrap;padding:0 1rem .85rem;cursor:pointer}
+.stu-chips b{border-radius:14px;padding:.24em .75em;font-weight:600;font-size:.66rem;letter-spacing:.04em}
+.stu-chips .c1{color:var(--gold-b);background:rgba(184,144,43,.13)}
+.stu-chips .c2{color:#ffb054;background:rgba(255,176,84,.13)}
+.stu-chips .c3{color:var(--ok);background:rgba(76,175,125,.13)}
+.b2bpill{flex:0 0 auto;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:#8fb8d8;background:rgba(127,178,229,.13);border-radius:14px;padding:.2em .6em;font-weight:600}
+.stu-a{text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.ledrow{display:flex;align-items:center;gap:.5rem;padding:.32rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
+.ledrow:last-child{border-bottom:0}
+.ledrow .l-ev{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.ledrow .l-ev span{color:var(--mut)}
+.ledrow b{flex:0 0 72px;text-align:right;font-family:var(--serif);font-weight:600;white-space:nowrap;font-size:.8rem}
+.ledrow .neg{color:#ffb054}
+.ledrow.hd{color:var(--mut);border-bottom:1px solid var(--line)}
+.ledrow.hd b,.ledrow.hd .l-ev{font-family:var(--sans);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -653,10 +677,21 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <h3><span class="stepnum">1</span><span id="pkgEditTitle">New Package</span></h3>
         <p class="sub">Who is this quotation for?</p>
         <div class="grid2">
-          <div class="fld"><label>Client name</label><input id="pcName" /></div>
-          <div class="fld"><label>C/o (optional)</label><input id="pcCareOf" /></div>
-          <div class="fld"><label>Client phone (optional)</label><input id="pcPhone" inputmode="numeric" /></div>
+          <div class="fld" data-direct-only><label>Client name</label><input id="pcName" /></div>
+          <div class="fld" data-direct-only><label>C/o (optional)</label><input id="pcCareOf" /></div>
+          <div class="fld" data-direct-only><label>Client phone (optional)</label><input id="pcPhone" inputmode="numeric" /></div>
           <div class="fld"><label>Quote date</label><input id="pcDate" type="date" /></div>
+        </div>
+      </div>
+      <div class="sec" id="stuJobSec" hidden>
+        <h3>🏢 Studio Job — <span id="stuJobName" style="color:var(--gold-b)"></span></h3>
+        <p class="sub" id="stuJobTerms"></p>
+        <div class="grid2">
+          <div class="fld"><label>End client <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(job sheet only — never shown to them)</span></label>
+            <input id="pcEndClient" placeholder="e.g. the couple's names" /></div>
+          <div class="fld"><label style="display:flex;align-items:center;gap:.55rem;text-transform:none;letter-spacing:.02em">
+            <input id="pcWhiteLabel" type="checkbox" style="width:18px;height:18px;accent-color:var(--gold)" /> White-label job</label>
+            <p class="sub" style="margin:.35rem 0 0">Fantasy Studio's name stays off this job's paperwork.</p></div>
         </div>
       </div>
       <div class="sec" style="padding-bottom:.6rem">
@@ -703,13 +738,19 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
   </div>
 
-  <!-- the calendar now lives on Home; this tab is reserved for B2B work -->
+  <!-- B2B: partner studios that hire Fantasy Studio. Admin-only — none of
+       this is readable by clients, crew or the public site (see firestore.rules). -->
   <div id="calView" hidden>
-    <div class="empty2" style="padding-top:4rem">
-      <span class="ic">🤝</span>
-      <b style="color:var(--gold-b);font-family:var(--serif);font-size:1.15rem;display:block;margin-bottom:.4rem">B2B</b>
-      Studio-to-studio work lives here soon —<br />outsourced shoots, partner studios and their payments.
+    <div id="studioListView">
+      <div class="stats" id="b2bStats"></div>
+      <div class="sec">
+        <h3>🏢 Partner studios</h3>
+        <p class="sub">Studios that hire Fantasy Studio — crew on hire, editing, full coverage. Tap a studio for its rate card, jobs &amp; ledger. Strictly admin-only: nothing here ever appears on the website or client pages.</p>
+        <div id="studioList"><div class="skel"></div></div>
+        <button class="addrow" id="stuAdd">＋ Add studio</button>
+      </div>
     </div>
+    <div id="studioDetailView" hidden></div>
   </div>
 
   <div id="teamView" hidden>
@@ -895,6 +936,31 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <h3>⚡ Quick Actions</h3>
   <div class="who" id="qaWho"></div>
   <div class="st-opts" id="qaOpts"></div>
+</div>
+
+<div class="pay-backdrop" id="stuBackdrop"></div>
+<div class="pay-modal fin" id="stuModal" role="dialog" aria-modal="true" aria-label="Partner studio">
+  <button class="pay-close" id="stuClose" type="button" aria-label="Close">&times;</button>
+  <h3 id="stuTitle">Partner Studio</h3>
+  <div class="fld"><label>Studio name</label><input id="stuName" autocomplete="off" /></div>
+  <div class="grid2">
+    <div class="fld"><label>Owner name</label><input id="stuOwner" autocomplete="off" /></div>
+    <div class="fld"><label>City</label><input id="stuCity" autocomplete="off" /></div>
+  </div>
+  <div class="fld"><label>Phone</label><input id="stuPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
+  <div class="fld"><label>GST number <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional)</span></label><input id="stuGst" autocomplete="off" /></div>
+  <div class="fld"><label>Payment terms</label><input id="stuTerms" placeholder="e.g. 50% advance · balance on RAW handover" /></div>
+  <div class="fld"><label>Notes</label><textarea id="stuNotes" rows="2"></textarea></div>
+  <button class="gbtn" id="stuSave" type="button">Save Studio</button>
+  <button class="mini" id="stuToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
+</div>
+
+<div class="pay-backdrop" id="jtBackdrop"></div>
+<div class="pay-modal" id="jtModal" role="dialog" aria-modal="true" aria-label="New booking">
+  <button class="pay-close" id="jtClose" type="button" aria-label="Close">&times;</button>
+  <h3>📦 New Booking</h3>
+  <div class="who" id="jtWho"></div>
+  <div class="st-opts" id="jtOpts"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1098,6 +1164,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user && _teamUnsub){ try{ _teamUnsub(); }catch(e){} _teamUnsub = null; }
     if(!user && _asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
     if(!user && _reqsUnsub){ try{ _reqsUnsub(); }catch(e){} _reqsUnsub = null; }
+    if(!user && _studiosUnsub){ try{ _studiosUnsub(); }catch(e){} _studiosUnsub = null; }
 
     if(user && !(await isAdmin(user))){
       $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
@@ -1119,7 +1186,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!ADMIN_EMAILS.length){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
       }
-      loadLeads(); loadConfig(); loadPkgs(); loadTeam();
+      loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios();
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
       showTab(fromHash);
@@ -1159,7 +1226,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa','stusheet','jt'];
   function pushView(view, hash){
     if(_navFromPop) return;
     try{
@@ -1175,6 +1242,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
     const fab = $('#fabBtn'); if(fab) fab.hidden = (id !== 'tabHome');   /* quick actions live on Home */
+    if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
     if(id === 'tabHome'){
       if(typeof renderHome === 'function') renderHome();
@@ -1196,6 +1264,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         _pkgBaseline = '';
         $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
       }
+      /* tapping B2B while a studio detail is open = back to the studio list */
+      if(id === 'tabCal' && !$('#studioDetailView').hidden && typeof closeStudioDetail === 'function') closeStudioDetail();
       showTab(id);
       pushView(VIEW_OF_TAB[id], '#' + VIEW_OF_TAB[id]);
     });
@@ -1226,6 +1296,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeEvUI === 'function') closeEvUI();
       if(typeof closeUpUI === 'function') closeUpUI();
       if(typeof closeQaUI === 'function') closeQaUI();
+      if(typeof closeStuUI === 'function') closeStuUI();
+      if(typeof closeJtUI === 'function') closeJtUI();
       /* landing on a sheet's own entry (forward button / stray entry): the
          sheets are closed above — stay on the current tab instead of
          teleporting to Home */
@@ -1233,10 +1305,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
+      }else if(v === 'studio'){
+        showTab('tabCal');
+        if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; }
       }else{
         const tab = TAB_OF_VIEW[v] || 'tabHome';
         showTab(tab);
         if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
+        if(tab === 'tabCal' && typeof closeStudioDetail === 'function') closeStudioDetail();
       }
     }finally{ _navFromPop = false; }
   });
@@ -1675,8 +1751,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   const builderRates = () => (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length ? CFG.serviceRates : DEFAULTS.serviceRates);
+  /* while the builder edits a STUDIO job, the studio's negotiated rate card
+     (when it has one) replaces the retail rates everywhere in the builder */
+  let _bStudioId = null;
   /* the builder learns: every rate you actually use overrides the preset next time */
   const allRates = () => {
+    const stu = _bStudioId ? studioById(_bStudioId) : null;
+    if(stu && stu.rateCard && Object.keys(stu.rateCard).length){
+      const m = Object.assign({}, stu.rateCard);
+      delete m['__albumPerSheet'];
+      return m;
+    }
     const m = Object.assign({}, builderRates(), (CFG && CFG.learnedRates) || {});
     delete m['__albumPerSheet'];
     return m;
@@ -1918,7 +2003,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const live = livePkgs();
     const counts = {draft:0,sent:0,unconfirmed:0,booked:0,delivered:0};
     live.forEach(x=>{ const s=x.status||'draft'; counts[s]=(counts[s]||0)+1; });
-    $('#pkgChips').innerHTML = [['','All',live.length], ...PKG_STATES.map(s=>{ const l=STATUS_LABEL(s); return [s, l[0].toUpperCase()+l.slice(1), counts[s]||0]; })]
+    const b2bN = live.filter(isStudioJob).length;
+    $('#pkgChips').innerHTML = [['','All',live.length],
+        ...(b2bN ? [['b2b','🏢 Studio',b2bN]] : []),
+        ...PKG_STATES.map(s=>{ const l=STATUS_LABEL(s); return [s, l[0].toUpperCase()+l.slice(1), counts[s]||0]; })]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${pkgFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
   }
   $('#pkgChips').addEventListener('click', e=>{
@@ -1985,7 +2073,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="un-when"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
         <div class="un-mid">
           <b>${esc(e0.title)}</b>
-          <span>${esc(e0.client)}${e0.venue ? ' · 📍 ' + esc(e0.venue) : ''}</span>
+          <span>${e0.b2b ? '🏢 ' : ''}${esc(e0.client)}${e0.venue ? ' · 📍 ' + esc(e0.venue) : ''}</span>
           <span class="un-days">${when}</span>
         </div>
         ${due > 0 ? `<span class="due">${inr(due)} due</span>` : `<i class="dot ${e0.status}"></i>`}
@@ -2088,6 +2176,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="lt-lines">
           <div class="l1">
             <span class="nm">${esc(x.clientName||'—')}</span>
+            ${isStudioJob(x) ? `<span class="b2bpill">🏢 B2B${x.whiteLabel ? ' · WL' : ''}</span>` : ''}
+            ${isStudioJob(x) && x.endClientName ? `<span class="src">for ${esc(x.endClientName)}</span>` : ''}
             <span class="src">${evn} event${evn===1?'':'s'}</span>
             ${nd ? `<span class="src">📅 ${stepDate(nd)}</span>` : ''}
             ${sentDays != null && sentDays >= 0 ? `<span class="src">📤 ${sentDays}d</span>` : ''}
@@ -2136,11 +2226,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderPkgChips();
     renderTrash();
     if(typeof renderTeam === 'function' && !$('#teamView').hidden) renderTeam();
+    if(typeof renderB2B === 'function') renderB2B();   /* self-skips when the B2B tab is hidden */
     const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
-    let list = livePkgs().filter(x=>(!f || (x.status||'draft')===f)
+    let list = livePkgs().filter(x=>(!f || (f === 'b2b' ? isStudioJob(x) : (x.status||'draft')===f))
       && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)
-          || String(x.quoteNo||'').toLowerCase().includes(q)));
+          || String(x.quoteNo||'').toLowerCase().includes(q) || String(x.endClientName||'').toLowerCase().includes(q)));
     if(f === 'booked') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
     if(!list.length){
       $('#pkgList').innerHTML = livePkgs().length
@@ -2169,7 +2260,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   async function pkgCardAction(e){
-    if(e.target.closest('#pkgEmptyNew')){ openPkgEdit(null); return; }
+    if(e.target.closest('#pkgEmptyNew')){ openJobType(); return; }
     const gh = e.target.closest('[data-grp]');
     if(gh){ togglePkgGrp(gh.dataset.grp); return; }
     const card = e.target.closest('.lead'); if(!card) return;
@@ -2261,7 +2352,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     livePkgs().forEach(pk=>{
       (pk.events||[]).forEach(ev=>{
         if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
-          evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'' });
+          evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
       });
     });
     liveLeads().forEach(l=>{
@@ -2302,7 +2393,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
         <i class="dot ${e.status}"></i>
-        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="act" data-openev>Open</button>
       </div>`;
     }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
@@ -2353,6 +2444,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   /* ---------- lead -> package bridge ---------- */
   function pkgFromLead(l){
+    _bStudioId = null;   /* leads are always direct clients — never inherit a studio's rate card */
     const q = l.quote || {};
     const events = (q.events||[]).map(ev=>({
       title: String(ev.type||'Event').toUpperCase(),
@@ -2504,7 +2596,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="tm-ev-h">
           <span class="when">${stepDate(ev.date)}</span>
           <b>${esc(ev.title||'Event')}</b>
-          <span class="cl">· ${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
+          <span class="cl">· ${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
           <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
         </div>
         ${needTotal || crew.length ? `<div class="tm-need">${needTxt ? `Needs <b>${esc(needTxt)}</b> — ` : ''}<b class="${crew.length < needTotal ? 'miss' : ''}">${crew.length ? crew.length + ' assigned' : 'no crew yet'}</b></div>` : ''}
@@ -3005,10 +3097,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       const { pkgs, partial } = await fetchAll();
       const live = pkgs.filter(x=>!x.deleted);
-      const rows = [['QuoteNo','Client','Phone','Status','DeliveryProgress','DeliveredOn','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
+      const rows = [['QuoteNo','Client','Type','Studio','EndClient','Phone','Status','DeliveryProgress','DeliveredOn','Events','EventDates','Gross','Discount','Final','Advance','Balance','Created']];
       live.forEach(x=>{ const t=x.totals||{}; const st=x.status||'draft';
         const di = (st==='booked'||st==='delivered') ? deliveryInfo(x) : null;
-        rows.push([x.quoteNo||'', x.clientName||'', x.clientPhone||'', st,
+        rows.push([x.quoteNo||'', x.clientName||'', x.clientType||'direct', x.studioName||'', x.endClientName||'', x.clientPhone||'', st,
         di ? di.doneCount+'/'+di.total : '', st==='delivered' ? (x.deliveredAt||'') : '',
         (x.events||[]).length, (x.events||[]).map(e=>e.date).filter(Boolean).join(' '), t.gross||0, t.discount||0,
         t.finalPrice||0, t.advance||0, t.balance||0, tsDate(x.createdAt)]); });
@@ -3097,6 +3189,340 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }catch(err){ toast('Delete failed'); }
     }
   });
+
+  /* ============================================================
+     B2B — partner studios: CRUD, rate cards, jobs & ledger.
+     Server-side the `studios` collection is admin-only, and studio
+     jobs carry no clientPhone, so nothing here can ever surface on
+     the public site, the client portal or the crew page.
+     ============================================================ */
+  let STUDIOS = [];
+  let _studiosUnsub = null, _studiosLoaded = false, _stuEditId = null, _stuDetailId = null;
+  const STUDIOS_CAP = 300;
+  function studioById(id){ return STUDIOS.find(s=>s.id===id) || null; }
+  const isStudioJob = x => !!x && (x.clientType||'direct') === 'studio';
+  const studioJobs = id => livePkgs().filter(p=>isStudioJob(p) && p.studioId === id);
+  const CONFIRMED_ST = ['booked','delivered'];
+
+  function loadStudios(){
+    if(_studiosUnsub){ renderB2B(); return; }
+    try{
+      _studiosUnsub = onSnapshot(query(collection(db,'studios'), orderBy('createdAt','desc'), limit(STUDIOS_CAP)), snap=>{
+        STUDIOS = snap.docs.map(d=>({ id:d.id, ...d.data() }))
+          .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+        warnIfCapped('studios', snap.size, STUDIOS_CAP);
+        _studiosLoaded = true;
+        renderB2B();
+      }, err=>{
+        try{ if(_studiosUnsub) _studiosUnsub(); }catch(e){} _studiosUnsub = null;
+        const el = $('#studioList');
+        if(el) el.innerHTML = `<div class="empty">Could not load studios (${esc(err.code||err.message)})${(err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : ''}</div>`;
+      });
+    }catch(err){ const el = $('#studioList'); if(el) el.innerHTML = `<div class="empty">Could not load studios (${esc(err.code||err.message)})</div>`; }
+  }
+
+  function renderB2B(){
+    if($('#calView').hidden) return;
+    renderB2BStats();
+    renderStudioList();
+    if(!$('#studioDetailView').hidden) renderStudioDetail();
+  }
+  function renderB2BStats(){
+    const el = $('#b2bStats'); if(!el) return;
+    const jobs = livePkgs().filter(isStudioJob);
+    const openJobs = jobs.filter(x=>['sent','unconfirmed','booked'].includes(x.status||'draft')).length;
+    const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
+    const out = conf.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
+    const life = conf.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
+    el.innerHTML = `
+      <div class="stat"><b>${STUDIOS.filter(s=>s.active !== false).length}</b><span>studios</span></div>
+      <div class="stat"><b>${openJobs}</b><span>open jobs</span></div>
+      <div class="stat"><b>${inr(out)}</b><span>to collect</span></div>
+      <div class="stat"><b>${inr(life)}</b><span>lifetime b2b</span></div>`;
+  }
+  function stuCardHTML(s){
+    const jobs = studioJobs(s.id);
+    const open = jobs.filter(x=>['sent','unconfirmed','booked'].includes(x.status||'draft')).length;
+    const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
+    const due = conf.reduce((n,x)=>n+Math.max(0,(x.totals||{}).balance||0),0);
+    const life = conf.reduce((n,x)=>n+((x.totals||{}).finalPrice||0),0);
+    const inactive = s.active === false;
+    return `
+    <div class="lead ${inactive?'tm-inactive':''}" data-stu="${s.id}">
+      <div class="stu-top">
+        <span class="nm">${esc(s.name||'—')}</span>
+        <span class="src">${esc([s.city, s.ownerName].filter(Boolean).join(' · '))}</span>
+        ${inactive ? '<span class="stpill draft">inactive</span>' : ''}
+        ${s.phone ? `<a class="act stu-call" href="tel:${esc(s.phone)}" onclick="event.stopPropagation()">📞</a>` : ''}
+        <span class="chev2">›</span>
+      </div>
+      <div class="stu-chips">
+        <b class="c1">${open} open job${open===1?'':'s'}</b>
+        <b class="c2">${inr(due)} due</b>
+        <b class="c3">${inr(life)} lifetime</b>
+      </div>
+    </div>`;
+  }
+  function renderStudioList(){
+    const el = $('#studioList'); if(!el) return;
+    if(!STUDIOS.length){
+      el.innerHTML = _studiosLoaded
+        ? '<div class="empty2"><span class="ic">🏢</span>No partner studios yet — add the studios that hire Fantasy Studio.</div>'
+        : '<div class="skel"></div>';
+      return;
+    }
+    const act = STUDIOS.filter(s=>s.active !== false), inact = STUDIOS.filter(s=>s.active === false);
+    el.innerHTML = act.map(stuCardHTML).join('')
+      + (inact.length ? `<div class="grp">Inactive<b>${inact.length}</b></div>` + inact.map(stuCardHTML).join('') : '');
+  }
+  $('#studioList').addEventListener('click', e=>{
+    const card = e.target.closest('[data-stu]'); if(!card) return;
+    openStudioDetail(card.dataset.stu);
+  });
+  $('#stuAdd').addEventListener('click', ()=>openStu(null));
+
+  /* ---------- add / edit studio sheet ---------- */
+  function openStu(s){
+    _stuEditId = s ? s.id : null;
+    $('#stuTitle').textContent = s ? 'Edit Studio' : 'Add Partner Studio';
+    $('#stuName').value  = s ? (s.name||'') : '';
+    $('#stuOwner').value = s ? (s.ownerName||'') : '';
+    $('#stuCity').value  = s ? (s.city||'') : '';
+    $('#stuPhone').value = s ? (s.phone||'') : '';
+    $('#stuGst').value   = s ? (s.gst||'') : '';
+    $('#stuTerms').value = s ? (s.paymentTerms||'') : '';
+    $('#stuNotes').value = s ? (s.notes||'') : '';
+    const t = $('#stuToggle');
+    t.hidden = !s;
+    if(s){
+      const inact = s.active === false;
+      t.textContent = inact ? 'Reactivate studio' : 'Deactivate studio';
+      t.style.color = inact ? 'var(--ok)' : 'var(--err)';
+    }
+    $('#stuModal').classList.add('open'); $('#stuBackdrop').classList.add('open');
+    setTimeout(()=>$('#stuName').focus(), 80);
+    pushView('stusheet', '#b2b/studio-edit');
+  }
+  function closeStuUI(){ $('#stuModal').classList.remove('open'); $('#stuBackdrop').classList.remove('open'); _stuEditId = null; }
+  function closeStu(){
+    if(history.state && history.state.view === 'stusheet'){ history.back(); }
+    else closeStuUI();
+  }
+  $('#stuClose').addEventListener('click', closeStu);
+  $('#stuBackdrop').addEventListener('click', closeStu);
+  $('#stuSave').addEventListener('click', async ()=>{
+    const btn = $('#stuSave'); if(btn.disabled) return;
+    const name = $('#stuName').value.trim();
+    if(!name){ toast('Studio name is required'); $('#stuName').focus(); return; }
+    const data = { name, ownerName: $('#stuOwner').value.trim(), city: $('#stuCity').value.trim(),
+                   phone: $('#stuPhone').value.trim(), gst: $('#stuGst').value.trim(),
+                   paymentTerms: $('#stuTerms').value.trim(), notes: $('#stuNotes').value.trim(),
+                   updatedAt: serverTimestamp() };
+    btn.disabled = true;
+    try{
+      if(_stuEditId){
+        const old = studioById(_stuEditId);
+        const res = await settle(updateDoc(doc(db,'studios',_stuEditId), data));
+        const sm = settleMsg(res, 'Studio saved ✓');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        /* keep the denormalized name on this studio's jobs in step */
+        if(old && (old.name||'') !== name){
+          const mine = PKGS.filter(p=>isStudioJob(p) && p.studioId === _stuEditId);
+          await Promise.allSettled(mine.map(p=>settle(updateDoc(doc(db,'packages',p.id),
+            { studioName: name, clientName: name, updatedAt: serverTimestamp() }))));
+          mine.forEach(p=>{ p.studioName = name; p.clientName = name; });
+        }
+        Object.assign(old||{}, data, { updatedAt: null });
+      }else{
+        const ref = doc(collection(db,'studios'));
+        const res = await settle(setDoc(ref, { ...data, rateCard: {}, active: true, createdAt: serverTimestamp() }));
+        const sm = settleMsg(res, 'Studio added ✓');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        STUDIOS.push({ id: ref.id, ...data, rateCard: {}, active: true });
+        STUDIOS.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+      }
+      renderB2B(); renderPkgList();
+      closeStu();
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ btn.disabled = false; }
+  });
+  $('#stuToggle').addEventListener('click', async ()=>{
+    const s = studioById(_stuEditId); if(!s) return;
+    const deactivate = !(s.active === false);
+    if(deactivate && !confirm(`Deactivate ${s.name||'this studio'}? Existing jobs stay untouched — it just leaves the new-job picker.`)) return;
+    try{
+      const res = await settle(updateDoc(doc(db,'studios',s.id), { active: !deactivate, updatedAt: serverTimestamp() }));
+      const sm = settleMsg(res, deactivate ? 'Studio deactivated' : 'Studio reactivated');
+      toast(sm.msg);
+      if(!sm.ok) return;
+      s.active = !deactivate;
+      renderB2B();
+      closeStu();
+    }catch(err){ toast('Update failed'); }
+  });
+
+  /* ---------- studio detail: profile, rate card, ledger, jobs ---------- */
+  function openStudioDetail(id){
+    _stuDetailId = id;
+    renderStudioDetail();
+    $('#studioListView').hidden = true; $('#studioDetailView').hidden = false;
+    window.scrollTo(0,0);
+    pushView('studio', '#b2b/studio');
+  }
+  function closeStudioDetail(){
+    $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
+    _stuDetailId = null;
+  }
+  const stuRateRow = (name, rate) => `
+    <div class="row" data-srate>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="grid2">
+        <div class="fld"><label>Service</label><input data-k="name" value="${esc(name)}" /></div>
+        <div class="fld"><label>Rate (₹)</label><input data-k="rate" type="number" min="0" value="${Number(rate)||0}" /></div>
+      </div>
+    </div>`;
+  function renderStudioDetail(){
+    const el = $('#studioDetailView'); if(!el) return;
+    const s = studioById(_stuDetailId);
+    if(!s){ el.innerHTML = '<div class="empty">Studio not found — it may have been removed.</div>'; return; }
+    const jobs = studioJobs(s.id).sort((a,b)=>{
+      const da = a.quoteDate||'', db2 = b.quoteDate||'';
+      return da<db2?1:da>db2?-1:0;   /* newest first */
+    });
+    const conf = [...jobs].filter(x=>CONFIRMED_ST.includes(x.status||'draft')).reverse();  /* oldest first for the running balance */
+    let run = 0;
+    const led = conf.map(x=>{
+      const billed = (x.totals||{}).finalPrice||0;
+      const got = (x.payments||[]).reduce((n,p)=>n+(Number(p.amount)||0),0);
+      const out = Math.max(0, billed - got);
+      run += out;
+      return { x, billed, got, out, run };
+    });
+    const rates = s.rateCard || {};
+    el.innerHTML = `
+      <button class="mini" id="stuBack" style="margin:1rem 0 .6rem">← All studios</button>
+      <div class="sec">
+        <h3>🏢 ${esc(s.name||'—')} ${s.active === false ? '<span class="stpill draft">inactive</span>' : ''}</h3>
+        <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
+        ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
+        ${s.notes ? `<div class="ln2"><span>Notes</span><span>${esc(s.notes)}</span></div>` : ''}
+        <div class="ev-acts">
+          ${s.phone ? `<a class="mini stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
+          <a class="mini stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          <button class="mini" type="button" data-stuedit>Edit</button>
+          <button class="mini" type="button" data-stunewjob>＋ New job</button>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>💱 Rate card <span style="font-size:.7rem;color:var(--mut)">(negotiated — auto-fills new jobs for this studio; leave empty to quote at retail rates)</span></h3>
+        <div id="stuRateList">${Object.keys(rates).map(n=>stuRateRow(n, rates[n])).join('')}</div>
+        <button class="addrow" type="button" id="stuRateAdd">＋ Add service rate</button>
+        <button class="gbtn" type="button" id="stuRateSave" style="margin-top:.7rem">Save Rate Card</button>
+      </div>
+      <div class="sec">
+        <h3>📒 Ledger <span style="font-size:.7rem;color:var(--mut)">(booked &amp; delivered jobs)</span></h3>
+        ${led.length ? `
+          <div class="ledrow hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
+          ${led.map(r=>`
+          <div class="ledrow"><span class="l-ev">${esc(r.x.quoteNo||'—')} <span>· ${esc(((r.x.events||[])[0]||{}).title||'Job')}${r.x.endClientName ? ' · ' + esc(r.x.endClientName) : ''}</span></span><b>${inr(r.billed)}</b><b style="color:var(--ok)">${inr(r.got)}</b><b class="${r.out>0?'neg':''}">${inr(r.out)}</b></div>`).join('')}
+          <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>`
+        : '<div class="empty" style="padding:.5rem 0">No confirmed jobs yet — the ledger fills in as jobs are booked.</div>'}
+      </div>
+      <div class="sec">
+        <h3>📦 Job history <span style="font-size:.7rem;color:var(--mut)">(${jobs.length})</span></h3>
+        ${jobs.length ? jobs.map(x=>`
+          <div class="up-ev" data-stujob="${x.id}" role="button">
+            <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
+            <span class="what">${esc(x.quoteNo||'—')} <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span></span>
+            <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
+          </div>`).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
+      </div>`;
+  }
+  $('#studioDetailView').addEventListener('click', async e=>{
+    if(e.target.closest('#stuBack')){
+      if(history.state && history.state.view === 'studio'){ history.back(); }
+      else closeStudioDetail();
+      return;
+    }
+    if(e.target.closest('[data-stuedit]')){ const s = studioById(_stuDetailId); if(s) openStu(s); return; }
+    if(e.target.closest('[data-stunewjob]')){
+      const s = studioById(_stuDetailId); if(!s) return;
+      $('#tabPkgs').click();
+      openPkgEdit(null, { studio: s });
+      return;
+    }
+    if(e.target.closest('#stuRateAdd')){ $('#stuRateList').insertAdjacentHTML('beforeend', stuRateRow('', 0)); return; }
+    if(e.target.closest('#stuRateSave')){
+      const s = studioById(_stuDetailId); if(!s) return;
+      const rateCard = {};
+      $$('#stuRateList [data-srate]').forEach(r=>{
+        const n = r.querySelector('[data-k="name"]').value.trim();
+        if(n) rateCard[n] = Math.max(0, Number(r.querySelector('[data-k="rate"]').value)||0);
+      });
+      try{
+        const res = await settle(updateDoc(doc(db,'studios',s.id), { rateCard, updatedAt: serverTimestamp() }));
+        const sm = settleMsg(res, 'Rate card saved ✓');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        s.rateCard = rateCard;
+      }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+      return;
+    }
+    const j = e.target.closest('[data-stujob]');
+    if(j){
+      const x = PKGS.find(p=>p.id===j.dataset.stujob);
+      if(x){ $('#tabPkgs').click(); openPkgEdit(x); }
+    }
+  });
+
+  /* ---------- new booking chooser: direct client or studio job ---------- */
+  function renderJtMain(){
+    const acts = STUDIOS.filter(s=>s.active !== false);
+    $('#jtWho').textContent = 'Who is this job for?';
+    $('#jtOpts').innerHTML = `
+      <button type="button" data-jt-direct>💍 Direct client<em>wedding / event</em></button>
+      <button type="button" data-jt-studio ${acts.length ? '' : 'disabled style="opacity:.5"'}>🏢 Studio job<em>${acts.length ? 'B2B — partner studio' : 'add a studio in B2B first'}</em></button>`;
+  }
+  function openJobType(){
+    renderJtMain();
+    $('#jtModal').classList.add('open'); $('#jtBackdrop').classList.add('open');
+    pushView('jt', '#packages/new');
+  }
+  function closeJtUI(){ $('#jtModal').classList.remove('open'); $('#jtBackdrop').classList.remove('open'); }
+  function closeJt(){
+    if(history.state && history.state.view === 'jt'){ history.back(); }
+    else closeJtUI();
+  }
+  $('#jtOpts').addEventListener('click', e=>{
+    if(e.target.closest('[data-jt-direct]')){
+      closeJtUI();
+      if($('#pkgView').hidden) $('#tabPkgs').click();
+      openPkgEdit(null);
+      return;
+    }
+    if(e.target.closest('[data-jt-studio]')){
+      const acts = STUDIOS.filter(s=>s.active !== false);
+      if(!acts.length) return;
+      $('#jtWho').textContent = 'Which studio?';
+      $('#jtOpts').innerHTML = acts.map(s=>`<button type="button" data-jt-pick="${s.id}">🏢 ${esc(s.name||'—')}<em>${esc(s.city||'')}</em></button>`).join('')
+        + '<button type="button" data-jt-back style="justify-content:center;color:var(--mut)">← Back</button>';
+      return;
+    }
+    if(e.target.closest('[data-jt-back]')){ renderJtMain(); return; }
+    const pick = e.target.closest('[data-jt-pick]');
+    if(pick){
+      const s = studioById(pick.dataset.jtPick);
+      closeJtUI();
+      if(s){
+        if($('#pkgView').hidden) $('#tabPkgs').click();
+        openPkgEdit(null, { studio: s });
+      }
+    }
+  });
+  $('#jtClose').addEventListener('click', closeJt);
+  $('#jtBackdrop').addEventListener('click', closeJt);
 
   /* ---------- status picker sheet ---------- */
   let statusId = null;
@@ -3187,7 +3613,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#payBackdrop').addEventListener('click', closePay);
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
   $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); } });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt(); } });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
@@ -3280,7 +3706,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rows = [];
     livePkgs().forEach(x=>(x.payments||[]).forEach(pm=>{
       if(!pm) return;
-      rows.push({ amt: Number(pm.amount)||0, date: String(pm.date||''), mode: pm.mode||'' });
+      rows.push({ amt: Number(pm.amount)||0, date: String(pm.date||''), mode: pm.mode||'', b2b: isStudioJob(x) });
     }));
     return rows;
   }
@@ -3330,6 +3756,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button data-fy="1" type="button" aria-label="Next year">›</button>
       </div>
       <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inYr.length}</b> payment${inYr.length===1?'':'s'}</span></div>
+      ${(()=>{ const b = inYr.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
+               return b > 0 ? `<div class="finsplit"><span>💍 Direct <b>${inr(got - b)}</b></span><span>🏢 Studio <b>${inr(b)}</b></span></div>` : ''; })()}
       ${months.map((m,i)=>`
         <div class="finrow"><span class="mo">${MN[i]}</span><span class="fbar"><i style="width:${m.amt?Math.max(2,Math.round(m.amt/max*100)):0}%"></i></span><span class="amt3">${m.amt?inr(m.amt):'—'}</span><span class="n3">${m.n||''}</span></div>`).join('')}
       <div class="finh">Year-wise</div>
@@ -3406,9 +3834,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? `<div class="finh">Payments received</div>` + pk.payments.map(pm=>
           `<div class="ln2"><span>${esc(stepDate(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount)}</span></div>`).join('')
       : '';
+    const stuOfPk = isStudioJob(pk) ? studioById(pk.studioId) : null;
     $('#evBody').innerHTML = `
-      <h3 style="color:var(--gold-b)">${esc(pk.clientName||'—')} <span class="stpill ${st}">${STATUS_LABEL(st)}</span></h3>
+      <h3 style="color:var(--gold-b)">${esc(pk.clientName||'—')} <span class="stpill ${st}">${STATUS_LABEL(st)}</span>${isStudioJob(pk) ? ' <span class="b2bpill">🏢 B2B</span>' : ''}</h3>
       <div class="who">${human}${pk.quoteNo ? ' · ' + esc(pk.quoteNo) : ''}${pk.clientPhone ? ' · 📞 ' + esc(pk.clientPhone) : ''}</div>
+      ${isStudioJob(pk) ? `
+        ${pk.endClientName ? `<div class="ln2"><span>End client</span><span>${esc(pk.endClientName)}</span></div>` : ''}
+        ${pk.whiteLabel ? '<div class="ln2"><span>White-label</span><span>our name stays off the paperwork</span></div>' : ''}
+        ${stuOfPk && stuOfPk.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(stuOfPk.paymentTerms)}</span></div>` : ''}` : ''}
       <div class="fintiles">
         <div class="stat"><b>${inr(fin)}</b><span>package</span></div>
         <div class="stat"><b>${inr(paid)}</b><span>paid</span></div>
@@ -3488,7 +3921,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return head + `
       <div class="up-ev" data-goev="${i}" role="button">
         <span class="when">${d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
-        <span class="what">${esc(e.title)} <span>· ${esc(e.client)}${days===0 ? ' · today' : days===1 ? ' · tomorrow' : ''}</span></span>
+        <span class="what">${esc(e.title)} <span>· ${e.b2b ? '🏢 ' : ''}${esc(e.client)}${days===0 ? ' · today' : days===1 ? ' · tomorrow' : ''}</span></span>
         ${due > 0 ? `<span class="due">${inr(due)}</span>` : `<i class="dot ${e.status}"></i>`}
       </div>`;
     }).join('');
@@ -3533,7 +3966,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + '<button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>';
   }
   $('#qaOpts').addEventListener('click', e=>{
-    if(e.target.closest('[data-qa-new]')){ closeQaUI(); $('#tabPkgs').click(); openPkgEdit(null); return; }
+    if(e.target.closest('[data-qa-new]')){ closeQaUI(); openJobType(); return; }
     if(e.target.closest('[data-qa-pay]')){ renderQaPay(); return; }
     if(e.target.closest('[data-qa-back]')){ renderQaMain(); return; }
     const pick = e.target.closest('[data-qa-pick]');
@@ -3558,8 +3991,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       || String(x.clientPhone||'').includes(q) || String(x.quoteNo||'').toLowerCase().includes(q)).slice(0,6);
     const ld = liveLeads().filter(l=>String(l.name||'').toLowerCase().includes(q)
       || String(l.phone||'').includes(q)).slice(0,4);
+    const su = STUDIOS.filter(s=>String(s.name||'').toLowerCase().includes(q)
+      || String(s.ownerName||'').toLowerCase().includes(q) || String(s.phone||'').includes(q)).slice(0,3);
     box.hidden = false;
-    box.innerHTML = '<h3>🔍 Results</h3>' + ((pk.length || ld.length)
+    box.innerHTML = '<h3>🔍 Results</h3>' + ((pk.length || ld.length || su.length)
       ? pk.map(x=>`
           <div class="up-ev" data-hspkg="${x.id}" role="button">
             <span class="when">📦</span>
@@ -3571,6 +4006,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <span class="when">👤</span>
             <span class="what">${esc(l.name||'—')} <span>· lead${l.eventType ? ' · ' + esc(l.eventType) : ''}</span></span>
             <i class="dot lead"></i>
+          </div>`).join('')
+        + su.map(s=>`
+          <div class="up-ev" data-hsstu="${s.id}" role="button">
+            <span class="when">🏢</span>
+            <span class="what">${esc(s.name||'—')} <span>· studio${s.city ? ' · ' + esc(s.city) : ''}</span></span>
+            <span class="b2bpill">B2B</span>
           </div>`).join('')
       : '<div class="empty" style="padding:.6rem 0">No match. New enquiries land in the Leads tab.</div>');
   }
@@ -3589,7 +4030,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const ld = LEADS.find(v=>v.id===l.dataset.hslead);
       if(ld){ $('#leadSearch').value = ld.name || ld.phone || ''; leadFilterVal = ''; }
       $('#tabLeads').click(); renderLeads();
+      return;
     }
+    const st2 = e.target.closest('[data-hsstu]');
+    if(st2){ $('#tabCal').click(); openStudioDetail(st2.dataset.hsstu); }
   });
 
   /* ---------- Config quick-jump chips — that page is LONG ---------- */
@@ -3611,7 +4055,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   })();
 
   /* ---------- builder ---------- */
-  $('#pkgNew').addEventListener('click', ()=>openPkgEdit(null));
+  $('#pkgNew').addEventListener('click', ()=>openJobType());
   $('#pkgBack').addEventListener('click', ()=>{
     if(pkgDirty() && !confirm('Discard unsaved changes?')) return;
     /* close the editor BEFORE history.back() — the popstate handler re-checks
@@ -3697,12 +4141,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <button class="rm" data-rmaddon>✕</button>
     </div>`;
 
-  function openPkgEdit(x){
+  function openPkgEdit(x, opts){
     editingId = x ? x.id : null;
-    $('#pkgEditTitle').textContent = x ? `Edit — ${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||''}` : 'New Package';
-    $('#pcName').value = x ? (x.clientName||'') : '';
-    $('#pcCareOf').value = x ? (x.careOf||'') : '';
-    $('#pcPhone').value = x ? (x.clientPhone||'') : '';
+    /* studio job? — either explicitly started for a studio, or editing one */
+    const stu = (opts && opts.studio) ? opts.studio
+      : (x && isStudioJob(x)) ? (studioById(x.studioId) || { id: x.studioId, name: x.studioName || x.clientName || 'Studio', rateCard: {} })
+      : null;
+    _bStudioId = stu ? stu.id : null;
+    $('#stuJobSec').hidden = !stu;
+    $$('#pkgEditView [data-direct-only]').forEach(f=>f.hidden = !!stu);
+    const _hint = $('#pkgEditView .hint'); if(_hint) _hint.hidden = !!stu;   /* retail-rates hint is wrong for B2B jobs */
+    if(stu){
+      $('#stuJobName').textContent = stu.name || '';
+      $('#stuJobTerms').textContent = (stu.paymentTerms ? 'Terms: ' + stu.paymentTerms + ' · ' : '')
+        + (stu.rateCard && Object.keys(stu.rateCard).length
+            ? 'Services quote at this studio\'s negotiated rates.'
+            : 'No rate card saved yet — rates fall back to your normal ones (set the card in B2B → studio → Rate card).');
+      $('#pcEndClient').value = x ? (x.endClientName||'') : '';
+      $('#pcWhiteLabel').checked = x ? !!x.whiteLabel : false;
+    }else{
+      $('#pcEndClient').value = ''; $('#pcWhiteLabel').checked = false;
+    }
+    $('#pkgEditTitle').textContent = x
+      ? `Edit — ${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||''}`
+      : (stu ? `New Studio Job — ${stu.name||''}` : 'New Package');
+    $('#pcName').value = stu ? (stu.name||'') : (x ? (x.clientName||'') : '');
+    $('#pcCareOf').value = (!stu && x) ? (x.careOf||'') : '';
+    $('#pcPhone').value = (!stu && x) ? (x.clientPhone||'') : '';
     $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
     $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[]}]).map(evCardHTML).join('');
     refreshAllSvcChips();
@@ -3760,17 +4225,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? _editing.payments.reduce((n,p)=>n + (Number(p.amount)||0), 0) : 0;
     const _typed = Math.max(0, Number($('#ppAdvance').value)||0);
     const advance = Math.max(_paid, Math.min(finalPrice, _typed));
+    /* studio jobs: the studio IS the client on paper; no phone is stored so
+       the job can never surface in the client portal (see firestore.rules) */
+    const _stu = _bStudioId ? studioById(_bStudioId) : null;
+    const typed = _stu
+      ? { clientType: 'studio', studioId: _bStudioId,
+          studioName: (_stu && _stu.name) || $('#pcName').value.trim() || 'Studio',
+          whiteLabel: !!$('#pcWhiteLabel').checked,
+          endClientName: $('#pcEndClient').value.trim() }
+      : { clientType: 'direct' };
     return {
-      clientName: $('#pcName').value.trim(),
-      careOf: $('#pcCareOf').value.trim(),
-      clientPhone: normPhone($('#pcPhone').value),
-      clientPhoneFull: normPhoneFull($('#pcPhone').value),
+      clientName: _stu ? typed.studioName : $('#pcName').value.trim(),
+      careOf: _stu ? '' : $('#pcCareOf').value.trim(),
+      clientPhone: _stu ? '' : normPhone($('#pcPhone').value),
+      clientPhoneFull: _stu ? '' : normPhoneFull($('#pcPhone').value),
       quoteDate: $('#pcDate').value || todayISO(),
       events,
       album,
       addons: $$('#pkgAddons [data-addon] [data-f="addon"]').map(i=>i.value.trim()).filter(Boolean),
       pdfTerms: $$('#pkgTerms [data-pterm]').filter(c=>c.checked).map(c=>c.closest('.termrow').querySelector('span').textContent),
-      totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance }
+      totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance },
+      ...typed
     };
   }
 
@@ -3919,8 +4394,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const _st = (PKGS.find(pk=>pk.id===editingId)||{}).status || 'draft';
       if(d.clientPhone && _st !== 'draft') ensurePhoneIndex(d.clientPhone);
       _pkgBaseline = JSON.stringify(readForm());
-      /* learn the rates used, so the next quote prefills them automatically */
-      try{
+      /* learn the rates used, so the next quote prefills them automatically —
+         NOT from studio jobs: negotiated B2B rates must never leak into the
+         retail rates offered to direct wedding clients */
+      if((d.clientType||'direct') !== 'studio') try{
         const learned = Object.assign({}, (CFG && CFG.learnedRates) || {});
         d.events.forEach(ev=>ev.items.forEach(it=>{ if(it.service && it.rate > 0) learned[it.service] = it.rate; }));
         if(d.album && d.album.perSheet > 0) learned['__albumPerSheet'] = d.album.perSheet;

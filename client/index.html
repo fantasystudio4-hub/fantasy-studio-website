@@ -595,7 +595,9 @@ async function loadPackages(user){
      alarming and occasionally wrong. Clients see a package once it has actually
      been sent to them. */
   const pkgs = snap.docs.map(d=>({ id:d.id, ...d.data() }))
-    .filter(x=>!x.deleted && (x.status||'draft') !== 'draft');
+    /* B2B studio jobs are admin-only — belt-and-braces on top of the rules,
+       which already refuse them, and of studio jobs carrying no clientPhone */
+    .filter(x=>!x.deleted && (x.status||'draft') !== 'draft' && (x.clientType||'direct') !== 'studio');
   if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
