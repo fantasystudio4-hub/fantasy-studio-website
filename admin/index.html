@@ -700,7 +700,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       </div>
       <div id="pkgEvents"></div>
       <button class="addrow" id="pkgAddEvent" style="margin-bottom:.9rem">＋ Add Event</button>
-      <div class="sec">
+      <div class="sec" data-retail-only>
         <h3><span class="stepnum">3</span>Album</h3>
         <p class="sub">Sheets × price per sheet — the album total is added straight into the gross.</p>
         <div class="grid2">
@@ -724,7 +724,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <div class="prow"><label>Advance received (₹)</label><input id="ppAdvance" type="number" min="0" value="0" /></div>
         <div class="prow"><span>Balance</span><b id="ppBalance">₹0</b></div>
       </div>
-      <div class="sec">
+      <div class="sec" data-retail-only>
         <h3><span class="stepnum">6</span>Terms on this PDF</h3>
         <p class="sub">Untick anything you don't want printed on this quotation. Edit the master list in Site Config. When an advance is recorded, the payment term automatically becomes the exact ₹ split.</p>
         <div id="pkgTerms"></div>
@@ -4150,6 +4150,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _bStudioId = stu ? stu.id : null;
     $('#stuJobSec').hidden = !stu;
     $$('#pkgEditView [data-direct-only]').forEach(f=>f.hidden = !!stu);
+    /* B2B jobs have no retail album or quotation terms — hide steps 3 & 6 */
+    $$('#pkgEditView [data-retail-only]').forEach(f=>f.hidden = !!stu);
     const _hint = $('#pkgEditView .hint'); if(_hint) _hint.hidden = !!stu;   /* retail-rates hint is wrong for B2B jobs */
     if(stu){
       $('#stuJobName').textContent = stu.name || '';
@@ -4209,8 +4211,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  rate: Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0) };
       }).filter(it=>it.service)
     })).filter(ev=>ev.title || ev.items.length);
-    const _sheets = Math.max(0, Number($('#paSheets').value)||0);
-    const _perSheet = Math.max(0, Number($('#paPerSheet').value)||0);
+    /* B2B studio jobs carry no retail album — whatever is left in the hidden
+       fields must not leak into the gross */
+    const _sheets = _bStudioId ? 0 : Math.max(0, Number($('#paSheets').value)||0);
+    const _perSheet = _bStudioId ? 0 : Math.max(0, Number($('#paPerSheet').value)||0);
     const album = { sheets: _sheets, perSheet: _perSheet, price: _sheets * _perSheet };
     const gross = events.reduce((s,ev)=>s + ev.items.reduce((a,it)=>a + it.qty*it.rate, 0), 0) + album.price;
     const discount = Math.min(gross, Math.max(0, Number($('#ppDiscount').value)||0));
@@ -4226,24 +4230,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const _typed = Math.max(0, Number($('#ppAdvance').value)||0);
     const advance = Math.max(_paid, Math.min(finalPrice, _typed));
     /* studio jobs: the studio IS the client on paper; no phone is stored so
-       the job can never surface in the client portal (see firestore.rules) */
-    const _stu = _bStudioId ? studioById(_bStudioId) : null;
-    const typed = _stu
+       the job can never surface in the client portal (see firestore.rules).
+       Keyed on _bStudioId, not the studio doc — a studio deleted later must
+       not silently flip its jobs back to 'direct' on the next edit. */
+    const typed = _bStudioId
       ? { clientType: 'studio', studioId: _bStudioId,
-          studioName: (_stu && _stu.name) || $('#pcName').value.trim() || 'Studio',
+          studioName: (studioById(_bStudioId)||{}).name || $('#pcName').value.trim() || 'Studio',
           whiteLabel: !!$('#pcWhiteLabel').checked,
           endClientName: $('#pcEndClient').value.trim() }
       : { clientType: 'direct' };
+    const _b2b = !!_bStudioId;
     return {
-      clientName: _stu ? typed.studioName : $('#pcName').value.trim(),
-      careOf: _stu ? '' : $('#pcCareOf').value.trim(),
-      clientPhone: _stu ? '' : normPhone($('#pcPhone').value),
-      clientPhoneFull: _stu ? '' : normPhoneFull($('#pcPhone').value),
+      clientName: _b2b ? typed.studioName : $('#pcName').value.trim(),
+      careOf: _b2b ? '' : $('#pcCareOf').value.trim(),
+      clientPhone: _b2b ? '' : normPhone($('#pcPhone').value),
+      clientPhoneFull: _b2b ? '' : normPhoneFull($('#pcPhone').value),
       quoteDate: $('#pcDate').value || todayISO(),
       events,
       album,
       addons: $$('#pkgAddons [data-addon] [data-f="addon"]').map(i=>i.value.trim()).filter(Boolean),
-      pdfTerms: $$('#pkgTerms [data-pterm]').filter(c=>c.checked).map(c=>c.closest('.termrow').querySelector('span').textContent),
+      /* no quotation terms on B2B jobs — the studio's own payment terms apply */
+      pdfTerms: _b2b ? [] : $$('#pkgTerms [data-pterm]').filter(c=>c.checked).map(c=>c.closest('.termrow').querySelector('span').textContent),
       totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance },
       ...typed
     };
