@@ -454,12 +454,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:rgba(226,194,117,.35);margin:-.4rem auto .85rem}
 }
 
-/* ==== money tiles: "left to collect" + "booked value" share one line ==== */
-#pkgStats{grid-template-columns:repeat(2,1fr)}
-@media(min-width:700px){ #pkgStats{grid-template-columns:repeat(4,1fr)} }
+/* ==== Home stats: all four tiles on ONE line ==== */
+#pkgStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
+#pkgStats .stat{padding:.55rem .2rem}
+#pkgStats .stat b{font-size:clamp(.72rem,3.3vw,1.2rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pkgStats .stat span{font-size:.5rem;letter-spacing:.05em}
+@media(min-width:700px){ #pkgStats .stat span{font-size:.62rem} }
 .stat.money{position:relative;background:linear-gradient(135deg,rgba(201,163,71,.2),rgba(142,110,30,.15));cursor:pointer}
-.stat.money b{font-size:1.3rem}
-.stat.money::after{content:"📊";position:absolute;top:5px;right:7px;font-size:.6rem;opacity:.75}
+.stat.money::after{content:"📊";position:absolute;top:3px;right:5px;font-size:.52rem;opacity:.75}
 
 /* ==== next-shoot card (Home) ==== */
 .upco h3{display:flex;align-items:baseline;gap:.5rem}
@@ -632,6 +634,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
     <div class="sec upco" id="homeResults" hidden></div>
     <div class="stats" id="pkgStats"></div>
+    <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec">
       <div class="cal-nav">
         <button id="calPrev" aria-label="Previous month">‹</button>
@@ -651,7 +654,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       </div>
     </div>
     <div id="calDetail"></div>
-    <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
     <div class="sec">
       <h3>📸 Booked &amp; recent deliveries</h3>
