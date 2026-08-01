@@ -585,7 +585,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 <div class="wrap" id="appView" hidden>
   <div class="tabs">
     <button id="tabHome" class="on"><i>🏠</i><span>Home</span></button>
-    <button id="tabCal"><i>📅</i><span>Calendar</span></button>
+    <button id="tabCal"><i>🤝</i><span>B2B</span></button>
     <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
@@ -608,6 +608,25 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
     <div class="sec upco" id="homeResults" hidden></div>
     <div class="stats" id="pkgStats"></div>
+    <div class="sec">
+      <div class="cal-nav">
+        <button id="calPrev" aria-label="Previous month">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button id="calNext" aria-label="Next month">›</button>
+        <button id="calToday">Today</button>
+      </div>
+      <div class="cal-jump" id="calJump" hidden></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span><i class="dot booked"></i>Booked</span>
+        <span><i class="dot sent"></i>Sent</span>
+        <span><i class="dot unconfirmed"></i>Not confirmed</span>
+        <span><i class="dot draft"></i>Draft</span>
+        <span><i class="dot delivered"></i>Delivered</span>
+        <span><i class="dot lead"></i>Booked lead</span>
+      </div>
+    </div>
+    <div id="calDetail"></div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
     <div class="sec">
@@ -684,26 +703,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
   </div>
 
+  <!-- the calendar now lives on Home; this tab is reserved for B2B work -->
   <div id="calView" hidden>
-    <div class="sec">
-      <div class="cal-nav">
-        <button id="calPrev" aria-label="Previous month">‹</button>
-        <div class="cal-title" id="calTitle"></div>
-        <button id="calNext" aria-label="Next month">›</button>
-        <button id="calToday">Today</button>
-      </div>
-      <div class="cal-jump" id="calJump" hidden></div>
-      <div class="cal-grid" id="calGrid"></div>
-      <div class="cal-legend">
-        <span><i class="dot booked"></i>Booked</span>
-        <span><i class="dot sent"></i>Sent</span>
-        <span><i class="dot unconfirmed"></i>Not confirmed</span>
-        <span><i class="dot draft"></i>Draft</span>
-        <span><i class="dot delivered"></i>Delivered</span>
-        <span><i class="dot lead"></i>Booked lead</span>
-      </div>
+    <div class="empty2" style="padding-top:4rem">
+      <span class="ic">🤝</span>
+      <b style="color:var(--gold-b);font-family:var(--serif);font-size:1.15rem;display:block;margin-bottom:.4rem">B2B</b>
+      Studio-to-studio work lives here soon —<br />outsourced shoots, partner studios and their payments.
     </div>
-    <div id="calDetail"><div class="empty">Tap a date to see its events.</div></div>
   </div>
 
   <div id="teamView" hidden>
@@ -1146,8 +1152,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- tabs ---------- */
   const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView' };
-  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'calendar', tabTeam:'team', tabConfig:'config' };
-  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', calendar:'tabCal', team:'tabTeam', config:'tabConfig' };
+  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'b2b', tabTeam:'team', tabConfig:'config' };
+  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', config:'tabConfig' };
   let _navFromPop = false;
   /* Sheet/modal history states. Pushing a new state while one of these is
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
@@ -1169,9 +1175,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
     const fab = $('#fabBtn'); if(fab) fab.hidden = (id !== 'tabHome');   /* quick actions live on Home */
-    if(id === 'tabCal') renderCalendar();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
-    if(id === 'tabHome' && typeof renderHome === 'function') renderHome();
+    if(id === 'tabHome'){
+      if(typeof renderHome === 'function') renderHome();
+      if(typeof renderCalendar === 'function') renderCalendar();   /* the calendar lives on Home now */
+    }
     if(_curTab !== id){
       _curTab = id;
       requestAnimationFrame(()=>window.scrollTo(0, _tabScroll[id] || 0));
@@ -2316,6 +2324,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#calPrev').addEventListener('click', ()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
   $('#calNext').addEventListener('click', ()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
   $('#calToday').addEventListener('click', ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=n.toLocaleDateString('en-CA'); renderCalendar(); });
+  /* jump to the calendar on Home, focused on a date */
+  function gotoCalendar(dateISO){
+    if(/^\d{4}-\d{2}-\d{2}$/.test(dateISO||'')){
+      calSel = dateISO;
+      const d = new Date(dateISO+'T00:00'); calY = d.getFullYear(); calM = d.getMonth();
+    }
+    $('#tabHome').click();
+    renderCalendar();
+    const g = $('#calGrid');
+    if(g) setTimeout(()=>g.closest('.sec').scrollIntoView({ behavior:'smooth', block:'start' }), 140);
+  }
   $('#calGrid').addEventListener('click', e=>{
     const c = e.target.closest('.cal-cell[data-date]'); if(!c) return;
     calSel = c.dataset.date; renderCalendar();
@@ -2403,7 +2422,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           warnIfCapped('assignments', snap.size, ASGS_CAP);
           _asgsLoaded = true;
           renderTeam();
-          if(!$('#calView').hidden) renderCalDetail();
+          if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
         }, err=>{
           try{ if(_asgsUnsub) _asgsUnsub(); }catch(e){} _asgsUnsub = null;
           $('#teamEvents').innerHTML = `<div class="empty">Could not load assignments (${esc(err.code||err.message)})</div>`;
@@ -3432,9 +3451,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-evcal]')){
       closeEvUI();
-      calSel = ev.date;
-      const d = new Date(ev.date+'T00:00'); calY = d.getFullYear(); calM = d.getMonth();
-      $('#tabCal').click();
+      gotoCalendar(ev.date);
     }
   });
   $('#evClose').addEventListener('click', closeEv);
@@ -3523,8 +3540,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(pick){ const x = PKGS.find(p=>p.id===pick.dataset.qaPick); closeQaUI(); if(x) openPay(x); return; }
     if(e.target.closest('[data-qa-today]')){
       closeQaUI();
-      const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); calSel = n.toLocaleDateString('en-CA');
-      $('#tabCal').click();
+      gotoCalendar(new Date().toLocaleDateString('en-CA'));
       return;
     }
     if(e.target.closest('[data-qa-member]')){ closeQaUI(); $('#tabTeam').click(); openTm(null); return; }
