@@ -2373,8 +2373,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     });
     liveLeads().forEach(l=>{
-      if(l.status === 'booked' && /^\d{4}-\d{2}-\d{2}$/.test(l.weddingDate||''))
+      if(l.status !== 'booked') return;
+      /* a booked lead's quote can hold several dated events (e.g. 1, 3 & 5 Aug) —
+         show them ALL, not just the single weddingDate */
+      const qevs = (l.quote && Array.isArray(l.quote.events) ? l.quote.events : [])
+        .filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''));
+      if(qevs.length){
+        qevs.forEach(ev=>evs.push({ date: ev.date, title: ev.type||'Event', client: l.name||'', status:'lead', kind:'lead', id: l.id, venue:'' }));
+      }else if(/^\d{4}-\d{2}-\d{2}$/.test(l.weddingDate||'')){
         evs.push({ date: l.weddingDate, title: l.eventType||'Wedding', client: l.name||'', status:'lead', kind:'lead', id: l.id, venue:'' });
+      }
     });
     return evs;
   }
@@ -4266,7 +4274,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         return { service: name, qty: Math.max(1, Number(r.querySelector('[data-f="qty"]').value)||1),
                  rate: Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0) };
       }).filter(it=>it.service)
-    })).filter(ev=>ev.title || ev.items.length);
+    /* keep an event that has ANY of title / services / date — date-only
+       events used to be dropped silently on save, so a 3-day function
+       entered as bare dates lost days 2 and 3 and the calendar showed
+       only the first one */
+    })).filter(ev=>ev.title || ev.items.length || /^\d{4}-\d{2}-\d{2}$/.test(ev.date||''));
     /* B2B studio jobs carry no retail album — whatever is left in the hidden
        fields must not leak into the gross */
     const _sheets = _bStudioId ? 0 : Math.max(0, Number($('#paSheets').value)||0);
