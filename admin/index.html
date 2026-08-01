@@ -731,6 +731,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <p class="sub">Untick anything you don't want printed on this quotation. Edit the master list in Site Config. When an advance is recorded, the payment term automatically becomes the exact ₹ split.</p>
         <div id="pkgTerms"></div>
       </div>
+      <div class="sec">
+        <h3>Save as</h3>
+        <p class="sub"><b style="color:var(--gold-b)">Draft</b> stays private · <b style="color:#7fb2e5">Sent</b> means the quote went out · <b style="color:var(--ok)">Booked</b> is confirmed — it goes straight to the calendar &amp; crew views.</p>
+        <div class="mode-pills" id="bStatusPills"></div>
+      </div>
       <div class="pkg-actions">
         <button class="gbtn" id="pkgSave">Save</button>
         <button class="mini" id="pkgPdf">Download PDF</button>
@@ -4197,6 +4202,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pkgTerms').innerHTML = pdfTerms().map(tm=>
       `<label class="termrow"><input type="checkbox" data-pterm ${!chosenTerms || chosenTerms.includes(tm) ? 'checked' : ''} /><span>${esc(tm)}</span></label>`
     ).join('');
+    /* save-as status pills: draft / sent / booked (plus the current status
+       when editing a delivered / not-confirmed package, so a plain re-save
+       never changes it by accident) */
+    _bStatus = x ? (x.status||'draft') : 'draft';
+    const _stBase = ['draft','sent','booked'];
+    const _stOpts2 = _stBase.includes(_bStatus) ? _stBase : [..._stBase, _bStatus];
+    $('#bStatusPills').innerHTML = _stOpts2.map(s=>
+      `<button type="button" data-bst="${s}" class="${_bStatus===s?'on':''}"><i class="dot ${s}" style="margin-right:.3em"></i>${STATUS_LABEL(s)}</button>`).join('');
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
     window.scrollTo(0,0);
@@ -4205,6 +4218,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   let _pkgBaseline = '';
   let _advanceAtOpen = 0;
+  let _bStatus = 'draft';
+  $('#bStatusPills').addEventListener('click', e=>{
+    const b = e.target.closest('[data-bst]'); if(!b) return;
+    _bStatus = b.dataset.bst;
+    $$('#bStatusPills button').forEach(p=>p.classList.toggle('on', p === b));
+  });
   function pkgDirty(){
     try{ return !$('#pkgEditView').hidden && JSON.stringify(readForm()) !== _pkgBaseline; }
     catch(e){ return false; }
@@ -4386,9 +4405,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const btn = $('#pkgSave'); if(btn.disabled) return;
     btn.disabled = true;
     try{
+      const existing = editingId ? PKGS.find(pk=>pk.id===editingId) : null;
+      const prevStatus = existing ? (existing.status||'draft') : 'draft';
+      const newStatus = _bStatus || 'draft';
+      /* saving straight to booked runs the same heavy-day check as the status sheet */
+      if(newStatus === 'booked' && prevStatus !== 'booked'){
+        const busy = d.events
+          .filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
+          .map(ev=>({ date: ev.date, n: dateConflicts(ev.date, editingId, d.clientName).length }))
+          .filter(r=>r.n >= DATE_EVENT_CAP);
+        if(busy.length && !confirm(`⚠ Heavy day: ${stepDate(busy[0].date)} already has ${busy[0].n} events booked${busy.length>1 ? ' (+' + (busy.length-1) + ' more full dates)' : ''}. Book anyway?`)) return;
+      }
       let res;
       if(editingId){
-        const existing = PKGS.find(pk=>pk.id===editingId);
         /* payments may have landed while the editor was open — if the advance field
            wasn't hand-edited, carry the live figure instead of the stale prefill */
         const liveAdv = existing ? Number((existing.totals||{}).advance)||0 : 0;
@@ -4397,21 +4426,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           d.totals.balance = d.totals.finalPrice - d.totals.advance;
         }
         const patch = { ...d, updatedAt: serverTimestamp() };
+        if(prevStatus !== newStatus){
+          patch.status = newStatus;
+          if(newStatus === 'sent') patch.sentAt = todayISO();
+          if(existing && existing.deliveredAt && newStatus !== 'delivered') patch.deliveredAt = deleteField();
+        }
         if(existing && !existing.quoteNo) patch.quoteNo = await allocQuoteNo();
         res = await settle(updateDoc(doc(db,'packages',editingId), patch));
+        if(res !== 'denied' && existing && prevStatus !== newStatus){
+          existing.status = newStatus;
+          if(newStatus === 'sent') existing.sentAt = todayISO();
+          if(newStatus !== 'delivered') delete existing.deliveredAt;
+        }
       }else{
         const quoteNo = await allocQuoteNo();
         const ref = doc(collection(db,'packages'));
-        res = await settle(setDoc(ref, { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+        res = await settle(setDoc(ref, { ...d, quoteNo, status: newStatus,
+          ...(newStatus === 'sent' ? { sentAt: todayISO() } : {}),
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
         editingId = ref.id;
       }
       toast(res === 'denied' ? 'NOT saved — the server refused the write. Your changes are still on screen; try again.'
-        : res === 'queued' ? 'Saved offline — will sync' : 'Package saved');
+        : res === 'queued' ? `Saved offline as ${STATUS_LABEL(newStatus)} — will sync`
+        : `Package saved — ${STATUS_LABEL(newStatus)}`);
       /* only non-drafts feed the portal's "is this a client?" pre-check —
          indexing a draft made strangers pass the check, burn a real OTP and
          then hit "No bookings found" (the portal hides drafts) */
-      const _st = (PKGS.find(pk=>pk.id===editingId)||{}).status || 'draft';
-      if(d.clientPhone && _st !== 'draft') ensurePhoneIndex(d.clientPhone);
+      if(res !== 'denied' && d.clientPhone && newStatus !== 'draft') ensurePhoneIndex(d.clientPhone);
       _pkgBaseline = JSON.stringify(readForm());
       /* learn the rates used, so the next quote prefills them automatically —
          NOT from studio jobs: negotiated B2B rates must never leak into the
