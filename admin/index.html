@@ -1849,6 +1849,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
     return ds.find(d=>d>=today) || ds[ds.length-1] || '';
   }
+  /* a date only counts as "heavy" once it already holds this many confirmed
+     events — the studio runs several crews, so a shared date is normal and
+     the warning fires only when a 6th job would land on the same day */
+  const DATE_EVENT_CAP = 5;
   function dateConflicts(dateISO, excludeId, excludeClient){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(dateISO||'')) return [];
     const xc = String(excludeClient||'').trim().toLowerCase();
@@ -3550,8 +3554,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const next = b.dataset.st;
     if((x.status||'draft') === next){ closeStatus(); return; }
     if(next === 'booked'){
-      const clashes = (x.events||[]).flatMap(ev=>dateConflicts(ev.date, x.id, x.clientName));
-      if(clashes.length && !confirm(`⚠ Date clash: ${stepDate(clashes[0].date)} already has ${clashes[0].title} (${clashes[0].client})${clashes.length>1 ? ' +' + (clashes.length-1) + ' more' : ''}. Book anyway?`)) return;
+      /* warn per DATE, and only once a date already carries a full day
+         (DATE_EVENT_CAP events) — parallel crews make shared dates normal */
+      const busy = (x.events||[])
+        .filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
+        .map(ev=>({ date: ev.date, n: dateConflicts(ev.date, x.id, x.clientName).length }))
+        .filter(r=>r.n >= DATE_EVENT_CAP);
+      if(busy.length && !confirm(`⚠ Heavy day: ${stepDate(busy[0].date)} already has ${busy[0].n} events booked${busy.length>1 ? ' (+' + (busy.length-1) + ' more full dates)' : ''}. Booking this adds another on top. Book anyway?`)) return;
     }
     const patch = { status: next, updatedAt: serverTimestamp() };
     if(next === 'delivered') patch.deliveredAt = todayISO();
@@ -4287,9 +4296,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const warn = card && card.querySelector('[data-dwarn]');
       if(warn){
         const clashes = dateConflicts(e.target.value, editingId, $('#pcName').value);
-        warn.hidden = !clashes.length;
-        if(clashes.length) warn.textContent =
-          `⚠ ${stepDate(e.target.value)} is already booked: ${clashes[0].title} — ${clashes[0].client}${clashes.length>1 ? ' (+' + (clashes.length-1) + ' more)' : ''}`;
+        /* several crews run in parallel — only warn once the date is FULL */
+        warn.hidden = clashes.length < DATE_EVENT_CAP;
+        if(clashes.length >= DATE_EVENT_CAP) warn.textContent =
+          `⚠ ${stepDate(e.target.value)} already has ${clashes.length} events booked (${clashes[0].title} — ${clashes[0].client}${clashes.length>1 ? ', +' + (clashes.length-1) + ' more' : ''}). One more may stretch your crews.`;
       }
     }
     if(e.target.matches('[data-f="service"]')){
