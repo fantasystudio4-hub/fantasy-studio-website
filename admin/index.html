@@ -264,6 +264,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .qe-acts .gbtn{flex:1;width:auto;padding:.85em 1.2em}
 .qe-acts .mini{margin-top:0;flex:0 0 auto}
 .qe-note{font-size:.74rem;color:var(--mut);margin-top:.8rem}
+/* the service picker on the quick sheet. NOT a .fld: that would drag the
+   full-width .fld input styling onto the qty / rate boxes inside .itemrow */
+#qeSvc{margin-bottom:.8rem;text-align:left}
+#qeSvc > label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.qe-tot{text-align:right;font-family:var(--serif);font-weight:700;color:var(--gold-b);margin:.45rem 0 .1rem;min-height:1em}
 .qe-warn{color:var(--gold-b);font-size:.78rem;background:rgba(184,144,43,.1);border:1px dashed var(--line);border-radius:8px;padding:.6rem .7rem;margin-bottom:.8rem}
 
 /* balance-due pill on upcoming shoots */
@@ -989,6 +994,16 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="fld"><label>Event</label><input id="qeTitle" placeholder="e.g. NIKAH" /></div>
       <div class="evchips" id="qeChips"></div>
       <div class="fld"><label>Venue (optional)</label><input id="qeVenue" placeholder="e.g. Taj Banquet Hall" /></div>
+      <!-- same rows, chips and rate card as the quotation builder. A B2B event
+           prices at the partner studio's negotiated card, a client event at
+           retail. Leave it empty and the event saves exactly as before. -->
+      <div id="qeSvc">
+        <label>Services (optional)</label>
+        <div class="items" id="qeItems"></div>
+        <div class="svcchips" data-svcchips></div>
+        <button class="addrow" type="button" id="qeAddItem">＋ Add custom service</button>
+        <div class="qe-tot" id="qeTot"></div>
+      </div>
       <div class="fld" id="qeStWrap"><label>Save as</label>
         <div class="mode-pills" id="qeStatus">
           <button type="button" data-qest="draft">Draft</button>
@@ -1000,7 +1015,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <button type="button" class="gbtn" id="qeSave">Save event</button>
         <button type="button" class="mini" id="qeCancel">Cancel</button>
       </div>
-      <p class="qe-note">No rates needed here — this only puts the date on the calendar. Add services, the album and the PDF any time from <b>Packages</b>.</p>
+      <p class="qe-note">Services are optional here — add them now, or any time from <b>Packages</b> along with the album, the discount and the PDF.</p>
     </div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
@@ -2290,9 +2305,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* the lead this package is being built from (or was built from) — written
      onto the package as leadId so the enquiry and its quotation stay one job */
   let _bLeadId = null;
+  /* The quotation builder quotes at ITS studio's rates (_bStudioId). The quick
+     "＋ Add an event" sheet quotes at whichever studio is picked in the sheet —
+     and it can be open while _bStudioId still holds the last package edited —
+     so it names the rate card it wants for the length of one render rather
+     than trusting the builder's. undefined = follow the builder. */
+  let _rateStudio;
+  function withRates(stuId, fn){
+    const prev = _rateStudio; _rateStudio = stuId;
+    try{ return fn(); } finally{ _rateStudio = prev; }
+  }
   /* the builder learns: every rate you actually use overrides the preset next time */
   const allRates = () => {
-    const stu = _bStudioId ? studioById(_bStudioId) : null;
+    const _sid = _rateStudio === undefined ? _bStudioId : _rateStudio;
+    const stu = _sid ? studioById(_sid) : null;
     if(stu && stu.rateCard && Object.keys(stu.rateCard).length){
       const m = Object.assign({}, stu.rateCard);
       delete m['__albumPerSheet'];
@@ -3281,6 +3307,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qeDate').value = (_qeAnchor === 'home' ? calSel : (calSel || todayISO()));
     $('#qeChips').innerHTML = EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-qename="${esc(n)}">${esc(n)}</button>`).join('');
     renderQeFields();
+    qeResetSvc();   /* never carry the last event's services into the next one */
     node.hidden = false;
     syncFabs();   /* the floating buttons would sit on top of the Save row */
     setTimeout(()=>{ if(!node.hidden) node.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
@@ -3292,6 +3319,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#qeMode').addEventListener('click', e=>{
     const b = e.target.closest('[data-qem]'); if(!b || b.dataset.qem === _qeMode) return;
     _qeMode = b.dataset.qem; renderQeFields();
+    qeRefreshSvc();   /* B2B ↔ client is a different rate card; typed rows stay */
   });
   $('#qeStatus').addEventListener('click', e=>{
     const b = e.target.closest('[data-qest]'); if(!b) return;
@@ -3301,13 +3329,79 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('[data-qename]'); if(!b) return;
     $('#qeTitle').value = b.dataset.qename;
   });
+  /* ---- services on the quick sheet ----
+     The same rows, chips and rate card the quotation builder uses, so an event
+     can be priced the moment it is booked instead of staying a bare date until
+     someone opens Packages. Which card applies depends on who the job is for. */
+  const qeStudioId = () => {
+    if(_qeMode === 'studio'){ const s = $('#qeStudio'); return (s && s.value) || _qeStudio || null; }
+    if(_qeMode === 'existing'){
+      const s = $('#qePkg'); const pk = s ? PKGS.find(x=>x.id === s.value) : null;
+      return (pk && isStudioJob(pk)) ? (pk.studioId || null) : null;
+    }
+    return null;   /* a direct client is always quoted at retail rates */
+  };
+  const qeItems = () => readCardItems($('#qeSvc'));
+  const itemsGross = items => items.reduce((s,it)=>s + (Number(it.qty)||1)*(Number(it.rate)||0), 0);
+  function qeCompute(){
+    $$('#qeSvc .itemrow').forEach(r=>{
+      const q = Math.max(1, Number(r.querySelector('[data-f="qty"]').value)||1);
+      const rt = Math.max(0, Number(r.querySelector('[data-f="rate"]').value)||0);
+      r.querySelector('[data-amt]').textContent = inr(q*rt);
+    });
+    const gross = itemsGross(qeItems());
+    $('#qeTot').textContent = gross > 0 ? 'Event total ' + inr(gross) : '';
+    return gross;
+  }
+  function qeRefreshSvc(){ withRates(qeStudioId(), ()=>refreshSvcChips($('#qeSvc'))); }
+  function qeResetSvc(){ $('#qeItems').innerHTML = ''; qeRefreshSvc(); qeCompute(); }
+  $('#qeAddItem').addEventListener('click', ()=>{
+    withRates(qeStudioId(), ()=>$('#qeItems').insertAdjacentHTML('beforeend', itemRowHTML({})));
+    qeCompute();
+  });
+  $('#calAdd').addEventListener('click', e=>{
+    if(e.target.closest('[data-qm]') || e.target.closest('[data-qp]')){
+      const q = e.target.closest('.itemrow').querySelector('[data-f="qty"]');
+      q.value = Math.max(1, (Number(q.value)||1) + (e.target.closest('[data-qp]') ? 1 : -1));
+      qeCompute(); return;
+    }
+    if(e.target.closest('[data-rmitem]')){
+      e.target.closest('.itemrow').remove(); qeRefreshSvc(); qeCompute(); return;
+    }
+    const sv = e.target.closest('[data-addsvc]');
+    if(sv){
+      const name = sv.dataset.addsvc;
+      withRates(qeStudioId(), ()=>$('#qeItems').insertAdjacentHTML('beforeend',
+        itemRowHTML({ service: name, qty: 1, rate: Number(allRates()[name])||0 })));
+      qeRefreshSvc(); qeCompute();
+    }
+  });
+  $('#calAdd').addEventListener('input', e=>{
+    if(e.target.matches('[data-f="qty"],[data-f="rate"]')) qeCompute();
+  });
+  $('#calAdd').addEventListener('change', e=>{
+    /* a different studio (or a different job) means a different rate card */
+    if(e.target.id === 'qeStudio' || e.target.id === 'qePkg'){ qeRefreshSvc(); return; }
+    if(e.target.matches('[data-f="service"]')){
+      const row = e.target.closest('.itemrow');
+      const nameInp = row.querySelector('[data-f="serviceName"]');
+      if(e.target.value === '__custom'){ nameInp.hidden = false; nameInp.focus(); }
+      else{
+        nameInp.hidden = true; nameInp.value = '';
+        row.querySelector('[data-f="rate"]').value =
+          withRates(qeStudioId(), ()=>allRates())[e.target.value] ?? 0;
+      }
+      qeRefreshSvc(); qeCompute();
+    }
+  });
   $('#qeCancel').addEventListener('click', closeCalAdd);
   $('#qeSave').addEventListener('click', async ()=>{
     const date = $('#qeDate').value;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this event'); $('#qeDate').focus(); return; }
     const title = $('#qeTitle').value.trim();
     if(!title){ toast('Give the event a name'); $('#qeTitle').focus(); return; }
-    const ev = { title, date, venue: $('#qeVenue').value.trim(), items: [] };
+    const items = qeItems();
+    const ev = { title, date, venue: $('#qeVenue').value.trim(), items };
 
     /* work out what we are writing, and refuse early rather than half-way */
     let pk = null, stu = null, name = '', rawPhone = '', phone = '';
@@ -3351,9 +3445,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       let res, okMsg;
       if(_qeMode === 'existing'){
         const events = [...(pk.events||[]), ev];
-        res = await settle(updateDoc(doc(db,'packages',pk.id), { events, updatedAt: serverTimestamp() }));
-        if(res !== 'denied') pk.events = events;
-        okMsg = `Added to ${pk.quoteNo ? pk.quoteNo + ' · ' : ''}${pk.clientName||''}`;
+        const patch = { events, updatedAt: serverTimestamp() };
+        /* A priced event has to move the money with it, or the booking keeps
+           its old total: the balance would be wrong, the payment sheet would
+           ask for too little and the money reports would under-count. Same
+           sum the builder computes — every event's services plus the album,
+           less the discount already agreed; recorded payments stay put. */
+        if(items.length){
+          const gross = events.reduce((s,e)=>s + itemsGross(e.items||[]), 0)
+                      + (Number((pk.album||{}).price)||0);
+          const t = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, pk.totals||{});
+          const discount = Math.min(gross, Math.max(0, Number(t.discount)||0));
+          const finalPrice = gross - discount;
+          const advance = Math.max(0, Number(t.advance)||0);
+          patch.totals = { gross, discount, finalPrice, advance, balance: finalPrice - advance };
+        }
+        res = await settle(updateDoc(doc(db,'packages',pk.id), patch));
+        if(res !== 'denied'){ pk.events = events; if(patch.totals) pk.totals = patch.totals; }
+        okMsg = `Added to ${pk.quoteNo ? pk.quoteNo + ' · ' : ''}${pk.clientName||''}`
+              + (items.length ? ` — ${inr(patch.totals.finalPrice)} total` : '');
       }else{
         const b2b = _qeMode === 'studio';
         const d = {
@@ -3366,7 +3476,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           album: { sheets:0, perSheet:0, price:0 },
           addons: [],
           pdfTerms: b2b ? [] : pdfTerms(),
-          totals: { gross:0, discount:0, finalPrice:0, advance:0, balance:0 },
+          totals: (g => ({ gross:g, discount:0, finalPrice:g, advance:0, balance:g }))(itemsGross(items)),
           ...(b2b
             ? { clientType:'studio', studioId: stu.id, studioName: stu.name || 'Studio',
                 whiteLabel: false, endClientName: ($('#qeEnd') ? $('#qeEnd').value.trim() : '') }
@@ -3380,7 +3490,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* drafts don't unlock the portal pre-check — indexing one makes a
            stranger burn a real OTP and then land on "No bookings found" */
         if(res !== 'denied' && !b2b && phone.length === 10 && status !== 'draft') ensurePhoneIndex(phone);
-        okMsg = `${quoteNo} saved — ${STATUS_LABEL(status)}`;
+        okMsg = `${quoteNo} saved — ${STATUS_LABEL(status)}`
+              + (items.length ? ` · ${inr(itemsGross(items))}` : '');
       }
       if(res === 'denied'){ toast('NOT saved — the server refused the write. Nothing was added.'); return; }
       toast(res === 'queued' ? 'Saved offline — will sync' : okMsg);
