@@ -3607,9 +3607,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* one function, or the whole booking: nothing to choose */
     wrap.hidden = !r || r.evs.length < 2 || $('#asWhole').checked || $('#asBookWrap').hidden;
     if(!r) return;
+    /* syncAsUI runs on every pick and every role change — resetting the choice
+       each time would snatch back the function the owner had just selected */
+    const keep = $('#asBookEv').value;
     $('#asBookEv').innerHTML = r.evs.map((e,i)=>
       `<option value="${i}">${esc(stepDate(e.date))} · ${esc(e.title||'Event')}</option>`).join('');
-    $('#asBookEv').value = String(r.evs.length - 1);
+    const n = Number(keep);
+    $('#asBookEv').value = String(keep !== '' && n >= 0 && n < r.evs.length ? n : r.evs.length - 1);
   }
   function reBook(){
     const r = _bookRows[Number($('#asBook').value)]; if(!r) return;
@@ -3627,7 +3631,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     fillBookings();
     openAs(ctxOfRow(_bookRows[0]), null, { pickBooking: true, forceEdit: true, whole: true });
   });
-  $('#asBook').addEventListener('change', ()=>{ fillBookingEvents(); reBook(); });
+  /* a different booking starts on its own last function, not the index the
+     previous one happened to be on */
+  $('#asBook').addEventListener('change', ()=>{ $('#asBookEv').value = ''; fillBookingEvents(); reBook(); });
   $('#asBookEv').addEventListener('change', reBook);
 
   /* the league table — the one view that says who is actually carrying the season */
@@ -4100,20 +4106,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _asCtx = ctx;
     _asForceEdit = !!(opts && opts.forceEdit);
     $('#asBookWrap').hidden = !(opts && opts.pickBooking);
-    if(opts && opts.whole) $('#asWhole').checked = true;
     $('#asTitle').textContent = a ? 'Edit Assignment' : (_asForceEdit ? 'Assign Editing' : 'Assign Crew');
     $('#asWho').textContent = asWhoText(ctx) + (ctx.venue ? ' · ' + ctx.venue : '');
     _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
-    renderAsPick();
+    /* Every field is set BEFORE the picker renders, because renderAsPick ends
+       in syncAsUI — which reads the role to decide between a call time and a
+       deadline, and fills an empty deadline in. Rendering first meant syncAsUI
+       read the PREVIOUS sheet's role, and the assignments below then wiped the
+       due date it had just worked out. */
     $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role
       : (_asForceEdit && TEAM_ROLES.includes('editor')) ? 'editor' : TEAM_ROLES[0];
     $('#asCall').value = a ? (a.callTime||'') : '';
     $('#asDue').value = a ? (a.dueDate||'') : '';
     $('#asDeliver').value = a ? (a.deliver||'') : '';
-    $('#asWhole').checked = a ? (a.scope === 'package') : false;
+    $('#asWhole').checked = a ? (a.scope === 'package') : !!(opts && opts.whole);
     $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
     $('#asNotes').value = a ? (a.notes||'') : '';
     $('#asRemove').hidden = !a;
+    renderAsPick();
     refreshAsConflict();
     $('#asModal').classList.add('open'); $('#asBackdrop').classList.add('open');
     pushView('assheet', '#team/assign');
