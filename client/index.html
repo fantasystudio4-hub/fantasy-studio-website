@@ -73,13 +73,48 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hello{margin:1.3rem 0 .4rem;font-size:1.25rem}
 .hello + p{color:var(--mut);font-size:.85rem;margin-bottom:.9rem}
 /* the question the client opened this page to answer */
-.nextup{display:flex;align-items:center;gap:.8rem;background:rgba(184,144,43,.09);border:1px solid rgba(226,194,117,.4);border-radius:14px;padding:.75rem .9rem;margin-bottom:1.1rem}
+.nextup{background:linear-gradient(150deg,rgba(201,163,71,.16),rgba(36,30,18,.92) 60%);border:1px solid rgba(226,194,117,.42);border-radius:16px;padding:.9rem 1rem;margin-bottom:1.1rem;box-shadow:0 10px 26px rgba(0,0,0,.24)}
+.nu-h{display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem}
 .nextup .nd{flex:0 0 auto;text-align:center;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.28rem .55rem;min-width:52px}
 .nextup .nd b{display:block;font-family:var(--serif);font-size:1.3rem;color:var(--gold-b);line-height:1.1}
 .nextup .nd span{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .nextup .nt{flex:1;min-width:0}
-.nextup .nt b{display:block;font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nextup .nt span{font-size:.75rem;color:var(--gold-b)}
+.nextup .nt b{display:block;font-family:var(--serif);color:#fff;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nextup .nt span{font-size:.74rem;color:var(--gold-b)}
+.nu-clock{display:flex;gap:.45rem}
+.nu-clock div{flex:1;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.45rem .2rem;text-align:center}
+.nu-clock b{display:block;font-family:var(--serif);font-size:1.4rem;color:var(--gold-b);line-height:1.1;font-variant-numeric:tabular-nums}
+.nu-clock span{font-size:.5rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.nu-clock.today b{color:#ffb054}
+.nu-today{text-align:center;color:#ffb054;font-family:var(--serif);font-size:1.15rem;padding:.3rem 0}
+.nu-acts{display:flex;gap:.5rem;margin-top:.7rem}
+.nu-acts a{flex:1;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.55em .8em;font-size:.78rem;min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+.nu-acts a:active{background:rgba(184,144,43,.2)}
+@media(hover:hover){ .nu-acts a:hover{background:var(--gold);color:#fff} }
+
+/* delivery at a glance: a ring, where they are, what's next */
+.dring{display:flex;align-items:center;gap:.85rem;margin-bottom:.7rem}
+.dring .rw{position:relative;flex:0 0 auto;width:62px;height:62px}
+.dring svg{width:62px;height:62px;transform:rotate(-90deg)}
+.dring .rbg{fill:none;stroke:rgba(226,194,117,.16);stroke-width:6}
+.dring .rfg{fill:none;stroke:#C9A347;stroke-width:6;stroke-linecap:round;stroke-dasharray:169.6;transition:stroke-dashoffset .9s cubic-bezier(.2,.7,.3,1)}
+.dring .rn{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--serif);font-size:.92rem;color:var(--gold-b)}
+.dring .dt{flex:1;min-width:0;font-size:.8rem}
+.dring .dt b{display:block;color:var(--text);font-weight:500}
+.dring .dt span{display:block;color:var(--mut);font-size:.74rem;margin-top:.1rem}
+
+/* how much of the package is settled */
+.paybar{height:7px;border-radius:6px;background:rgba(255,255,255,.09);overflow:hidden;margin:.55rem 0 .35rem}
+.paybar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#C9A347,#9adbb2)}
+.payleg{display:flex;justify-content:space-between;font-size:.68rem;color:var(--mut);letter-spacing:.03em}
+.payleg b{color:var(--ok);font-weight:500}
+.payleg .rest{color:#ffb054}
+
+/* each function: done, next up, or still ahead */
+.ev.past b::after{content:" ✓";color:var(--ok);font-size:.8em}
+.ev.past{opacity:.72}
+.ev.next{border-left:2px solid var(--gold);padding-left:.65rem;margin-left:-.05rem}
+.ev .evtag{display:inline-block;font-size:.54rem;letter-spacing:.12em;text-transform:uppercase;color:#14110a;background:var(--gold-b);border-radius:12px;padding:.15em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
 /* a second booking opens collapsed — the money line stays visible */
 .pkg.collapsed .sec{display:none}
 .pkg.can-toggle .pkg-h{cursor:pointer}
@@ -626,22 +661,78 @@ async function loadPackages(user){
   $('#pkgList').innerHTML = pkgs.map((x,i)=>pkgHTML(x, pkgs.length > 1, i > 0)).join('');
   show('dashView');
 }
-/* "when is my next event?" — the reason most clients open this page at all */
+/* "when is my next event?" — the reason most clients open this page at all.
+   A live countdown, and the day itself saved to their phone's calendar. */
+let _nuEvent = null, _nuTimer = null;
 function renderNextUp(pkgs){
   const box = $('#nextUp'); if(!box) return;
   const today = new Date().toLocaleDateString('en-CA');
   const next = pkgs
-    .flatMap(p=>(p.events||[]).map(e=>({ title:e.title, date:e.date, venue:e.venue })))
+    .flatMap(p=>(p.events||[]).map(e=>({ title:e.title, date:e.date, venue:e.venue, quoteNo:p.quoteNo })))
     .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||'') && e.date >= today)
     .sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0)[0];
+  _nuEvent = next || null;
+  clearInterval(_nuTimer);
   if(!next){ box.hidden = true; box.innerHTML = ''; return; }
   const d = new Date(next.date+'T00:00');
   const days = Math.round((d - new Date(today+'T00:00'))/864e5);
-  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days · ${d.toLocaleDateString('en-IN',{weekday:'long'})}`;
+  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : d.toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long'});
   box.hidden = false;
   box.innerHTML = `
-    <div class="nd"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
-    <div class="nt"><b>${esc(next.title||'Your event')}</b><span>${when}${next.venue ? ' · 📍 ' + esc(next.venue) : ''}</span></div>`;
+    <div class="nu-h">
+      <div class="nd"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
+      <div class="nt"><b>${esc(next.title||'Your event')}</b><span>${when}${next.venue ? ' · 📍 ' + esc(next.venue) : ''}</span></div>
+    </div>
+    <div class="nu-clock" id="nuClock"></div>
+    <div class="nu-acts">
+      <a href="#" id="nuIcs">📅 Add to calendar</a>
+      ${next.venue ? `<a href="https://maps.google.com/?q=${encodeURIComponent(next.venue)}" target="_blank" rel="noopener">📍 Directions</a>` : ''}
+    </div>`;
+  tickNextUp();
+  _nuTimer = setInterval(tickNextUp, 30000);
+  const ics = $('#nuIcs');
+  if(ics) ics.addEventListener('click', e=>{ e.preventDefault(); downloadIcs(next); });
+}
+function tickNextUp(){
+  const e = _nuEvent, box = $('#nuClock');
+  if(!e || !box) return;
+  const ms = new Date(e.date+'T00:00') - new Date();
+  if(ms <= 0){
+    box.className = 'nu-clock today';
+    box.innerHTML = '<div class="nu-today">🎉 It\'s today — see you there!</div>';
+    return;
+  }
+  const d = Math.floor(ms/864e5), h = Math.floor(ms/36e5)%24, m = Math.floor(ms/6e4)%60;
+  box.className = 'nu-clock' + (d === 0 ? ' today' : '');
+  box.innerHTML = `
+    <div><b>${d}</b><span>day${d===1?'':'s'}</span></div>
+    <div><b>${String(h).padStart(2,'0')}</b><span>hours</span></div>
+    <div><b>${String(m).padStart(2,'0')}</b><span>mins</span></div>`;
+}
+/* an all-day calendar entry built in the browser — no server, no account */
+function downloadIcs(ev){
+  const stamp = s => String(s||'').replace(/-/g,'');
+  const end = new Date(ev.date+'T00:00'); end.setDate(end.getDate()+1);
+  const lines = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Fantasy Studio//Client//EN','BEGIN:VEVENT',
+    'UID:' + stamp(ev.date) + '-' + Math.abs(String(ev.title||'event').split('').reduce((a,c)=>a+c.charCodeAt(0),0)) + '@fantasystudio',
+    'DTSTART;VALUE=DATE:' + stamp(ev.date),
+    'DTEND;VALUE=DATE:' + stamp(end.toLocaleDateString('en-CA')),
+    'SUMMARY:' + String(ev.title||'Event') + ' — Fantasy Studio',
+    ev.venue ? 'LOCATION:' + String(ev.venue).replace(/,/g,'\\,') : '',
+    'DESCRIPTION:Photography & video by Fantasy Studio' + (ev.quoteNo ? ' (' + ev.quoteNo + ')' : ''),
+    'END:VEVENT','END:VCALENDAR'
+  ].filter(Boolean);
+  try{
+    const blob = new Blob([lines.join('\r\n')], { type:'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = String(ev.title||'event').replace(/[^A-Za-z0-9]+/g,'_') + '.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    toast('Saved — open it to add the date to your calendar');
+  }catch(err){ toast('Could not create the calendar file on this phone'); }
 }
 $('#pkgList').addEventListener('click', e=>{
   /* a collapsed booking opens and closes from its header */
@@ -680,12 +771,21 @@ function pkgHTML(x, canToggle, collapsed){
   const doneCount = steps.filter(s=>s in done).length;
   const pct = steps.length ? Math.round(100*doneCount/steps.length) : 0;
   const ph = (contact().phone||'').replace(/\D/g,'');
-  const events = (x.events||[]).map(ev=>`
-    <div class="ev">
-      <b>${esc(ev.title||'Event')}</b>
+  /* which function is behind them, which one is next — a three-day wedding
+     read as one undifferentiated list before */
+  const _today = new Date().toLocaleDateString('en-CA');
+  const _nextDate = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'') && d >= _today).sort()[0] || '';
+  const events = (x.events||[]).map(ev=>{
+    const dated = /^\d{4}-\d{2}-\d{2}$/.test(ev.date||'');
+    const past = dated && ev.date < _today;
+    const isNext = dated && ev.date === _nextDate;
+    return `
+    <div class="ev ${past?'past':''} ${isNext?'next':''}">
+      <b>${esc(ev.title||'Event')}${isNext ? `<span class="evtag">${ev.date === _today ? 'today' : 'next up'}</span>` : ''}</b>
       <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
       ${(ev.items||[]).length ? `<ul>${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}</ul>` : ''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const alb = (x.album && Number(x.album.sheets)>0)
     ? `<div class="ln"><span>Premium album</span><span>${Number(x.album.sheets)} sheets</span></div>` : '';
   const addons = (x.addons||[]).length
@@ -693,8 +793,23 @@ function pkgHTML(x, canToggle, collapsed){
   const pays = (x.payments||[]).length
     ? `<div class="sec"><h3>Payments received</h3>${x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
   const curStep = steps.find(s=>!(s in done));
+  const _nextStep = steps[steps.indexOf(curStep) + 1];
+  const RC = 169.6;   /* 2πr for r=27 */
   const track = (st==='booked'||st==='delivered') && steps.length
     ? `<div class="sec"><h3>Delivery journey · ${doneCount}/${steps.length}</h3>
+        <div class="dring">
+          <span class="rw">
+            <svg viewBox="0 0 62 62" aria-hidden="true">
+              <circle class="rbg" cx="31" cy="31" r="27"></circle>
+              <circle class="rfg" cx="31" cy="31" r="27" style="stroke-dashoffset:${RC - RC*pct/100}"></circle>
+            </svg>
+            <span class="rn">${pct}%</span>
+          </span>
+          <span class="dt">
+            <b>${st === 'delivered' ? 'All delivered 🎉' : (curStep ? 'Now: ' + esc(curStep) : 'Wrapping up')}</b>
+            <span>${st === 'delivered' ? 'Your package is complete.' : (_nextStep ? 'Next: ' + esc(_nextStep) : 'Almost there.')}</span>
+          </span>
+        </div>
         <div class="dprog"><i style="width:${pct}%"></i></div>
         ${steps.map(s=>{
           const d = s in done;
@@ -724,6 +839,12 @@ function pkgHTML(x, canToggle, collapsed){
       <div class="ln big"><span>Final price</span><span>${inr(tt.finalPrice||0)}</span></div>
       <div class="ln"><span>Paid so far</span><span>${inr(paid)}</span></div>
       <div class="ln due"><span>Balance</span><span>${inr(bal)}</span></div>
+      ${Number(tt.finalPrice) > 0 ? `
+      <div class="paybar"><i style="width:${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}%"></i></div>
+      <div class="payleg">
+        <span><b>${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}% settled</b></span>
+        <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
+      </div>` : ''}
     </div>
     ${pays}
     ${track}
