@@ -473,24 +473,53 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
 /* ==== Team console: attention list, leaderboard, squad cards ====
    All of it is derived from the assignment docs the tab already holds. */
-#teamStats{grid-template-columns:repeat(2,1fr)}
+/* the four counts read as one row on every width, like the B2B tiles */
+#teamStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
 #teamStats .stat.month{grid-column:1 / -1}
-@media(min-width:700px){ #teamStats{grid-template-columns:repeat(4,1fr)} }
+#teamStats .stat{padding:.5rem .2rem}
+#teamStats .stat b{font-size:1rem}
+#teamStats .stat span{font-size:.5rem;letter-spacing:.03em;line-height:1.3}
+#teamStats .stat.month b{font-size:1.5rem}
+#teamStats .stat.month span{font-size:.62rem;letter-spacing:.08em}
+@media(min-width:700px){
+  #teamStats .stat{padding:.6rem .5rem}
+  #teamStats .stat b{font-size:1.25rem}
+  #teamStats .stat span{font-size:.62rem;letter-spacing:.08em}
+}
 .stat.warn{border-color:rgba(255,176,84,.5)}
 .stat.warn b{color:#ffb054}
-.stat[data-goatt]{cursor:pointer}
-@media(hover:hover){ .stat[data-goatt]:hover{border-color:var(--gold)} }
-.att{border-color:rgba(255,176,84,.45)}
-.att h3{color:#ffb054}
-.att-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px dashed var(--line);cursor:pointer;font-size:.85rem}
-.att-row:last-child{border-bottom:0}
-.att-row .w{font-family:var(--serif);color:var(--gold-b);font-size:.82rem;min-width:52px;flex:0 0 auto}
-.att-row .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.att-row .t span{color:var(--mut);font-size:.78rem}
-.att-row .tag{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.22em .7em;font-weight:600}
-.att-row .tag.none{color:var(--err);background:rgba(224,122,106,.14)}
-.att-row .tag.wait{color:#ffb054;background:rgba(255,176,84,.14)}
-@media(hover:hover){ .att-row:hover .t{color:var(--gold-b)} }
+
+/* upcoming events: how close, how full, who hasn't confirmed */
+.tm-ev.none{border-left:3px solid rgba(224,122,106,.6)}
+.tm-ev.part{border-left:3px solid rgba(255,176,84,.6)}
+.tm-ev.full{border-left:3px solid rgba(76,175,125,.5)}
+.tm-ev-h .away{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);background:rgba(255,255,255,.06);border-radius:14px;padding:.2em .6em;font-weight:600}
+.tm-ev-h .away.soon{color:#ffb054;background:rgba(255,176,84,.14)}
+.tm-fill{display:flex;align-items:center;gap:.55rem;margin:.5rem 0 .1rem}
+.tm-fill .fbar{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
+.tm-fill .fbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#C9A347,#E2C275)}
+.tm-fill b{flex:0 0 auto;font-size:.66rem;letter-spacing:.04em;font-weight:600}
+.tm-fill b.none{color:var(--err)} .tm-fill b.part{color:#ffb054} .tm-fill b.full{color:var(--ok)}
+.tm-fill em{flex:0 0 auto;font-style:normal;font-size:.62rem;color:#ffb054}
+.tm-fill em.ok{color:var(--ok);opacity:.8}
+
+/* the crew picker — availability at a glance, and more than one at a time */
+.crewpick{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;max-height:230px;overflow-y:auto;overscroll-behavior:contain}
+@media(max-width:400px){ .crewpick{grid-template-columns:1fr} }
+.cpick{display:flex;align-items:center;gap:.5rem;text-align:left;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.5rem .6rem;cursor:pointer;font-family:var(--sans);min-height:46px}
+.cpick .dot{flex:0 0 auto}
+.cp-t{flex:1;min-width:0}
+.cp-t b{display:block;color:var(--text);font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-t em{display:block;font-style:normal;font-size:.62rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cpick.on{border-color:var(--gold);background:rgba(184,144,43,.18)}
+.cpick.on .cp-t b{color:var(--gold-b)}
+.cpick.here{opacity:.45;cursor:default}
+.cpick:active{transform:scale(.98)}
+@media(hover:hover){ .cpick:hover:not(.here){border-color:var(--gold)} }
+#asPickHint{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut);font-size:.68rem;margin-left:.4em}
+.copycrew{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin:0 0 .8rem;font-family:var(--sans)}
+.copycrew:active{background:rgba(184,144,43,.14)}
+@media(hover:hover){ .copycrew:hover{border-color:var(--gold)} }
 
 .lbtog{margin-left:auto;display:inline-flex;gap:.3rem}
 .lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
@@ -974,11 +1003,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <p class="sub">People who signed in on the crew page and asked to join. Approving opens a member card with their details filled in.</p>
       <div id="teamReqs"></div>
     </div>
-    <div class="sec att" id="attSec" hidden>
-      <h3>⚠️ Needs attention <span id="attCount" style="font-size:.7rem;color:var(--mut)"></span></h3>
-      <p class="sub">Events with nobody on them, and crew who haven't confirmed a shoot that's coming up. Tap a row to fix it.</p>
-      <div id="attList"></div>
-    </div>
     <div class="sec">
       <h3>📅 Upcoming events</h3>
       <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
@@ -1126,11 +1150,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <button class="pay-close" id="asClose" type="button" aria-label="Close">&times;</button>
   <h3 id="asTitle">Assign Crew</h3>
   <div class="who" id="asWho"></div>
-  <div class="fld"><label>Team member</label><select id="asMember"></select></div>
+  <button class="copycrew" id="asCopy" type="button" hidden></button>
+  <div class="fld"><label>Team member <em id="asPickHint">tap one, or several</em></label>
+    <div class="crewpick" id="asPick"></div>
+  </div>
   <div class="as-warn" id="asConflict" hidden></div>
-  <div class="fld"><label>Role for this event</label><select id="asRole"></select></div>
+  <div class="fld" data-solo><label>Role for this event</label><select id="asRole"></select></div>
   <div class="fld"><label>Call time</label><input id="asCall" type="time" /></div>
-  <div class="fld"><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" /></div>
+  <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" /></div>
   <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
@@ -3258,16 +3285,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
   }
 
+  const TEAM_EV_N = 10;
+  let _teamEvAll = false;
   function renderTeamEvents(){
     const el = $('#teamEvents'); if(!el) return;
     if(_asgsErr){ el.innerHTML = errBox(_asgsErr, 'team'); return; }
-    const rows = teamUpcoming();
-    if(!rows.length){
+    const all = teamUpcoming();
+    if(!all.length){
       el.innerHTML = (_pkgsLoaded && _asgsLoaded)
         ? '<div class="empty" style="padding:.4rem 0">No upcoming booked events. Events appear here once a package is <b style="color:var(--ok)">booked</b> and its dates are set.</div>'
         : '<div class="skel"></div><div class="skel"></div>';
       return;
     }
+    /* a full season runs to dozens of dates — the next ten are the ones being
+       crewed this week; the rest are one tap away */
+    const rows = _teamEvAll ? all : all.slice(0, TEAM_EV_N);
+    const today = todayISO();
     const staleShown = new Set();
     el.innerHTML = rows.map(({pk, ev, idx})=>{
       const crew = evCrew(pk.id, ev.date, ev.title);
@@ -3278,20 +3311,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          package, on its first upcoming row, with a one-tap re-sync */
       let stale = [];
       if(!staleShown.has(pk.id)){ stale = staleCrew(pk); if(stale.length) staleShown.add(pk.id); }
+      /* how full this event is, and how close it is — the two things that
+         decide which row gets crewed next */
+      const unconf = crew.filter(a=>a.status !== 'acknowledged').length;
+      const days = Math.round((new Date(ev.date+'T00:00') - new Date(today+'T00:00'))/864e5);
+      const away = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
+      const fill = needTotal ? Math.min(100, Math.round(100*crew.length/needTotal)) : (crew.length ? 100 : 0);
+      const state = !crew.length ? 'none' : (needTotal && crew.length < needTotal) ? 'part' : 'full';
       return `
-      <div class="tm-ev">
+      <div class="tm-ev ${state}">
         <div class="tm-ev-h">
           <span class="when">${stepDate(ev.date)}</span>
+          <span class="away ${days<=2?'soon':''}">${away}</span>
           <b>${esc(ev.title||'Event')}</b>
           <span class="cl">· ${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
           <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
         </div>
-        ${needTotal || crew.length ? `<div class="tm-need">${needTxt ? `Needs <b>${esc(needTxt)}</b> — ` : ''}<b class="${crew.length < needTotal ? 'miss' : ''}">${crew.length ? crew.length + ' assigned' : 'no crew yet'}</b></div>` : ''}
+        <div class="tm-fill">
+          <span class="fbar"><i style="width:${fill}%"></i></span>
+          <b class="${state}">${crew.length}${needTotal ? '/' + needTotal : ''} crew</b>
+          ${unconf ? `<em>${unconf} not confirmed</em>` : (crew.length ? '<em class="ok">all confirmed</em>' : '')}
+        </div>
+        ${needTxt ? `<div class="tm-need">Needs <b>${esc(needTxt)}</b></div>` : ''}
         ${crew.map(a=>crewRowHTML(a)).join('')}
         ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="act" data-assync="${a.id}" data-aspk="${pk.id}" data-asev="${idx}">Sync</button>`)).join('')}
       </div>`;
-    }).join('');
+    }).join('')
+    + (all.length > TEAM_EV_N
+        ? `<button class="upall" type="button" data-tmev>${_teamEvAll ? '− Show fewer' : `＋ See all ${all.length} — ${all.length - TEAM_EV_N} more`}</button>`
+        : '');
   }
+  $('#teamEvents').addEventListener('click', e=>{
+    if(!e.target.closest('[data-tmev]')) return;
+    _teamEvAll = !_teamEvAll;
+    renderTeamEvents();
+  });
 
   /* ============================================================
      TEAM CONSOLE — the same rank maths the crew page shows its own
@@ -3328,50 +3382,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              next: up.map(a=>a.date).filter(Boolean).sort()[0] || '',
              rate: list.length ? Math.round(100*acks/list.length) : null };
   }
-
-  /* what the owner has to act on today: events with nobody on them, and
-     crew who have not confirmed a shoot that is nearly here */
-  function renderAttention(){
-    const sec = $('#attSec'), el = $('#attList'); if(!sec || !el) return;
-    const today = todayISO();
-    const soon = new Date(Date.now() + 7*864e5).toLocaleDateString('en-CA');
-    const empty = teamUpcoming().filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length);
-    const unconf = ASGS.filter(a=>(a.date||'') >= today && (a.date||'') <= soon && a.status !== 'acknowledged')
-      .sort((a,b)=>a.date<b.date?-1:1);
-    const n = empty.length + unconf.length;
-    sec.hidden = !n;
-    $('#attCount').textContent = n ? `(${n})` : '';
-    if(!n) return;
-    el.innerHTML =
-      empty.map(({pk, ev, idx})=>`
-        <div class="att-row" data-asadd data-aspk="${pk.id}" data-asev="${idx}" role="button" tabindex="0">
-          <span class="w">${esc(stepDate(ev.date))}</span>
-          <span class="t">${esc(ev.title||'Event')} <span>· ${esc(pk.clientName||'')}</span></span>
-          <span class="tag none">no crew</span>
-        </div>`).join('')
-      + unconf.map(a=>`
-        <div class="att-row" data-asedit="${a.id}" role="button" tabindex="0">
-          <span class="w">${esc(stepDate(a.date))}</span>
-          <span class="t">${esc(a.memberName||'—')} <span>· ${esc(a.eventTitle||'Event')}</span></span>
-          <span class="tag wait">not confirmed</span>
-        </div>`).join('');
-  }
-  $('#attList').addEventListener('click', e=>{
-    const add = e.target.closest('[data-asadd]');
-    if(add){
-      const pk = PKGS.find(p=>p.id===add.dataset.aspk); if(!pk) return;
-      const ev = (pk.events||[])[Number(add.dataset.asev)]; if(!ev) return;
-      openAs({ pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
-               eventTitle: ev.title||'', date: ev.date||'', venue: ev.venue||'' }, null);
-      return;
-    }
-    const ed = e.target.closest('[data-asedit]');
-    if(ed){
-      const a = ASGS.find(v=>v.id===ed.dataset.asedit); if(!a) return;
-      openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
-               eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
-    }
-  });
 
   /* the league table — the one view that says who is actually carrying the season */
   let _lbPeriod = 'y';
@@ -3574,23 +3584,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const unconf = ASGS.filter(a=>(a.date||'') >= today && a.status !== 'acknowledged').length;
     el.innerHTML = `
       <div class="stat month"><b>${inr(due)}</b><span>crew pay due</span></div>
-      <div class="stat"><b>${up.length}</b><span>upcoming events</span></div>
-      <div class="stat ${unfilled?'warn':''}" data-goatt role="button" tabindex="0"><b>${unfilled}</b><span>with no crew</span></div>
-      <div class="stat ${unconf?'warn':''}" data-goatt role="button" tabindex="0"><b>${unconf}</b><span>unconfirmed</span></div>
+      <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
+      <div class="stat ${unfilled?'warn':''}"><b>${unfilled}</b><span>with no crew</span></div>
+      <div class="stat ${unconf?'warn':''}"><b>${unconf}</b><span>unconfirmed</span></div>
       <div class="stat"><b>${activeTeam().length}</b><span>active crew</span></div>`;
   }
-  $('#teamStats').addEventListener('click', e=>{
-    if(!e.target.closest('[data-goatt]')) return;
-    const sec = $('#attSec');
-    if(sec && !sec.hidden) sec.scrollIntoView({ behavior:'smooth', block:'start' });
-    else toast('Nothing needs attention — every event has crew and everyone has confirmed ✓');
-  });
 
   function renderTeam(){
     if(!$('#teamView')) return;
     renderTeamStats();
     renderTeamReqs();
-    renderAttention();
     renderTeamEvents();
     renderLeaderboard();
     renderTeamMembers();
@@ -3704,34 +3707,113 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function asgConflicts(mid, date, excludeId){
     return ASGS.filter(a=>a.memberId===mid && a.date===date && a.id!==excludeId);
   }
+  /* ---- crew picker: who is free, who the event actually needs, and more
+     than one at a time. A three-photographer wedding used to be three trips
+     through this sheet. ---- */
+  let _asPicked = new Set();
+  function asEventOf(ctx){
+    const pk = ctx && PKGS.find(p=>p.id===ctx.pkgId);
+    if(!pk) return null;
+    const evs = (pk.events||[]).filter(e=>e.date === ctx.date);
+    return evs.find(e=>String(e.title||'') === String(ctx.eventTitle||'')) || evs[0] || null;
+  }
   function refreshAsConflict(){
     const box = $('#asConflict');
-    const mid = $('#asMember').value;
-    const cs = (mid && _asCtx) ? asgConflicts(mid, _asCtx.date, _asEditId) : [];
-    box.hidden = !cs.length;
-    if(cs.length){
-      const c = cs[0];
-      box.textContent = `⚠ Already on ${c.eventTitle||'an event'} (${c.clientName||'—'}) this same date${cs.length>1 ? ' +' + (cs.length-1) + ' more' : ''}. You can still save if this is intentional.`;
+    const clash = [..._asPicked].map(id=>({ m: memberById(id), cs: _asCtx ? asgConflicts(id, _asCtx.date, _asEditId) : [] }))
+      .filter(x=>x.cs.length);
+    box.hidden = !clash.length;
+    if(clash.length){
+      const f = clash[0];
+      box.textContent = `⚠ ${(f.m&&f.m.name)||'This member'} is already on ${f.cs[0].eventTitle||'an event'} (${f.cs[0].clientName||'—'}) that day`
+        + (clash.length > 1 ? `, and ${clash.length-1} other${clash.length>2?'s':''} clash too` : '')
+        + '. You can still save if this is intentional.';
     }
   }
-  function fillAsMembers(selectedId){
-    const opts = activeTeam();
-    /* editing an assignment for someone since deactivated: without their
-       option the select silently fell back to the FIRST member, so saving
-       reassigned the job to the wrong person */
-    if(selectedId && !opts.some(m=>m.id===selectedId)){
-      const gone = memberById(selectedId);
-      if(gone) opts.unshift(gone);
-    }
-    $('#asMember').innerHTML = '<option value="">— pick a member —</option>'
-      + opts.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${esc(m.name||'—')} · ${esc(roleLabel(m.role))}${m.active === false ? ' · inactive' : ''}</option>`).join('');
+  /* one place decides what the sheet looks like for the current selection */
+  function syncAsUI(){
+    const n = _asPicked.size;
+    $('#asPickHint').textContent = _asEditId ? 'tap to swap the member'
+      : n > 1 ? `${n} picked — each gets their own role & rate`
+      : 'tap one, or several';
+    $$('#asModal [data-solo]').forEach(f=>f.hidden = !_asEditId && n > 1);
+    $('#asSave').textContent = (!_asEditId && n > 1) ? `Assign ${n} crew` : 'Save Assignment';
   }
+  function renderAsPick(){
+    const el = $('#asPick'); if(!el) return;
+    const ev = asEventOf(_asCtx);
+    const need = ev ? neededRoles(ev) : {};
+    const onEvent = new Set(_asCtx ? evCrew(_asCtx.pkgId, _asCtx.date, _asCtx.eventTitle).map(a=>a.memberId) : []);
+    const list = activeTeam().slice();
+    /* someone deactivated since being assigned must still show while editing,
+       or saving would quietly move their job to whoever sorts first */
+    const sel = _asEditId ? [..._asPicked][0] : null;
+    if(sel && !list.some(m=>m.id===sel)){ const g = memberById(sel); if(g) list.unshift(g); }
+    const busyOf = m => _asCtx ? asgConflicts(m.id, _asCtx.date, _asEditId) : [];
+    /* wanted for this event and free → first; busy → last */
+    const rank = m => (busyOf(m).length ? 2 : 0) - (need[String(m.role||'').toLowerCase()] ? 1 : 0);
+    list.sort((a,b)=>rank(a) - rank(b));
+    el.innerHTML = list.map(m=>{
+      const busy = busyOf(m);
+      const here = onEvent.has(m.id) && m.id !== sel;
+      const on = _asPicked.has(m.id);
+      const wanted = !!need[String(m.role||'').toLowerCase()];
+      const note = here ? 'already on this event' : busy.length ? 'busy · ' + esc(busy[0].eventTitle||'another event') : 'free';
+      return `<button type="button" class="cpick ${on?'on':''} ${here?'here':''}" data-pick="${m.id}" ${here?'disabled':''}>
+        <i class="dot ${here ? 'delivered' : busy.length ? 'unconfirmed' : 'booked'}"></i>
+        <span class="cp-t"><b>${esc(m.name||'—')}${wanted?' ★':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
+      </button>`;
+    }).join('') || '<div class="empty" style="padding:.6rem 0">No active team members — add one in the Squad list.</div>';
+    syncAsUI();
+    /* the same crew as another day of this booking, in one tap */
+    const btn = $('#asCopy');
+    const pk = _asCtx && PKGS.find(p=>p.id===_asCtx.pkgId);
+    let src = null;
+    if(pk && !_asEditId){
+      src = (pk.events||[])
+        .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||'') && !(e.date === _asCtx.date && String(e.title||'') === String(_asCtx.eventTitle||'')))
+        .map(e=>({ e, crew: evCrew(pk.id, e.date, e.title).filter(a=>!onEvent.has(a.memberId)) }))
+        .filter(x=>x.crew.length)
+        .sort((a,b)=>a.e.date < b.e.date ? 1 : -1)[0] || null;
+    }
+    btn.hidden = !src;
+    if(src){
+      btn.textContent = `⧉ Same crew as ${src.e.title || 'the other day'} (${stepDate(src.e.date)}) — ${src.crew.length}`;
+      btn.dataset.copy = src.crew.map(a=>a.memberId).join(',');
+    }
+  }
+  $('#asPick').addEventListener('click', e=>{
+    const b = e.target.closest('[data-pick]'); if(!b || b.disabled) return;
+    const id = b.dataset.pick;
+    if(_asEditId){ _asPicked = new Set([id]); }            /* editing swaps, never adds */
+    else if(_asPicked.has(id)) _asPicked.delete(id);
+    else _asPicked.add(id);
+    /* one member picked: their own role and rate prefill, as before */
+    if(_asPicked.size === 1){
+      const m = memberById([..._asPicked][0]);
+      if(m){
+        if(TEAM_ROLES.includes(m.role)) $('#asRole').value = m.role;
+        if(!_asEditId && m.defaultRate) $('#asAmt').value = m.defaultRate;
+      }
+    }
+    $$('#asPick .cpick').forEach(x=>x.classList.toggle('on', _asPicked.has(x.dataset.pick)));
+    syncAsUI();
+    refreshAsConflict();
+  });
+  $('#asCopy').addEventListener('click', ()=>{
+    const ids = String($('#asCopy').dataset.copy||'').split(',').filter(Boolean);
+    if(!ids.length) return;
+    _asPicked = new Set(ids);
+    renderAsPick();
+    refreshAsConflict();
+    toast(`${ids.length} member${ids.length===1?'':'s'} picked — check the details, then Save`);
+  });
   function openAs(ctx, a){
     _asEditId = a ? a.id : null;
     _asCtx = ctx;
     $('#asTitle').textContent = a ? 'Edit Assignment' : 'Assign Crew';
     $('#asWho').textContent = `${ctx.eventTitle||'Event'} · ${ctx.clientName||'—'} · ${stepDate(ctx.date)||ctx.date}${ctx.venue ? ' · ' + ctx.venue : ''}`;
-    fillAsMembers(a ? a.memberId : '');
+    _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
+    renderAsPick();
     $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role : TEAM_ROLES[0];
     $('#asCall').value = a ? (a.callTime||'') : '';
     $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
@@ -3747,33 +3829,50 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#asClose').addEventListener('click', closeAs);
   $('#asBackdrop').addEventListener('click', closeAs);
-  $('#asMember').addEventListener('change', ()=>{
-    const m = memberById($('#asMember').value);
-    if(m){
-      if(TEAM_ROLES.includes(m.role)) $('#asRole').value = m.role;
-      if(!_asEditId && m.defaultRate) $('#asAmt').value = m.defaultRate;
-    }
-    refreshAsConflict();
-  });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeTm(); closeAs(); } });
 
   $('#asSave').addEventListener('click', async ()=>{
     const btn = $('#asSave'); if(btn.disabled || !_asCtx) return;
-    const m = memberById($('#asMember').value);
-    if(!m){ toast('Pick a team member'); return; }
-    const cs = asgConflicts(m.id, _asCtx.date, _asEditId);
-    if(cs.length && !confirm(`${m.name||'This member'} is already on ${cs[0].eventTitle||'an event'} (${cs[0].clientName||'—'}) on ${stepDate(_asCtx.date)||_asCtx.date}. Assign anyway?`)) return;
-    const amt = Math.max(0, Math.round(Number($('#asAmt').value)||0));
-    const base = {
-      memberId: m.id, memberName: m.name||'', memberPhone10: memberPhone10(m),
+    const picked = [..._asPicked].map(memberById).filter(Boolean);
+    if(!picked.length){ toast('Tap a team member to assign'); return; }
+    const multi = !_asEditId && picked.length > 1;
+    const m = picked[0];
+    /* ask once, listing everyone who already has something that day */
+    const clash = picked.filter(x=>asgConflicts(x.id, _asCtx.date, _asEditId).length);
+    if(clash.length){
+      const names = clash.map(x=>x.name||'a member').join(', ');
+      if(!confirm(`${names} ${clash.length>1?'are':'is'} already booked on ${stepDate(_asCtx.date)||_asCtx.date}. Assign anyway?`)) return;
+    }
+    const typed = Math.max(0, Math.round(Number($('#asAmt').value)||0));
+    const amt = typed;
+    /* several at once: each keeps their own role and their own rate, because
+       one rate and one role across a mixed crew is never what was meant */
+    const payFor = x => multi ? Math.max(0, Math.round(Number(x.defaultRate)||0)) : typed;
+    const roleFor = x => multi ? (x.role || $('#asRole').value || '') : ($('#asRole').value || x.role || '');
+    const baseOf = x => ({
+      memberId: x.id, memberName: x.name||'', memberPhone10: memberPhone10(x),
       pkgId: _asCtx.pkgId, quoteNo: _asCtx.quoteNo||'', clientName: _asCtx.clientName||'',
       eventTitle: _asCtx.eventTitle||'', date: _asCtx.date||'', venue: _asCtx.venue||'',
-      callTime: $('#asCall').value||'', role: $('#asRole').value||m.role||'',
+      callTime: $('#asCall').value||'', role: roleFor(x),
       notes: $('#asNotes').value.trim(), updatedAt: serverTimestamp()
-    };
+    });
+    const base = baseOf(m);
     btn.disabled = true;
     try{
-      if(_asEditId){
+      if(multi){
+        let ok = 0, failed = 0;
+        for(const x of picked){
+          const b = baseOf(x), pay = payFor(x);
+          const ref = doc(collection(db,'assignments'));
+          const res = await settle(setDoc(ref, { ...b, pay: { amount: pay, paid: false, paidDate: '', mode: '' },
+                                                 status: 'assigned', createdAt: serverTimestamp() }));
+          if(res === 'denied'){ failed++; continue; }
+          ok++;
+          ASGS.unshift({ id: ref.id, ...b, pay: { amount: pay, paid: false, paidDate: '', mode: '' }, status: 'assigned' });
+        }
+        toast(failed ? `${ok} assigned — ${failed} refused by the server` : `${ok} crew assigned ✓`);
+        if(!ok) return;
+      }else if(_asEditId){
         const old = ASGS.find(v=>v.id===_asEditId);
         const patch = { ...base, 'pay.amount': amt };
         /* details the member already acknowledged have changed — they must
