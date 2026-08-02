@@ -817,6 +817,31 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
   /* 8.8px is not a readable label */
   .swipehint{font-size:.64rem}
+
+  /* ---- booking cards ----
+     Six pieces of metadata were competing in ONE flex row, and the loser was
+     the client name — "Priy…" while "3 / events" and "14 / Aug" each wrapped
+     onto two lines. Three honest rows instead: who it is, what it is, where
+     the money and the work are. */
+  .lead-top{align-items:flex-start;padding:.8rem .9rem}
+  .lt-lines{gap:.3rem}
+  .lt-lines .l1{flex-wrap:wrap;gap:.3rem .45rem}
+  /* row 1 — the name takes the space it needs, the status pill holds the end */
+  .lt-lines .l1 .nm{flex:1 1 auto;min-width:0;font-size:1.06rem}
+  .lt-lines .l1 .stpill{order:0;flex:0 0 auto}
+  /* a hard break after the pill, or a short name lets metadata creep onto the
+     name's line and the status pill stops sitting at the right edge */
+  .lt-lines .l1::after{content:"";order:0;flex:0 0 100%;height:0}
+  /* row 2 — everything else, on one line of its own, never broken mid-phrase */
+  .lt-lines .l1 .src,.lt-lines .l1 .b2bpill,.lt-lines .l1 .newb,.lt-lines .l1 .qno{order:1;white-space:nowrap}
+  .lt-lines .l1 .src{font-size:.72rem}
+  /* row 3 — quote number and money, each unbreakable */
+  .lt-lines .l2{gap:.5rem}
+  .lead-top .qno{white-space:nowrap;flex:0 0 auto}
+  .lead-top .amt{white-space:nowrap}
+  .lead-top .amt em{font-size:.72em}
+  .lead .chev{align-self:center;padding-left:.15rem}
+  .dl3{margin-top:.15rem}
 }
 </style>
 </head>
