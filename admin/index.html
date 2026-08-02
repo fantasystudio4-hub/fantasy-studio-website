@@ -225,6 +225,21 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cal-jump .mo.on{border-color:var(--gold);color:var(--gold-b)}
 @media(hover:hover){ .cal-jump .mo:hover{border-color:var(--gold);color:var(--gold-b)} }
 
+/* calendar day box: quick "add event" */
+.cd-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
+.cd-head h3{flex:1;min-width:0;margin:0}
+.cd-head .mini{margin-top:0;flex:0 0 auto;white-space:nowrap}
+#calAdd h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem}
+#calAdd .qe-d{font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+#qeMode button{font-size:.78rem;padding:.55em .2em}
+#qeStatus button{font-size:.78rem;padding:.5em .2em}
+#calAdd .evchips{margin-top:-.55rem}
+.qe-acts{display:flex;gap:.6rem;align-items:center}
+.qe-acts .gbtn{flex:1;width:auto;padding:.85em 1.2em}
+.qe-acts .mini{margin-top:0;flex:0 0 auto}
+.qe-note{font-size:.74rem;color:var(--mut);margin-top:.8rem}
+.qe-warn{color:var(--gold-b);font-size:.78rem;background:rgba(184,144,43,.1);border:1px dashed var(--line);border-radius:8px;padding:.6rem .7rem;margin-bottom:.8rem}
+
 /* balance-due pill on upcoming shoots */
 .up-ev .due,.up-next .due{color:var(--gold-b);border:1px solid rgba(184,144,43,.55);background:rgba(184,144,43,.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500;border-radius:20px}
 .up-ev .due:active{background:rgba(184,144,43,.28)}
@@ -689,6 +704,32 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       </div>
     </div>
     <div id="calDetail"></div>
+    <!-- quick add: lives OUTSIDE #calDetail on purpose — that box is rebuilt on
+         every packages snapshot, which would wipe whatever is half-typed here -->
+    <div class="sec" id="calAdd" hidden>
+      <h3>＋ Add an event <span class="qe-d" id="qeDateLbl"></span></h3>
+      <div class="mode-pills" id="qeMode">
+        <button type="button" data-qem="client" class="on">💍 Client</button>
+        <button type="button" data-qem="studio">🏢 B2B</button>
+        <button type="button" data-qem="existing">📋 Existing</button>
+      </div>
+      <div id="qeFields"></div>
+      <div class="fld"><label>Event</label><input id="qeTitle" placeholder="e.g. NIKAH" /></div>
+      <div class="evchips" id="qeChips"></div>
+      <div class="fld"><label>Venue (optional)</label><input id="qeVenue" placeholder="e.g. Taj Banquet Hall" /></div>
+      <div class="fld" id="qeStWrap"><label>Save as</label>
+        <div class="mode-pills" id="qeStatus">
+          <button type="button" data-qest="draft">Draft</button>
+          <button type="button" data-qest="sent">Sent</button>
+          <button type="button" data-qest="booked" class="on">Booked</button>
+        </div>
+      </div>
+      <div class="qe-acts">
+        <button type="button" class="gbtn" id="qeSave">Save event</button>
+        <button type="button" class="mini" id="qeCancel">Cancel</button>
+      </div>
+      <p class="qe-note">No rates needed here — this only puts the date on the calendar. Add services, the album and the PDF any time from <b>Packages</b>.</p>
+    </div>
     <div class="sec upco" id="followups" hidden></div>
     <div class="sec">
       <h3>📸 Booked &amp; recent deliveries</h3>
@@ -2538,10 +2579,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function renderCalDetail(){
     const box = $('#calDetail'); if(!box) return;
-    if(!calSel){ box.innerHTML = '<div class="empty">Tap a date to see its events.</div>'; return; }
+    if(!calSel){ box.innerHTML = '<div class="empty">Tap a date to see its events.</div>'; closeCalAdd(); return; }
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-    box.innerHTML = `<div class="sec"><h3>${human}</h3>` + (evs.length ? evs.map(e=>{
+    box.innerHTML = `<div class="sec">
+      <div class="cd-head"><h3>${human}</h3><button class="mini" type="button" data-addev>＋ Add event</button></div>`
+      + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
       return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
@@ -2550,6 +2593,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="act" data-openev>Open</button>
       </div>`;
     }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
+    syncQeDate();   /* the open quick-add form follows the selected date */
   }
   /* quick month/year jump — tap the calendar title */
   let jumpY = null;
@@ -2584,6 +2628,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     calSel = c.dataset.date; renderCalendar();
   });
   $('#calDetail').addEventListener('click', e=>{
+    if(e.target.closest('[data-addev]')){ openCalAdd(); return; }
     const row = e.target.closest('.cal-ev'); if(!row || !e.target.closest('[data-openev]')) return;
     if(row.dataset.kind === 'pkg'){
       const pk = PKGS.find(x=>x.id===row.dataset.id);
@@ -2595,6 +2640,169 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       renderLeads();
     }
   });
+  /* ---------- quick "add event" straight from the calendar day box ----------
+     Three ways in, all writing the same shape the builder writes:
+       client   — a brand-new direct booking with one dated event
+       b2b      — the same, owned by a partner studio (no phone: studio jobs
+                  must never surface in the client portal — see firestore.rules)
+       existing — appends the date to a booking that already exists, so day 2
+                  and day 3 of a wedding do NOT become duplicate packages
+     No rates are asked for here: the event carries items:[], contributes ₹0 to
+     the totals, and the full builder fills in the money later. */
+  let _qeMode = 'client', _qeStatus = 'booked';
+  function syncQeDate(){
+    const el = $('#qeDateLbl'); if(!el) return;
+    el.textContent = calSel ? new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : '';
+  }
+  function syncQePills(){
+    $$('#qeMode button').forEach(b=>b.classList.toggle('on', b.dataset.qem === _qeMode));
+    $$('#qeStatus button').forEach(b=>b.classList.toggle('on', b.dataset.qest === _qeStatus));
+    $('#qeStWrap').hidden = (_qeMode === 'existing');   /* an existing booking keeps its own status */
+  }
+  function renderQeFields(){
+    const el = $('#qeFields'); if(!el) return;
+    if(_qeMode === 'client'){
+      const names = [...new Set(livePkgs().filter(x=>!isStudioJob(x)).map(x=>String(x.clientName||'').trim()).filter(Boolean))].sort();
+      el.innerHTML = `
+        <div class="fld"><label>Client name</label>
+          <input id="qeName" list="qeNames" autocomplete="off" placeholder="e.g. Ayesha &amp; Faraz" />
+          <datalist id="qeNames">${names.slice(0,200).map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
+        </div>
+        <div class="fld"><label>Phone (optional)</label>
+          <input id="qePhone" type="tel" inputmode="numeric" placeholder="10-digit mobile — this is the client's portal login" />
+        </div>`;
+    }else if(_qeMode === 'studio'){
+      const acts = STUDIOS.filter(s=>s.active !== false);
+      el.innerHTML = acts.length ? `
+        <div class="fld"><label>Partner studio</label>
+          <select id="qeStudio">${acts.map(s=>`<option value="${esc(s.id)}">${esc(s.name||'—')}${s.city ? ' · ' + esc(s.city) : ''}</option>`).join('')}</select>
+        </div>
+        <div class="fld"><label>For end client (optional)</label>
+          <input id="qeEnd" placeholder="the studio's own client" />
+        </div>`
+      : `<div class="qe-warn">No partner studios yet — add one in the <b>B2B</b> tab first, then come back here.</div>`;
+    }else{
+      const list = livePkgs();
+      el.innerHTML = list.length ? `
+        <div class="fld"><label>Add this date to</label>
+          <select id="qePkg">${list.map(x=>`<option value="${esc(x.id)}">${x.quoteNo ? esc(x.quoteNo) + ' · ' : ''}${esc(x.clientName||'—')}${isStudioJob(x) ? ' 🏢' : ''} · ${esc(STATUS_LABEL(x.status||'draft'))}</option>`).join('')}</select>
+        </div>
+        <p class="qe-note" style="margin:-.4rem 0 .8rem">Newest bookings first. Use this for day 2 / day 3 of the same wedding.</p>`
+      : `<div class="qe-warn">No bookings yet — start one with <b>Client</b> or <b>B2B</b>.</div>`;
+    }
+    syncQePills();
+  }
+  function openCalAdd(){
+    if(!calSel){ toast('Tap a date first'); return; }
+    _qeMode = 'client'; _qeStatus = 'booked';
+    $('#qeTitle').value = ''; $('#qeVenue').value = '';
+    $('#qeChips').innerHTML = EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-qename="${esc(n)}">${esc(n)}</button>`).join('');
+    renderQeFields(); syncQeDate();
+    $('#calAdd').hidden = false;
+    setTimeout(()=>{ const b = $('#calAdd'); if(b && !b.hidden) b.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
+  }
+  function closeCalAdd(){ const b = $('#calAdd'); if(b) b.hidden = true; }
+  $('#qeMode').addEventListener('click', e=>{
+    const b = e.target.closest('[data-qem]'); if(!b || b.dataset.qem === _qeMode) return;
+    _qeMode = b.dataset.qem; renderQeFields();
+  });
+  $('#qeStatus').addEventListener('click', e=>{
+    const b = e.target.closest('[data-qest]'); if(!b) return;
+    _qeStatus = b.dataset.qest; syncQePills();
+  });
+  $('#qeChips').addEventListener('click', e=>{
+    const b = e.target.closest('[data-qename]'); if(!b) return;
+    $('#qeTitle').value = b.dataset.qename;
+  });
+  $('#qeCancel').addEventListener('click', closeCalAdd);
+  $('#qeSave').addEventListener('click', async ()=>{
+    const date = calSel;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Tap a date first'); return; }
+    const title = $('#qeTitle').value.trim();
+    if(!title){ toast('Give the event a name'); $('#qeTitle').focus(); return; }
+    const ev = { title, date, venue: $('#qeVenue').value.trim(), items: [] };
+
+    /* work out what we are writing, and refuse early rather than half-way */
+    let pk = null, stu = null, name = '', rawPhone = '', phone = '';
+    if(_qeMode === 'existing'){
+      const sel = $('#qePkg');
+      pk = sel ? PKGS.find(x=>x.id === sel.value && !x.deleted) : null;
+      if(!pk){ toast('Pick a booking to add this date to'); return; }
+      name = pk.clientName || '';
+    }else if(_qeMode === 'studio'){
+      const sel = $('#qeStudio');
+      stu = sel ? studioById(sel.value) : null;
+      if(!stu){ toast('Pick a partner studio — add one in the B2B tab first'); return; }
+      name = stu.name || 'Studio';
+    }else{
+      name = $('#qeName').value.trim();
+      if(!name){ toast('Client name is required'); $('#qeName').focus(); return; }
+      /* a second booking under the same name splits that client's events AND
+         their money across two records — day 2 of a wedding belongs on the
+         booking that already exists */
+      const dup = livePkgs().filter(x=>!isStudioJob(x) && String(x.clientName||'').trim().toLowerCase() === name.toLowerCase());
+      if(dup.length && !confirm(`"${name}" already has ${dup.length} booking${dup.length>1?'s':''}${dup[0].quoteNo ? ' (' + dup[0].quoteNo + ')' : ''}.\n\nA separate booking splits their events and their payments across two records.\n\nTo add this date to the booking they already have, tap Cancel and use the 📋 Existing tab.\n\nCreate a separate booking anyway?`)) return;
+      rawPhone = $('#qePhone').value.trim();
+      phone = normPhone(rawPhone);
+      /* the portal matches on the LAST 10 DIGITS — a short number locks the
+         client out of their own booking with no error anywhere */
+      if(rawPhone && phone.length !== 10
+         && !confirm(`⚠ "${rawPhone}" doesn't look like a complete mobile number (${phone.length} digits).\n\nThe client portal finds bookings by the last 10 digits — with this one, the client will NOT be able to log in.\n\nSave anyway?`)){
+        $('#qePhone').focus(); return;
+      }
+    }
+    const status = _qeMode === 'existing' ? (pk.status||'draft') : _qeStatus;
+    if(status === 'booked'){
+      const busy = dateConflicts(date, pk ? pk.id : null, name);
+      if(busy.length >= DATE_EVENT_CAP
+         && !confirm(`⚠ Heavy day: ${stepDate(date)} already has ${busy.length} events booked (${busy[0].title} — ${busy[0].client}${busy.length>1 ? ', +' + (busy.length-1) + ' more' : ''}). Add anyway?`)) return;
+    }
+
+    const btn = $('#qeSave'); if(btn.disabled) return;
+    btn.disabled = true;
+    try{
+      let res, okMsg;
+      if(_qeMode === 'existing'){
+        const events = [...(pk.events||[]), ev];
+        res = await settle(updateDoc(doc(db,'packages',pk.id), { events, updatedAt: serverTimestamp() }));
+        if(res !== 'denied') pk.events = events;
+        okMsg = `Added to ${pk.quoteNo ? pk.quoteNo + ' · ' : ''}${pk.clientName||''}`;
+      }else{
+        const b2b = _qeMode === 'studio';
+        const d = {
+          clientName: b2b ? (stu.name || 'Studio') : name,
+          careOf: '',
+          clientPhone: b2b ? '' : phone,
+          clientPhoneFull: b2b || !phone ? '' : normPhoneFull(rawPhone),
+          quoteDate: todayISO(),
+          events: [ev],
+          album: { sheets:0, perSheet:0, price:0 },
+          addons: [],
+          pdfTerms: b2b ? [] : pdfTerms(),
+          totals: { gross:0, discount:0, finalPrice:0, advance:0, balance:0 },
+          ...(b2b
+            ? { clientType:'studio', studioId: stu.id, studioName: stu.name || 'Studio',
+                whiteLabel: false, endClientName: ($('#qeEnd') ? $('#qeEnd').value.trim() : '') }
+            : { clientType:'direct' })
+        };
+        const quoteNo = await allocQuoteNo();
+        const ref = doc(collection(db,'packages'));
+        res = await settle(setDoc(ref, { ...d, quoteNo, status,
+          ...(status === 'sent' ? { sentAt: todayISO() } : {}),
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+        /* drafts don't unlock the portal pre-check — indexing one makes a
+           stranger burn a real OTP and then land on "No bookings found" */
+        if(res !== 'denied' && !b2b && phone.length === 10 && status !== 'draft') ensurePhoneIndex(phone);
+        okMsg = `${quoteNo} saved — ${STATUS_LABEL(status)}`;
+      }
+      if(res === 'denied'){ toast('NOT saved — the server refused the write. Nothing was added.'); return; }
+      toast(res === 'queued' ? 'Saved offline — will sync' : okMsg);
+      closeCalAdd();
+      loadPkgs();
+    }catch(err){ toast('Could not save: ' + (err.code||err.message)); }
+    finally{ btn.disabled = false; }
+  });
+
   /* ---------- lead -> package bridge ---------- */
   /* The website builder and the quotation builder name the same services
      differently ("Traditional Photo" vs "Traditional Photography"), so a
