@@ -782,6 +782,42 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ledrow .neg{color:#ffb054}
 .ledrow.hd{color:var(--mut);border-bottom:1px solid var(--line)}
 .ledrow.hd b,.ledrow.hd .l-ev{font-family:var(--sans);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+/* ==== phone pass: everything you actually hit with a thumb ====
+   Measured at 375px across every view and sheet. Desktop is untouched —
+   these only widen targets where a finger, not a cursor, is doing the work.
+   This block is LAST on purpose: several of these override earlier
+   same-property rules and would lose the cascade anywhere else. */
+@media(max-width:699px){
+  /* the ✕ on every sheet was a 14px-wide target */
+  .pay-close{top:4px;right:6px;width:44px;height:44px;display:grid;place-items:center;line-height:1;border-radius:50%}
+  .pay-close:active{background:rgba(255,255,255,.07)}
+
+  /* filter and tab strips — Home tabs, Packages, Leads, Config jump: 27px */
+  .fchips button{min-height:40px;padding:.5em 1.05em;font-size:.78rem}
+
+  /* month nav: ‹ › were 35×36, TODAY 28 tall */
+  .cal-nav button{min-height:42px}
+  .cal-nav #calPrev,.cal-nav #calNext{min-width:44px}
+  .cal-nav #calToday{min-height:42px;padding:.5em .95em}
+
+  /* every dashed "＋ Add …" row */
+  .addrow{min-height:44px}
+
+  /* pill groups: payment mode, save-as status, the add-event modes */
+  .mode-pills button{min-height:44px}
+
+  /* discount / advance in the builder */
+  .prow input{min-height:44px}
+
+  /* inline row actions — Open, Assign, Edit, Sync, ✓ step */
+  .act,.edact{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+  .mini,.upall,.copycrew,.linky{min-height:42px}
+  .howto summary{min-height:40px}
+  .qchip{min-height:40px;display:inline-flex;align-items:center}
+
+  /* 8.8px is not a readable label */
+  .swipehint{font-size:.64rem}
+}
 </style>
 </head>
 <body>
