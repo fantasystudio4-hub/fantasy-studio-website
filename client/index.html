@@ -34,7 +34,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
 .hd .back{margin-left:auto;color:var(--mut);font-size:.8rem;text-decoration:none;border:1px solid var(--line);border-radius:30px;padding:.35em 1em;white-space:nowrap}
 .hd .back + .out{margin-left:.5rem}
-.hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)}
+@media(hover:hover){ .hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)} }
 
 .login{max-width:400px;margin:10vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
 .login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
@@ -71,7 +71,20 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 
 .hello{margin:1.3rem 0 .4rem;font-size:1.25rem}
-.hello + p{color:var(--mut);font-size:.85rem;margin-bottom:1.1rem}
+.hello + p{color:var(--mut);font-size:.85rem;margin-bottom:.9rem}
+/* the question the client opened this page to answer */
+.nextup{display:flex;align-items:center;gap:.8rem;background:rgba(184,144,43,.09);border:1px solid rgba(226,194,117,.4);border-radius:14px;padding:.75rem .9rem;margin-bottom:1.1rem}
+.nextup .nd{flex:0 0 auto;text-align:center;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.28rem .55rem;min-width:52px}
+.nextup .nd b{display:block;font-family:var(--serif);font-size:1.3rem;color:var(--gold-b);line-height:1.1}
+.nextup .nd span{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.nextup .nt{flex:1;min-width:0}
+.nextup .nt b{display:block;font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nextup .nt span{font-size:.75rem;color:var(--gold-b)}
+/* a second booking opens collapsed — the money line stays visible */
+.pkg.collapsed .sec{display:none}
+.pkg.can-toggle .pkg-h{cursor:pointer}
+.pkg-h .chev{flex:0 0 auto;color:var(--mut);font-size:1.1rem;transition:transform .2s}
+.pkg.collapsed .pkg-h .chev{transform:rotate(-90deg)}
 .pkg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:1.1rem;overflow:hidden}
 .pkg-h{padding:1rem 1.1rem .8rem;border-bottom:1px dashed var(--line);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .pkg-h h2{font-size:1.15rem;color:#fff;flex:1;min-width:0}
@@ -132,7 +145,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .vlink{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted rgba(226,194,117,.5)}
 .contact{display:flex;gap:.6rem;flex-wrap:wrap}
 .contact a{flex:1;min-width:130px;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.65em 1em;font-size:.85rem}
-.contact a:hover{background:var(--gold);color:#fff}
+@media(hover:hover){ .contact a:hover{background:var(--gold);color:#fff} }
 .empty{color:var(--mut);text-align:center;padding:2.2rem .8rem;font-size:.92rem}
 .empty .ic{font-size:2.2rem;display:block;margin-bottom:.5rem}
 .toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
@@ -236,6 +249,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div id="dashView" hidden>
     <h1 class="hello" id="hello">Hi!</h1>
     <p id="helloSub"></p>
+    <div class="nextup" id="nextUp" hidden></div>
     <div id="pkgList"></div>
   </div>
 
@@ -268,7 +282,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 </div>
 
 <div id="recaptcha-box"></div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* The portal ships its own manifest ("My Booking") but never registered a
@@ -606,14 +620,48 @@ async function loadPackages(user){
   const name = pkgs[0].clientName || user.displayName || '';
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
   $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio.`;
-  $('#pkgList').innerHTML = pkgs.map(pkgHTML).join('');
+  renderNextUp(pkgs);
+  /* one booking opens as it always did; a second and third open collapsed so
+     the page is not three weddings deep before the current one is read */
+  $('#pkgList').innerHTML = pkgs.map((x,i)=>pkgHTML(x, pkgs.length > 1, i > 0)).join('');
   show('dashView');
 }
-/* tapping the amount summary jumps to that booking's full pricing */
+/* "when is my next event?" — the reason most clients open this page at all */
+function renderNextUp(pkgs){
+  const box = $('#nextUp'); if(!box) return;
+  const today = new Date().toLocaleDateString('en-CA');
+  const next = pkgs
+    .flatMap(p=>(p.events||[]).map(e=>({ title:e.title, date:e.date, venue:e.venue })))
+    .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||'') && e.date >= today)
+    .sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0)[0];
+  if(!next){ box.hidden = true; box.innerHTML = ''; return; }
+  const d = new Date(next.date+'T00:00');
+  const days = Math.round((d - new Date(today+'T00:00'))/864e5);
+  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days · ${d.toLocaleDateString('en-IN',{weekday:'long'})}`;
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="nd"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
+    <div class="nt"><b>${esc(next.title||'Your event')}</b><span>${when}${next.venue ? ' · 📍 ' + esc(next.venue) : ''}</span></div>`;
+}
 $('#pkgList').addEventListener('click', e=>{
+  /* a collapsed booking opens and closes from its header */
+  const h = e.target.closest('[data-pkgtoggle]');
+  if(h){ h.closest('.pkg').classList.toggle('collapsed'); return; }
+  /* tapping the amount summary jumps to that booking's full pricing —
+     opening it first, or the target would be display:none and nothing moved */
   const s = e.target.closest('[data-sums]'); if(!s) return;
-  const sec = s.closest('.pkg') && s.closest('.pkg').querySelector('.sec.pricing');
+  const pkg = s.closest('.pkg'); if(!pkg) return;
+  pkg.classList.remove('collapsed');
+  const sec = pkg.querySelector('.sec.pricing');
   if(sec) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+});
+/* the divs acting as buttons are focusable — give them a button's keys */
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  const t = e.target;
+  if(!t || !t.matches || !t.matches('[tabindex="0"][role="button"]')) return;
+  e.preventDefault();
+  t.click();
 });
 function fillEmpty(phone){
   $('#emptyPhone').textContent = phone || '';
@@ -622,7 +670,7 @@ function fillEmpty(phone){
   $('#emptyWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! I cannot find my booking in the client area. My number: ' + (phone||''));
 }
 
-function pkgHTML(x){
+function pkgHTML(x, canToggle, collapsed){
   const st = x.status||'draft';
   const tt = x.totals||{};
   const paid = Number(tt.advance)||0;
@@ -655,13 +703,14 @@ function pkgHTML(x){
         }).join('')}
       </div>` : '';
   return `
-  <div class="pkg">
-    <div class="pkg-h">
+  <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}">
+    <div class="pkg-h" ${canToggle ? 'data-pkgtoggle role="button" tabindex="0" aria-label="Show or hide this booking"' : ''}>
       <h2>${esc(x.clientName||'Your package')}</h2>
       <span class="qno">${esc(x.quoteNo||'')}</span>
       <span class="chip ${st}">${st === 'unconfirmed' ? 'not confirmed' : st}</span>
+      ${canToggle ? '<span class="chev">▾</span>' : ''}
     </div>
-    <div class="sums" data-sums role="button" title="See full pricing" aria-label="See full pricing">
+    <div class="sums" data-sums role="button" tabindex="0" title="See full pricing" aria-label="See full pricing">
       <div><b>${inr(tt.finalPrice||0)}</b><span>package</span></div>
       <div><b>${inr(paid)}</b><span>paid</span></div>
       <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0 ? 'balance' : 'all clear'}</span></div>

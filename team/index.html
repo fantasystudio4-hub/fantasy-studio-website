@@ -32,7 +32,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd b{font-family:var(--serif);font-size:1.05rem}
 .hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
-.hd .out:hover{border-color:var(--gold);color:var(--gold-b)}
+@media(hover:hover){ .hd .out:hover{border-color:var(--gold);color:var(--gold-b)} }
 
 .login{max-width:400px;margin:8vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
 .login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
@@ -127,7 +127,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .stat[data-pay]:hover{border-color:var(--gold)} }
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;color:var(--mut);font-size:.88rem;margin:1rem 0}
 .bigic{font-size:2rem;display:block;margin-bottom:.4rem}
-.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
 .toast.show{opacity:1}
 .net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
 .hd .net + .out{margin-left:.45rem}
@@ -142,6 +142,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
 .gbtn,.ackbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active,.ackbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
+/* a venue you can tap for directions — the crew are the ones driving there */
+.vlink{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted rgba(226,194,117,.5)}
+/* reaching the studio from the assignment you are looking at */
+.crewhelp{display:flex;gap:.6rem;flex-wrap:wrap;margin:1.2rem 0 .4rem}
+.crewhelp a{flex:1;min-width:130px;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.7em 1em;font-size:.85rem;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.crewhelp a:active{background:rgba(184,144,43,.2)}
+@media(hover:hover){ .crewhelp a:hover{background:var(--gold);color:#fff} }
 /* the very next event stands out from the rest of the schedule */
 #upList .asg:first-child{border-color:rgba(226,194,117,.55)}
 #upList .asg:first-child .asg-h .when{font-size:1.1rem}
@@ -208,7 +215,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <span class="bigic">⏳</span>
       <h1>Request sent</h1>
       <p id="pendingWho"></p>
-      <div class="note">Fantasy Studio has your request. The moment they add you, this page unlocks by itself — you can also tell them on WhatsApp to speed it up. No need to sign in again.</div>
+      <div class="note">Fantasy Studio has your request. The moment they add you, this page unlocks by itself — no need to sign in again.</div>
+      <div class="crewhelp">
+        <a id="pendCall" href="#">📞 Call the studio</a>
+        <a id="pendWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+      </div>
     </div>
   </div>
 
@@ -238,7 +249,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
     <div id="pastWrap" hidden>
-      <div class="grp tog closed" id="pastTog" role="button" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
+      <div class="grp tog closed" id="pastTog" role="button" tabindex="0" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
       <div id="pastList" hidden></div>
     </div>
     <div class="paycard" id="payCard" hidden>
@@ -248,11 +259,15 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
       <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
     </div>
+    <div class="crewhelp">
+      <a id="crewCall" href="#">📞 Call the studio</a>
+      <a id="crewWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+    </div>
   </div>
 
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
@@ -283,7 +298,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, setDoc, updateDoc, query, where, onSnapshot, serverTimestamp } =
+  const { getFirestore, collection, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   /* a NAMED app gives the crew page its own session storage — signing in here
@@ -296,6 +311,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
   $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+
+  /* Reaching the studio used to be impossible from here — a crew member with a
+     question about a call time had nothing to tap. The number comes from Site
+     Config like everywhere else, with the printed one as the fallback so the
+     links work even if that read fails. */
+  const DEFAULT_PHONE = '+91 86868 68803';
+  function wireHelp(phone){
+    const p = String(phone||DEFAULT_PHONE).replace(/\D/g,'');
+    const msg = encodeURIComponent('Salaam! This is about my crew assignment — ');
+    [['#crewCall','#crewWa'],['#pendCall','#pendWa']].forEach(([c,w])=>{
+      const ca = $(c), wa = $(w);
+      if(ca) ca.href = 'tel:+' + p;
+      if(wa) wa.href = 'https://wa.me/' + p + '?text=' + msg;
+    });
+  }
+  wireHelp(DEFAULT_PHONE);
+  getDoc(doc(db,'config','site'))
+    .then(s=>{ const c = s.exists() && s.data().contact; if(c && c.phone) wireHelp(c.phone); })
+    .catch(()=>{});   /* the fallback number is already wired */
+
+  /* the divs that act as buttons are focusable now — give them a button's keys */
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    const t = e.target;
+    if(!t || !t.matches || !t.matches('[tabindex="0"][role="button"]')) return;
+    e.preventDefault();
+    t.click();
+  });
 
   /* ---------- helpers shared with the client portal ---------- */
   function authMsg(err){
@@ -516,7 +559,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="lines">
         <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}</span></div>
         ${a.clientName ? `<div class="ln"><span>Client</span><span>${esc(a.clientName)}</span></div>` : ''}
-        ${a.venue ? `<div class="ln"><span>Venue</span><span>${esc(a.venue)}</span></div>` : ''}
+        ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
         ${a.callTime ? `<div class="ln"><span>Call time</span><span>${esc(fmtTime(a.callTime))}</span></div>` : ''}
         <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
       </div>
@@ -551,8 +594,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#crewStats').innerHTML = `
       <div class="stat"><b>${done.length}</b><span>events done</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
-      <div class="stat" data-pay role="button" title="See payment details"><b>${inr(received)}</b><span>received</span></div>
-      <div class="stat" data-pay role="button" title="See payment details"><b>${inr(due)}</b><span>to receive</span></div>`;
+      <div class="stat" data-pay role="button" tabindex="0" title="See payment details"><b>${inr(received)}</b><span>received</span></div>
+      <div class="stat" data-pay role="button" tabindex="0" title="See payment details"><b>${inr(due)}</b><span>to receive</span></div>`;
     /* last 6 months, current included — pay booked per event month */
     const now = new Date();
     const months = [];
