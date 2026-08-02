@@ -755,7 +755,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <div class="lines">
         <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}</span></div>
-        ${a.clientName ? `<div class="ln"><span>Client</span><span>${esc(a.clientName)}</span></div>` : ''}
+        ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
         ${a.callTime ? `<div class="ln"><span>Call time</span><span>${esc(fmtTime(a.callTime))}</span></div>` : ''}
         <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
@@ -790,7 +790,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${tag}
       </div>
       <div class="lines">
-        <div class="ln"><span>Booking</span><span>${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
+        <div class="ln"><span>Booking</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
         ${a.dueDate ? `<div class="ln"><span>Due</span><span>${esc(fmtDate(a.dueDate))}</span></div>` : ''}
         <div class="ln"><span>${a.scope === 'package' ? 'Last shoot' : 'Shot on'}</span><span>${esc(fmtDate(a.date))}</span></div>
       </div>

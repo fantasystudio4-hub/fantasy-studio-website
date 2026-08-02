@@ -497,6 +497,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .ed-row .t{flex:1;min-width:0}
 .ed-row .t b{display:block;font-size:.88rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ed-row .t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qtag{flex:0 0 auto;font-family:var(--sans);font-size:.58rem;letter-spacing:.07em;color:var(--gold-b);background:rgba(184,144,43,.14);border-radius:12px;padding:.18em .6em;font-weight:600;white-space:nowrap}
 .duetag{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(255,255,255,.06);white-space:nowrap}
 .duetag.soon{color:#ffb054;background:rgba(255,176,84,.14)}
 .duetag.late{color:var(--err);background:rgba(224,122,106,.14)}
@@ -1180,6 +1181,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <h3 id="asTitle">Assign Crew</h3>
   <div class="who" id="asWho"></div>
   <div class="fld" id="asBookWrap" hidden><label>Booking</label><select id="asBook"></select></div>
+  <div class="fld" id="asBookEvWrap" hidden><label>Which function</label><select id="asBookEv"></select></div>
   <button class="copycrew" id="asCopy" type="button" hidden></button>
   <div class="fld"><label>Team member <em id="asPickHint">tap one, or several</em></label>
     <div class="crewpick" id="asPick"></div>
@@ -2482,7 +2484,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <i class="dot ${e.status}"></i>
         <div class="uh-mid">
           <b>${esc(e.title)}</b>
-          <span>${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue ? ' · 📍 ' + esc(e.venue) : ''}</span>
+          <span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue ? ' · 📍 ' + esc(e.venue) : ''}</span>
         </div>
         ${due > 0 ? `<span class="due">${inr(due)} due</span>` : ''}
         <span class="chev2">›</span>
@@ -2843,7 +2845,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     livePkgs().forEach(pk=>{
       (pk.events||[]).forEach(ev=>{
         if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
-          evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
+          evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', quoteNo: pk.quoteNo||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
       });
     });
     liveLeads().forEach(l=>{
@@ -2908,7 +2910,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
         <i class="dot ${e.status}"></i>
-        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="act" data-openev>Open</button>
       </div>`;
     }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
@@ -3283,6 +3285,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
 
+  /* A package is identified by its quote number first — the client name alone
+     is ambiguous the moment a couple books twice, and the owner reads the quote
+     number off the PDF and off WhatsApp. One helper so every list agrees. */
+  const qnoOf = x => (x && x.quoteNo) ? String(x.quoteNo) : '';
+  const pkgLabel = x => [qnoOf(x), (x && x.clientName) || '—'].filter(Boolean).join(' · ');
+  const qnoTag = q => q ? `<span class="qtag">${esc(q)}</span>` : '';
+  const asWhoText = c => [c.quoteNo, c.eventTitle || 'Event', c.clientName || '—',
+                          stepDate(c.date) || c.date].filter(Boolean).join(' · ');
+
   /* booked-package events from today onward, soonest first */
   function teamUpcoming(){
     const today = todayISO();
@@ -3388,7 +3399,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="when">${stepDate(ev.date)}</span>
           <span class="away ${days<=2?'soon':''}">${away}</span>
           <b>${esc(ev.title||'Event')}</b>
-          <span class="cl">· ${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
+          <span class="cl">· ${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
           <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
         </div>
         <div class="tm-fill">
@@ -3514,6 +3525,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="w" data-asedit="${a.id}" role="button" tabindex="0">${esc(stepDate(a.dueDate) || '—')}</span>
         <span class="t" data-asedit="${a.id}" role="button" tabindex="0">
           <b>${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : ''}</b>
+          ${qnoTag(a.quoteNo)}
           <span>${esc(a.deliver || a.eventTitle || 'Editing')} · ${esc(a.memberName||'—')}</span>
         </span>
         ${late && wa ? `<button class="edact" data-nudge="${a.id}" title="Remind the editor">💬</button>` : ''}
@@ -3557,36 +3569,66 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      list — that only reaches forward. This offers every booked event from the
      last eight months onward, most recent first, which is where a wedding
      waiting to be edited actually sits. */
+  /* One row per QUOTE, not per function: editing is bought for a booking, and
+     a three-day wedding listed as three near-identical dates was the wrong
+     shape to pick from. The functions live in a second select, and only when
+     the job is not the whole booking. */
   function bookingRows(){
     const cutoff = new Date(Date.now() - 240*864e5).toLocaleDateString('en-CA');
-    const rows = [];
-    livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft')).forEach(pk=>{
-      (pk.events||[]).forEach((ev, idx)=>{
-        if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') && ev.date >= cutoff) rows.push({ pk, ev, idx });
-      });
-    });
-    return rows.sort((a,b)=>a.ev.date < b.ev.date ? 1 : -1);
+    return livePkgs()
+      .filter(x=>['booked','delivered'].includes(x.status||'draft'))
+      .map(pk=>{
+        const evs = (pk.events||[]).filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||''))
+          .sort((a,b)=>a.date < b.date ? -1 : 1);
+        return { pk, evs, last: evs.length ? evs[evs.length-1].date : '' };
+      })
+      .filter(r=>r.evs.length && r.last >= cutoff)
+      .sort((a,b)=>a.last < b.last ? 1 : -1);
   }
-  const ctxOfRow = r => ({ pkgId: r.pk.id, quoteNo: r.pk.quoteNo||'', clientName: r.pk.clientName||'',
-                           eventTitle: r.ev.title||'', date: r.ev.date||'', venue: r.ev.venue||'' });
+  const spanOf = r => r.evs.length > 1
+    ? stepDate(r.evs[0].date) + ' – ' + stepDate(r.last)
+    : stepDate(r.last);
+  /* whole booking → the last function carries the job; otherwise the chosen one */
+  function ctxOfRow(r){
+    const whole = $('#asWhole').checked;
+    const ev = whole ? r.evs[r.evs.length-1] : (r.evs[Number($('#asBookEv').value)] || r.evs[r.evs.length-1]);
+    return { pkgId: r.pk.id, quoteNo: r.pk.quoteNo||'', clientName: r.pk.clientName||'',
+             eventTitle: ev.title||'', date: ev.date||'', venue: ev.venue||'' };
+  }
   function fillBookings(){
     const today = todayISO();
     $('#asBook').innerHTML = _bookRows.map((r,i)=>
-      `<option value="${i}">${esc(stepDate(r.ev.date))}${r.ev.date < today ? ' (shot)' : ''} · ${esc(r.pk.clientName||'—')} · ${esc(r.ev.title||'Event')}</option>`).join('');
+      `<option value="${i}">${r.pk.quoteNo ? esc(r.pk.quoteNo) + ' · ' : ''}${esc(r.pk.clientName||'—')} · ${esc(spanOf(r))}${r.last < today ? ' (shot)' : ''}</option>`).join('');
+    fillBookingEvents();
+  }
+  function fillBookingEvents(){
+    const r = _bookRows[Number($('#asBook').value)];
+    const wrap = $('#asBookEvWrap');
+    /* one function, or the whole booking: nothing to choose */
+    wrap.hidden = !r || r.evs.length < 2 || $('#asWhole').checked || $('#asBookWrap').hidden;
+    if(!r) return;
+    $('#asBookEv').innerHTML = r.evs.map((e,i)=>
+      `<option value="${i}">${esc(stepDate(e.date))} · ${esc(e.title||'Event')}</option>`).join('');
+    $('#asBookEv').value = String(r.evs.length - 1);
+  }
+  function reBook(){
+    const r = _bookRows[Number($('#asBook').value)]; if(!r) return;
+    _asCtx = ctxOfRow(r);
+    $('#asWho').textContent = asWhoText(_asCtx);
+    $('#asDue').value = '';            /* re-derived from the chosen function */
+    renderAsPick(); syncAsUI(); refreshAsConflict();
   }
   $('#edAdd').addEventListener('click', ()=>{
     _bookRows = bookingRows();
     if(!_bookRows.length){ toast('No booked events yet — book a package first, then assign its editing'); return; }
+    $('#asWhole').checked = true;      /* per-quote picker: the whole booking is the default */
+    $('#asBook').innerHTML = '';
+    _bookRows.length && ($('#asBookWrap').hidden = false);
     fillBookings();
-    openAs(ctxOfRow(_bookRows[0]), null, { pickBooking: true, forceEdit: true });
+    openAs(ctxOfRow(_bookRows[0]), null, { pickBooking: true, forceEdit: true, whole: true });
   });
-  $('#asBook').addEventListener('change', ()=>{
-    const r = _bookRows[Number($('#asBook').value)]; if(!r) return;
-    _asCtx = ctxOfRow(r);
-    $('#asWho').textContent = `${_asCtx.eventTitle||'Event'} · ${_asCtx.clientName||'—'} · ${stepDate(_asCtx.date)||_asCtx.date}`;
-    $('#asDue').value = '';            /* re-derived from the new event */
-    renderAsPick(); syncAsUI(); refreshAsConflict();
-  });
+  $('#asBook').addEventListener('change', ()=>{ fillBookingEvents(); reBook(); });
+  $('#asBookEv').addEventListener('change', reBook);
 
   /* the league table — the one view that says who is actually carrying the season */
   let _lbPeriod = 'y';
@@ -3769,7 +3811,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           : '';
         return `
         <div class="pm-row">
-          <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')} <span>· ${esc(a.clientName||'')}</span></span>
+          <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')} <span>· ${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'')}</span></span>
           <span class="amt2">${inr((p.amount)||0)}</span>
           ${p.paid
             ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to mark unpaid">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
@@ -3958,6 +4000,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        and a due date means nothing for a shoot */
     const ed = !multi && roleIsEdit($('#asRole').value);
     $$('#asModal [data-editonly]').forEach(f=>f.hidden = !ed);
+    if(!$('#asBookWrap').hidden && typeof fillBookingEvents === 'function') fillBookingEvents();
     $$('#asModal [data-shootonly]').forEach(f=>f.hidden = ed);
     if(ed && !$('#asDue').value)
       $('#asDue').value = dueFromEvent(($('#asWhole').checked && lastEventDate(_asCtx && _asCtx.pkgId)) || (_asCtx && _asCtx.date));
@@ -3965,7 +4008,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#asRole').addEventListener('change', syncAsUI);
   /* the deadline is measured from the last function once it covers them all */
-  $('#asWhole').addEventListener('change', ()=>{ $('#asDue').value = ''; syncAsUI(); });
+  $('#asWhole').addEventListener('change', ()=>{
+    $('#asDue').value = '';
+    if(!$('#asBookWrap').hidden){ fillBookingEvents(); reBook(); return; }
+    syncAsUI();
+  });
   const DELIVERABLES = ['Photos','Video','Teasers','Album design','Reels'];
   $('#asDelChips').innerHTML = DELIVERABLES.map(d=>`<button type="button" class="qchip" data-del="${esc(d)}">${esc(d)}</button>`).join('');
   $('#asDelChips').addEventListener('click', e=>{
@@ -4053,8 +4100,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _asCtx = ctx;
     _asForceEdit = !!(opts && opts.forceEdit);
     $('#asBookWrap').hidden = !(opts && opts.pickBooking);
+    if(opts && opts.whole) $('#asWhole').checked = true;
     $('#asTitle').textContent = a ? 'Edit Assignment' : (_asForceEdit ? 'Assign Editing' : 'Assign Crew');
-    $('#asWho').textContent = `${ctx.eventTitle||'Event'} · ${ctx.clientName||'—'} · ${stepDate(ctx.date)||ctx.date}${ctx.venue ? ' · ' + ctx.venue : ''}`;
+    $('#asWho').textContent = asWhoText(ctx) + (ctx.venue ? ' · ' + ctx.venue : '');
     _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
     renderAsPick();
     $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role
