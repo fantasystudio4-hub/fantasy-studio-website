@@ -352,6 +352,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-sub select{background:#171309;border:1px solid var(--line);color:var(--text);border-radius:20px;padding:.25em .5em;font-size:.78rem;margin-left:auto}
 .st-new{color:var(--gold-b)} .st-contacted{color:#7fb2e5} .st-booked{color:var(--ok)}
 .st-shot{color:#c99ae0} .st-delivered{color:#9adbb2} .st-lost{color:var(--err)}
+.st-converted{color:#6fc8c0}
 .lead-det{border-top:1px dashed var(--line);padding:.85rem .95rem;font-size:.85rem}
 .lead-det h4{font-family:var(--serif);color:var(--gold-b);font-size:.92rem;margin:.5rem 0 .3rem}
 .lead-det .ln{display:flex;justify-content:space-between;padding:.12rem 0;color:var(--text)}
@@ -1410,7 +1411,11 @@ const SERVICE_LABELS = {
   ladyShooter:'Female Shooter', drone:'Drone Coverage', ledScreen6x8:'LED Screen 6×8',
   ledScreen8x12:'LED Screen 8×12', liveStreaming:'Live Streaming', extraShortVPShoot:'Extra Short VP Shoot'
 };
-const STATUSES = ['new','contacted','booked','shot','delivered','lost'];
+/* 'converted' is set for you the moment a lead becomes a saved package — the
+   enquiry stops being an open lead and its quotation takes over the job (see
+   linkConvertedLead). The older lead-side booked/shot/delivered stages stay
+   for enquiries that were tracked here before packages existed. */
+const STATUSES = ['new','contacted','converted','booked','shot','delivered','lost'];
 
 /* current live-site values — used to seed config/site the first time */
 const DEFAULTS = {
@@ -1931,8 +1936,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     h += `<h4>My notes</h4><textarea data-notes placeholder="Follow-up notes…">${esc(l.notes||'')}</textarea>
           <button class="mini" data-savenotes>Save notes</button>`;
+    /* this enquiry already became a package — say so, and offer the way back
+       to it, instead of silently inviting a second one */
+    if(l.pkgId){
+      /* Leads render long before the packages listener has delivered anything
+         (they are separate tabs), so an empty PKGS means "not loaded yet", NOT
+         "deleted" — say deleted only once the list is genuinely in. The quote
+         number stored on the lead lets the button read right either way. */
+      const pk = PKGS.find(p=>p.id===l.pkgId && !p.deleted);
+      const gone = _pkgsLoaded && !pk;
+      h += ` <button class="mini" data-openpkg${gone?' disabled':''}>${gone ? '📦 Package deleted'
+              : '📦 Open ' + esc((pk && pk.quoteNo) || l.quoteNo || 'package')}</button>`;
+    }
     if(l.quote && Array.isArray(l.quote.events) && l.quote.events.length){
-      h += ` <button class="mini" data-convert>→ Create package from this lead</button>`;
+      h += ` <button class="mini" data-convert>→ ${l.pkgId ? 'Create another package' : 'Create package from this lead'}</button>`;
     }
     return h;
   }
@@ -1962,10 +1979,30 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }catch(err){ toast('Delete failed'); }
       return;
     }
+    if(e.target.closest('[data-openpkg]')){
+      if(!canLeaveEditor()) return;
+      const l = LEADS.find(x=>x.id===card.dataset.id);
+      const pk = l && PKGS.find(p=>p.id===l.pkgId && !p.deleted);
+      if(!pk){ toast('That package no longer exists — check Trash'); return; }
+      $('#tabPkgs').click(); openPkgEdit(pk);
+      return;
+    }
     if(e.target.closest('[data-convert]')){
       if(!canLeaveEditor()) return;
       const l = LEADS.find(x=>x.id===card.dataset.id);
-      if(l){ $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l)); $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`; toast('Quote loaded — check rates, then Save'); }
+      if(!l) return;
+      /* one enquiry, one job. A second package splits the same wedding's
+         events and payments across two records — the exact thing the
+         lead↔package link exists to prevent. Warn on the STORED link, not on
+         finding the doc: with the packages list not loaded yet, "not found"
+         must not be read as "no package exists". Only a load that proves it
+         was deleted lets the conversion through unquestioned. */
+      if(l.pkgId){
+        const already = PKGS.find(p=>p.id===l.pkgId && !p.deleted);
+        const gone = _pkgsLoaded && !already;
+        if(!gone && !confirm(`"${l.name||'This lead'}" already became ${(already && already.quoteNo) || l.quoteNo || 'a package'}.\n\nA second package splits their events and their payments across two records.\n\nTo add a date to the package they already have, tap Cancel and open it instead.\n\nCreate a separate package anyway?`)) return;
+      }
+      $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l)); $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`; toast('Quote loaded — check rates, then Save');
       return;
     }
     if(e.target.closest('[data-savenotes]')){
@@ -2239,6 +2276,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* while the builder edits a STUDIO job, the studio's negotiated rate card
      (when it has one) replaces the retail rates everywhere in the builder */
   let _bStudioId = null;
+  /* the lead this package is being built from (or was built from) — written
+     onto the package as leadId so the enquiry and its quotation stay one job */
+  let _bLeadId = null;
   /* the builder learns: every rate you actually use overrides the preset next time */
   const allRates = () => {
     const stu = _bStudioId ? studioById(_bStudioId) : null;
@@ -2941,6 +2981,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const copy = JSON.parse(JSON.stringify(x)); delete copy.id;
       copy.status = 'draft';
       copy.payments = [];
+      /* the original keeps the enquiry — a copy must not claim it too, or the
+         lead would point at one package while two think they came from it */
+      delete copy.leadId;
       delete copy.delivery; delete copy.deliveredAt; delete copy.sentAt;
       if(copy.totals){ copy.totals.advance = 0; copy.totals.balance = copy.totals.finalPrice || 0; }
       copy.createdAt = serverTimestamp(); copy.updatedAt = serverTimestamp();
@@ -3037,6 +3080,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     });
     liveLeads().forEach(l=>{
+      /* converted: its package owns these dates now and drew them above.
+         Checked by id, not by status, so a lead converted back when it was
+         already marked 'booked' stops doubling up too. */
+      if(l.pkgId && PKGS.some(p=>p.id===l.pkgId && !p.deleted)) return;
       if(l.status !== 'booked') return;
       /* a booked lead's quote can hold several dated events (e.g. 1, 3 & 5 Aug) —
          show them ALL, not just the single weddingDate */
@@ -3349,6 +3396,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---------- lead -> package bridge ---------- */
+  /* Converting used to COPY the enquiry and leave it behind: the same wedding
+     then lived in two records with two independent status ladders, and if the
+     lead was also marked 'booked' its dates drew twice on the calendar. Store
+     each id on the other and retire the lead the moment its package exists.
+     A failure here is a nuisance, never a loss — the package is already saved. */
+  async function linkConvertedLead(leadId, pkgId, quoteNo){
+    if(!leadId || !pkgId) return;
+    const patch = { status: 'converted', pkgId, convertedAt: todayISO() };
+    if(quoteNo) patch.quoteNo = quoteNo;
+    try{
+      const res = await settle(updateDoc(doc(db,'leads',leadId), patch));
+      if(res === 'denied'){
+        toast('Package saved — but the lead was not updated. Set it to Converted by hand so it stops showing as open.');
+        return;
+      }
+      const l = LEADS.find(v=>v.id===leadId);
+      if(l) Object.assign(l, patch);
+      renderStats(); renderLeads(); renderCalendar();
+    }catch(err){
+      toast('Package saved — but the lead could not be marked Converted (' + (err.code||err.message) + ')');
+    }
+  }
+
   /* The website builder and the quotation builder name the same services
      differently ("Traditional Photo" vs "Traditional Photography"), so a
      converted lead used to arrive with every common service at ₹0 as a
@@ -3384,6 +3454,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     })).filter(ev=>ev.items.length || ev.date);
     const sheets = Number(q.albumSheets)||0;
     return {
+      leadId: l.id,
       clientName: l.name||'', careOf:'', clientPhone: l.phone||'',
       clientPhoneFull: l.phoneFull || '',   /* keeps NRI leads dialling their real country code */
       quoteDate: todayISO(),
@@ -5224,6 +5295,36 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     e.preventDefault();   /* Space would scroll the page */
     t.click();
   });
+  /* Money arrived, but the status never moved: a client who had paid the 50%
+     sat in 'sent' — the date stayed open in the clash check, no crew could be
+     assigned against a booking that did not exist, the follow-up list kept
+     chasing them and the client portal showed the wrong stage. Your printed
+     terms already say it ("dates are blocked only once the advance is
+     received"); offer the transition at the exact moment the money lands. */
+  const BOOKABLE_ON_PAYMENT = ['draft','sent','unconfirmed'];
+  async function offerBookOnPayment(x, amount){
+    if(!BOOKABLE_ON_PAYMENT.includes(x.status||'draft')) return;
+    const nd = nextShootDate(x);
+    if(!confirm(`${inr(amount)} received on ${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||'this package'}.\n\nMark it as Booked? Your terms hold the dates only once the advance is in — booking blocks ${nd ? stepDate(nd) : 'the dates'} in the calendar, lets you assign crew, and stops the follow-up reminders.`)) return;
+    const patch = { status: 'booked', updatedAt: serverTimestamp() };
+    if(x.deliveredAt) patch.deliveredAt = deleteField();
+    try{
+      const res = await settle(updateDoc(doc(db,'packages',x.id), patch));
+      if(res === 'denied'){
+        toast('Payment saved — but the status was NOT changed. Set it to Booked from the status pill.');
+        return;
+      }
+      x.status = 'booked'; delete x.deliveredAt;
+      /* it may have been a draft until now, and drafts are deliberately kept
+         out of the portal's pre-OTP check */
+      if(x.clientPhone) ensurePhoneIndex(x.clientPhone);
+      buzz(); renderPkgList(); renderCalendar();
+      toast(res === 'queued' ? 'Marked Booked — will sync' : '📅 Booked — the dates are held');
+    }catch(err){
+      toast('Payment saved — but the status change failed (' + (err.code||err.message) + ')');
+    }
+  }
+
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
@@ -5271,6 +5372,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast(res === 'queued'
         ? `${inr(amount)} saved offline — will sync`
         : `${inr(amount)} (${payMode}) recorded — balance ${inr(Math.max(0,tt.balance))}`);
+      /* status first, receipt second: the booking is the part that costs you a
+         date if it is forgotten */
+      await offerBookOnPayment(x, amount);
       if(x.clientPhone && confirm('Send a WhatsApp receipt to the client?')){
         openWa(waLink(x, waReceiptText(x, payment, Math.max(0,tt.balance))));
       }
@@ -5818,6 +5922,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : (x && isStudioJob(x)) ? (studioById(x.studioId) || { id: x.studioId, name: x.studioName || x.clientName || 'Studio', rateCard: {} })
       : null;
     _bStudioId = stu ? stu.id : null;
+    /* set for a lead being converted (pkgFromLead carries it) and for a saved
+       package that came from one; null for any package started from scratch,
+       so an unrelated job can never adopt the last lead you looked at */
+    _bLeadId = (x && x.leadId) || null;
     $('#stuJobSec').hidden = !stu;
     $$('#pkgEditView [data-direct-only]').forEach(f=>f.hidden = !!stu);
     /* B2B jobs have no retail album or quotation terms — hide steps 3 & 6 */
@@ -5947,6 +6055,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* no quotation terms on B2B jobs — the studio's own payment terms apply */
       pdfTerms: _b2b ? [] : $$('#pkgTerms [data-pterm]').filter(c=>c.checked).map(c=>c.closest('.termrow').querySelector('span').textContent),
       totals: { gross, discount, finalPrice, advance, balance: finalPrice - advance },
+      /* only ever ADD the link — a package saved without one keeps whatever
+         leadId it already has on the server rather than losing it */
+      ...(_bLeadId ? { leadId: _bLeadId } : {}),
       ...typed
     };
   }
@@ -6071,6 +6182,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     btn.disabled = true;
     try{
       const existing = editingId ? PKGS.find(pk=>pk.id===editingId) : null;
+      const wasNew = !editingId;
+      let newQuoteNo = '';
       const prevStatus = existing ? (existing.status||'draft') : 'draft';
       const newStatus = _bStatus || 'draft';
       /* saving straight to booked runs the same heavy-day check as the status sheet */
@@ -6105,6 +6218,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }
       }else{
         const quoteNo = await allocQuoteNo();
+        newQuoteNo = quoteNo;
         const ref = doc(collection(db,'packages'));
         res = await settle(setDoc(ref, { ...d, quoteNo, status: newStatus,
           ...(newStatus === 'sent' ? { sentAt: todayISO() } : {}),
@@ -6127,6 +6241,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          indexing a draft made strangers pass the check, burn a real OTP and
          then hit "No bookings found" (the portal hides drafts) */
       if(d.clientPhone && newStatus !== 'draft') ensurePhoneIndex(d.clientPhone);
+      /* the enquiry and its quotation are now ONE job — retire the lead and
+         point the two records at each other */
+      if(wasNew && _bLeadId) await linkConvertedLead(_bLeadId, editingId, newQuoteNo);
       _pkgBaseline = JSON.stringify(readForm());
       /* An advance typed straight into the builder is not a payment record, so
          it never showed in the payment list, the receipts or the cash-flow
