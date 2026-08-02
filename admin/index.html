@@ -501,6 +501,9 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .duetag.soon{color:#ffb054;background:rgba(255,176,84,.14)}
 .duetag.late{color:var(--err);background:rgba(224,122,106,.14)}
 .duetag.ok{color:var(--ok);background:rgba(76,175,125,.13)}
+.edact{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .7em;font-size:.7rem;cursor:pointer;min-height:34px;white-space:nowrap}
+.edact.tick{border-color:rgba(76,175,125,.5);color:var(--ok)}
+.edact:active{background:rgba(184,144,43,.18)}
 @media(hover:hover){ .ed-row:hover .t b{color:var(--gold-b)} }
 
 /* upcoming events: how close, how full, who hasn't confirmed */
@@ -1186,6 +1189,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div class="fld" data-editonly hidden><label>What to deliver</label>
     <input id="asDeliver" placeholder="e.g. Photos + 2 teasers" />
     <div class="evchips" id="asDelChips"></div>
+  </div>
+  <div class="fld" data-editonly hidden>
+    <label style="display:flex;align-items:center;gap:.55rem;text-transform:none;letter-spacing:.02em">
+      <input id="asWhole" type="checkbox" style="width:18px;height:18px;accent-color:var(--gold)" />
+      Covers the whole booking</label>
+    <p class="sub" style="margin:.35rem 0 0">One editing job for every function, instead of one per day.</p>
   </div>
   <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" /></div>
   <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
@@ -3436,6 +3445,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              rate: list.length ? Math.round(100*acks/list.length) : null };
   }
 
+  /* What an editor hands over maps onto the package's own delivery checklist,
+     so signing the edit off can tick the step instead of the owner hunting for
+     it in the package card. Matched on keywords, because the checklist is the
+     studio's to rename in Config. */
+  function stepForDeliver(x, deliver){
+    const steps = stepsFor(x) || [];
+    const d = String(deliver||'').toLowerCase();
+    const want = /album/.test(d) ? /album designed/i
+      : /teaser|reel/.test(d) ? /teaser/i
+      : /video|cinema/.test(d) ? /video edited/i
+      : /photo/.test(d) ? /photo.*(ready|edited)/i
+      : null;
+    if(!want) return '';
+    return steps.find(st=>want.test(st)) || '';
+  }
+  async function tickDeliveryStep(pkgId, step){
+    const x = PKGS.find(p=>p.id===pkgId); if(!x || !step) return;
+    const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
+    if(list.some(d=>d.step === step)){ toast('Already ticked'); return; }
+    const delivery = [...list, { step, date: todayISO() }];
+    const res = await settle(updateDoc(doc(db,'packages',pkgId), { delivery, updatedAt: serverTimestamp() }));
+    const sm = settleMsg(res, `“${step}” ticked ✓`);
+    toast(sm.msg);
+    if(!sm.ok) return;
+    x.delivery = delivery;
+    buzz(); renderPkgList(); renderTeam();
+  }
+
   /* ---------- editing desk ----------
      Post-production is the one job that is NOT about the day it is attached
      to: it is booked against an event but delivered weeks later, so it sorts
@@ -3457,15 +3494,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const txt = d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + 'd';
       return `<span class="duetag ${cls}">${txt}</span>`;
     };
-    const row = a => `
-      <div class="ed-row ${a.workDone ? 'ok' : ''}" data-asedit="${a.id}" role="button" tabindex="0">
-        <span class="w">${esc(stepDate(a.dueDate) || '—')}</span>
-        <span class="t">
-          <b>${esc(a.clientName||'—')}</b>
+    const row = a => {
+      const pk = PKGS.find(p=>p.id===a.pkgId);
+      const late = !a.workDone && (a.dueDate||'') && a.dueDate < today;
+      const m = memberById(a.memberId);
+      const wa = (m && m.phone) ? String(normPhoneFull(m.phone)).replace(/\D/g,'') : '';
+      /* an edit signed off whose delivery step is still unticked — one tap
+         instead of finding the package and the step by hand */
+      const step = (a.workDone && pk) ? stepForDeliver(pk, a.deliver) : '';
+      const stepDone = step && (Array.isArray(pk.delivery) ? pk.delivery : []).some(d=>d && d.step === step);
+      return `
+      <div class="ed-row ${a.workDone ? 'ok' : ''}">
+        <span class="w" data-asedit="${a.id}" role="button" tabindex="0">${esc(stepDate(a.dueDate) || '—')}</span>
+        <span class="t" data-asedit="${a.id}" role="button" tabindex="0">
+          <b>${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : ''}</b>
           <span>${esc(a.deliver || a.eventTitle || 'Editing')} · ${esc(a.memberName||'—')}</span>
         </span>
+        ${late && wa ? `<button class="edact" data-nudge="${a.id}" title="Remind the editor">💬</button>` : ''}
+        ${step && !stepDone ? `<button class="edact tick" data-tick="${a.id}" title="Tick “${esc(step)}” on the package">✓ step</button>` : ''}
         ${a.workDone ? '<span class="duetag ok">✓ done</span>' : dueChip(a)}
       </div>`;
+    };
     el.innerHTML = (open.length ? open.map(row).join('')
                                 : '<div class="empty" style="padding:.5rem 0">Nothing outstanding — every edit is signed off ✓</div>')
       + (done.length ? `<div class="grp tog ${_edShowDone?'':'closed'}" data-edgrp role="button" tabindex="0" aria-expanded="${_edShowDone}"><span class="car">▾</span>Completed<b>${done.length}</b></div>`
@@ -3474,6 +3523,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _edShowDone = false;
   $('#edList').addEventListener('click', e=>{
     if(e.target.closest('[data-edgrp]')){ _edShowDone = !_edShowDone; renderEditDesk(); return; }
+    const nd = e.target.closest('[data-nudge]');
+    if(nd){
+      const a = ASGS.find(v=>v.id===nd.dataset.nudge); if(!a) return;
+      const m = memberById(a.memberId); if(!m || !m.phone) return;
+      const days = Math.round((new Date(todayISO()+'T00:00') - new Date(a.dueDate+'T00:00'))/864e5);
+      openWa('https://wa.me/' + String(normPhoneFull(m.phone)).replace(/\D/g,'') + '?text=' + encodeURIComponent(
+        `Salaam ${m.name||''}! The ${a.deliver||'editing'} for ${a.clientName||'the booking'} was due ${stepDate(a.dueDate)}` +
+        `${days > 0 ? ` — ${days} day${days===1?'':'s'} ago` : ''}. How is it looking?`));
+      return;
+    }
+    const tk = e.target.closest('[data-tick]');
+    if(tk){
+      const a = ASGS.find(v=>v.id===tk.dataset.tick); if(!a) return;
+      const pk = PKGS.find(p=>p.id===a.pkgId); if(!pk) return;
+      const step = stepForDeliver(pk, a.deliver); if(!step) return;
+      if(confirm(`Tick “${step}” as done on ${pk.clientName||'this package'}?`)) tickDeliveryStep(pk.id, step);
+      return;
+    }
     const r = e.target.closest('[data-asedit]'); if(!r) return;
     const a = ASGS.find(v=>v.id===r.dataset.asedit); if(!a) return;
     openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
@@ -3829,6 +3896,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   /* one place decides what the sheet looks like for the current selection */
   const roleIsEdit = r => /editor/i.test(String(r||''));
+  const lastEventDate = pkgId => {
+    const pk = PKGS.find(p=>p.id===pkgId); if(!pk) return '';
+    return (pk.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort().pop() || '';
+  };
   const editDueDays = () => Math.min(365, Math.max(1, Number(CFG && CFG.editDueDays) || 21));
   const dueFromEvent = d => {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return todayISO();
@@ -3847,10 +3918,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const ed = !multi && roleIsEdit($('#asRole').value);
     $$('#asModal [data-editonly]').forEach(f=>f.hidden = !ed);
     $$('#asModal [data-shootonly]').forEach(f=>f.hidden = ed);
-    if(ed && !$('#asDue').value) $('#asDue').value = dueFromEvent(_asCtx && _asCtx.date);
+    if(ed && !$('#asDue').value)
+      $('#asDue').value = dueFromEvent(($('#asWhole').checked && lastEventDate(_asCtx && _asCtx.pkgId)) || (_asCtx && _asCtx.date));
     $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save Assignment';
   }
   $('#asRole').addEventListener('change', syncAsUI);
+  /* the deadline is measured from the last function once it covers them all */
+  $('#asWhole').addEventListener('change', ()=>{ $('#asDue').value = ''; syncAsUI(); });
   const DELIVERABLES = ['Photos','Video','Teasers','Album design','Reels'];
   $('#asDelChips').innerHTML = DELIVERABLES.map(d=>`<button type="button" class="qchip" data-del="${esc(d)}">${esc(d)}</button>`).join('');
   $('#asDelChips').addEventListener('click', e=>{
@@ -3941,6 +4015,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asCall').value = a ? (a.callTime||'') : '';
     $('#asDue').value = a ? (a.dueDate||'') : '';
     $('#asDeliver').value = a ? (a.deliver||'') : '';
+    $('#asWhole').checked = a ? (a.scope === 'package') : false;
     $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
     $('#asNotes').value = a ? (a.notes||'') : '';
     $('#asRemove').hidden = !a;
@@ -3979,13 +4054,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return {
         memberId: x.id, memberName: x.name||'', memberPhone10: memberPhone10(x),
         pkgId: _asCtx.pkgId, quoteNo: _asCtx.quoteNo||'', clientName: _asCtx.clientName||'',
-        eventTitle: _asCtx.eventTitle||'', date: _asCtx.date||'', venue: _asCtx.venue||'',
+        eventTitle: (ed && $('#asWhole').checked) ? 'All functions' : (_asCtx.eventTitle||''),
+        date: (ed && $('#asWhole').checked) ? (lastEventDate(_asCtx.pkgId) || _asCtx.date || '') : (_asCtx.date||''),
+        venue: ed ? '' : (_asCtx.venue||''),
         callTime: ed ? '' : ($('#asCall').value||''), role: r,
         /* empty strings rather than absent keys: a member switched off editing
            must lose the deadline, not keep a stale one */
         kind: ed ? 'edit' : '',
         dueDate: ed ? (($('#asDue').value || dueFromEvent(_asCtx.date))) : '',
         deliver: ed ? $('#asDeliver').value.trim() : '',
+        scope: ed && $('#asWhole').checked ? 'package' : '',
         notes: $('#asNotes').value.trim(), updatedAt: serverTimestamp()
       };
     };

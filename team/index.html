@@ -790,9 +790,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${tag}
       </div>
       <div class="lines">
-        <div class="ln"><span>Booking</span><span>${esc(a.clientName||'—')}${a.eventTitle ? ' · ' + esc(a.eventTitle) : ''}</span></div>
+        <div class="ln"><span>Booking</span><span>${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
         ${a.dueDate ? `<div class="ln"><span>Due</span><span>${esc(fmtDate(a.dueDate))}</span></div>` : ''}
-        <div class="ln"><span>Shot on</span><span>${esc(fmtDate(a.date))}</span></div>
+        <div class="ln"><span>${a.scope === 'package' ? 'Last shoot' : 'Shot on'}</span><span>${esc(fmtDate(a.date))}</span></div>
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
       ${seen ? '' : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this</button>`}
