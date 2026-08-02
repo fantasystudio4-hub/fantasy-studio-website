@@ -400,7 +400,7 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .chip.unconfirmed{color:#cf8d85;background:rgba(207,127,118,.12)}
 .chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
 .chip.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
-.itemrow{display:grid;grid-template-columns:1fr auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
+.itemrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
 .itemrow .l1{display:flex;gap:.45rem}
 .itemrow .l1 select{flex:1;min-width:0}
 .itemrow .l2{display:flex;gap:.45rem;align-items:center;grid-column:1 / -1;flex-wrap:wrap}
@@ -823,6 +823,20 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
   /* 8.8px is not a readable label */
   .swipehint{font-size:.64rem}
+
+  /* ---- team event card ----
+     A long function name squeezed the client line to 35px of the 262 it
+     needed, and the assigned crew member's name collapsed to nothing at all
+     because the role text beside it never gave way. Each gets its own line. */
+  .tm-ev-h .cl{flex:1 1 100%;order:1;white-space:normal}
+  .tm-ev-h b{flex:1 1 auto;min-width:0}
+  .tm-crew{flex-wrap:wrap}
+  .tm-crew .nm2{flex:1 1 auto;min-width:7em}
+  .tm-crew .rl{flex:1 1 100%;white-space:normal;order:1}
+
+  /* the builder's service row: give the number fields room to wrap cleanly */
+  .itemrow .l2{row-gap:.55rem}
+  .itemrow input[data-f="rate"]{width:84px}
 
   /* ---- booking cards ----
      Six pieces of metadata were competing in ONE flex row, and the loser was
