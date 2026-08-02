@@ -3172,7 +3172,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                          to read packages. Employees may only flip
                          status→acknowledged (enforced in Firestore rules).
      ============================================================ */
-  const TEAM_ROLES = ['photography','candid photography','cinematography','videography','iphone shoot','assistant'];
+  /* the shooting crafts, then post, then support */
+  const TEAM_ROLES = ['photography','candid photography','cinematography','videography','iphone shoot','editor','assistant'];
   /* title-case, except the one word that is never spelled with a capital I */
   const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase()).replace(/\bIphone\b/g, 'iPhone');
   let TEAM = [], ASGS = [], REQS = [];
