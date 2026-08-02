@@ -473,6 +473,17 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 
 /* ==== Team console: attention list, leaderboard, squad cards ====
    All of it is derived from the assignment docs the tab already holds. */
+/* swipe between the booking tabs, the way every other app on the phone does */
+#bookingsSec{touch-action:pan-y}
+.swipehint{font-family:var(--sans);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:12px;padding:.18em .6em;vertical-align:3px;margin-left:.4em}
+.swipehint::before{content:"↔ "}
+@media(min-width:700px){ .swipehint{display:none} }
+@keyframes slideL{from{opacity:.2;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:.2;transform:translateX(-26px)}to{opacity:1;transform:none}}
+#homeBooked.sl-l{animation:slideL .22s ease-out}
+#homeBooked.sl-r{animation:slideR .22s ease-out}
+@media (prefers-reduced-motion: reduce){ #homeBooked.sl-l,#homeBooked.sl-r{animation:none} }
+
 /* the four counts read as one row on every width, like the B2B tiles */
 #teamStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
 #teamStats .stat.month{grid-column:1 / -1}
@@ -898,8 +909,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
-    <div class="sec">
-      <h3>📸 Bookings</h3>
+    <div class="sec" id="bookingsSec">
+      <h3>📸 Bookings <span class="swipehint">swipe</span></h3>
       <div class="fchips" id="homeTabs"></div>
       <div id="homeBooked"><div class="skel"></div><div class="skel"></div></div>
     </div>
@@ -2622,6 +2633,42 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           : (_homeBookedAll && show.length > HOME_BOOKED_N
               ? '<button class="upall" type="button" data-hbless>− Show fewer</button>' : ''));
   }
+
+  /* Swipe the bookings box to change tab — left for the next one, right for
+     the previous, which is what every other app on the phone does. Only a
+     clear horizontal flick counts, so the page still scrolls normally, and a
+     swipe never lands as a tap on the card underneath. */
+  (function(){
+    const sec = $('#bookingsSec'); if(!sec) return;
+    let x0 = 0, y0 = 0, t0 = 0, swiped = false;
+    sec.addEventListener('touchstart', e=>{
+      if(e.touches.length !== 1) return;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); swiped = false;
+    }, { passive: true });
+    sec.addEventListener('touchend', e=>{
+      const t = e.changedTouches && e.changedTouches[0]; if(!t) return;
+      const dx = t.clientX - x0, dy = t.clientY - y0;
+      if(Date.now() - t0 > 800) return;                          /* a slow drag is not a flick */
+      if(Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.6) return;   /* scrolling, not swiping */
+      const i = HOME_TABS.findIndex(([k])=>k === _homeTab);
+      const ni = i + (dx < 0 ? 1 : -1);
+      if(ni < 0 || ni >= HOME_TABS.length) return;               /* nothing past the ends */
+      _homeTab = HOME_TABS[ni][0];
+      _homeBookedAll = false;
+      swiped = true;
+      renderHomeBooked();
+      const box = $('#homeBooked');
+      box.classList.remove('sl-l','sl-r');
+      void box.offsetWidth;                                      /* restart the animation */
+      box.classList.add(dx < 0 ? 'sl-l' : 'sl-r');
+    }, { passive: true });
+    /* the finger lifted on a card: that is a swipe, not a tap on the booking */
+    sec.addEventListener('click', e=>{
+      if(!swiped) return;
+      swiped = false;
+      e.stopPropagation(); e.preventDefault();
+    }, true);
+  })();
 
   function pkgCardHTML(x, open){
     const st = x.status||'draft';
