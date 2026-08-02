@@ -103,6 +103,33 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .dring .dt b{display:block;color:var(--text);font-weight:500}
 .dring .dt span{display:block;color:var(--mut);font-size:.74rem;margin-top:.1rem}
 
+/* pay the balance straight from the page */
+.paynow{width:100%;margin-top:.85rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.85em;font-size:.88rem;letter-spacing:.04em;cursor:pointer;font-family:var(--sans);box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.paynow:active{transform:scale(.99)}
+.pay-sheet{position:fixed;left:0;right:0;bottom:0;z-index:130;background:var(--panel);border-top:1px solid var(--gold);border-radius:18px 18px 0 0;padding:1.3rem 1.1rem calc(1.3rem + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .3s;max-height:88vh;overflow-y:auto}
+.pay-sheet.open{transform:translateY(0)}
+.pay-sheet::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:rgba(226,194,117,.35);margin:-.5rem auto 1rem}
+.pay-back{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;visibility:hidden;transition:opacity .25s,visibility 0s linear .25s}
+.pay-back.open{opacity:1;pointer-events:auto;visibility:visible;transition:opacity .25s,visibility 0s}
+.pay-sheet h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.15rem}
+.pay-sheet .psub{font-size:.78rem;color:var(--mut);margin-bottom:1rem}
+.amtwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;background:#171309;overflow:hidden;margin-bottom:.5rem}
+.amtwrap b{padding:0 .1em 0 .85em;color:var(--gold-b);font-family:var(--serif);font-size:1.3rem}
+.amtwrap input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font-family:var(--serif);font-size:1.3rem;padding:.6em .5em;letter-spacing:.02em}
+.amtwrap input:focus{outline:none}
+.qamt{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+.qamt button{background:rgba(184,144,43,.12);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.35em .9em;font-size:.74rem;cursor:pointer;font-family:var(--sans)}
+.qamt button:active{background:rgba(184,144,43,.25)}
+.upirow{display:flex;align-items:center;gap:.65rem;border:1px solid var(--line);border-radius:14px;padding:.7rem .8rem;margin-bottom:.5rem;background:#171309}
+.upirow .ul{flex:1;min-width:0}
+.upirow .ul b{display:block;color:var(--text);font-size:.88rem;font-weight:500}
+.upirow .ul span{display:block;font-size:.68rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upirow .go{flex:0 0 auto;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:20px;padding:.5em 1.1em;font-size:.78rem;cursor:pointer;text-decoration:none;font-family:var(--sans)}
+.upirow .cp{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.45em .7em;font-size:.7rem;cursor:pointer;font-family:var(--sans)}
+.paynote{font-size:.72rem;color:var(--mut);line-height:1.5;margin-top:.6rem}
+.paynote b{color:var(--gold-b);font-weight:500}
+.paydone{display:block;width:100%;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.7em;font-size:.82rem;margin-top:.9rem}
+
 /* how much of the package is settled */
 .paybar{height:7px;border-radius:6px;background:rgba(255,255,255,.09);overflow:hidden;margin:.55rem 0 .35rem}
 .paybar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#C9A347,#9adbb2)}
@@ -316,6 +343,17 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
 </div>
 
+<div class="pay-back" id="payBack"></div>
+<div class="pay-sheet" id="paySheet" role="dialog" aria-modal="true" aria-label="Pay the studio">
+  <h3>Pay Fantasy Studio</h3>
+  <div class="psub" id="payFor"></div>
+  <div class="amtwrap"><b>₹</b><input id="payAmt" type="number" min="1" inputmode="numeric" aria-label="Amount to pay" /></div>
+  <div class="qamt" id="payQuick"></div>
+  <div id="payApps"></div>
+  <p class="paynote">Your UPI app opens with the amount already filled in — check the name on screen before you confirm. <b>Fantasy Studio records the payment manually</b>, so it may take a little while to show here.</p>
+  <a class="paydone" id="paySent" href="#" target="_blank" rel="noopener">✓ I've paid — tell the studio</a>
+</div>
+
 <div id="recaptcha-box"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -339,7 +377,11 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show')
 const show = id => { ['loadingView','loginView','linkView','dashView','emptyView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
 
 const DEFAULT_STEPS = ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'];
-const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in' };
+const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in',
+  /* Site Config overrides these. A wrong VPA sends a client's money to a
+     stranger, so they are typed by the studio, never derived from the phone
+     number — a mobile number is not a UPI address. */
+  upi:'8686868803-3@ybl', upiAlt:'md.taha31786-3@oksbi' };
 
 if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   show('loginView'); $('#loginErr').textContent = 'Portal not configured yet.'; $('#loginErr').hidden = false;
@@ -394,7 +436,11 @@ async function loadCfg(){
   return CFG;
 }
 const dSteps  = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULT_STEPS);
-const contact = () => (CFG && CFG.contact) || DEFAULT_CONTACT;
+/* MERGE, don't replace: a config saved before a field existed has no key for
+   it, and the client would lose the studio's phone or UPI IDs entirely. A key
+   the studio has deliberately emptied still wins — that is how Pay now is
+   switched off. */
+const contact = () => Object.assign({}, DEFAULT_CONTACT, (CFG && CFG.contact) || {});
 const hasAlbum  = x => !!(x && ((x.album && (Number(x.album.sheets)>0 || Number(x.album.price)>0)) || (x.addons||[]).some(a=>/album/i.test(a))));
 const hasCinema = x => !!(x && ((x.events||[]).some(ev=>(ev.items||[]).some(it=>/cinema/i.test(it.service||''))) || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
 const hasPhoto  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/photo/i.test(it.service||''))));
@@ -734,7 +780,84 @@ function downloadIcs(ev){
     toast('Saved — open it to add the date to your calendar');
   }catch(err){ toast('Could not create the calendar file on this phone'); }
 }
+/* ---------- pay the balance from the page ----------
+   The studio's UPI IDs come from Site Config; a mobile number is NOT a UPI
+   address, so nothing here is derived from the phone. We build the standard
+   upi:// intent — every UPI app on the phone registers it, so Android offers
+   PhonePe / Google Pay / whatever else is installed — plus each app's own
+   scheme for a direct jump. No card details, no gateway, no money touching
+   this site: the client's own bank app does the payment. */
+function upiIds(){
+  const c = contact();
+  return [
+    { app:'PhonePe',    vpa: String(c.upi||'').trim(),    scheme: v=>'phonepe://pay?' + v },
+    { app:'Google Pay', vpa: String(c.upiAlt||'').trim(), scheme: v=>'tez://upi/pay?' + v },
+  ].filter(x=>/^[\w.\-]+@[\w.\-]+$/.test(x.vpa));
+}
+let _payCtx = { amount:0, quoteNo:'' };
+function upiQuery(vpa, amt, note){
+  return 'pa=' + encodeURIComponent(vpa)
+    + '&pn=' + encodeURIComponent('Fantasy Studio')
+    + '&cu=INR'
+    + (amt > 0 ? '&am=' + encodeURIComponent(amt.toFixed(2)) : '')
+    + '&tn=' + encodeURIComponent(note || 'Fantasy Studio');
+}
+function renderPayApps(){
+  const amt = Math.max(0, Math.round(Number($('#payAmt').value)||0));
+  const note = _payCtx.quoteNo ? 'Booking ' + _payCtx.quoteNo : 'Fantasy Studio';
+  $('#payApps').innerHTML = upiIds().map((u,i)=>`
+    <div class="upirow">
+      <span class="ul"><b>${esc(u.app)}</b><span>${esc(u.vpa)}</span></span>
+      <button class="cp" type="button" data-copy="${esc(u.vpa)}">Copy ID</button>
+      <a class="go" href="upi://pay?${upiQuery(u.vpa, amt, note)}" data-i="${i}">Pay</a>
+    </div>`).join('');
+  const ph = (contact().phone||'').replace(/\D/g,'');
+  $('#paySent').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent(
+    `Salaam! I've paid ${inr(amt)}${_payCtx.quoteNo ? ' for booking ' + _payCtx.quoteNo : ''}. Sending the screenshot now.`);
+}
+function openPay(bal, quoteNo){
+  _payCtx = { amount: bal, quoteNo };
+  $('#payFor').textContent = (quoteNo ? quoteNo + ' · ' : '') + 'Balance ' + inr(bal);
+  $('#payAmt').value = bal;
+  const half = Math.round(bal/2);
+  $('#payQuick').innerHTML = [
+    { l:'Full ' + inr(bal), v:bal },
+    ...(half > 0 && half !== bal ? [{ l:'Half ' + inr(half), v:half }] : []),
+  ].map(q=>`<button type="button" data-q="${q.v}">${q.l}</button>`).join('');
+  renderPayApps();
+  $('#paySheet').classList.add('open'); $('#payBack').classList.add('open');
+}
+function closePay(){ $('#paySheet').classList.remove('open'); $('#payBack').classList.remove('open'); }
+$('#payBack').addEventListener('click', closePay);
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closePay(); });
+$('#payAmt').addEventListener('input', renderPayApps);
+$('#payQuick').addEventListener('click', e=>{
+  const b = e.target.closest('[data-q]'); if(!b) return;
+  $('#payAmt').value = b.dataset.q;
+  renderPayApps();
+});
+$('#payApps').addEventListener('click', e=>{
+  const cp = e.target.closest('[data-copy]');
+  if(cp){
+    const v = cp.dataset.copy;
+    try{ navigator.clipboard.writeText(v); toast('UPI ID copied — paste it in your payment app'); }
+    catch(err){ toast(v); }
+    return;
+  }
+  /* the app's own scheme first; the generic upi:// link on the anchor stays as
+     the fallback the browser follows if that app is not installed */
+  const go = e.target.closest('.go[data-i]');
+  if(go){
+    const u = upiIds()[Number(go.dataset.i)]; if(!u) return;
+    const amt = Math.max(0, Math.round(Number($('#payAmt').value)||0));
+    if(!amt){ toast('Enter how much you want to pay'); return; }
+    try{ location.href = u.scheme(upiQuery(u.vpa, amt, _payCtx.quoteNo ? 'Booking ' + _payCtx.quoteNo : 'Fantasy Studio')); }catch(err){}
+  }
+});
+
 $('#pkgList').addEventListener('click', e=>{
+  const pay = e.target.closest('[data-pay]');
+  if(pay){ openPay(Number(pay.dataset.pay)||0, pay.dataset.q||''); return; }
   /* a collapsed booking opens and closes from its header */
   const h = e.target.closest('[data-pkgtoggle]');
   if(h){ h.closest('.pkg').classList.toggle('collapsed'); return; }
@@ -845,6 +968,8 @@ function pkgHTML(x, canToggle, collapsed){
         <span><b>${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}% settled</b></span>
         <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
       </div>` : ''}
+      ${bal > 0 && upiIds().length
+        ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}">Pay ${inr(bal)} now</button>` : ''}
     </div>
     ${pays}
     ${track}

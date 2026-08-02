@@ -1071,10 +1071,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <button class="addrow" id="addRate">＋ Add service rate</button>
     </div>
     <div class="sec">
-      <h3>PDF Contact Footer</h3>
+      <h3>Contact &amp; Payment</h3>
+      <p class="sub">Phone and website print on every quotation PDF. The UPI IDs are what the client portal's <b style="color:var(--gold-b)">Pay now</b> button sends to — leave them blank to hide that button.</p>
       <div class="grid2">
         <div class="fld"><label>Phone</label><input id="cfgPhone" /></div>
         <div class="fld"><label>Website</label><input id="cfgWebsite" /></div>
+        <div class="fld"><label>UPI ID — PhonePe</label><input id="cfgUpi" placeholder="8686868803-3@ybl" /></div>
+        <div class="fld"><label>UPI ID — Google Pay</label><input id="cfgUpiAlt" placeholder="name-3@oksbi" /></div>
       </div>
     </div>
     <div class="sec">
@@ -1896,6 +1899,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const contact = CFG.contact || DEFAULTS.contact;
     $('#cfgPhone').value = contact.phone || '';
     $('#cfgWebsite').value = contact.website || '';
+    $('#cfgUpi').value = contact.upi || '';
+    $('#cfgUpiAlt').value = contact.upiAlt || '';
     const terms = CFG.quoteTerms || DEFAULTS.quoteTerms;
     $('#termList').innerHTML = terms.map(termRow).join('');
     const dsteps = (CFG.deliverySteps && CFG.deliverySteps.length) ? CFG.deliverySteps : DEFAULTS.deliverySteps;
@@ -1998,7 +2003,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const n = r.querySelector('[data-k="name"]').value.trim();
         if(n) serviceRates[n] = Number(r.querySelector('[data-k="rate"]').value)||0;
       });
-      const contact = { phone: $('#cfgPhone').value.trim(), website: $('#cfgWebsite').value.trim() };
+      /* the client portal's Pay now sends to these — a typo here misdirects a
+         real payment, so they are the owner's to type, never guessed */
+      const contact = { phone: $('#cfgPhone').value.trim(), website: $('#cfgWebsite').value.trim(),
+                        upi: $('#cfgUpi').value.trim(), upiAlt: $('#cfgUpiAlt').value.trim() };
       const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       const deliverySteps = $$('[data-dstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       /* Remembered rates used to shadow this form forever: raise a rate here
