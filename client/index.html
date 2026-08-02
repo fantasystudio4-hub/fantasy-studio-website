@@ -60,6 +60,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
 .err{color:var(--err);font-size:.8rem;margin-top:.8rem}
 .note{color:var(--mut);font-size:.75rem;margin-top:1rem}
+/* the other door out of this box — crew have their own sign-in */
+.crewlink{display:block;margin-top:1.1rem;padding-top:1rem;border-top:1px dashed var(--line);color:var(--mut);font-size:.8rem;text-decoration:none;min-height:44px}
+.crewlink b{color:var(--gold-b);font-weight:500}
+.crewlink:active b{text-decoration:underline}
+@media(hover:hover){ .crewlink:hover b{text-decoration:underline} }
 .nobook{background:rgba(184,144,43,.09);border:1px dashed rgba(226,194,117,.45);border-radius:12px;padding:.9rem 1rem;margin:.9rem 0 .2rem;text-align:left;font-size:.85rem}
 .nobook b{color:var(--gold-b);display:block;margin-bottom:.25rem}
 .nobook span{color:var(--mut)}
@@ -279,6 +284,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
       <div class="err" id="loginErr" role="alert" hidden></div>
       <div class="note">Use the same mobile number you gave the studio while booking.</div>
+      <!-- crew arrive at this link too: their number is not a client's, so the
+           OTP here would only ever tell them "no booking found" -->
+      <a class="crewlink" href="../team/">🎬 Fantasy Studio crew? <b>Sign in here</b> →</a>
     </div>
   </div>
 
