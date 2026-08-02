@@ -79,6 +79,21 @@ function fmtDateHuman(iso){
   try { return new Date(iso + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
   catch (e) { return iso; }
 }
+/* "14 – 16 Aug 2026" when the functions share a month, the two full dates
+   when they don't. A three-day wedding should read as one span. */
+function fmtDateSpan(dates){
+  const ds = dates.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d || '')).sort();
+  if (!ds.length) return '';
+  if (ds.length === 1 || ds[0] === ds[ds.length - 1]) return fmtDateHuman(ds[0]);
+  const a = ds[0], b = ds[ds.length - 1];
+  if (a.slice(0, 7) === b.slice(0, 7)) {
+    try {
+      const d1 = new Date(a + 'T00:00'), d2 = new Date(b + 'T00:00');
+      return d1.getDate() + ' – ' + d2.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) { /* fall through */ }
+  }
+  return fmtDateHuman(a) + ' – ' + fmtDateHuman(b);
+}
 
 export async function buildQuotePdf(pkg, contact, terms){
   await ensureJsPDF();
@@ -148,12 +163,25 @@ export async function buildQuotePdf(pkg, contact, terms){
     doc.line(ML, 66, MR, 66);
   };
 
+  /* A draft that goes out by accident should say so on every page, behind the
+     content rather than over it — drawn right after the border, before
+     anything else lands on the page. */
+  const isDraft = String((pkg && pkg.status) || '') === 'draft';
+  const watermark = () => {
+    if (!isDraft) return;
+    doc.setFont('times', 'bold'); doc.setFontSize(90);
+    doc.setTextColor(238, 232, 219);
+    try { doc.text('DRAFT', PAGE_W/2, PAGE_H/2 + 30, { align: 'center', angle: 32 }); }
+    catch (e) { /* older jsPDF without angle support: skip rather than print it flat */ }
+    doc.setTextColor(...DARK);
+  };
+
   let y = 0;
-  const newPage = () => { doc.addPage(); border(); footer(); slimHeader(); y = 84; };
+  const newPage = () => { doc.addPage(); border(); watermark(); footer(); slimHeader(); y = 84; };
   const ensure = (h) => { if (y + h > FOOTER_TOP) newPage(); };
 
   /* ---------- page 1 header ---------- */
-  border(); footer();
+  border(); watermark(); footer();
   if (!wl) {
     logo(84);
     doc.setFont('times', 'bold'); doc.setFontSize(30); doc.setTextColor(...GOLD);
@@ -168,8 +196,23 @@ export async function buildQuotePdf(pkg, contact, terms){
   doc.setFont('times', 'bold'); doc.setFontSize(16); doc.setTextColor(...GOLD);
   doc.text('EVENT QUOTATION', PAGE_W/2, 194, { align: 'center' });
 
+  /* one line that answers "how big is this?" before a page of line items:
+     how many functions, over which dates, and the album if there is one */
+  const _evs = (pkg.events || []);
+  const _span = fmtDateSpan(_evs.map(e => e.date));
+  const _albSheets = Number((pkg.album || {}).sheets) || 0;
+  const _summary = [
+    _evs.length ? _evs.length + (_evs.length === 1 ? ' function' : ' functions') : '',
+    _span,
+    _albSheets > 0 ? _albSheets + '-sheet album' : ''
+  ].filter(Boolean).join('   •   ');
+  if (_summary) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GOLDD);
+    doc.text(_summary, PAGE_W/2, 210, { align: 'center' });
+  }
+
   /* client block */
-  y = 220;
+  y = _summary ? 234 : 220;
   doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
   doc.text('Client Name :', ML, y);
@@ -198,15 +241,17 @@ export async function buildQuotePdf(pkg, contact, terms){
 
   /* ---------- events ---------- */
   const COL_QTY = 388, COL_RATE = 468, COL_AMT = MR - 4;
-  (pkg.events || []).forEach(ev => {
+  const multiEvent = (pkg.events || []).length > 1;
+  (pkg.events || []).forEach((ev, evIdx) => {
     const rows = (ev.items || []).length;
-    ensure(22 + 16 + Math.min(rows, 2) * 18 + 12);
+    ensure(22 + 16 + Math.min(rows, 2) * 18 + 12 + (multiEvent ? 16 : 0));
 
     // gold event bar
     doc.setFillColor(...GOLD);
     doc.rect(ML - 8, y, (MR - ML) + 16, 22, 'F');
     doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
-    doc.text(String(ev.title || 'EVENT').toUpperCase(), ML, y + 15);
+    /* numbered on a multi-day booking, so the couple can see it is day 2 of 3 */
+    doc.text((multiEvent ? (evIdx + 1) + '.  ' : '') + String(ev.title || 'EVENT').toUpperCase(), ML, y + 15);
     const right = [fmtDateHuman(ev.date), ev.venue].filter(Boolean).join('  •  ');
     if (right) {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
@@ -238,6 +283,20 @@ export async function buildQuotePdf(pkg, contact, terms){
       doc.text(money((Number(it.qty) || 1) * (Number(it.rate) || 0)), COL_AMT, y + 12.5, { align: 'right' });
       y += 18;
     });
+    /* what this one function costs. With a single event it would just repeat
+       the package total two inches further down, so it is only for a booking
+       that actually has several. */
+    const evTotal = (ev.items || []).reduce((s, it) => s + (Number(it.qty) || 1) * (Number(it.rate) || 0), 0);
+    if (multiEvent && evTotal > 0) {
+      ensure(18);
+      doc.setDrawColor(...GOLD); doc.setLineWidth(0.4);
+      doc.line(COL_QTY - 30, y, MR + 8, y);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...DARK);
+      doc.text('Event total', COL_RATE, y + 13, { align: 'right' });
+      setMoneyFont('bold', 10.5); doc.setTextColor(...GOLDD);
+      doc.text(money(evTotal), COL_AMT, y + 13, { align: 'right' });
+      y += 18;
+    }
     doc.setDrawColor(...GOLD); doc.setLineWidth(0.7);
     doc.line(ML - 8, y, MR + 8, y);
     y += 16;
@@ -364,6 +423,39 @@ export async function buildQuotePdf(pkg, contact, terms){
       doc.text(lines, ML + 22, y + 5);
       y += Math.max(20, lines.length * 12 + 8);
     });
+  }
+
+  /* ---------- acceptance ----------
+     Only while the quotation is still an offer. On a booked or delivered
+     package a signature line invites the couple to agree to something they
+     agreed to months ago. */
+  const _st = String((pkg && pkg.status) || 'draft');
+  if (_st === 'draft' || _st === 'sent' || _st === 'unconfirmed') {
+    ensure(52);
+    y += 12;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GOLDD);
+    doc.text('Happy to go ahead? Sign below and send this back, or simply confirm on WhatsApp.', ML, y);
+    y += 26;
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.6);
+    doc.line(ML, y, ML + 190, y);
+    doc.line(MR - 150, y, MR, y);
+    doc.setFontSize(8); doc.setTextColor(...DARK);
+    doc.text('Client signature', ML, y + 12);
+    doc.text('Date', MR - 150, y + 12);
+  }
+
+  /* ---------- page numbers ----------
+     Added last, because the total is only known once the document is built.
+     A three-day wedding runs to several pages and they arrive as loose
+     printouts otherwise. */
+  const pageCount = doc.internal.getNumberOfPages();
+  if (pageCount > 1) {
+    for (let p = 1; p <= pageCount; p++) {
+      doc.setPage(p);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GOLDD);
+      doc.text('Page ' + p + ' of ' + pageCount, MR, 768, { align: 'right' });
+      if (pkg.quoteNo) doc.text(String(pkg.quoteNo), ML, 768);
+    }
   }
 
   return doc;
