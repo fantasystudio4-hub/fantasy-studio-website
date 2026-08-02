@@ -80,6 +80,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .asg-h .chip{margin-left:auto;border-radius:20px;padding:.22em .8em;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap}
 .chip.seen{color:var(--ok);background:rgba(76,175,125,.13)}
 .chip.wait{color:#ffb054;background:rgba(255,176,84,.13)}
+.chip.late{color:var(--err);background:rgba(224,122,106,.14)}
 .asg .ln{display:flex;justify-content:space-between;gap:.8rem;padding:.16rem 0;font-size:.88rem}
 .asg .ln span:first-child{color:var(--mut);flex:0 0 auto}
 .asg .ln span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
@@ -363,6 +364,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
+    <div id="editWrap" hidden>
+      <div class="grp">✂️ Editing<b id="editCount"></b></div>
+      <div id="editList"></div>
+    </div>
     <div id="pastWrap" hidden>
       <div class="grp tog closed" id="pastTog" role="button" tabindex="0" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
       <div id="pastList" hidden></div>
@@ -765,6 +770,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
+  /* Editing is a desk job on a deadline — no call time, no venue, and it does
+     not belong in a schedule of shoot days. */
+  function editCard(a){
+    const seen = a.status === 'acknowledged';
+    const today = todayISO();
+    let tag = '<span class="chip wait">no date</span>';
+    if(/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')){
+      const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
+      const cls = a.workDone ? 'seen' : d < 0 ? 'late' : 'wait';
+      const txt = a.workDone ? '✓ done' : d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'due in ' + d + 'd';
+      tag = `<span class="chip ${cls}">${txt}</span>`;
+    }
+    return `
+    <div class="asg ${a.workDone?'past':''}">
+      <div class="asg-h">
+        <span class="when">${esc(fmtShort(a.dueDate) || fmtShort(a.date))}</span>
+        <b>${esc(a.deliver || 'Editing')}</b>
+        ${tag}
+      </div>
+      <div class="lines">
+        <div class="ln"><span>Booking</span><span>${esc(a.clientName||'—')}${a.eventTitle ? ' · ' + esc(a.eventTitle) : ''}</span></div>
+        ${a.dueDate ? `<div class="ln"><span>Due</span><span>${esc(fmtDate(a.dueDate))}</span></div>` : ''}
+        <div class="ln"><span>Shot on</span><span>${esc(fmtDate(a.date))}</span></div>
+      </div>
+      ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
+      ${seen ? '' : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this</button>`}
+      ${a.workDone
+        ? `<div class="ackdone">✓ Editing completed${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
+        : `<button class="ackbtn" data-workdone="${a.id}">✓ Mark editing complete</button>`}
+    </div>`;
+  }
+
   /* compact Indian money for bar labels: ₹950 · ₹12k · ₹1.5L */
   const shMoney = n => n >= 100000 ? '₹' + (n/100000).toFixed(1).replace(/\.0$/,'') + 'L'
                     : n >= 1000   ? '₹' + Math.round(n/1000) + 'k'
@@ -1004,12 +1041,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#hello').textContent = `Hi ${(ME.name||'').split(' ')[0] || 'there'} 👋`;
     renderAnalytics();
     const today = todayISO();
-    const up = ASGS.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
-    const past = ASGS.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
+    /* editing jobs hang off a shoot date but are delivered weeks later — in the
+       schedule they read as shoots that never happened, so they get their own
+       group and sort by their deadline */
+    const shoots = ASGS.filter(a=>a.kind !== 'edit');
+    const edits  = ASGS.filter(a=>a.kind === 'edit')
+      .sort((a,b)=>{
+        if(!!a.workDone !== !!b.workDone) return a.workDone ? 1 : -1;   /* open first */
+        return (a.dueDate||a.date||'9999') < (b.dueDate||b.date||'9999') ? -1 : 1;
+      });
+    const up = shoots.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
+    const past = shoots.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
+    $('#editWrap').hidden = !edits.length;
+    if(edits.length){
+      const late = edits.filter(a=>!a.workDone && (a.dueDate||'') && a.dueDate < today).length;
+      $('#editCount').textContent = edits.filter(a=>!a.workDone).length + (late ? ' · ' + late + ' late' : '');
+      $('#editList').innerHTML = edits.map(editCard).join('');
+    }
     const toConfirm = up.filter(a=>a.status !== 'acknowledged').length;
-    $('#helloSub').textContent = up.length
+    const openEdits = edits.filter(a=>!a.workDone).length;
+    $('#helloSub').textContent = (up.length
       ? `${up.length} upcoming event${up.length===1?'':'s'}${toConfirm ? ` — ${toConfirm} waiting for your confirmation` : ' — all confirmed ✓'}`
-      : 'No upcoming events assigned to you right now.';
+      : 'No upcoming events assigned to you right now.')
+      + (openEdits ? ` · ${openEdits} edit${openEdits===1?'':'s'} to finish` : '');
     $('#upHead').hidden = !up.length;
     $('#upCount').textContent = up.length;
     $('#upList').innerHTML = up.length ? up.map(a=>asgCard(a, false)).join('')
@@ -1052,6 +1106,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      on past ones, so it is attached to both */
   $('#pastList').addEventListener('click', doneClick);
   $('#upList').addEventListener('click', doneClick);
+  $('#editList').addEventListener('click', doneClick);
+  $('#editList').addEventListener('click', ackClick);
   async function doneClick(e){
     const done = e.target.closest('[data-workdone]');
     const undo = e.target.closest('[data-workundo]');

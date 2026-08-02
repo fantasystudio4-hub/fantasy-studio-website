@@ -489,6 +489,20 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .stat.warn{border-color:rgba(255,176,84,.5)}
 .stat.warn b{color:#ffb054}
 
+/* editing desk — a deadline list, not a schedule */
+.ed-row{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.ed-row:last-child{border-bottom:0}
+.ed-row.ok{opacity:.6}
+.ed-row .w{flex:0 0 auto;min-width:54px;font-family:var(--serif);color:var(--gold-b);font-size:.82rem}
+.ed-row .t{flex:1;min-width:0}
+.ed-row .t b{display:block;font-size:.88rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-row .t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.duetag{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(255,255,255,.06);white-space:nowrap}
+.duetag.soon{color:#ffb054;background:rgba(255,176,84,.14)}
+.duetag.late{color:var(--err);background:rgba(224,122,106,.14)}
+.duetag.ok{color:var(--ok);background:rgba(76,175,125,.13)}
+@media(hover:hover){ .ed-row:hover .t b{color:var(--gold-b)} }
+
 /* upcoming events: how close, how full, who hasn't confirmed */
 .tm-ev.none{border-left:3px solid rgba(224,122,106,.6)}
 .tm-ev.part{border-left:3px solid rgba(255,176,84,.6)}
@@ -1008,6 +1022,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
       <div id="teamEvents"></div>
     </div>
+    <div class="sec" id="edSec" hidden>
+      <h3>✂️ Editing desk <span id="edCount" style="font-size:.7rem;color:var(--mut)"></span></h3>
+      <p class="sub">Post-production, by due date. Assign an editor from an event above — pick them in the crew list and the sheet asks for a due date instead of a call time.</p>
+      <div id="edList"></div>
+    </div>
     <div class="sec" id="lbSec" hidden>
       <h3>🏆 Crew leaderboard
         <span class="lbtog" id="lbTog">
@@ -1081,6 +1100,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       </div>
     </div>
     <div class="sec">
+      <div class="fld" style="max-width:260px"><label>Editing due after (days)</label>
+        <input type="number" id="cfgEditDue" min="1" max="365" placeholder="21" /></div>
+      <p class="sub">The due date a new editing assignment starts with, counted from the event.</p>
       <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist — steps containing “Album”, “Cinematic/Teaser”, “Photo” or “Video” auto-hide for packages without those services)</span></h3>
       <div id="dstepList"></div>
       <button class="addrow" id="addDstep">＋ Add step</button>
@@ -1159,7 +1181,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   </div>
   <div class="as-warn" id="asConflict" hidden></div>
   <div class="fld" data-solo><label>Role for this event</label><select id="asRole"></select></div>
-  <div class="fld"><label>Call time</label><input id="asCall" type="time" /></div>
+  <div class="fld" data-shootonly><label>Call time</label><input id="asCall" type="time" /></div>
+  <div class="fld" data-editonly hidden><label>Editing due</label><input id="asDue" type="date" /></div>
+  <div class="fld" data-editonly hidden><label>What to deliver</label>
+    <input id="asDeliver" placeholder="e.g. Photos + 2 teasers" />
+    <div class="evchips" id="asDelChips"></div>
+  </div>
   <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" /></div>
   <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
@@ -1900,6 +1927,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cfgPhone').value = contact.phone || '';
     $('#cfgWebsite').value = contact.website || '';
     $('#cfgUpi').value = contact.upi || '';
+    $('#cfgEditDue').value = Number(CFG.editDueDays) || 21;
     $('#cfgUpiAlt').value = contact.upiAlt || '';
     const terms = CFG.quoteTerms || DEFAULTS.quoteTerms;
     $('#termList').innerHTML = terms.map(termRow).join('');
@@ -2038,8 +2066,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          full overwrite safe. */
 
       const stamp = new Date().toISOString();
+      const editDueDays = Math.min(365, Math.max(1, Number($('#cfgEditDue').value)||21));
       const payload = { prices, presets, testimonials, faqs, serviceRates, contact,
-                        quoteTerms, deliverySteps, learnedRates, updatedAt: stamp };
+                        quoteTerms, deliverySteps, learnedRates, editDueDays, updatedAt: stamp };
       /* settle() so an offline save answers instead of hanging forever, and a
          refused write is reported instead of pretending it published */
       const res = await settle(setDoc(doc(db,'config','site'), payload));
@@ -2047,7 +2076,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('NOT saved — the server refused the config write. Check your sign-in and try again.');
         return;
       }
-      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, updatedAt: stamp };
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, editDueDays, updatedAt: stamp };
       _cfgLoadedAt = stamp;
       $('#saveMsg').style.color = '';
       $('#saveMsg').textContent = res === 'queued'
@@ -3260,7 +3289,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      pkgId+date alone cannot tell them apart. Narrow by event title in that
      case — assignments carry it. */
   function evCrew(pkId, date, title){
-    const rows = ASGS.filter(a=>a.pkgId===pkId && a.date===date);
+    /* editing is attached to an event but is not crew ON the day — counting it
+       made a wedding with an editor look staffed when nobody was shooting */
+    const rows = ASGS.filter(a=>a.pkgId===pkId && a.date===date && a.kind !== 'edit');
     if(!title || rows.length < 2) return rows;
     const pk = PKGS.find(p=>p.id===pkId);
     const sameDay = pk ? (pk.events||[]).filter(e=>e.date===date).length : 1;
@@ -3404,6 +3435,50 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              next: up.map(a=>a.date).filter(Boolean).sort()[0] || '',
              rate: list.length ? Math.round(100*acks/list.length) : null };
   }
+
+  /* ---------- editing desk ----------
+     Post-production is the one job that is NOT about the day it is attached
+     to: it is booked against an event but delivered weeks later, so it sorts
+     by its own deadline and stays out of the shoot schedule above. */
+  function renderEditDesk(){
+    const sec = $('#edSec'), el = $('#edList'); if(!sec || !el) return;
+    const jobs = ASGS.filter(a=>a.kind === 'edit');
+    sec.hidden = !jobs.length;
+    if(!jobs.length) return;
+    const today = todayISO();
+    const open = jobs.filter(a=>!a.workDone).sort((a,b)=>(a.dueDate||'9999') < (b.dueDate||'9999') ? -1 : 1);
+    const done = jobs.filter(a=>a.workDone).sort((a,b)=>(a.dueDate||'') > (b.dueDate||'') ? -1 : 1);
+    const late = open.filter(a=>(a.dueDate||'') && a.dueDate < today).length;
+    $('#edCount').textContent = `(${open.length} open${late ? ' · ' + late + ' overdue' : ''})`;
+    const dueChip = a => {
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')) return '<span class="duetag">no date</span>';
+      const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
+      const cls = d < 0 ? 'late' : d <= 3 ? 'soon' : '';
+      const txt = d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + 'd';
+      return `<span class="duetag ${cls}">${txt}</span>`;
+    };
+    const row = a => `
+      <div class="ed-row ${a.workDone ? 'ok' : ''}" data-asedit="${a.id}" role="button" tabindex="0">
+        <span class="w">${esc(stepDate(a.dueDate) || '—')}</span>
+        <span class="t">
+          <b>${esc(a.clientName||'—')}</b>
+          <span>${esc(a.deliver || a.eventTitle || 'Editing')} · ${esc(a.memberName||'—')}</span>
+        </span>
+        ${a.workDone ? '<span class="duetag ok">✓ done</span>' : dueChip(a)}
+      </div>`;
+    el.innerHTML = (open.length ? open.map(row).join('')
+                                : '<div class="empty" style="padding:.5rem 0">Nothing outstanding — every edit is signed off ✓</div>')
+      + (done.length ? `<div class="grp tog ${_edShowDone?'':'closed'}" data-edgrp role="button" tabindex="0" aria-expanded="${_edShowDone}"><span class="car">▾</span>Completed<b>${done.length}</b></div>`
+          + (_edShowDone ? done.map(row).join('') : '') : '');
+  }
+  let _edShowDone = false;
+  $('#edList').addEventListener('click', e=>{
+    if(e.target.closest('[data-edgrp]')){ _edShowDone = !_edShowDone; renderEditDesk(); return; }
+    const r = e.target.closest('[data-asedit]'); if(!r) return;
+    const a = ASGS.find(v=>v.id===r.dataset.asedit); if(!a) return;
+    openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
+             eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
+  });
 
   /* the league table — the one view that says who is actually carrying the season */
   let _lbPeriod = 'y';
@@ -3617,6 +3692,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderTeamStats();
     renderTeamReqs();
     renderTeamEvents();
+    renderEditDesk();
     renderLeaderboard();
     renderTeamMembers();
     renderTeamPay();
@@ -3752,14 +3828,39 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
   /* one place decides what the sheet looks like for the current selection */
+  const roleIsEdit = r => /editor/i.test(String(r||''));
+  const editDueDays = () => Math.min(365, Math.max(1, Number(CFG && CFG.editDueDays) || 21));
+  const dueFromEvent = d => {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return todayISO();
+    const t = new Date(d + 'T00:00'); t.setDate(t.getDate() + editDueDays());
+    return t.toLocaleDateString('en-CA');
+  };
   function syncAsUI(){
     const n = _asPicked.size;
+    const multi = !_asEditId && n > 1;
     $('#asPickHint').textContent = _asEditId ? 'tap to swap the member'
       : n > 1 ? `${n} picked — each gets their own role & rate`
       : 'tap one, or several';
-    $$('#asModal [data-solo]').forEach(f=>f.hidden = !_asEditId && n > 1);
-    $('#asSave').textContent = (!_asEditId && n > 1) ? `Assign ${n} crew` : 'Save Assignment';
+    $$('#asModal [data-solo]').forEach(f=>f.hidden = multi);
+    /* editing is a desk job on a deadline — a call time means nothing for it,
+       and a due date means nothing for a shoot */
+    const ed = !multi && roleIsEdit($('#asRole').value);
+    $$('#asModal [data-editonly]').forEach(f=>f.hidden = !ed);
+    $$('#asModal [data-shootonly]').forEach(f=>f.hidden = ed);
+    if(ed && !$('#asDue').value) $('#asDue').value = dueFromEvent(_asCtx && _asCtx.date);
+    $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save Assignment';
   }
+  $('#asRole').addEventListener('change', syncAsUI);
+  const DELIVERABLES = ['Photos','Video','Teasers','Album design','Reels'];
+  $('#asDelChips').innerHTML = DELIVERABLES.map(d=>`<button type="button" class="qchip" data-del="${esc(d)}">${esc(d)}</button>`).join('');
+  $('#asDelChips').addEventListener('click', e=>{
+    const b = e.target.closest('[data-del]'); if(!b) return;
+    const cur = $('#asDeliver').value.split('+').map(t=>t.trim()).filter(Boolean);
+    const v = b.dataset.del;
+    const i = cur.indexOf(v);
+    if(i >= 0) cur.splice(i,1); else cur.push(v);
+    $('#asDeliver').value = cur.join(' + ');
+  });
   function renderAsPick(){
     const el = $('#asPick'); if(!el) return;
     const ev = asEventOf(_asCtx);
@@ -3838,6 +3939,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderAsPick();
     $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role : TEAM_ROLES[0];
     $('#asCall').value = a ? (a.callTime||'') : '';
+    $('#asDue').value = a ? (a.dueDate||'') : '';
+    $('#asDeliver').value = a ? (a.deliver||'') : '';
     $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
     $('#asNotes').value = a ? (a.notes||'') : '';
     $('#asRemove').hidden = !a;
@@ -3871,13 +3974,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        one rate and one role across a mixed crew is never what was meant */
     const payFor = x => multi ? Math.max(0, Math.round(Number(x.defaultRate)||0)) : typed;
     const roleFor = x => multi ? (x.role || $('#asRole').value || '') : ($('#asRole').value || x.role || '');
-    const baseOf = x => ({
-      memberId: x.id, memberName: x.name||'', memberPhone10: memberPhone10(x),
-      pkgId: _asCtx.pkgId, quoteNo: _asCtx.quoteNo||'', clientName: _asCtx.clientName||'',
-      eventTitle: _asCtx.eventTitle||'', date: _asCtx.date||'', venue: _asCtx.venue||'',
-      callTime: $('#asCall').value||'', role: roleFor(x),
-      notes: $('#asNotes').value.trim(), updatedAt: serverTimestamp()
-    });
+    const baseOf = x => {
+      const r = roleFor(x), ed = roleIsEdit(r);
+      return {
+        memberId: x.id, memberName: x.name||'', memberPhone10: memberPhone10(x),
+        pkgId: _asCtx.pkgId, quoteNo: _asCtx.quoteNo||'', clientName: _asCtx.clientName||'',
+        eventTitle: _asCtx.eventTitle||'', date: _asCtx.date||'', venue: _asCtx.venue||'',
+        callTime: ed ? '' : ($('#asCall').value||''), role: r,
+        /* empty strings rather than absent keys: a member switched off editing
+           must lose the deadline, not keep a stale one */
+        kind: ed ? 'edit' : '',
+        dueDate: ed ? (($('#asDue').value || dueFromEvent(_asCtx.date))) : '',
+        deliver: ed ? $('#asDeliver').value.trim() : '',
+        notes: $('#asNotes').value.trim(), updatedAt: serverTimestamp()
+      };
+    };
     const base = baseOf(m);
     btn.disabled = true;
     try{
