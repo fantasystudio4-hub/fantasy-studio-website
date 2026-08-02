@@ -142,6 +142,65 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
 .gbtn,.ackbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active,.ackbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
+/* ==== Crew HQ: rank, countdown, badges ====
+   Everything here is computed from the member's OWN assignment docs — no extra
+   reads, no new writes, nothing the firestore rules don't already allow. */
+.hq{background:linear-gradient(150deg,rgba(201,163,71,.16),rgba(36,30,18,.9) 55%);border:1px solid rgba(226,194,117,.4);border-radius:18px;padding:1rem 1.05rem;margin:0 0 .9rem;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+.hq-top{display:flex;align-items:center;gap:.9rem}
+.lvl{position:relative;flex:0 0 auto;width:74px;height:74px}
+.lvl .ring{width:74px;height:74px;transform:rotate(-90deg)}
+.lvl .rbg{fill:none;stroke:rgba(226,194,117,.16);stroke-width:7}
+.lvl .rfg{fill:none;stroke:url(#hqGrad);stroke-width:7;stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:276.5;transition:stroke-dashoffset .9s cubic-bezier(.2,.7,.3,1)}
+.lvl-in{position:absolute;inset:0;display:grid;place-content:center;text-align:center;line-height:1}
+.lvl-in b{display:block;font-family:var(--serif);font-size:1.5rem;color:var(--gold-b)}
+.lvl-in span{font-size:.48rem;letter-spacing:.18em;color:var(--mut)}
+.hq-t{flex:1;min-width:0}
+.hq-t > b{display:block;font-family:var(--serif);color:#fff;font-size:1.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hq-t .ttl{display:block;color:var(--gold-b);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;margin:.1rem 0 .5rem}
+.xpbar{height:7px;border-radius:6px;background:rgba(255,255,255,.09);overflow:hidden}
+.xpbar i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#C9A347,#E2C275);transition:width .9s cubic-bezier(.2,.7,.3,1)}
+.hq-t .xpn{display:block;font-size:.62rem;color:var(--mut);letter-spacing:.06em;margin-top:.28rem}
+.hq-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.85rem;padding-top:.8rem;border-top:1px dashed var(--line)}
+.hq-chips b{background:rgba(184,144,43,.13);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.68rem;font-weight:500;white-space:nowrap}
+.hq-chips b.hot{color:#ffb054;background:rgba(255,176,84,.13);border-color:rgba(255,176,84,.35)}
+
+/* next shoot — a live countdown, because "in 3 days" is the whole question */
+.cdown{background:var(--panel);border:1px solid rgba(226,194,117,.45);border-radius:18px;padding:.95rem 1.05rem;margin:0 0 .9rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.cd-h{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;margin-bottom:.55rem}
+.cd-lbl{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+.cd-h b{font-family:var(--serif);color:#fff;font-size:1.05rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cd-clock{display:flex;gap:.5rem}
+.cd-clock div{flex:1;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.5rem .2rem;text-align:center}
+.cd-clock b{display:block;font-family:var(--serif);font-size:1.45rem;color:var(--gold-b);line-height:1.1;font-variant-numeric:tabular-nums}
+.cd-clock span{font-size:.52rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.cd-clock.live b{color:#ffb054}
+.cd-meta{margin-top:.6rem;font-size:.8rem;color:var(--mut);display:flex;flex-wrap:wrap;gap:.15rem .7rem}
+.cd-meta a{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted rgba(226,194,117,.5)}
+.cd-now{margin-top:.6rem;text-align:center;color:#ffb054;font-size:.85rem;font-weight:500}
+
+/* badges — earned ones lit, locked ones show how far off they are */
+.badges{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.3rem}
+@media(min-width:520px){ .badges{grid-template-columns:repeat(5,1fr)} }
+.bdg{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.65rem .3rem .55rem;text-align:center;position:relative;overflow:hidden}
+.bdg .ic{font-size:1.5rem;display:block;line-height:1.2;filter:grayscale(1);opacity:.35}
+.bdg b{display:block;font-size:.6rem;color:var(--mut);font-weight:500;letter-spacing:.02em;margin-top:.25rem;line-height:1.25}
+.bdg em{display:block;font-style:normal;font-size:.55rem;color:var(--mut);opacity:.8;margin-top:.15rem}
+.bdg.got{border-color:rgba(226,194,117,.5);background:linear-gradient(160deg,rgba(201,163,71,.18),var(--panel) 70%)}
+.bdg.got .ic{filter:none;opacity:1}
+.bdg.got b{color:var(--gold-b)}
+.bdg.got::after{content:"✓";position:absolute;top:4px;right:6px;font-size:.6rem;color:var(--ok)}
+.bdgbar{height:3px;border-radius:3px;background:rgba(255,255,255,.09);margin:.3rem .5rem 0;overflow:hidden}
+.bdgbar i{display:block;height:100%;background:var(--gold);border-radius:3px}
+
+/* the chart switches series instead of shipping two charts */
+.chtog{margin-left:auto;display:inline-flex;gap:.3rem}
+.chtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
+.chtog button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.paycard h3{display:flex;align-items:center;gap:.5rem}
+.bars{overflow-x:auto;scrollbar-width:none}
+.bars::-webkit-scrollbar{display:none}
+.bcol{min-width:26px}
+
 /* a venue you can tap for directions — the crew are the ones driving there */
 .vlink{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted rgba(226,194,117,.5)}
 /* reaching the studio from the assignment you are looking at */
@@ -239,19 +298,65 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div id="appView" hidden>
     <h1 class="hello" id="hello"></h1>
     <p id="helloSub"></p>
-    <div class="stats2" id="crewStats" hidden></div>
-    <div class="paycard" id="anaCard" hidden>
-      <h3>📊 My last 6 months</h3>
-      <div class="bars" id="anaBars"></div>
-      <div class="rolechips" id="anaRoles"></div>
-      <div class="rolechips yrs" id="anaYears" title="Year-wise earnings"></div>
+
+    <!-- rank card: level, title, XP to the next rank, streak -->
+    <div class="hq" id="hqCard" hidden>
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <linearGradient id="hqGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#C9A347"/><stop offset="100%" stop-color="#E2C275"/>
+        </linearGradient>
+      </defs></svg>
+      <div class="hq-top">
+        <div class="lvl">
+          <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="rbg" cx="50" cy="50" r="44"></circle>
+            <circle class="rfg" id="hqRing" cx="50" cy="50" r="44"></circle>
+          </svg>
+          <div class="lvl-in"><b id="hqLvl">1</b><span>LVL</span></div>
+        </div>
+        <div class="hq-t">
+          <b id="hqName">—</b>
+          <span class="ttl" id="hqTitle"></span>
+          <div class="xpbar"><i id="hqXpFill"></i></div>
+          <span class="xpn" id="hqXp"></span>
+        </div>
+      </div>
+      <div class="hq-chips" id="hqChips"></div>
     </div>
+
+    <!-- the next shoot, counting down -->
+    <div class="cdown" id="cdCard" hidden>
+      <div class="cd-h"><span class="cd-lbl">Next shoot</span><b id="cdTitle"></b></div>
+      <div class="cd-clock" id="cdClock"></div>
+      <div class="cd-meta" id="cdMeta"></div>
+      <div id="cdCta"></div>
+    </div>
+
+    <div class="stats2" id="crewStats" hidden></div>
+
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
     <div id="pastWrap" hidden>
       <div class="grp tog closed" id="pastTog" role="button" tabindex="0" aria-expanded="false"><span class="car">▾</span>Past events<b id="pastCount"></b></div>
       <div id="pastList" hidden></div>
     </div>
+    <div id="bdgWrap" hidden>
+      <div class="grp">Badges<b id="bdgCount"></b></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="paycard" id="anaCard" hidden>
+      <h3>📊 Last 12 months
+        <span class="chtog" id="chTog">
+          <button type="button" data-ser="n" class="on">Events</button>
+          <button type="button" data-ser="amt">Earnings</button>
+        </span>
+      </h3>
+      <div class="bars" id="anaBars"></div>
+      <div class="rolechips" id="anaRoles"></div>
+      <div class="rolechips yrs" id="anaYears" title="Year-wise earnings"></div>
+    </div>
+
     <div class="paycard" id="payCard" hidden>
       <h3>💰 My payments</h3>
       <div id="payRows"></div>
@@ -578,16 +683,208 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                     : n >= 1000   ? '₹' + Math.round(n/1000) + 'k'
                     : '₹' + n;
 
+  /* ============================================================
+     CREW HQ — rank, live countdown, badges, switchable chart.
+     Every number below is derived from the member's OWN assignment
+     docs, which this page already has. No extra reads, no new
+     writes, nothing the firestore rules don't already permit.
+     ============================================================ */
+
+  /* XP is earned for work that actually happened: a shoot completed is worth
+     the most, confirming an assignment and finishing an edit count too. */
+  const XP_EVENT = 10, XP_ACK = 2, XP_EDIT = 5;
+  const RANKS = [
+    { xp:0,    t:'Rookie' },      { xp:50,   t:'Crew' },
+    { xp:120,  t:'Shooter' },     { xp:250,  t:'Senior Shooter' },
+    { xp:450,  t:'Lead' },        { xp:750,  t:'Veteran' },
+    { xp:1200, t:'Master' },      { xp:1800, t:'Legend' },
+    { xp:2600, t:'Icon' },        { xp:3600, t:'Maestro' },
+  ];
+  function rankOf(xp){
+    let i = 0;
+    while(i + 1 < RANKS.length && xp >= RANKS[i+1].xp) i++;
+    const cur = RANKS[i], next = RANKS[i+1] || null;
+    const span = next ? next.xp - cur.xp : 1;
+    return { lvl:i+1, title:cur.t, into:xp - cur.xp, span, next,
+             pct: next ? Math.min(100, Math.round(100*(xp-cur.xp)/span)) : 100 };
+  }
+  /* consecutive calendar months with at least one event, counted back from
+     this month (or last month, so a quiet first week doesn't reset it) */
+  function monthStreak(done){
+    const set = new Set(done.map(a=>(a.date||'').slice(0,7)));
+    const now = new Date();
+    let start = 0;
+    if(!set.has(now.toLocaleDateString('en-CA').slice(0,7))) start = 1;
+    let n = 0;
+    for(let i = start; i < 120; i++){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      if(set.has(d.toLocaleDateString('en-CA').slice(0,7))) n++;
+      else break;
+    }
+    return n;
+  }
+  function renderRank(done, up){
+    const acks = ASGS.filter(a=>a.status === 'acknowledged').length;
+    const edits = ASGS.filter(a=>a.workDone).length;
+    const xp = done.length*XP_EVENT + acks*XP_ACK + edits*XP_EDIT;
+    const r = rankOf(xp);
+    const C = 276.5;   /* 2πr for r=44 */
+    $('#hqName').textContent = ME.name || 'Crew member';
+    $('#hqLvl').textContent = r.lvl;
+    $('#hqTitle').textContent = r.title;
+    $('#hqRing').style.strokeDashoffset = C - C * r.pct / 100;
+    $('#hqXpFill').style.width = r.pct + '%';
+    $('#hqXp').textContent = r.next
+      ? `${xp} XP · ${r.next.xp - xp} to ${r.next.t}`
+      : `${xp} XP · top rank`;
+    const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
+    const streak = monthStreak(done);
+    const thisMonth = done.filter(a=>(a.date||'').slice(0,7) === todayISO().slice(0,7)).length;
+    $('#hqChips').innerHTML =
+      (streak > 1 ? `<b class="hot">🔥 ${streak}-month streak</b>` : '')
+      + `<b>🎬 ${done.length} done</b>`
+      + (weddings ? `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>` : '')
+      + (thisMonth ? `<b>📆 ${thisMonth} this month</b>` : '')
+      + (up.length ? `<b>⏭ ${up.length} ahead</b>` : '');
+    $('#hqCard').hidden = false;
+  }
+
+  /* ---------- next shoot, counting down ---------- */
+  let _cdAsg = null, _cdTimer = null;
+  function renderCountdown(up){
+    const a = up[0] || null;
+    _cdAsg = a;
+    $('#cdCard').hidden = !a;
+    if(!a) return;
+    $('#cdTitle').textContent = a.eventTitle || 'Event';
+    $('#cdMeta').innerHTML = [
+      esc(fmtDate(a.date)),
+      a.callTime ? '⏰ ' + esc(fmtTime(a.callTime)) : '',
+      a.venue ? `<a href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a>` : '',
+      a.clientName ? esc(a.clientName) : ''
+    ].filter(Boolean).map(t=>`<span>${t}</span>`).join('');
+    $('#cdCta').innerHTML = a.status === 'acknowledged'
+      ? '<div class="ackdone">✓ Confirmed — the studio knows you are on it</div>'
+      : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`;
+    tickCountdown();
+    clearInterval(_cdTimer);
+    _cdTimer = setInterval(tickCountdown, 30000);
+  }
+  function tickCountdown(){
+    const a = _cdAsg, box = $('#cdClock');
+    if(!a || !box) return;
+    /* to the call time when there is one, otherwise to the start of the day */
+    const t = /^(\d{2}):(\d{2})$/.exec(a.callTime||'');
+    const target = new Date(a.date + 'T' + (t ? a.callTime : '00:00') + ':00');
+    let ms = target - new Date();
+    if(ms <= 0){
+      box.className = 'cd-clock live';
+      box.innerHTML = `<div style="flex:1"><b>Today</b><span>it's shoot day</span></div>`;
+      return;
+    }
+    const d = Math.floor(ms/864e5), h = Math.floor(ms/36e5)%24, m = Math.floor(ms/6e4)%60;
+    box.className = 'cd-clock' + (d === 0 ? ' live' : '');
+    box.innerHTML = `
+      <div><b>${d}</b><span>day${d===1?'':'s'}</span></div>
+      <div><b>${String(h).padStart(2,'0')}</b><span>hours</span></div>
+      <div><b>${String(m).padStart(2,'0')}</b><span>mins</span></div>`;
+  }
+
+  /* ---------- badges ---------- */
+  function renderBadges(done){
+    const acks = ASGS.filter(a=>a.status === 'acknowledged').length;
+    const edits = ASGS.filter(a=>a.workDone).length;
+    const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
+    const byMonth = {}, byDate = {};
+    done.forEach(a=>{
+      const m = (a.date||'').slice(0,7); if(m) byMonth[m] = (byMonth[m]||0)+1;
+      if(a.date) byDate[a.date] = (byDate[a.date]||0)+1;
+    });
+    const bestMonth = Math.max(0, ...Object.values(byMonth));
+    const doubles = Object.values(byDate).filter(n=>n > 1).length;
+    const dates = done.map(a=>a.date).filter(Boolean).sort();
+    const monthsIn = dates.length
+      ? Math.floor((new Date() - new Date(dates[0]+'T00:00')) / 2629800000) : 0;
+    const B = [
+      { ic:'🎬', t:'First Shoot',  n:done.length, goal:1  },
+      { ic:'🔟', t:'Perfect Ten',  n:done.length, goal:10 },
+      { ic:'🏆', t:'Half Century', n:done.length, goal:50 },
+      { ic:'💍', t:'Wedding Pro',  n:weddings,    goal:10 },
+      { ic:'🔥', t:'Busy Season',  n:bestMonth,   goal:5, sub:'5 in a month' },
+      { ic:'⚡', t:'Always Ready', n:acks,        goal:10, sub:'10 confirmed' },
+      { ic:'✂️', t:"Editor's Cut", n:edits,       goal:10, sub:'10 edits done' },
+      { ic:'🌙', t:'Double Duty',  n:doubles,     goal:3, sub:'2 shoots a day' },
+      { ic:'📅', t:'One Year In',  n:monthsIn,    goal:12, sub:'months on crew' },
+      { ic:'💎', t:'Century',      n:done.length, goal:100 },
+    ];
+    const got = B.filter(b=>b.n >= b.goal).length;
+    $('#bdgCount').textContent = `${got}/${B.length}`;
+    $('#badges').innerHTML = B.map(b=>{
+      const has = b.n >= b.goal;
+      const pct = Math.min(100, Math.round(100*b.n/b.goal));
+      return `<div class="bdg ${has?'got':''}" title="${esc(b.t)} — ${has?'earned':`${b.n} of ${b.goal}`}">
+        <span class="ic">${b.ic}</span><b>${esc(b.t)}</b>
+        <em>${has ? (b.sub || 'earned') : b.n + '/' + b.goal}</em>
+        ${has ? '' : `<div class="bdgbar"><i style="width:${pct}%"></i></div>`}
+      </div>`;
+    }).join('');
+    $('#bdgWrap').hidden = false;
+  }
+
+  /* ---------- 12-month chart, events or earnings ---------- */
+  let _series = 'n';
+  function renderBars(){
+    const now = new Date();
+    const months = [];
+    for(let i = 11; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: d.toLocaleDateString('en-CA').slice(0,7),
+                    lab: d.toLocaleDateString('en-IN', { month:'short' }),
+                    yr: String(d.getFullYear()).slice(2), amt: 0, n: 0 });
+    }
+    ASGS.forEach(a=>{
+      const m = months.find(x=>x.key === (a.date||'').slice(0,7));
+      if(m){ m.amt += Number((a.pay||{}).amount)||0; m.n++; }
+    });
+    const money = _series === 'amt';
+    const max = Math.max(...months.map(m=>money ? m.amt : m.n), 1);
+    $('#anaBars').innerHTML = months.map(m=>{
+      const v = money ? m.amt : m.n;
+      return `<div class="bcol ${v ? '' : 'zero'}" role="img" aria-label="${m.lab}: ${m.n} event${m.n===1?'':'s'}, ${inr(m.amt)}">
+        <b>${v ? (money ? shMoney(m.amt) : m.n) : ''}</b>
+        <i style="height:${v ? Math.max(6, Math.round(v / max * 68)) : 3}px"></i>
+        <span>${m.lab}${m.lab === 'Jan' ? "'" + m.yr : ''}</span>
+      </div>`;
+    }).join('');
+    /* 12 months don't fit a phone — park the scroll on THIS month, with the
+       history behind it, rather than showing last year and hiding now */
+    const el = $('#anaBars'); el.scrollLeft = el.scrollWidth;
+  }
+  $('#chTog').addEventListener('click', e=>{
+    const b = e.target.closest('[data-ser]'); if(!b || b.dataset.ser === _series) return;
+    _series = b.dataset.ser;
+    $$('#chTog button').forEach(x=>x.classList.toggle('on', x === b));
+    renderBars();
+  });
+
   /* everything a member would want to know about their own work, computed
      from their own assignment docs — nothing extra is fetched */
   function renderAnalytics(){
     const has = _asgsLoaded && ASGS.length > 0;
     $('#crewStats').hidden = !has;
     $('#anaCard').hidden = !has;
-    if(!has) return;
     const today = todayISO();
     const done = ASGS.filter(a=>(a.date||'') && a.date < today);
-    const up = ASGS.filter(a=>(a.date||'') >= today);
+    const up = ASGS.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
+    /* the countdown is the one card that matters before there is any history */
+    renderCountdown(up);
+    if(!has){
+      $('#hqCard').hidden = true; $('#bdgWrap').hidden = true;
+      clearInterval(_cdTimer);
+      return;
+    }
+    renderRank(done, up);
+    renderBadges(done);
     const received = ASGS.filter(a=>(a.pay||{}).paid).reduce((s,a)=>s+(Number(a.pay.amount)||0), 0);
     const due = ASGS.filter(a=>Number((a.pay||{}).amount) > 0 && !(a.pay||{}).paid)
                     .reduce((s,a)=>s+(Number(a.pay.amount)||0), 0);
@@ -596,25 +893,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
       <div class="stat" data-pay role="button" tabindex="0" title="See payment details"><b>${inr(received)}</b><span>received</span></div>
       <div class="stat" data-pay role="button" tabindex="0" title="See payment details"><b>${inr(due)}</b><span>to receive</span></div>`;
-    /* last 6 months, current included — pay booked per event month */
-    const now = new Date();
-    const months = [];
-    for(let i = 5; i >= 0; i--){
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({ key: d.toLocaleDateString('en-CA').slice(0,7),
-                    lab: d.toLocaleDateString('en-IN', { month:'short' }), amt: 0, n: 0 });
-    }
-    ASGS.forEach(a=>{
-      const m = months.find(x=>x.key === (a.date||'').slice(0,7));
-      if(m){ m.amt += Number((a.pay||{}).amount)||0; m.n++; }
-    });
-    const max = Math.max(...months.map(m=>m.amt), 1);
-    $('#anaBars').innerHTML = months.map(m=>`
-      <div class="bcol ${m.amt ? '' : 'zero'}" role="img" aria-label="${m.lab}: ${inr(m.amt)} across ${m.n} event${m.n===1?'':'s'}">
-        <b>${m.amt ? shMoney(m.amt) : ''}</b>
-        <i style="height:${m.amt ? Math.max(6, Math.round(m.amt / max * 68)) : 3}px"></i>
-        <span>${m.lab}</span>
-      </div>`).join('');
+    renderBars();
     const roles = {};
     ASGS.forEach(a=>{ const r = String(a.role||'').trim(); if(r) roles[r] = (roles[r]||0) + 1; });
     const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
@@ -702,8 +981,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   });
 
-  /* the ONE write a member can make: acknowledge an assignment */
-  $('#upList').addEventListener('click', async e=>{
+  /* the ONE write a member can make: acknowledge an assignment. Confirm sits
+     both in the countdown card and on every upcoming card — one handler. */
+  $('#cdCta').addEventListener('click', ackClick);
+  $('#upList').addEventListener('click', ackClick);
+  async function ackClick(e){
     const b = e.target.closest('[data-ack]'); if(!b || b.disabled) return;
     const a = ASGS.find(v=>v.id===b.dataset.ack); if(!a) return;
     b.disabled = true; b.textContent = 'Confirming…';
@@ -716,7 +998,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment";
       toast(navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal');
     }
-  });
+  }
 }
 </script>
 </body>
