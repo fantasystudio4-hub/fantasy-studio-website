@@ -611,8 +611,20 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 #configView .sec{scroll-margin-top:118px}
 
 /* ==== B2B partner studios ==== */
-#b2bStats{grid-template-columns:repeat(2,1fr);margin-top:1rem}
-@media(min-width:700px){ #b2bStats{grid-template-columns:repeat(4,1fr)} }
+/* all four B2B tiles on ONE line, phone included — the money figures use the
+   short lakh/crore form there (the exact rupee value is in the tooltip) */
+#b2bStats{grid-template-columns:repeat(4,1fr);margin-top:1rem}
+#b2bStats .stat{padding:.5rem .2rem}
+#b2bStats .stat b{font-size:1rem}
+#b2bStats .stat span{font-size:.5rem;letter-spacing:.03em;line-height:1.3}
+@media(min-width:700px){
+  #b2bStats .stat{padding:.6rem .5rem}
+  #b2bStats .stat b{font-size:1.25rem}
+  #b2bStats .stat span{font-size:.62rem;letter-spacing:.08em}
+}
+/* the two ways to start something on the B2B list, side by side */
+.b2b-adds{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.b2b-adds .addrow{margin:0}
 .stu-top{display:flex;align-items:center;gap:.55rem;padding:.85rem 1rem .5rem;cursor:pointer;flex-wrap:wrap}
 .stu-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .stu-top .src{font-size:.72rem;color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -866,7 +878,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <h3>🏢 Partner studios</h3>
         <p class="sub">Studios that hire Fantasy Studio — crew on hire, editing, full coverage. Tap a studio for its rate card, jobs &amp; ledger. Strictly admin-only: nothing here ever appears on the website or client pages.</p>
         <div id="studioList"><div class="skel"></div></div>
-        <button class="addrow" id="stuAdd">＋ Add studio</button>
+        <div class="b2b-adds">
+          <button class="addrow" id="stuAdd">＋ Add studio</button>
+          <button class="addrow" id="b2bAddEv">＋ Add event</button>
+        </div>
       </div>
     </div>
     <div id="studioDetailView" hidden></div>
@@ -1101,6 +1116,13 @@ window.addEventListener('beforeinstallprompt', e=>{
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+/* compact rupees for tiles too narrow for the full figure — ₹8.4L, ₹1.2Cr.
+   Only ever for display next to the exact value (title attribute). */
+const inrShort = n => {
+  const v = Math.round(Number(n)||0);
+  const cut = (d, unit) => '₹' + (v/d).toFixed(v % d === 0 ? 0 : 1).replace(/\.0$/,'') + unit;
+  return v >= 1e7 ? cut(1e7,'Cr') : v >= 1e5 ? cut(1e5,'L') : v >= 1e4 ? cut(1e3,'K') : inr(v);
+};
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.style.pointerEvents='none'; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
@@ -1388,13 +1410,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function showTab(id){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
-    const fab = $('#fabBtn'); if(fab) fab.hidden = (id !== 'tabHome');   /* quick actions live on Home */
-    const sfab = $('#homeSearchBtn'); if(sfab) sfab.hidden = (id !== 'tabHome');
     if(id !== 'tabHome' && typeof closeHomeSearch === 'function') closeHomeSearch();
-    if(typeof syncB2BFabs === 'function') syncB2BFabs();
-    /* the quick add-event form is MOVED between Home and the B2B studio page —
+    /* the quick add-event form is MOVED between Home and the B2B page —
        leaving the page it is sitting on closes it rather than stranding it */
     if(typeof closeCalAdd === 'function' && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')) closeCalAdd();
+    if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
     if(id === 'tabHome'){
@@ -1469,7 +1489,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
       }else if(v === 'studio'){
         showTab('tabCal');
-        if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncB2BFabs(); }
+        if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
       }else{
         const tab = TAB_OF_VIEW[v] || 'tabHome';
         showTab(tab);
@@ -2763,8 +2783,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $$('#qeMode button').forEach(b=>b.classList.toggle('on', b.dataset.qem === _qeMode));
     $$('#qeStatus button').forEach(b=>b.classList.toggle('on', b.dataset.qest === _qeStatus));
     $('#qeStWrap').hidden = (_qeMode === 'existing');   /* an existing booking keeps its own status */
-    /* a studio's own page never starts a direct-client booking */
-    $('#qeMode [data-qem="client"]').hidden = !!_qeStudio;
+    /* the B2B page never starts a direct-client booking */
+    $('#qeMode [data-qem="client"]').hidden = (_qeAnchor === 'b2b');
   }
   function renderQeFields(){
     const el = $('#qeFields'); if(!el) return;
@@ -2790,18 +2810,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>`
       : `<div class="qe-warn">No partner studios yet — add one in the <b>B2B</b> tab first, then come back here.</div>`;
     }else{
-      /* opened from a studio's page, "Existing" means that studio's own jobs */
-      const list = _qeStudio ? studioJobs(_qeStudio) : livePkgs();
+      /* opened from a studio's page, "Existing" means that studio's own jobs;
+         from the B2B list it means studio jobs generally, never a retail one */
+      const list = _qeStudio ? studioJobs(_qeStudio)
+        : _qeAnchor === 'b2b' ? livePkgs().filter(isStudioJob)
+        : livePkgs();
       el.innerHTML = list.length ? `
         <div class="fld"><label>Add this date to</label>
           <select id="qePkg">${list.map(x=>`<option value="${esc(x.id)}">${x.quoteNo ? esc(x.quoteNo) + ' · ' : ''}${esc(x.clientName||'—')}${isStudioJob(x) ? ' 🏢' : ''} · ${esc(STATUS_LABEL(x.status||'draft'))}</option>`).join('')}</select>
         </div>
         <p class="qe-note" style="margin:-.4rem 0 .8rem">${_qeStudio ? 'This studio\'s jobs, newest first.' : 'Newest bookings first.'} Use this for day 2 / day 3 of the same function.</p>`
-      : `<div class="qe-warn">${_qeStudio ? 'No jobs for this studio yet — start one with <b>🏢 B2B</b>.' : 'No bookings yet — start one with <b>Client</b> or <b>B2B</b>.'}</div>`;
+      : `<div class="qe-warn">${_qeStudio ? 'No jobs for this studio yet — start one with <b>🏢 B2B</b>.'
+          : _qeAnchor === 'b2b' ? 'No studio jobs yet — start one with <b>🏢 B2B</b>.'
+          : 'No bookings yet — start one with <b>Client</b> or <b>B2B</b>.'}</div>`;
     }
     syncQePills();
   }
-  /* opts.studio — a studio doc: opens on that studio's B2B page instead of Home.
+  /* opts.studio — a studio doc: opens on that studio's own page, pinned to it.
+     opts.b2b    — the B2B list page: same form, studio still to be picked.
+     Otherwise it opens under the calendar day box on Home.
      The form is MOVED rather than duplicated, so there is one set of fields and
      one save path. Both anchors are containers that are never innerHTML-rebuilt
      (#studioDetailView is, so the B2B copy sits after it, not inside it). */
@@ -2809,23 +2836,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const node = $('#calAdd'); if(!node) return;
     const stu = (opts && opts.studio) || null;
     _qeStudio = stu ? stu.id : null;
-    _qeAnchor = stu ? 'b2b' : 'home';
+    _qeAnchor = (stu || (opts && opts.b2b)) ? 'b2b' : 'home';
     if(_qeAnchor === 'home'){
       if(!calSel){ toast('Tap a date first'); return; }
       $('#homeView').insertBefore(node, $('#upcoming'));   /* directly under the day box */
     }else{
       $('#calView').appendChild(node);
     }
-    _qeMode = stu ? 'studio' : 'client';
+    _qeMode = _qeAnchor === 'b2b' ? 'studio' : 'client';
     _qeStatus = 'booked';
     $('#qeTitle').value = ''; $('#qeVenue').value = '';
     $('#qeDate').value = (_qeAnchor === 'home' ? calSel : (calSel || todayISO()));
     $('#qeChips').innerHTML = EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-qename="${esc(n)}">${esc(n)}</button>`).join('');
     renderQeFields();
     node.hidden = false;
+    syncFabs();   /* the floating buttons would sit on top of the Save row */
     setTimeout(()=>{ if(!node.hidden) node.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
   }
-  function closeCalAdd(){ const b = $('#calAdd'); if(b) b.hidden = true; }
+  function closeCalAdd(){
+    const b = $('#calAdd'); if(b) b.hidden = true;
+    if(typeof syncFabs === 'function') syncFabs();
+  }
   $('#qeMode').addEventListener('click', e=>{
     const b = e.target.closest('[data-qem]'); if(!b || b.dataset.qem === _qeMode) return;
     _qeMode = b.dataset.qem; renderQeFields();
@@ -3794,8 +3825,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = `
       <div class="stat"><b>${STUDIOS.filter(s=>s.active !== false).length}</b><span>studios</span></div>
       <div class="stat"><b>${openJobs}</b><span>open jobs</span></div>
-      <div class="stat"><b>${inr(out)}</b><span>to collect</span></div>
-      <div class="stat"><b>${inr(life)}</b><span>lifetime b2b</span></div>`;
+      <div class="stat" title="${inr(out)}"><b>${inrShort(out)}</b><span>to collect</span></div>
+      <div class="stat" title="${inr(life)}"><b>${inrShort(life)}</b><span>lifetime b2b</span></div>`;
   }
   function stuCardHTML(s){
     const jobs = studioJobs(s.id);
@@ -3839,13 +3870,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = act.map(stuCardHTML).join('')
       + (inact.length ? `<div class="grp">Inactive<b>${inact.length}</b></div>` + inact.map(stuCardHTML).join('') : '');
   }
-  /* B2B gets the same pair as Home: 🔍 above the ＋ action button, both live
-     only on the studio LIST — a studio's own page has its own actions */
-  function syncB2BFabs(){
-    const onList = !$('#calView').hidden && $('#studioDetailView').hidden;
-    $('#stuSearchBtn').hidden = !onList;
-    $('#stuAddFab').hidden = !onList;
-    if(!onList) closeStuSearch();
+  /* Two floating pairs — 🔍+⚡ on Home, 🔍+＋ on the B2B studio LIST (a studio's
+     own page has its own actions). One place decides who is on screen, because
+     they are fixed to the bottom right and would otherwise sit on top of the
+     add-event form's Save row. */
+  function syncFabs(){
+    const formOpen = !$('#calAdd').hidden;
+    const onHome = !$('#homeView').hidden;
+    const onStudioList = !$('#calView').hidden && $('#studioDetailView').hidden;
+    $('#fabBtn').hidden = !onHome || formOpen;
+    $('#homeSearchBtn').hidden = !onHome || formOpen;
+    $('#stuSearchBtn').hidden = !onStudioList || formOpen;
+    $('#stuAddFab').hidden = !onStudioList || formOpen;
+    if(!onStudioList) closeStuSearch();
   }
   function openStuSearch(){
     $('#stuSearchBar').hidden = false;
@@ -3870,6 +3907,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     openStudioDetail(card.dataset.stu);
   });
   $('#stuAdd').addEventListener('click', ()=>openStu(null));
+  /* same quick-add form as a studio's own page, with the studio still to pick */
+  $('#b2bAddEv').addEventListener('click', ()=>openCalAdd({ b2b: true }));
 
   /* ---------- add / edit studio sheet ---------- */
   function openStu(s){
@@ -3955,9 +3994,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- studio detail: profile, rate card, ledger, jobs ---------- */
   function openStudioDetail(id){
     _stuDetailId = id;
+    closeCalAdd();   /* a form opened from the LIST doesn't belong on a studio page */
     renderStudioDetail();
     $('#studioListView').hidden = true; $('#studioDetailView').hidden = false;
-    syncB2BFabs();
+    syncFabs();
     scrollTopNow();
     pushView('studio', '#b2b/studio');
   }
@@ -3965,7 +4005,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
     _stuDetailId = null;
     closeCalAdd();   /* the quick-add form belongs to the studio page above it */
-    syncB2BFabs();
+    syncFabs();
   }
   const stuRateRow = (name, rate) => `
     <div class="row" data-srate>
