@@ -131,6 +131,19 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .toast.show{opacity:1}
 .net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
 .hd .net + .out{margin-left:.45rem}
+.hd .inst{border-color:var(--gold);color:var(--gold-b)}
+.hd .inst + .out{margin-left:.45rem}
+@media(max-width:400px){ .hd .inst{font-size:0;padding:.35em .7em} .hd .inst::first-letter{font-size:.85rem} }
+
+/* install card — offered once, and only where it can actually work */
+.instcard{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;background:linear-gradient(150deg,rgba(201,163,71,.15),rgba(36,30,18,.92) 60%);border:1px solid rgba(226,194,117,.4);border-radius:16px;padding:.9rem 1rem;margin:0 0 1rem;box-shadow:0 10px 26px rgba(0,0,0,.24)}
+.instcard .ic{font-size:1.7rem;flex:0 0 auto;line-height:1}
+.instcard .it{flex:1;min-width:150px}
+.instcard .it b{display:block;font-family:var(--serif);color:#fff;font-size:1rem}
+.instcard .it span{display:block;font-size:.76rem;color:var(--mut);margin-top:.15rem}
+.instcard .ia{display:flex;align-items:center;gap:.6rem;width:100%}
+.instcard .ia .gbtn{width:auto;flex:1;padding:.7em 1.2em}
+.instcard .ia .mini{margin-top:0;flex:0 0 auto;min-height:44px;padding:.4em .9em}
 
 /* ==== polish pass: one visual system across admin / crew / client ==== */
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
@@ -220,6 +233,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Crew</span></div>
     <span class="net" id="netDot" hidden>offline</span>
+    <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
@@ -298,6 +312,19 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div id="appView" hidden>
     <h1 class="hello" id="hello"></h1>
     <p id="helloSub"></p>
+
+    <!-- put it on their phone: a shoot day is exactly when signal is worst -->
+    <div class="instcard" id="instCard" hidden>
+      <span class="ic">📲</span>
+      <div class="it">
+        <b>Keep this on your phone</b>
+        <span id="instWhy">Add the crew app to your home screen — your schedule opens in one tap, and the last one you loaded still opens with no signal.</span>
+      </div>
+      <div class="ia">
+        <button class="gbtn" id="instGo" type="button">Install</button>
+        <button class="mini" id="instNo" type="button">Not now</button>
+      </div>
+    </div>
 
     <!-- rank card: level, title, XP to the next rank, streak -->
     <div class="hq" id="hqCard" hidden>
@@ -378,6 +405,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
 }
+/* Android/Chrome fires this ONCE, early — before the module below has even
+   loaded. Catch it here or the chance to offer the install is gone. */
+window.__bipEvent = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  window.__bipEvent = e;
+  window.dispatchEvent(new Event('bip-ready'));
+});
 </script>
 <script src="../firebase-config.js"></script>
 <script type="module">
@@ -416,6 +451,55 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
   $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+
+  /* ---------- install to the phone's app list ----------
+     A shoot day is exactly when the signal is worst and the venue is
+     unfamiliar. Installed, the crew page opens from the home screen in one
+     tap and the last schedule loaded still opens with no bars at all. */
+  const INST_SNOOZE = 'fs_crew_inst_snooze';
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  function installable(){
+    if(standalone()) return false;                      /* already on the home screen */
+    return !!window.__bipEvent || isIOS();              /* Android fires the event; iOS never does */
+  }
+  function snoozed(){
+    try{ return Number(localStorage.getItem(INST_SNOOZE)||0) > Date.now(); }catch(e){ return false; }
+  }
+  function refreshInstall(){
+    const ok = installable();
+    $('#installBtn').hidden = !ok;
+    /* the card belongs on the dashboard only — never over the sign-in screen */
+    $('#instCard').hidden = !ok || snoozed() || $('#appView').hidden;
+    if(ok && isIOS() && !window.__bipEvent)
+      $('#instWhy').textContent = 'Tap Share ⬆ at the bottom of Safari, then “Add to Home Screen” — your schedule opens in one tap, even with no signal.';
+  }
+  async function doInstall(){
+    if(window.__bipEvent){
+      const ev = window.__bipEvent; window.__bipEvent = null;
+      ev.prompt();
+      try{ await ev.userChoice; }catch(e){}
+      refreshInstall();
+    }else if(isIOS()){
+      toast('Tap Share ⬆ then “Add to Home Screen”');
+    }else{
+      toast('Browser menu → Install app / Add to Home screen');
+    }
+  }
+  $('#installBtn').addEventListener('click', doInstall);
+  $('#instGo').addEventListener('click', doInstall);
+  $('#instNo').addEventListener('click', ()=>{
+    /* out of the way for a month, not for ever — they may want it next season */
+    try{ localStorage.setItem(INST_SNOOZE, String(Date.now() + 30*864e5)); }catch(e){}
+    $('#instCard').hidden = true;
+  });
+  window.addEventListener('bip-ready', refreshInstall);
+  window.addEventListener('appinstalled', ()=>{
+    window.__bipEvent = null;
+    $('#installBtn').hidden = true; $('#instCard').hidden = true;
+    toast('Installed ✓ — open it from your home screen');
+  });
+  refreshInstall();
 
   /* Reaching the studio used to be impossible from here — a crew member with a
      question about a call time had nothing to tap. The number comes from Site
@@ -572,8 +656,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   function route(){
-    if(!_meLoaded || !_reqLoaded){ show('loadingView'); return; }
-    if(ME){ show('appView'); render(); return; }
+    if(!_meLoaded || !_reqLoaded){ show('loadingView'); refreshInstall(); return; }
+    if(ME){ show('appView'); render(); refreshInstall(); return; }
     /* a listener ERROR is a server/connection problem, not "you're not on the
        team" — showing the join-request flow here misled real members */
     if(_meErr || _reqErr){
@@ -581,16 +665,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#errWhat').textContent = code.includes('permission')
         ? 'Crew access is switched off on the server right now. The studio needs to update its access settings — nothing is wrong with your account.'
         : 'This looks like a connection problem. Check your internet and try again — your account is fine.';
-      show('errorView');
+      show('errorView'); refreshInstall();
       return;
     }
     if(REQ){
       $('#pendingWho').textContent = `${REQ.name||''} · ${_pretty}`;
-      show('pendingView');
+      show('pendingView'); refreshInstall();
       return;
     }
     $('#reqPhone').textContent = _pretty;
-    show('requestView');
+    show('requestView'); refreshInstall();
   }
   $('#errRetry').addEventListener('click', ()=>location.reload());
 
