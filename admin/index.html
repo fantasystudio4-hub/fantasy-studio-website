@@ -415,6 +415,14 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pkg-actions .gbtn{width:auto;flex:1;min-width:130px}
 .pkg-actions .mini{margin-top:0}
 .lead-sub .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
+/* instructions that only matter the first few times: one line by default */
+.howto{margin:0 0 .8rem}
+.howto summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-b);font-size:.74rem;letter-spacing:.04em;border:1px dashed var(--line);border-radius:20px;padding:.35em .95em}
+.howto summary::-webkit-details-marker{display:none}
+.howto summary::before{content:"?";display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:rgba(184,144,43,.25);font-size:.62rem}
+.howto[open] summary{margin-bottom:.5rem}
+.howto p{font-size:.75rem;color:var(--mut);line-height:1.55}
+@media(hover:hover){ .howto summary:hover{border-color:var(--gold)} }
 .hint{background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--mut);margin-bottom:.9rem}
 .hint b{color:var(--gold-b);font-weight:500}
 .sec .sub{font-size:.75rem;color:var(--mut);margin:-.5rem 0 .8rem}
@@ -625,6 +633,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* the two ways to start something on the B2B list, side by side */
 .b2b-adds{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 .b2b-adds .addrow{margin:0}
+/* the 🔍 / ＋ pair is fixed bottom-right and sat on top of that add row once
+   the studio list was long enough to scroll (Home clears its own the same way) */
+#studioListView > .sec:last-child{margin-bottom:78px}
 .stu-top{display:flex;align-items:center;gap:.55rem;padding:.85rem 1rem .5rem;cursor:pointer;flex-wrap:wrap}
 .stu-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .stu-top .src{font-size:.72rem;color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -789,7 +800,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
       <div class="fchips" id="pkgChips"></div>
-      <p class="sub" style="margin:0 0 .7rem">Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:#cf8d85">not confirmed</b> to park a quote whose event is on hold (it leaves the follow-up list).</p>
+      <details class="howto">
+        <summary>How this list works</summary>
+        <p>Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:#cf8d85">not confirmed</b> to park a quote whose event is on hold (it leaves the follow-up list).</p>
+      </details>
       <div id="pkgList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </div>
 
@@ -1575,7 +1589,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
     $('#stats').innerHTML =
       `<div class="stat month"><b>${inr(monthTotal)}</b><span>${monthCount} quotes this month</span></div>` +
-      STATUSES.map(s=>`<div class="stat ${leadFilterVal===s?'sel':''}" data-fs="${s}" role="button" title="Filter ${s} leads"><b class="st-${s}">${counts[s]||0}</b><span>${s}</span></div>`).join('');
+      STATUSES.map(s=>`<div class="stat ${leadFilterVal===s?'sel':''}" data-fs="${s}" role="button" tabindex="0" title="Filter ${s} leads"><b class="st-${s}">${counts[s]||0}</b><span>${s}</span></div>`).join('');
     const badge = $('#leadsBadge');
     if(badge){ badge.hidden = !counts.new; badge.textContent = counts.new || ''; }
   }
@@ -1625,7 +1639,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
       return `
       <div class="lead" data-id="${l.id}">
-        <div class="lead-top" data-toggle>
+        <div class="lead-top" data-toggle role="button" tabindex="0" aria-label="Open lead">
           <span class="nm">${esc(l.name||'—')}</span>
           <span class="src">${esc(l.source==='contact_form'?'enquiry':'builder')}</span>
           ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
@@ -1924,7 +1938,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? 'Saved offline — it will publish the moment you are back online.'
         : 'Saved — the live site now uses these values.';
       toast(res === 'queued' ? 'Config saved offline — will publish when online' : 'Config published ✓');
+      _cfgTouched = false;
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+  });
+
+  /* ---------- one guard for everything the browser could throw away ----------
+     In-app navigation already asks before leaving a dirty builder, but a page
+     refresh, a closed tab or an Android back-out took a half-written quotation,
+     unsaved Config edits or a half-typed add-event form with it, silently. */
+  let _cfgTouched = false;
+  $('#configView').addEventListener('input', ()=>{ _cfgTouched = true; });
+  function unsavedWork(){
+    try{
+      if(typeof pkgDirty === 'function' && pkgDirty()) return true;
+      if(_cfgTouched) return true;
+      const add = $('#calAdd');
+      if(add && !add.hidden && ($('#qeTitle').value.trim() || $('#qeVenue').value.trim())) return true;
+    }catch(e){}
+    return false;
+  }
+  window.addEventListener('beforeunload', e=>{
+    if(!unsavedWork()) return;
+    e.preventDefault();
+    e.returnValue = '';   /* the wording is the browser's, not ours */
   });
 
   /* ============================================================
@@ -2241,10 +2277,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const newMonth = livePkgs().filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
     /* the two money tiles share one line — tapping either opens the money analytics sheet */
     el.innerHTML = `
-      <div class="stat money" data-fin role="button" title="Open money analytics"><b>${inr(outstanding)}</b><span>left to collect</span></div>
-      <div class="stat money" data-fin role="button" title="Open money analytics"><b>${inr(bookedVal)}</b><span>booked value</span></div>
-      <div class="stat" data-goto="booked" role="button"><b>${booked.length}</b><span>booked</span></div>
-      <div class="stat" data-goto="" role="button"><b>${newMonth}</b><span>new this month</span></div>`;
+      <div class="stat money" data-fin role="button" tabindex="0" title="Open money analytics"><b>${inr(outstanding)}</b><span>left to collect</span></div>
+      <div class="stat money" data-fin role="button" tabindex="0" title="Open money analytics"><b>${inr(bookedVal)}</b><span>booked value</span></div>
+      <div class="stat" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
+      <div class="stat" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>`;
   }
   /* one shoot at a time: the very next event as a single tappable card —
      tapping it opens the full event + package sheet, with ‹ › to browse
@@ -2259,12 +2295,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _upEvents = calEvents()
       .filter(e=>e.date > today && (e.status === 'booked' || e.status === 'lead'))   // confirmed bookings only
       .sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);   /* 0 on equal dates — same-day events must not swap between refreshes */
-    el.hidden = !_upEvents.length;
     if(!_upEvents.length){
       if($('#evModal').classList.contains('open')) closeEvUI();
       if($('#upModal').classList.contains('open')) closeUpUI();
+      /* say so rather than vanishing — Home used to just end after the
+         calendar, which reads like something failed to load */
+      el.hidden = !_pkgsLoaded;
+      el.innerHTML = '<h3>📅 Next shoot</h3><div class="empty" style="padding:.9rem 0">Nothing booked after today.</div>';
       return;
     }
+    el.hidden = false;
     /* the next shoot is a DAY, not a single event: a 3-function day used to
        highlight only its first event and push the other two into the small
        rows below, where they read as later shoots. Every event on that date
@@ -2282,7 +2322,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       let due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
       if(due > 0 && dueShown.has(e.id)) due = 0; else if(due > 0) dueShown.add(e.id);
       return `
-      <div class="uh-row" data-open-ev="${i}" role="button" aria-label="Open event details">
+      <div class="uh-row" data-open-ev="${i}" role="button" tabindex="0" aria-label="Open event details">
         <i class="dot ${e.status}"></i>
         <div class="uh-mid">
           <b>${esc(e.title)}</b>
@@ -2294,7 +2334,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }).join('');
     const rest = _upEvents.slice(hero.length, hero.length + 4);
     const rows = rest.map((e,i)=>`
-      <div class="up-ev" data-open-ev="${hero.length+i}" role="button">
+      <div class="up-ev" data-open-ev="${hero.length+i}" role="button" tabindex="0">
         <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
         <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
         <i class="dot ${e.status}"></i>
@@ -2417,7 +2457,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     return `
     <div class="lead st-${st} ${open?'open':''}" data-id="${x.id}">
-      <div class="lead-top" data-expand>
+      <div class="lead-top" data-expand role="button" tabindex="0" aria-label="Expand package">
         <div class="lt-lines">
           <div class="l1">
             <span class="nm">${esc(x.clientName||'—')}</span>
@@ -2502,7 +2542,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(!grp.length) return '';
         if(s === 'booked') grp = [...grp].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
         const isOpen = !!open[s];
-        return `<div class="grp tog ${isOpen?'':'closed'}" data-grp="${s}" role="button" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${grp.length}</b></div>`
+        return `<div class="grp tog ${isOpen?'':'closed'}" data-grp="${s}" role="button" tabindex="0" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${grp.length}</b></div>`
           + (isOpen ? grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '');
       }).join('');
       return;
@@ -2681,7 +2721,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const iso = `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const evs = byDate[iso]||[];
       const col = (startDow + d - 1) % 7;
-      h += `<div class="cal-cell ${col>4?'we':''} ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''}" data-date="${iso}" aria-label="${d} — ${evs.length} event${evs.length===1?'':'s'}">
+      h += `<div class="cal-cell ${col>4?'we':''} ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''}" data-date="${iso}" role="button" tabindex="0" aria-pressed="${iso===calSel}" aria-label="${d} — ${evs.length} event${evs.length===1?'':'s'}">
         <span class="d">${d}</span>
         <div class="dots">${evs.slice(0,4).map(e=>`<i class="dot ${e.status}"></i>`).join('')}${evs.length>4?`<b>+${evs.length-4}</b>`:''}</div>
       </div>`;
@@ -3187,7 +3227,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="act" data-tmedit2>Edit</button>
       </div>`;
     el.innerHTML = act.map(row).join('')
-      + (inact.length ? `<div class="grp tog ${_tmShowInactive?'':'closed'}" data-tmgrp role="button" aria-expanded="${_tmShowInactive}"><span class="car">▾</span>Inactive<b>${inact.length}</b></div>` + (_tmShowInactive ? inact.map(row).join('') : '') : '');
+      + (inact.length ? `<div class="grp tog ${_tmShowInactive?'':'closed'}" data-tmgrp role="button" tabindex="0" aria-expanded="${_tmShowInactive}"><span class="car">▾</span>Inactive<b>${inact.length}</b></div>` + (_tmShowInactive ? inact.map(row).join('') : '') : '');
   }
 
   function renderTeamReqs(){
@@ -3263,7 +3303,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const unpaid = list.filter(a=>!(a.pay||{}).paid);
       const due = unpaid.reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
       const open = _payOpen.has(mid);
-      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : 'all paid ✓'}</b></div>`;
+      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : 'all paid ✓'}</b></div>`;
       if(!open) return head;
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
@@ -3825,8 +3865,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = `
       <div class="stat"><b>${STUDIOS.filter(s=>s.active !== false).length}</b><span>studios</span></div>
       <div class="stat"><b>${openJobs}</b><span>open jobs</span></div>
-      <div class="stat" title="${inr(out)}"><b>${inrShort(out)}</b><span>to collect</span></div>
-      <div class="stat" title="${inr(life)}"><b>${inrShort(life)}</b><span>lifetime b2b</span></div>`;
+      <div class="stat money" data-fin role="button" tabindex="0" title="${inr(out)}"><b>${inrShort(out)}</b><span>to collect</span></div>
+      <div class="stat money" data-fin role="button" tabindex="0" title="${inr(life)}"><b>${inrShort(life)}</b><span>lifetime b2b</span></div>`;
   }
   function stuCardHTML(s){
     const jobs = studioJobs(s.id);
@@ -3837,7 +3877,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const inactive = s.active === false;
     return `
     <div class="lead ${inactive?'tm-inactive':''}" data-stu="${s.id}">
-      <div class="stu-top">
+      <div class="stu-top" role="button" tabindex="0" aria-label="Open studio">
         <span class="nm">${esc(s.name||'—')}</span>
         <span class="src">${esc([s.city, s.ownerName].filter(Boolean).join(' · '))}</span>
         ${inactive ? '<span class="stpill draft">inactive</span>' : ''}
@@ -3906,6 +3946,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const card = e.target.closest('[data-stu]'); if(!card) return;
     openStudioDetail(card.dataset.stu);
   });
+  /* the short ₹8.4L form has no tooltip on a phone — the tile opens the
+     analytics sheet, where the exact figures live */
+  $('#b2bStats').addEventListener('click', e=>{ if(e.target.closest('[data-fin]')) openFin(); });
   $('#stuAdd').addEventListener('click', ()=>openStu(null));
   /* same quick-add form as a studio's own page, with the studio still to pick */
   $('#b2bAddEv').addEventListener('click', ()=>openCalAdd({ b2b: true }));
@@ -4085,7 +4128,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="sec">
         <h3>📦 Job history <span style="font-size:.7rem;color:var(--mut)">(${jobs.length})</span></h3>
         ${jobs.length ? jobs.map(x=>`
-          <div class="up-ev" data-stujob="${x.id}" role="button">
+          <div class="up-ev" data-stujob="${x.id}" role="button" tabindex="0">
             <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
             <span class="what">${esc(x.quoteNo||'—')} <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span></span>
             <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
@@ -4289,6 +4332,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
   $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt(); } });
+  /* Everything tappable here is a div — a calendar date, a shoot row, a stat
+     tile, a group header. They are focusable now, so give them a button's
+     keyboard behaviour too instead of leaving a laptop unable to reach them. */
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    const t = e.target;
+    if(!t || !t.matches || !t.matches('[tabindex="0"][role="button"]')) return;
+    e.preventDefault();   /* Space would scroll the page */
+    t.click();
+  });
   $('#paySave').addEventListener('click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
@@ -4481,7 +4534,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${HD}
       ${months.map((m,i)=>row3(FMN[i], m)).join('')}
       <div class="finh">Annual · financial years</div>
-      ${fys.length ? HD + fys.map(fy=>row3(`${fy}-${String((fy+1)%100).padStart(2,'0')}`, byFy[fy], fy===y?'on':'', `data-fyr="${fy}" role="button" title="Show ${fyLabel(fy)} quarter-wise"`)).join('')
+      ${fys.length ? HD + fys.map(fy=>row3(`${fy}-${String((fy+1)%100).padStart(2,'0')}`, byFy[fy], fy===y?'on':'', `data-fyr="${fy}" role="button" tabindex="0" title="Show ${fyLabel(fy)} quarter-wise"`)).join('')
       : '<div class="empty" style="padding:.6rem 0">No confirmed bookings yet — this table fills in as packages are booked.</div>'}`;
   }
   $('#finBody').addEventListener('click', e=>{
@@ -4636,7 +4689,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const due = pk ? Math.max(0,(pk.totals||{}).balance||0) : 0;
       const days = Math.round((d - new Date(today+'T00:00'))/864e5);
       return head + `
-      <div class="up-ev" data-goev="${i}" role="button">
+      <div class="up-ev" data-goev="${i}" role="button" tabindex="0">
         <span class="when">${d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
         <span class="what">${esc(e.title)} <span>· ${e.b2b ? '🏢 ' : ''}${esc(e.client)}${days===0 ? ' · today' : days===1 ? ' · tomorrow' : ''}</span></span>
         ${due > 0 ? `<span class="due">${inr(due)}</span>` : `<i class="dot ${e.status}"></i>`}
@@ -4703,33 +4756,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const box = $('#homeResults'); if(!box) return;
     const q = ($('#homeSearch').value||'').trim().toLowerCase();
     if(!q){ box.hidden = true; box.innerHTML = ''; return; }
-    const pk = livePkgs().filter(x=>String(x.clientName||'').toLowerCase().includes(q)
-      || String(x.clientPhone||'').includes(q) || String(x.quoteNo||'').toLowerCase().includes(q)).slice(0,6);
-    const ld = liveLeads().filter(l=>String(l.name||'').toLowerCase().includes(q)
-      || String(l.phone||'').includes(q)).slice(0,4);
-    const su = STUDIOS.filter(s=>String(s.name||'').toLowerCase().includes(q)
-      || String(s.ownerName||'').toLowerCase().includes(q) || String(s.phone||'').includes(q)).slice(0,3);
+    /* the caps below hide matches — count them first, so a client past the cut
+       is reported instead of looking like they don't exist */
+    const pkAll = livePkgs().filter(x=>String(x.clientName||'').toLowerCase().includes(q)
+      || String(x.clientPhone||'').includes(q) || String(x.quoteNo||'').toLowerCase().includes(q));
+    const ldAll = liveLeads().filter(l=>String(l.name||'').toLowerCase().includes(q)
+      || String(l.phone||'').includes(q));
+    const suAll = STUDIOS.filter(s=>String(s.name||'').toLowerCase().includes(q)
+      || String(s.ownerName||'').toLowerCase().includes(q) || String(s.phone||'').includes(q));
+    const pk = pkAll.slice(0,6), ld = ldAll.slice(0,4), su = suAll.slice(0,3);
+    const hidden = (pkAll.length - pk.length) + (ldAll.length - ld.length) + (suAll.length - su.length);
     box.hidden = false;
     box.innerHTML = '<h3>🔍 Results</h3>' + ((pk.length || ld.length || su.length)
       ? pk.map(x=>`
-          <div class="up-ev" data-hspkg="${x.id}" role="button">
+          <div class="up-ev" data-hspkg="${x.id}" role="button" tabindex="0">
             <span class="when">📦</span>
             <span class="what">${esc(x.clientName||'—')} <span>· ${esc(x.quoteNo||'')} · ${inr((x.totals||{}).finalPrice||0)}</span></span>
             <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
           </div>`).join('')
         + ld.map(l=>`
-          <div class="up-ev" data-hslead="${l.id}" role="button">
+          <div class="up-ev" data-hslead="${l.id}" role="button" tabindex="0">
             <span class="when">👤</span>
             <span class="what">${esc(l.name||'—')} <span>· lead${l.eventType ? ' · ' + esc(l.eventType) : ''}</span></span>
             <i class="dot lead"></i>
           </div>`).join('')
         + su.map(s=>`
-          <div class="up-ev" data-hsstu="${s.id}" role="button">
+          <div class="up-ev" data-hsstu="${s.id}" role="button" tabindex="0">
             <span class="when">🏢</span>
             <span class="what">${esc(s.name||'—')} <span>· studio${s.city ? ' · ' + esc(s.city) : ''}</span></span>
             <span class="b2bpill">B2B</span>
           </div>`).join('')
-      : '<div class="empty" style="padding:.6rem 0">No match. New enquiries land in the Leads tab.</div>');
+      : '<div class="empty" style="padding:.6rem 0">No match. New enquiries land in the Leads tab.</div>')
+      + (hidden > 0 ? `<div class="qe-note" style="margin:.6rem 0 0">＋ ${hidden} more match${hidden===1?'':'es'} not shown — type a bit more to narrow it down.</div>` : '');
   }
   $('#homeSearch').addEventListener('input', renderHomeSearch);
   /* the box only appears when it's wanted — the calendar owns the top of Home.
