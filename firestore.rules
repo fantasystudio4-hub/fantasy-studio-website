@@ -90,6 +90,14 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // studio spending — rent, gear, travel, crew salaries. Admin-only, like
+    // every other money record. The default-deny match at the bottom already
+    // covers this collection, so the panel works whether or not this block is
+    // published; it is written out so nobody has to guess.
+    match /expenses/{expId} {
+      allow read, write: if isAdmin();
+    }
+
     // hashed phone index — single-doc existence check before sending an OTP
     match /phoneIndex/{h} {
       allow get:   if true;
