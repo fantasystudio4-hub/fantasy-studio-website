@@ -3277,11 +3277,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function crewRowHTML(a, extra){
     const seen = a.status === 'acknowledged';
+    /* the member's own "completed" is the later, stronger signal — once it is
+       in, showing "seen" tells the owner nothing they still need */
+    const pill = a.workDone
+      ? '<span class="ackpill seen" title="Marked completed by the member">✓ done</span>'
+      : `<span class="ackpill ${seen?'seen':'wait'}">${seen?'✓ seen':'⏳ not seen'}</span>`;
     return `
       <div class="tm-crew" data-asedit="${a.id}">
         <span class="nm2">${esc(a.memberName||'—')}</span>
         <span class="rl">${esc(roleLabel(a.role))}${a.callTime ? ' · call ' + esc(a.callTime) : ''}${(a.pay||{}).amount ? ' · ' + inr(a.pay.amount) : ''}</span>
-        ${extra || `<span class="ackpill ${seen?'seen':'wait'}">${seen?'✓ seen':'⏳ not seen'}</span>`}
+        ${extra || pill}
       </div>`;
   }
 
@@ -3557,10 +3562,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
         const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
-        /* editors self-report editing progress from the crew page */
-        const scissors = !/editor/i.test(a.role||'') ? ''
-          : a.workDone ? '<span title="Editing completed — marked by the editor" style="color:var(--ok)">✂✓ </span>'
-          : (a.date||'') < todayISO() ? '<span title="Editing not marked complete yet" style="color:#ffb054">✂… </span>'
+        /* members sign their own work off from the crew page — editors as
+           "editing complete", everyone else as "event completed" */
+        const _ed = /editor/i.test(a.role||'');
+        const scissors = a.workDone
+          ? `<span title="${_ed ? 'Editing completed' : 'Completed'} — marked by the member" style="color:var(--ok)">${_ed ? '✂✓' : '✓'} </span>`
+          : (a.date||'') < todayISO() ? `<span title="${_ed ? 'Editing not marked complete yet' : 'Not marked completed yet'}" style="color:#ffb054">${_ed ? '✂…' : '○'} </span>`
           : '';
         return `
         <div class="pm-row">

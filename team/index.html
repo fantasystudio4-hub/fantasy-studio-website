@@ -652,6 +652,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- member dashboard ---------- */
   function asgCard(a, past){
     const seen = a.status === 'acknowledged';
+    /* the member's own sign-off. Every role gets it, not just editors — and
+       from the day of the shoot, because a wedding is finished that night,
+       not the next morning when the card moves to Past. */
+    const isEd = /editor/i.test(a.role||'');
+    const done = (a.date||'') <= todayISO();
     return `
     <div class="asg ${past?'past':''}">
       <div class="asg-h">
@@ -672,9 +677,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${past ? '' : (seen
         ? `<div class="ackdone">✓ You confirmed this${a.ackAt && a.ackAt.toDate ? ' on ' + a.ackAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</div>`
         : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)}
-      ${past && /editor/i.test(a.role||'') ? (a.workDone
-        ? `<div class="ackdone">✂️ Editing completed${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
-        : `<button class="ackbtn" data-workdone="${a.id}">✂️ Mark editing complete</button>`) : ''}
+      ${done ? (a.workDone
+        ? `<div class="ackdone">${isEd ? '✂️ Editing completed' : '✓ Event completed'}${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
+        : `<button class="ackbtn" data-workdone="${a.id}">${isEd ? '✂️ Mark editing complete' : '✓ Mark this event completed'}</button>`) : ''}
     </div>`;
   }
 
@@ -961,8 +966,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     pc.scrollIntoView({ behavior:'smooth', block:'start' });
   });
 
-  /* editors tick off finished edits on past events — the studio sees it live */
-  $('#pastList').addEventListener('click', async e=>{
+  /* the member's sign-off — on today's card in the upcoming list as well as
+     on past ones, so it is attached to both */
+  $('#pastList').addEventListener('click', doneClick);
+  $('#upList').addEventListener('click', doneClick);
+  async function doneClick(e){
     const done = e.target.closest('[data-workdone]');
     const undo = e.target.closest('[data-workundo]');
     if(!done && !undo) return;
@@ -974,12 +982,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       a.workDone = !!done;
       delete a.workDoneAt;   /* the server timestamp arrives with the next snapshot */
       render();
-      toast(done ? 'Editing marked complete ✓ — the studio can see it' : 'Marked as still editing');
+      const ed = /editor/i.test(a.role||'');
+      toast(done ? (ed ? 'Editing marked complete ✓ — the studio can see it' : 'Marked completed ✓ — the studio can see it')
+                 : (ed ? 'Marked as still editing' : 'Marked as not completed'));
     }catch(err){
       render();
       toast(navigator.onLine ? 'Could not save — try again' : 'You are offline — try again with signal');
     }
-  });
+  }
 
   /* the ONE write a member can make: acknowledge an assignment. Confirm sits
      both in the countdown card and on every upcoming card — one handler. */
