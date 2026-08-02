@@ -3164,8 +3164,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                          to read packages. Employees may only flip
                          status→acknowledged (enforced in Firestore rules).
      ============================================================ */
-  const TEAM_ROLES = ['photographer','videographer','editor','drone operator','assistant'];
-  const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase());
+  const TEAM_ROLES = ['photography','candid photography','cinematography','videography','iphone shoot','assistant'];
+  /* title-case, except the one word that is never spelled with a capital I */
+  const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase()).replace(/\bIphone\b/g, 'iPhone');
   let TEAM = [], ASGS = [], REQS = [];
   let _teamUnsub = null, _asgsUnsub = null, _reqsUnsub = null, _teamLoaded = false, _asgsLoaded = false;
   /* a listener error used to be painted into the list and then wiped by the
@@ -3264,13 +3265,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const staleCrew = pk => ASGS.filter(a=>a.pkgId===pk.id
     && !(pk.events||[]).some(ev=>ev.date===a.date));
 
+  /* which of the six roles a booked service calls for. Order matters: candid
+     and cinematography are their own crafts, not "a photographer" and "a
+     videographer". Drone maps to nobody — whoever is shooting flies it. */
   function neededRoles(ev){
     const n = {};
     (ev.items||[]).forEach(it=>{
       const s = String(it.service||'').toLowerCase(), q = Number(it.qty)||1;
-      if(/photo/.test(s)) n.photographer = (n.photographer||0)+q;
-      else if(/video|cinema/.test(s)) n.videographer = (n.videographer||0)+q;
-      if(/drone/.test(s)) n['drone operator'] = (n['drone operator']||0)+q;
+      const r = /candid/.test(s) ? 'candid photography'
+              : /cinema/.test(s) ? 'cinematography'
+              : /iphone|mobile/.test(s) ? 'iphone shoot'
+              : /photo/.test(s) ? 'photography'
+              : /video/.test(s) ? 'videography'
+              : '';
+      if(r) n[r] = (n[r]||0) + q;
     });
     return n;
   }
@@ -3562,12 +3570,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
         const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
-        /* members sign their own work off from the crew page — editors as
-           "editing complete", everyone else as "event completed" */
-        const _ed = /editor/i.test(a.role||'');
+        /* members sign their own work off from the crew page */
         const scissors = a.workDone
-          ? `<span title="${_ed ? 'Editing completed' : 'Completed'} — marked by the member" style="color:var(--ok)">${_ed ? '✂✓' : '✓'} </span>`
-          : (a.date||'') < todayISO() ? `<span title="${_ed ? 'Editing not marked complete yet' : 'Not marked completed yet'}" style="color:#ffb054">${_ed ? '✂…' : '○'} </span>`
+          ? '<span title="Completed — marked by the member" style="color:var(--ok)">✓ </span>'
+          : (a.date||'') < todayISO() ? '<span title="Not marked completed yet" style="color:#ffb054">○ </span>'
           : '';
         return `
         <div class="pm-row">

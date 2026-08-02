@@ -652,10 +652,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- member dashboard ---------- */
   function asgCard(a, past){
     const seen = a.status === 'acknowledged';
-    /* the member's own sign-off. Every role gets it, not just editors — and
-       from the day of the shoot, because a wedding is finished that night,
-       not the next morning when the card moves to Past. */
-    const isEd = /editor/i.test(a.role||'');
+    /* the member's own sign-off, from the DAY of the shoot — a wedding is
+       finished that night, not the next morning when the card moves to Past */
     const done = (a.date||'') <= todayISO();
     return `
     <div class="asg ${past?'past':''}">
@@ -678,8 +676,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? `<div class="ackdone">✓ You confirmed this${a.ackAt && a.ackAt.toDate ? ' on ' + a.ackAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</div>`
         : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)}
       ${done ? (a.workDone
-        ? `<div class="ackdone">${isEd ? '✂️ Editing completed' : '✓ Event completed'}${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
-        : `<button class="ackbtn" data-workdone="${a.id}">${isEd ? '✂️ Mark editing complete' : '✓ Mark this event completed'}</button>`) : ''}
+        ? `<div class="ackdone">✓ Event completed${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
+        : `<button class="ackbtn" data-workdone="${a.id}">✓ Mark this event completed</button>`) : ''}
     </div>`;
   }
 
@@ -817,7 +815,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       { ic:'💍', t:'Wedding Pro',  n:weddings,    goal:10 },
       { ic:'🔥', t:'Busy Season',  n:bestMonth,   goal:5, sub:'5 in a month' },
       { ic:'⚡', t:'Always Ready', n:acks,        goal:10, sub:'10 confirmed' },
-      { ic:'✂️', t:"Editor's Cut", n:edits,       goal:10, sub:'10 edits done' },
+      { ic:'✅', t:'Signed Off',   n:edits,       goal:10, sub:'10 marked done' },
       { ic:'🌙', t:'Double Duty',  n:doubles,     goal:3, sub:'2 shoots a day' },
       { ic:'📅', t:'One Year In',  n:monthsIn,    goal:12, sub:'months on crew' },
       { ic:'💎', t:'Century',      n:done.length, goal:100 },
@@ -982,9 +980,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       a.workDone = !!done;
       delete a.workDoneAt;   /* the server timestamp arrives with the next snapshot */
       render();
-      const ed = /editor/i.test(a.role||'');
-      toast(done ? (ed ? 'Editing marked complete ✓ — the studio can see it' : 'Marked completed ✓ — the studio can see it')
-                 : (ed ? 'Marked as still editing' : 'Marked as not completed'));
+      toast(done ? 'Marked completed ✓ — the studio can see it' : 'Marked as not completed');
     }catch(err){
       render();
       toast(navigator.onLine ? 'Could not save — try again' : 'You are offline — try again with signal');
