@@ -486,9 +486,11 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 @media(min-width:700px){ .swipehint{display:none} }
 @keyframes slideL{from{opacity:.2;transform:translateX(26px)}to{opacity:1;transform:none}}
 @keyframes slideR{from{opacity:.2;transform:translateX(-26px)}to{opacity:1;transform:none}}
-#homeBooked.sl-l,#pkgList.sl-l{animation:slideL .22s ease-out}
-#homeBooked.sl-r,#pkgList.sl-r{animation:slideR .22s ease-out}
-@media (prefers-reduced-motion: reduce){ #homeBooked.sl-l,#homeBooked.sl-r,#pkgList.sl-l,#pkgList.sl-r{animation:none} }
+#homeBooked.sl-l,#pkgList.sl-l,#workBody.sl-l{animation:slideL .22s ease-out}
+#homeBooked.sl-r,#pkgList.sl-r,#workBody.sl-r{animation:slideR .22s ease-out}
+@media (prefers-reduced-motion: reduce){ #homeBooked.sl-l,#homeBooked.sl-r,#pkgList.sl-l,#pkgList.sl-r,#workBody.sl-l,#workBody.sl-r{animation:none} }
+#workTabs{margin-bottom:.7rem}
+#workTabs b.late{color:#ffb054}
 
 /* the four counts read as one row on every width, like the B2B tiles */
 #teamStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
@@ -1103,16 +1105,19 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <p class="sub">People who signed in on the crew page and asked to join. Approving opens a member card with their details filled in.</p>
       <div id="teamReqs"></div>
     </div>
-    <div class="sec">
-      <h3>📅 Upcoming events</h3>
-      <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
-      <div id="teamEvents"></div>
-    </div>
-    <div class="sec" id="edSec" hidden>
-      <h3>✂️ Editing desk <span id="edCount" style="font-size:.7rem;color:var(--mut)"></span></h3>
-      <p class="sub">Post-production, by due date. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event including ones already shot — or pick an editor from an upcoming event above. Either way the sheet asks for a due date instead of a call time.</p>
-      <div id="edList"></div>
-      <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
+    <div class="sec" id="workSec">
+      <div class="fchips" id="workTabs"></div>
+      <div id="workBody">
+        <div id="workUp">
+          <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
+          <div id="teamEvents"></div>
+        </div>
+        <div id="workEd" hidden>
+          <p class="sub">Post-production, by due date. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event including ones already shot. The sheet asks for a due date instead of a call time. <span id="edCount"></span></p>
+          <div id="edList"></div>
+          <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
+        </div>
+      </div>
     </div>
     <div class="sec" id="lbSec" hidden>
       <h3>🏆 Crew leaderboard
@@ -3660,9 +3665,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      to: it is booked against an event but delivered weeks later, so it sorts
      by its own deadline and stays out of the shoot schedule above. */
   function renderEditDesk(){
-    const sec = $('#edSec'), el = $('#edList'); if(!sec || !el) return;
+    const el = $('#edList'); if(!el) return;
     const jobs = ASGS.filter(a=>a.kind === 'edit');
-    sec.hidden = false;               /* ＋ Assign editing lives here — never hide it away */
     if(!jobs.length){
       $('#edCount').textContent = '';
       el.innerHTML = '<div class="empty" style="padding:.5rem 0">No editing assigned yet. Use <b style="color:var(--gold-b)">＋ Assign editing</b> below — it reaches shoots that have already happened.</div>';
@@ -3672,7 +3676,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const open = jobs.filter(a=>!a.workDone).sort((a,b)=>(a.dueDate||'9999') < (b.dueDate||'9999') ? -1 : 1);
     const done = jobs.filter(a=>a.workDone).sort((a,b)=>(a.dueDate||'') > (b.dueDate||'') ? -1 : 1);
     const late = open.filter(a=>(a.dueDate||'') && a.dueDate < today).length;
-    $('#edCount').textContent = `(${open.length} open${late ? ' · ' + late + ' overdue' : ''})`;
+    $('#edCount').innerHTML = late ? `<b style="color:#ffb054">${late} overdue.</b>` : '';
     const dueChip = a => {
       if(!/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')) return '<span class="duetag">no date</span>';
       const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
@@ -3804,6 +3808,35 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      previous one happened to be on */
   $('#asBook').addEventListener('change', ()=>{ $('#asBookEv').value = ''; fillBookingEvents(); reBook(); });
   $('#asBookEv').addEventListener('change', reBook);
+
+  /* Upcoming events and Editing are two different jobs — one is staffing a
+     day, the other is chasing a deadline — so they are two tabs rather than
+     two stacked sections you scroll past. */
+  const WORK_TABS = [['up','📅 Upcoming'],['edit','✂️ Editing']];
+  let _teamTab = 'up';
+  function renderWorkTabs(){
+    const el = $('#workTabs'); if(!el) return;
+    const today = todayISO();
+    const n = { up: teamUpcoming().length,
+                edit: ASGS.filter(a=>a.kind === 'edit' && !a.workDone).length };
+    const late = ASGS.filter(a=>a.kind === 'edit' && !a.workDone && (a.dueDate||'') && a.dueDate < today).length;
+    el.innerHTML = WORK_TABS.map(([k,l])=>
+      `<button type="button" data-wtab="${k}" class="${_teamTab===k?'on':''}">${l}<b class="${k==='edit'&&late?'late':''}">${n[k]}</b></button>`).join('');
+    $('#workUp').hidden = _teamTab !== 'up';
+    $('#workEd').hidden = _teamTab !== 'edit';
+  }
+  $('#workTabs').addEventListener('click', e=>{
+    const b = e.target.closest('[data-wtab]'); if(!b || b.dataset.wtab === _teamTab) return;
+    _teamTab = b.dataset.wtab;
+    renderWorkTabs();
+  });
+  wireSwipe($('#workSec'), {
+    keys: ()=>WORK_TABS.map(([k])=>k),
+    cur:  ()=>_teamTab,
+    go:   k=>{ _teamTab = k; renderWorkTabs(); },
+    skip: t=>!!(t && t.closest && t.closest('#workTabs')),
+    box:  ()=>$('#workBody'),
+  });
 
   /* the league table — the one view that says who is actually carrying the season */
   let _lbPeriod = 'y';
@@ -4018,6 +4051,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderTeamReqs();
     renderTeamEvents();
     renderEditDesk();
+    renderWorkTabs();
     renderLeaderboard();
     renderTeamMembers();
     renderTeamPay();
