@@ -475,14 +475,16 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
    All of it is derived from the assignment docs the tab already holds. */
 /* swipe between the booking tabs, the way every other app on the phone does */
 #bookingsSec{touch-action:pan-y}
+.listbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem}
+.listbar .howto{margin:0 0 .2rem}
 .swipehint{font-family:var(--sans);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:12px;padding:.18em .6em;vertical-align:3px;margin-left:.4em}
 .swipehint::before{content:"↔ "}
 @media(min-width:700px){ .swipehint{display:none} }
 @keyframes slideL{from{opacity:.2;transform:translateX(26px)}to{opacity:1;transform:none}}
 @keyframes slideR{from{opacity:.2;transform:translateX(-26px)}to{opacity:1;transform:none}}
-#homeBooked.sl-l{animation:slideL .22s ease-out}
-#homeBooked.sl-r{animation:slideR .22s ease-out}
-@media (prefers-reduced-motion: reduce){ #homeBooked.sl-l,#homeBooked.sl-r{animation:none} }
+#homeBooked.sl-l,#pkgList.sl-l{animation:slideL .22s ease-out}
+#homeBooked.sl-r,#pkgList.sl-r{animation:slideR .22s ease-out}
+@media (prefers-reduced-motion: reduce){ #homeBooked.sl-l,#homeBooked.sl-r,#pkgList.sl-l,#pkgList.sl-r{animation:none} }
 
 /* the four counts read as one row on every width, like the B2B tiles */
 #teamStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
@@ -925,10 +927,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <button class="goldbar" id="pkgNew">＋ New</button>
       </div>
       <div class="fchips" id="pkgChips"></div>
+      <div class="listbar">
       <details class="howto">
         <summary>How this list works</summary>
         <p>Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:#cf8d85">not confirmed</b> to park a quote whose event is on hold (it leaves the follow-up list).</p>
       </details>
+      <span class="swipehint">swipe</span>
+      </div>
       <div id="pkgList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     </div>
 
@@ -2425,6 +2430,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('button[data-f]'); if(!b) return;
     pkgFilterVal = b.dataset.f; renderPkgList();
   });
+  /* The filter order is whatever renderPkgChips just drew — 🏢 Studio only
+     appears when there are studio jobs — so it is read off the chips instead
+     of being hard-coded twice. A swipe that starts ON the chip strip is left
+     alone: that strip scrolls sideways itself. */
+  wireSwipe($('#pkgListView'), {
+    keys: ()=>$$('#pkgChips button[data-f]').map(b=>b.dataset.f),
+    cur:  ()=>pkgFilterVal,
+    go:   k=>{ pkgFilterVal = k; renderPkgList(); },
+    skip: t=>!!(t && t.closest && t.closest('#pkgChips')),
+    box:  ()=>$('#pkgList'),
+  });
   $('#pkgStats').addEventListener('click', e=>{
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
@@ -2634,41 +2650,52 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               ? '<button class="upall" type="button" data-hbless>− Show fewer</button>' : ''));
   }
 
-  /* Swipe the bookings box to change tab — left for the next one, right for
-     the previous, which is what every other app on the phone does. Only a
-     clear horizontal flick counts, so the page still scrolls normally, and a
-     swipe never lands as a tap on the card underneath. */
-  (function(){
-    const sec = $('#bookingsSec'); if(!sec) return;
-    let x0 = 0, y0 = 0, t0 = 0, swiped = false;
+  /* Swipe a filtered list sideways to change which filter it is showing —
+     left for the next, right for the previous, the direction every other app
+     on the phone uses. Only a deliberate horizontal flick counts, so vertical
+     scrolling is untouched, a chip strip that scrolls on its own keeps doing
+     it, and a swipe that lifts off over a card never opens that card. */
+  function wireSwipe(sec, o){
+    if(!sec) return;
+    let x0 = 0, y0 = 0, t0 = 0, swiped = false, armed = false;
     sec.addEventListener('touchstart', e=>{
-      if(e.touches.length !== 1) return;
-      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); swiped = false;
+      swiped = false;
+      armed = e.touches.length === 1 && !(o.skip && o.skip(e.target));
+      if(!armed) return;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
     }, { passive: true });
     sec.addEventListener('touchend', e=>{
+      if(!armed) return;
       const t = e.changedTouches && e.changedTouches[0]; if(!t) return;
       const dx = t.clientX - x0, dy = t.clientY - y0;
-      if(Date.now() - t0 > 800) return;                          /* a slow drag is not a flick */
-      if(Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.6) return;   /* scrolling, not swiping */
-      const i = HOME_TABS.findIndex(([k])=>k === _homeTab);
-      const ni = i + (dx < 0 ? 1 : -1);
-      if(ni < 0 || ni >= HOME_TABS.length) return;               /* nothing past the ends */
-      _homeTab = HOME_TABS[ni][0];
-      _homeBookedAll = false;
+      if(Date.now() - t0 > 800) return;                                   /* a slow drag is not a flick */
+      if(Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.6) return;  /* scrolling, not swiping */
+      const keys = o.keys(); if(!keys.length) return;
+      const i = keys.indexOf(o.cur());
+      const ni = (i < 0 ? 0 : i) + (dx < 0 ? 1 : -1);
+      if(ni < 0 || ni >= keys.length) return;                             /* neither end wraps */
       swiped = true;
-      renderHomeBooked();
-      const box = $('#homeBooked');
-      box.classList.remove('sl-l','sl-r');
-      void box.offsetWidth;                                      /* restart the animation */
-      box.classList.add(dx < 0 ? 'sl-l' : 'sl-r');
+      o.go(keys[ni]);
+      const box = o.box && o.box();
+      if(box){
+        box.classList.remove('sl-l','sl-r');
+        void box.offsetWidth;                                             /* restart the animation */
+        box.classList.add(dx < 0 ? 'sl-l' : 'sl-r');
+      }
     }, { passive: true });
-    /* the finger lifted on a card: that is a swipe, not a tap on the booking */
+    /* the finger lifted on a card: that was a swipe, not a tap on it */
     sec.addEventListener('click', e=>{
       if(!swiped) return;
       swiped = false;
       e.stopPropagation(); e.preventDefault();
     }, true);
-  })();
+  }
+  wireSwipe($('#bookingsSec'), {
+    keys: ()=>HOME_TABS.map(([k])=>k),
+    cur:  ()=>_homeTab,
+    go:   k=>{ _homeTab = k; _homeBookedAll = false; renderHomeBooked(); },
+    box:  ()=>$('#homeBooked'),
+  });
 
   function pkgCardHTML(x, open){
     const st = x.status||'draft';
