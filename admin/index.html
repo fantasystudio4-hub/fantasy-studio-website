@@ -326,6 +326,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
      status buttons were reachable while invisible */
   padding:1.4rem 1.2rem;opacity:0;pointer-events:none;visibility:hidden;
   transition:opacity .3s, transform .3s, visibility 0s linear .3s;
+  /* A sheet taller than the screen was a dead end: fixed position, no internal
+     scroll, so Save sat below the fold with no way to reach it and nothing
+     moved. The assign sheet hits 1249px on a 812px phone. */
+  max-height:86vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
 }
 .pay-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .3s, transform .3s, visibility 0s}
 .pay-modal h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.2rem}
@@ -338,7 +342,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:.85rem;padding:.5em .6em;min-width:40px;min-height:40px;vertical-align:middle}
 .pay-close{position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:1.5rem;cursor:pointer}
 @media(max-width:560px){
-  .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%)}
+  .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:88vh}
   .pay-modal.open{transform:translateY(0)}
 }
 .lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
