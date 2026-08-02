@@ -241,6 +241,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cd-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
 .cd-head h3{flex:1;min-width:0;margin:0}
 .cd-head .mini{margin-top:0;flex:0 0 auto;white-space:nowrap}
+.todaypill{font-family:var(--sans);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:#14110a;background:var(--gold-b);border-radius:14px;padding:.2em .7em;font-weight:600;vertical-align:3px}
 #calAdd{border-color:rgba(226,194,117,.45)}
 #qeMode button{font-size:.78rem;padding:.55em .2em}
 #qeStatus button{font-size:.78rem;padding:.5em .2em}
@@ -2232,8 +2233,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderUpcoming(){
     const el = $('#upcoming'); if(!el) return;
     const today = new Date().toLocaleDateString('en-CA');
+    /* strictly AFTER today: the calendar day box opens on today and already
+       shows today's events in full, so repeating them here as the hero was
+       the same shoot twice on one screen */
     _upEvents = calEvents()
-      .filter(e=>e.date >= today && (e.status === 'booked' || e.status === 'lead'))   // confirmed bookings only
+      .filter(e=>e.date > today && (e.status === 'booked' || e.status === 'lead'))   // confirmed bookings only
       .sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);   /* 0 on equal dates — same-day events must not swap between refreshes */
     el.hidden = !_upEvents.length;
     if(!_upEvents.length){
@@ -2615,7 +2619,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- calendar: every dated event across the panel ---------- */
   let calY, calM, calSel = null;
-  (function(){ const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); })();
+  /* today is selected from the start: Home opens showing today's events
+     instead of "Tap a date to see its events" */
+  (function(){ const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); calSel = n.toLocaleDateString('en-CA'); })();
   function calEvents(){
     const evs = [];
     livePkgs().forEach(pk=>{
@@ -2674,8 +2680,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const isToday = calSel === new Date().toLocaleDateString('en-CA');
     box.innerHTML = `<div class="sec">
-      <div class="cd-head"><h3>${human}</h3><button class="mini" type="button" data-addev>＋ Add event</button></div>`
+      <div class="cd-head"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><button class="mini" type="button" data-addev>＋ Add event</button></div>`
       + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
       return `
