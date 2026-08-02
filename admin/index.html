@@ -2865,7 +2865,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="pkg-acts" ${open?'':'hidden'}>
         <button class="chip ${st}" data-cycle>${STATUS_LABEL(st)}</button>
         <button class="act" data-edit>Edit</button>
-        <button class="act" data-dup>Duplicate</button>
         <button class="act" data-pdfrow>PDF</button>
         <button class="act" data-wapdf>Send ▷</button>
         <button class="act" data-pay>＋ Payment</button>
@@ -2975,27 +2974,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!canLeaveEditor()) return;
       if(inHome) $('#tabPkgs').click();   // the editor lives in the Packages tab
       openPkgEdit(x);
-      return;
-    }
-    if(e.target.closest('[data-dup]')){
-      const copy = JSON.parse(JSON.stringify(x)); delete copy.id;
-      copy.status = 'draft';
-      copy.payments = [];
-      /* the original keeps the enquiry — a copy must not claim it too, or the
-         lead would point at one package while two think they came from it */
-      delete copy.leadId;
-      delete copy.delivery; delete copy.deliveredAt; delete copy.sentAt;
-      if(copy.totals){ copy.totals.advance = 0; copy.totals.balance = copy.totals.finalPrice || 0; }
-      copy.createdAt = serverTimestamp(); copy.updatedAt = serverTimestamp();
-      try{
-        copy.quoteNo = await allocQuoteNo();
-        const ref = doc(collection(db,'packages'));
-        const res = await settle(setDoc(ref, copy));
-        toast(res === 'denied' ? 'NOT duplicated — the server refused the write'
-        : res === 'queued' ? 'Duplicated as draft — will sync' : 'Duplicated as draft');
-        loadPkgs();
-      }
-      catch(err){ toast('Duplicate failed'); }
       return;
     }
     if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
