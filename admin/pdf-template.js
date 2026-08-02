@@ -83,6 +83,12 @@ function fmtDateHuman(iso){
 export async function buildQuotePdf(pkg, contact, terms){
   await ensureJsPDF();
   const hasRupee = await ensureFonts();
+  /* White-label B2B job: the partner studio hands this to THEIR client, so
+     every Fantasy Studio mark has to come off — logo, masthead, tagline and
+     the contact footer. The admin panel promises exactly this next to the
+     checkbox, and the promise was not being kept. */
+  const wl = !!(pkg && pkg.whiteLabel);
+  const isB2B = !!(pkg && pkg.clientType === 'studio');
 
   const doc = new jsPDFCtor({ unit: 'pt', format: 'a4' });
   if (hasRupee) {
@@ -114,6 +120,7 @@ export async function buildQuotePdf(pkg, contact, terms){
 
   const footer = () => {
     flourish(766);
+    if (wl) return;                       // white-label: no studio identity at all
     doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...DARK);
     doc.text('FANTASY STUDIO', PAGE_W/2, 782, { align: 'center' });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...GOLD);
@@ -136,7 +143,7 @@ export async function buildQuotePdf(pkg, contact, terms){
 
   const slimHeader = () => {
     doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...GOLD);
-    doc.text('FANTASY STUDIO — EVENT QUOTATION', PAGE_W/2, 58, { align: 'center' });
+    doc.text(wl ? 'EVENT QUOTATION' : 'FANTASY STUDIO — EVENT QUOTATION', PAGE_W/2, 58, { align: 'center' });
     doc.setDrawColor(...GOLD); doc.setLineWidth(0.7);
     doc.line(ML, 66, MR, 66);
   };
@@ -147,11 +154,13 @@ export async function buildQuotePdf(pkg, contact, terms){
 
   /* ---------- page 1 header ---------- */
   border(); footer();
-  logo(84);
-  doc.setFont('times', 'bold'); doc.setFontSize(30); doc.setTextColor(...GOLD);
-  doc.text('FANTASY STUDIO', PAGE_W/2, 142, { align: 'center' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
-  doc.text('Wedding Photography & Cinematography  •  Hyderabad', PAGE_W/2, 158, { align: 'center' });
+  if (!wl) {
+    logo(84);
+    doc.setFont('times', 'bold'); doc.setFontSize(30); doc.setTextColor(...GOLD);
+    doc.text('FANTASY STUDIO', PAGE_W/2, 142, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+    doc.text('Wedding Photography & Cinematography  \u2022  Hyderabad', PAGE_W/2, 158, { align: 'center' });
+  }
   doc.setDrawColor(...GOLD); doc.setLineWidth(0.8);
   doc.line(PAGE_W/2 - 110, 172, PAGE_W/2 - 12, 172);
   doc.line(PAGE_W/2 + 12, 172, PAGE_W/2 + 110, 172);
@@ -165,7 +174,10 @@ export async function buildQuotePdf(pkg, contact, terms){
   doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
   doc.text('Client Name :', ML, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(String(pkg.clientName || ''), ML + 70, y);
+  /* On a white-label job pkg.clientName is the PARTNER STUDIO — printing it
+     on the sheet they hand to their own couple makes no sense. Use the end
+     client when one was entered. */
+  doc.text(String((wl && pkg.endClientName) || pkg.clientName || ''), ML + 70, y);
   doc.setFont('helvetica', 'bold');
   doc.text('Date :', MR - 110, y);
   doc.setFont('helvetica', 'normal');
@@ -328,7 +340,9 @@ export async function buildQuotePdf(pkg, contact, terms){
   /* advance entered -> the generic payment term is replaced by the real split:
      remaining on the event day + 10% of the final price at delivery */
   const advAmt = Number(t.advance) || 0;
-  if (advAmt > 0) {
+  /* B2B jobs run on the partner studio's own payment terms — injecting the
+     retail "balance on event day + 10% at delivery" split contradicted them */
+  if (advAmt > 0 && !isB2B) {
     const delivery = Math.round(fin * 0.10);
     const eventDay = Math.max(0, fin - advAmt - delivery);
     termList = termList.filter(tm => !/^50% advance/i.test(String(tm)));

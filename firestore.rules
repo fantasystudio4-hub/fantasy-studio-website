@@ -64,16 +64,21 @@ service cloud.firestore {
 
     // packages: you get full access; a signed-in client may READ only the
     // packages saved under their own verified mobile number (any country code).
-    // B2B studio jobs (clientType == 'studio') are NEVER client-readable —
-    // they also carry no clientPhone, so the portal query cannot match them;
-    // this clause is the server-side guarantee on top of that. Legacy docs
-    // have no clientType field: .get() defaults them to 'direct' so every
-    // existing booking keeps working unchanged.
+    //
+    // B2B studio jobs are kept away from clients by CONSTRUCTION, not by an
+    // extra clause here: the admin panel saves them with clientPhone == ''
+    // (readForm), so a query for a real 10-digit number can never match one,
+    // and the portal filters clientType !== 'studio' as well.
+    //
+    // Do NOT add `resource.data.get('clientType','direct') != 'studio'` to
+    // this rule. For a LIST query Firestore must prove every condition from
+    // the query's own filters; the portal filters on clientPhone only, so an
+    // unprovable clientType condition makes the whole query fail and EVERY
+    // client sees "we couldn't load your booking".
     match /packages/{pkgId} {
       allow read: if isAdmin()
         || (request.auth != null
-            && resource.data.clientPhone == clientPhone10()
-            && resource.data.get('clientType', 'direct') != 'studio');
+            && resource.data.clientPhone == clientPhone10());
       allow write: if isAdmin();
     }
 

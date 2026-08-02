@@ -279,9 +279,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
   .tabs button.on i{filter:none;opacity:1}
   .tabs .badge{position:absolute;top:-2px;right:14%;margin:0}
   .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
-  .savebar{bottom:calc(52px + env(safe-area-inset-bottom))}
-  .pkg-actions{bottom:calc(52px + env(safe-area-inset-bottom))}
-  .toast{bottom:calc(122px + env(safe-area-inset-bottom))}
+  /* NOTE: the .savebar / .pkg-actions / .toast bottom offsets for phones are
+     NOT here — the later base rules for those three would override them at
+     equal specificity. They live in the phone block at the END of this
+     stylesheet instead. */
 }
 
 /* payment popup */
@@ -516,6 +517,31 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ledrow.finled.on{background:rgba(184,144,43,.09)}
 .ledrow.finled[data-fyr]{cursor:pointer}
 @media(hover:hover){ .ledrow.finled[data-fyr]:hover .l-ev{color:var(--gold-b)} }
+
+/* ==== phone fixes that MUST outrank the base rules above ====
+   .savebar / .pkg-actions / .toast all declare `bottom` later in this file
+   than the earlier phone block, so their mobile offsets were being
+   overridden: Config's Save All bar sat ON TOP of the bottom nav and the
+   builder's action bar slid underneath it. Same-property overrides have to
+   come last. */
+@media(max-width:699px){
+  /* the bottom nav measures ~63px tall (52px tap target + padding), so 64px
+     is the real clearance — 52px still left an 11px overlap */
+  .savebar{bottom:calc(64px + env(safe-area-inset-bottom))}
+  .pkg-actions{bottom:calc(64px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(132px + env(safe-area-inset-bottom))}
+  /* the ⚡ FAB is fixed bottom-right and was covering the last stat tile
+     once Home is scrolled to the end — give the tile row room to clear it */
+  #homeView > .stats:last-child{margin-bottom:72px}
+  /* offline chip + Install + Config + Logout together squeezed the studio
+     name to nothing; drop the tagline first, then the install label */
+  .hd .ttl{min-width:52px}
+  .hd .ttl span{display:none}
+}
+@media(max-width:420px){
+  #installBtn{font-size:0;padding:.35em .7em}
+  #installBtn::first-letter{font-size:.85rem}
+}
 @media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
 .finh{color:var(--gold-b);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
 .ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
@@ -798,7 +824,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div id="configView" hidden>
     <div class="fchips" id="cfgJump"></div>
     <div class="sec">
-      <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days)</span></h3>
+      <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days, except packages with recorded payments, which are kept as financial records until you delete them here)</span></h3>
       <div id="trashList"></div>
     </div>
     <div class="sec">
@@ -830,6 +856,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
     <div class="sec">
       <h3>Quotation Service Rates <span style="font-size:.7rem;color:var(--mut)">(admin package builder)</span></h3>
+      <p class="sub">These are what the builder prefills. As you quote, it also remembers any rate you actually charge and prefers that next time — pressing <b style="color:var(--gold-b)">Save All</b> clears those remembered rates so the values here win again.</p>
       <div id="rateList"></div>
       <button class="addrow" id="addRate">＋ Add service rate</button>
     </div>
@@ -1244,13 +1271,40 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
   const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa','stusheet','jt'];
-  function pushView(view, hash){
+  function pushView(view, hash, replace){
     if(_navFromPop) return;
     try{
       const cur = history.state && history.state.view;
-      if(MODAL_VIEWS.includes(cur)) history.replaceState({view}, '', hash);
+      if(cur === view) return;                       /* re-tapping the tab you're on must not stack dead entries */
+      if(replace || MODAL_VIEWS.includes(cur)) history.replaceState({view}, '', hash);
       else history.pushState({view}, '', hash);
     }catch(e){}
+  }
+  /* One gate for "may I throw away what's in the builder?" — every caller that
+     navigates away from an open editor must ask FIRST. Several of them used to
+     navigate and only then let the tab handler prompt, so answering Cancel
+     still lost the quote. */
+  function canLeaveEditor(){
+    if($('#pkgEditView').hidden) return true;
+    if(typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')) return false;
+    closeEditorSilently();
+    return true;
+  }
+  function closeEditorSilently(){
+    _pkgBaseline = '';
+    $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
+  }
+  /* history.back() is asynchronous, so a double tap on a ✕ (or an impatient
+     tap on ✕ then the backdrop) fired it twice and jumped back two entries.
+     One in-flight back at a time. */
+  let _backPending = false;
+  function backFrom(view, closeUI){
+    if(_backPending) return;
+    if(history.state && history.state.view === view){
+      _backPending = true;
+      setTimeout(()=>{ _backPending = false; }, 800);
+      history.back();
+    }else if(typeof closeUI === 'function') closeUI();
   }
   /* Switching tabs kept the previous tab's scroll offset, so arriving at a tab
      part-way down the page was routine. Remember each tab's own position. */
@@ -1267,24 +1321,32 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(_curTab !== id){
       _curTab = id;
-      requestAnimationFrame(()=>window.scrollTo(0, _tabScroll[id] || 0));
+      /* An explicit scrollTo(0,0) from openPkgEdit / openStudioDetail used to
+         be undone by this restore firing a frame later, so those pages opened
+         part-way down. A token lets the newer intent win. */
+      const token = ++_scrollToken;
+      requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, _tabScroll[id] || 0); });
     }
   }
+  let _scrollToken = 0;
+  const scrollTopNow = () => { _scrollToken++; window.scrollTo(0,0); };
   Object.keys(TABS).forEach(id=>{
     $('#'+id).addEventListener('click', ()=>{
       /* Tapping Packages while the editor was open just re-showed the editor,
          so there was no way back to the list from the bottom nav — the owner
          had to use the phone's back gesture. Tapping the tab you are already
          on now means "take me to the list". */
-      if(id === 'tabPkgs' && !$('#pkgEditView').hidden){
-        if(typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')) return;
-        _pkgBaseline = '';
-        $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
-      }
+      const leavingEditor = !$('#pkgEditView').hidden;
+      if(leavingEditor && !canLeaveEditor()) return;
       /* tapping B2B while a studio detail is open = back to the studio list */
-      if(id === 'tabCal' && !$('#studioDetailView').hidden && typeof closeStudioDetail === 'function') closeStudioDetail();
+      const leavingStudio = !$('#studioDetailView').hidden;
+      if(id === 'tabCal' && leavingStudio && typeof closeStudioDetail === 'function') closeStudioDetail();
       showTab(id);
-      pushView(VIEW_OF_TAB[id], '#' + VIEW_OF_TAB[id]);
+      /* the editor / studio detail we just closed owns the current history
+         entry — REPLACE it, or the back button resurrects a closed page */
+      const cur = history.state && history.state.view;
+      const replace = (leavingEditor && cur === 'pkgedit') || (leavingStudio && cur === 'studio');
+      pushView(VIEW_OF_TAB[id], '#' + VIEW_OF_TAB[id], replace);
     });
   });
   /* phone back button navigates within the app instead of exiting */
@@ -1292,19 +1354,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _navFromPop = true;
     try{
       const v = (e.state && e.state.view) || 'home';
-      /* Close the editor honestly: prompt ONLY when the form is genuinely
-         dirty (the baseline is cleared only at the moment the editor really
-         closes — clearing it earlier made pristine forms look dirty forever). */
-      if(v !== 'pkgedit' && !$('#pkgEditView').hidden){
-        const visible = !$('#pkgView').hidden;
-        if(typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
-          try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e2){}
-          if(!visible){ showTab('tabPkgs'); $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false; }
-          return;
-        }
-        _pkgBaseline = '';
-        $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
-      }
+      /* Sheets close FIRST and unconditionally — an early return further down
+         used to leave a sheet on screen with its history entry already gone. */
       if(typeof closePayUI === 'function') closePayUI();
       if(typeof closeStatusUI === 'function') closeStatusUI();
       if(typeof closeTmUI === 'function') closeTmUI();
@@ -1315,6 +1366,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeQaUI === 'function') closeQaUI();
       if(typeof closeStuUI === 'function') closeStuUI();
       if(typeof closeJtUI === 'function') closeJtUI();
+      /* Close the editor honestly: prompt ONLY when the form is genuinely
+         dirty AND actually on screen. Closing a Home sheet must never raise
+         "Discard unsaved changes?" for an editor parked on another tab —
+         that one is dismissed silently instead. */
+      if(v !== 'pkgedit' && !$('#pkgEditView').hidden){
+        const onScreen = !$('#pkgView').hidden;
+        if(onScreen && typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
+          try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e2){}
+          return;
+        }
+        closeEditorSilently();
+      }
       /* landing on a sheet's own entry (forward button / stray entry): the
          sheets are closed above — stay on the current tab instead of
          teleporting to Home */
@@ -1375,7 +1438,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_leadsUnsub) _leadsUnsub(); }catch(e){}
         _leadsUnsub = null; _leadsInit = false;   /* let ↻ Refresh resubscribe */
-        $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`;
+        $('#leadList').innerHTML = errBox('Could not load leads (' + (err.code||err.message) + ')', 'leads');
       });
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
@@ -1532,6 +1595,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     if(e.target.closest('[data-convert]')){
+      if(!canLeaveEditor()) return;
       const l = LEADS.find(x=>x.id===card.dataset.id);
       if(l){ $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l)); $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`; toast('Quote loaded — check rates, then Save'); }
       return;
@@ -1713,7 +1777,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const contact = { phone: $('#cfgPhone').value.trim(), website: $('#cfgWebsite').value.trim() };
       const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       const deliverySteps = $$('[data-dstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
-      const learnedRates = (CFG && CFG.learnedRates) || {};
+      /* Remembered rates used to shadow this form forever: raise a rate here
+         and every new quote still prefilled the old learned one, and a service
+         deleted here kept showing in the builder chips. Saving the config is
+         an explicit statement of intent, so it resets what the builder
+         remembers (the album rate is kept — it is not in this form). */
+      const _prevLearned = (CFG && CFG.learnedRates) || {};
+      const learnedRates = _prevLearned['__albumPerSheet']
+        ? { __albumPerSheet: _prevLearned['__albumPerSheet'] } : {};
 
       /* Last-write-wins between two devices used to silently discard the other
          one's edits. Re-read first and refuse if the doc moved under us. */
@@ -1892,6 +1963,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const cc = d.slice(0, d.length-10).replace(/^0+/,'');
     return (cc || '91') + d.slice(-10);
   }
+  /* normPhoneFull() assumes +91 for a 10-digit input, which is right for a
+     freshly typed Indian number but wrong for an NRI package being re-saved:
+     the editor's phone box only holds the last 10 digits. Keep the number the
+     record already had whenever the last 10 digits still match. */
+  function keepPhoneFull(typed){
+    const t = normPhone(typed);
+    const had = String(_phoneFullAtOpen||'').replace(/\D/g,'');
+    if(t && had && had.slice(-10) === t) return had;
+    return normPhoneFull(typed);
+  }
   const waNumberFor = x => (x && x.clientPhoneFull)
     ? String(x.clientPhoneFull).replace(/\D/g,'')
     : '91' + String((x&&x.clientPhone)||'').replace(/\D/g,'').slice(-10);
@@ -1957,7 +2038,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
 
-  let _pkgsUnsub = null, _pkgsBackfilled = false;
+  let _pkgsUnsub = null, _pkgsBackfilled = false, _pkgsErr = '';
   /* backfill one legacy package: counter + doc in ONE transaction, skipped if another device already numbered it */
   async function backfillQuoteNo(id){
     const yr = new Date().getFullYear();
@@ -1980,6 +2061,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function loadPkgs(){
     if(_pkgsUnsub){ renderPkgList(); renderCalendar(); return; }
+    _pkgsErr = '';
     try{
       _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(PKGS_CAP)), async snap=>{
         PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -2006,9 +2088,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_pkgsUnsub) _pkgsUnsub(); }catch(e){}
         _pkgsUnsub = null;   /* let ↻ Refresh resubscribe */
-        $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`;
+        _pkgsErr = 'Could not load packages (' + (err.code||err.message) + ')';
+        renderPkgList();
       });
-    }catch(err){ $('#pkgList').innerHTML = `<div class="empty">Could not load packages (${esc(err.code||err.message)})</div>`; }
+    }catch(err){ _pkgsErr = 'Could not load packages (' + (err.code||err.message) + ')'; renderPkgList(); }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
   $('#pkgSearch').addEventListener('input', renderPkgList);
@@ -2038,7 +2121,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
     const t = e.target.closest('[data-goto]'); if(!t) return;
-    if(!$('#pkgEditView').hidden) return;   // don't yank the user out of an open editor
+    /* only block while the editor is genuinely ON SCREEN — it used to stay
+       flagged open behind another tab and silently kill these taps */
+    if(!$('#pkgView').hidden && !$('#pkgEditView').hidden) return;
     pkgFilterVal = t.dataset.goto;
     $('#tabPkgs').click();
     renderPkgList();
@@ -2163,7 +2248,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const recent = livePkgs().filter(x=>(x.status||'draft')==='delivered' && (x.deliveredAt||'') >= cutoff);
     const show = [...booked, ...recent];
     if(!show.length){
-      el.innerHTML = _pkgsLoaded
+      el.innerHTML = _pkgsErr ? errBox(_pkgsErr, 'pkgs')
+        : _pkgsLoaded
         ? '<div class="empty2"><span class="ic">📸</span>No booked packages yet — open a quote and set its status to <b style="color:var(--ok)">booked</b>.</div>'
         : '<div class="skel"></div><div class="skel"></div>';
       return;
@@ -2248,6 +2334,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderTrash();
     if(typeof renderTeam === 'function' && !$('#teamView').hidden) renderTeam();
     if(typeof renderB2B === 'function') renderB2B();   /* self-skips when the B2B tab is hidden */
+    if($('#finModal').classList.contains('open')) renderFin();
+    if(!$('#homeResults').hidden) renderHomeSearch();
     const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
     let list = livePkgs().filter(x=>(!f || (f === 'b2b' ? isStudioJob(x) : (x.status||'draft')===f))
@@ -2255,7 +2343,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           || String(x.quoteNo||'').toLowerCase().includes(q) || String(x.endClientName||'').toLowerCase().includes(q)));
     if(f === 'booked') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
     if(!list.length){
-      $('#pkgList').innerHTML = livePkgs().length
+      /* never say "no packages yet" for data that simply has not arrived (or
+         failed to) — that reads as "everything is gone" */
+      $('#pkgList').innerHTML = _pkgsErr ? errBox(_pkgsErr, 'pkgs')
+        : !_pkgsLoaded ? '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'
+        : livePkgs().length
         ? '<div class="empty2"><span class="ic">📦</span>Nothing matches this filter.</div>'
         : '<div class="empty2"><span class="ic">📦</span>No packages yet.<br><button class="goldbar" id="pkgEmptyNew" style="margin-top:.9rem">＋ Create your first package</button></div>';
       return;
@@ -2316,6 +2408,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     if(e.target.closest('[data-edit]')){
+      if(!canLeaveEditor()) return;
       if(inHome) $('#tabPkgs').click();   // the editor lives in the Packages tab
       openPkgEdit(x);
       return;
@@ -2345,16 +2438,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-wachat]')){ openWa('https://wa.me/' + waNumberFor(x)); return; }
     if(e.target.closest('[data-delpkg]')){
       if(!confirm(`Move the package for "${x.clientName||'this client'}" to Trash?`)) return;
+      /* Assignments live in their own collection and are NOT trashed with the
+         package: the crew kept seeing the job on their phones while it had
+         vanished from your Team tab, with no way left to cancel it. */
+      const orphans = ASGS.filter(a=>a.pkgId===id);
+      let dropCrew = false;
+      if(orphans.length){
+        dropCrew = confirm(`${orphans.length} crew assignment${orphans.length===1?' is':'s are'} attached to this package (${orphans.map(a=>a.memberName||'—').join(', ')}).\n\nOK = also remove ${orphans.length===1?'it':'them'} from the crew's schedules.\nCancel = trash the package but leave the crew booked.`);
+      }
       try{
         const res = await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
         if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         x.deleted = true; x.deletedAt = todayISO();
+        let removedCrew = [];
+        if(dropCrew){
+          removedCrew = orphans.map(a=>({ ...a }));
+          await Promise.allSettled(orphans.map(a=>settle(deleteDoc(doc(db,'assignments',a.id)))));
+          ASGS = ASGS.filter(a=>a.pkgId!==id);
+          renderTeam();
+        }
         renderPkgList();
-        toastUndo('Package moved to Trash', async ()=>{
+        toastUndo(dropCrew ? `Package + ${removedCrew.length} assignment${removedCrew.length===1?'':'s'} moved to Trash` : 'Package moved to Trash', async ()=>{
           try{
             const r2 = await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), updatedAt: serverTimestamp() }));
             if(r2 === 'denied'){ toast('Undo failed — the server refused the write'); return; }
             delete x.deleted; delete x.deletedAt;
+            if(removedCrew.length){
+              await Promise.allSettled(removedCrew.map(a=>{
+                const { id: aid, ...rest } = a;
+                return settle(setDoc(doc(db,'assignments',aid), { ...rest, updatedAt: serverTimestamp() }));
+              }));
+              loadTeam();
+            }
             renderPkgList();
           }catch(err){ toast('Undo failed'); }
         });
@@ -2364,6 +2479,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#pkgList').addEventListener('click', pkgCardAction);
   $('#homeBooked').addEventListener('click', pkgCardAction);
+  document.addEventListener('click', e=>{
+    const r = e.target.closest('[data-retry]'); if(!r) return;
+    const what = r.dataset.retry;
+    if(what === 'pkgs'){ loadPkgs(); }
+    else if(what === 'team'){ loadTeam(); }
+    else if(what === 'studios'){ loadStudios(); }
+    else if(what === 'leads'){ loadLeads(); }
+    toast('Reconnecting…');
+  });
 
   /* ---------- calendar: every dated event across the panel ---------- */
   let calY, calM, calSel = null;
@@ -2418,7 +2542,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     box.innerHTML = `<div class="sec"><h3>${human}</h3>` + (evs.length ? evs.map(e=>{
-      const crew = e.kind === 'pkg' ? ASGS.filter(a=>a.pkgId===e.id && a.date===e.date) : [];
+      const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
       return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
         <i class="dot ${e.status}"></i>
@@ -2463,7 +2587,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const row = e.target.closest('.cal-ev'); if(!row || !e.target.closest('[data-openev]')) return;
     if(row.dataset.kind === 'pkg'){
       const pk = PKGS.find(x=>x.id===row.dataset.id);
-      if(pk){ $('#tabPkgs').click(); openPkgEdit(pk); }
+      if(pk){ if(!canLeaveEditor()) return; $('#tabPkgs').click(); openPkgEdit(pk); }
     }else{
       const l = LEADS.find(v=>v.id===row.dataset.id);
       if(l){ $('#leadSearch').value = l.name||''; leadFilterVal = ''; }
@@ -2472,6 +2596,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   });
   /* ---------- lead -> package bridge ---------- */
+  /* The website builder and the quotation builder name the same services
+     differently ("Traditional Photo" vs "Traditional Photography"), so a
+     converted lead used to arrive with every common service at ₹0 as a
+     "Custom service…" row — and hand-fixing the rate then taught the builder
+     a duplicate service name forever. Map to the canonical rate-card name. */
+  const LEAD_SVC_ALIAS = {
+    'Traditional Photo': 'Traditional Photography',
+    'Traditional Video': 'Traditional Videography',
+    'Female Shooter': 'Female Photographer – Ladies Section',
+  };
+  function leadServiceRate(key, label){
+    const rates = allRates();
+    if(rates[label] != null) return { service: label, rate: Number(rates[label])||0 };
+    const alias = LEAD_SVC_ALIAS[label];
+    if(alias && rates[alias] != null) return { service: alias, rate: Number(rates[alias])||0 };
+    /* not on the quotation rate card at all (LED screen, live streaming…):
+       fall back to the public-site price the client was actually quoted */
+    const web = Number(((CFG && CFG.prices) || DEFAULTS.prices || {})[key]) || 0;
+    return { service: alias || label, rate: web };
+  }
   function pkgFromLead(l){
     _bStudioId = null;   /* leads are always direct clients — never inherit a studio's rate card */
     const q = l.quote || {};
@@ -2480,13 +2624,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       date: /^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') ? ev.date : '',
       venue: '',
       items: Object.entries(ev.services||{}).filter(([,qty])=>Number(qty)>0).map(([k,qty])=>{
-        const label = SERVICE_LABELS[k] || k;
-        return { service: label, qty: Number(qty)||1, rate: Number(allRates()[label])||0 };
+        const r = leadServiceRate(k, SERVICE_LABELS[k] || k);
+        return { service: r.service, qty: Number(qty)||1, rate: r.rate };
       })
-    })).filter(ev=>ev.items.length);
+    /* a dated function with no services ticked is still a date to hold */
+    })).filter(ev=>ev.items.length || ev.date);
     const sheets = Number(q.albumSheets)||0;
     return {
-      clientName: l.name||'', careOf:'', clientPhone: l.phone||'', quoteDate: todayISO(),
+      clientName: l.name||'', careOf:'', clientPhone: l.phone||'',
+      clientPhoneFull: l.phoneFull || '',   /* keeps NRI leads dialling their real country code */
+      quoteDate: todayISO(),
       events: events.length ? events : [{title:'', date:'', venue:'', items:[]}],
       album: { sheets, perSheet: sheets>0 ? learnedAlbumRate() : 0, price: sheets * (sheets>0 ? learnedAlbumRate() : 0) },
       addons: [], totals: {}
@@ -2506,6 +2653,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase());
   let TEAM = [], ASGS = [], REQS = [];
   let _teamUnsub = null, _asgsUnsub = null, _reqsUnsub = null, _teamLoaded = false, _asgsLoaded = false;
+  /* a listener error used to be painted into the list and then wiped by the
+     next render's skeleton — the owner was left staring at a shimmer forever
+     with no way to retry. Remember the failure and offer a retry button. */
+  let _teamErr = '', _asgsErr = '';
+  const errBox = (msg, retry) => `<div class="empty2"><span class="ic">⚠️</span>${esc(msg)}<br><button class="mini" data-retry="${retry}" style="margin-top:.8rem">↻ Try again</button></div>`;
   const TEAM_CAP = 500, ASGS_CAP = 2000, REQS_CAP = 100;
   const memberById = id => TEAM.find(m=>m.id===id);
   const activeTeam = () => TEAM.filter(m=>m.active !== false);
@@ -2518,6 +2670,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const memberPhone10 = m => m ? (m.phone10 || phone10Of(m.phone)) : '';
 
   function loadTeam(){
+    _teamErr = _teamUnsub ? _teamErr : '';
+    _asgsErr = _asgsUnsub ? _asgsErr : '';
     /* keep going past this early-return check for the reqs listener below —
        after a transient error it used to stay dead until a full reload */
     if(_teamUnsub && _asgsUnsub && _reqsUnsub){ renderTeam(); return; }
@@ -2532,9 +2686,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           renderTeam();
         }, err=>{
           try{ if(_teamUnsub) _teamUnsub(); }catch(e){} _teamUnsub = null;
-          $('#teamMembers').innerHTML = `<div class="empty">Could not load team (${esc(err.code||err.message)})</div>`;
+          _teamErr = 'Could not load the team (' + (err.code||err.message) + ')';
+          renderTeam();
         });
-      }catch(err){ $('#teamMembers').innerHTML = `<div class="empty">Could not load team (${esc(err.code||err.message)})</div>`; }
+      }catch(err){ _teamErr = 'Could not load the team (' + (err.code||err.message) + ')'; renderTeam(); }
     }
     if(!_asgsUnsub){
       try{
@@ -2546,9 +2701,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
         }, err=>{
           try{ if(_asgsUnsub) _asgsUnsub(); }catch(e){} _asgsUnsub = null;
-          $('#teamEvents').innerHTML = `<div class="empty">Could not load assignments (${esc(err.code||err.message)})</div>`;
+          _asgsErr = 'Could not load assignments (' + (err.code||err.message) + ')';
+          renderTeam();
         });
-      }catch(err){ $('#teamEvents').innerHTML = `<div class="empty">Could not load assignments (${esc(err.code||err.message)})</div>`; }
+      }catch(err){ _asgsErr = 'Could not load assignments (' + (err.code||err.message) + ')'; renderTeam(); }
     }
     if(!_reqsUnsub){
       try{
@@ -2574,7 +2730,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return rows.sort((a,b)=>a.ev.date<b.ev.date?-1:a.ev.date>b.ev.date?1:0);
   }
   /* crew whose stored date matches this exact event */
-  const evCrew = (pkId, date) => ASGS.filter(a=>a.pkgId===pkId && a.date===date);
+  /* Two functions of the same package on ONE date (e.g. Nikah morning +
+     Reception evening) used to show each other's crew, because a match on
+     pkgId+date alone cannot tell them apart. Narrow by event title in that
+     case — assignments carry it. */
+  function evCrew(pkId, date, title){
+    const rows = ASGS.filter(a=>a.pkgId===pkId && a.date===date);
+    if(!title || rows.length < 2) return rows;
+    const pk = PKGS.find(p=>p.id===pkId);
+    const sameDay = pk ? (pk.events||[]).filter(e=>e.date===date).length : 1;
+    if(sameDay < 2) return rows;
+    const t = String(title).trim().toLowerCase();
+    const exact = rows.filter(a=>String(a.eventTitle||'').trim().toLowerCase() === t);
+    return exact.length ? exact : rows.filter(a=>!a.eventTitle);
+  }
   /* crew pointing at this package but at a date the package no longer has —
      the event was edited after assigning. Shown with a sync button. */
   const staleCrew = pk => ASGS.filter(a=>a.pkgId===pk.id
@@ -2603,6 +2772,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderTeamEvents(){
     const el = $('#teamEvents'); if(!el) return;
+    if(_asgsErr){ el.innerHTML = errBox(_asgsErr, 'team'); return; }
     const rows = teamUpcoming();
     if(!rows.length){
       el.innerHTML = (_pkgsLoaded && _asgsLoaded)
@@ -2612,7 +2782,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const staleShown = new Set();
     el.innerHTML = rows.map(({pk, ev, idx})=>{
-      const crew = evCrew(pk.id, ev.date);
+      const crew = evCrew(pk.id, ev.date, ev.title);
       const need = neededRoles(ev);
       const needTotal = Object.values(need).reduce((a,b)=>a+b, 0);
       const needTxt = Object.entries(need).map(([r,q])=>`${q}× ${roleLabel(r)}`).join(' · ');
@@ -2638,6 +2808,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _tmShowInactive = false;
   function renderTeamMembers(){
     const el = $('#teamMembers'); if(!el) return;
+    if(_teamErr){ el.innerHTML = errBox(_teamErr, 'team'); return; }
     if(!TEAM.length){
       el.innerHTML = _teamLoaded
         ? '<div class="empty" style="padding:.4rem 0">No team members yet — add your shooters, editors and assistants below.</div>'
@@ -2676,6 +2847,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(ok){
       const r = REQS.find(v=>v.id===ok.dataset.reqok); if(!r) return;
       const existing = TEAM.find(m=>memberPhone10(m) && memberPhone10(m) === r.phone10);
+      if(existing && existing.active === false){
+        /* a returning member: reactivating is what the owner actually wants,
+           not "this is a duplicate" */
+        if(!confirm(`${existing.name||'This person'} is on your team but marked inactive.\n\nReactivate them now?`)) return;
+        try{
+          const res = await settle(updateDoc(doc(db,'team',existing.id), { active: true, updatedAt: serverTimestamp() }));
+          const sm = settleMsg(res, `${existing.name||'Member'} reactivated ✓ — their crew page is unlocked`);
+          toast(sm.msg);
+          if(!sm.ok) return;
+          existing.active = true;
+          await settle(deleteDoc(doc(db,'teamRequests',r.id)));
+          renderTeam();
+        }catch(err){ toast('Could not reactivate'); }
+        return;
+      }
       if(existing){
         if(confirm(`${existing.name||'A member'} already has this number — this request is a duplicate. Remove it?`)){
           try{ await deleteDoc(doc(db,'teamRequests',r.id)); }catch(err){ toast('Could not remove the request'); }
@@ -2741,7 +2927,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const el = $('#teamStats'); if(!el) return;
     const due = ASGS.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
     const up = teamUpcoming();
-    const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date).length).length;
+    const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length).length;
     el.innerHTML = `
       <div class="stat month"><b>${inr(due)}</b><span>crew pay due</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming events</span></div>
@@ -2781,8 +2967,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeTmUI(){ $('#tmModal').classList.remove('open'); $('#tmBackdrop').classList.remove('open'); _tmEditId = null; _tmFromReq = null; }
   function closeTm(){
-    if(history.state && history.state.view === 'tmsheet'){ history.back(); }
-    else closeTmUI();
+    backFrom('tmsheet', closeTmUI);
   }
   $('#tmClose').addEventListener('click', closeTm);
   $('#tmBackdrop').addEventListener('click', closeTm);
@@ -2878,8 +3063,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function fillAsMembers(selectedId){
     const opts = activeTeam();
+    /* editing an assignment for someone since deactivated: without their
+       option the select silently fell back to the FIRST member, so saving
+       reassigned the job to the wrong person */
+    if(selectedId && !opts.some(m=>m.id===selectedId)){
+      const gone = memberById(selectedId);
+      if(gone) opts.unshift(gone);
+    }
     $('#asMember').innerHTML = '<option value="">— pick a member —</option>'
-      + opts.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${esc(m.name||'—')} · ${esc(roleLabel(m.role))}</option>`).join('');
+      + opts.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${esc(m.name||'—')} · ${esc(roleLabel(m.role))}${m.active === false ? ' · inactive' : ''}</option>`).join('');
   }
   function openAs(ctx, a){
     _asEditId = a ? a.id : null;
@@ -2898,8 +3090,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeAsUI(){ $('#asModal').classList.remove('open'); $('#asBackdrop').classList.remove('open'); _asEditId = null; _asCtx = null; }
   function closeAs(){
-    if(history.state && history.state.view === 'assheet'){ history.back(); }
-    else closeAsUI();
+    backFrom('assheet', closeAsUI);
   }
   $('#asClose').addEventListener('click', closeAs);
   $('#asBackdrop').addEventListener('click', closeAs);
@@ -2936,7 +3127,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            confirm again, so the ✓ never silently means an outdated plan */
         const reset = old && old.status === 'acknowledged'
           && (old.memberId !== base.memberId || old.callTime !== base.callTime
-              || old.role !== base.role || old.venue !== base.venue || old.date !== base.date);
+              || old.role !== base.role || old.venue !== base.venue || old.date !== base.date
+              || (old.notes||'') !== base.notes);   /* the note is shown to them too */
         if(reset){ patch.status = 'assigned'; patch.ackAt = deleteField(); }
         const res = await settle(updateDoc(doc(db,'assignments',_asEditId), patch));
         const sm = settleMsg(res, reset ? 'Saved — the member will be asked to confirm again' : 'Assignment saved ✓');
@@ -2963,7 +3155,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!confirm(`Remove ${a.memberName||'this member'} from ${a.eventTitle||'this event'}?`)) return;
     const saved = { ...a }; delete saved.id;
     try{
-      await deleteDoc(doc(db,'assignments',a.id));
+      const res = await settle(deleteDoc(doc(db,'assignments',a.id)));
+      if(res === 'denied'){ toast('NOT removed — the server refused the write.'); return; }
       ASGS = ASGS.filter(v=>v.id!==a.id);
       renderTeam();
       closeAs();
@@ -3094,18 +3287,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
     const ts = d => (d.createdAt && d.createdAt.toMillis) ? d.createdAt.toMillis() : 0;
     const sortNew = arr => arr.sort((a,b)=>ts(b)-ts(a));
-    const [p, l, t, a] = await Promise.all([one('packages'), one('leads'), one('team'), one('assignments')]);
+    const [p, l, t, a, st] = await Promise.all([one('packages'), one('leads'), one('team'), one('assignments'), one('studios')]);
     return { pkgs: sortNew(p.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
              leads: sortNew(l.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
              team: sortNew(t.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
              asgs: sortNew(a.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
-             partial: p.partial || l.partial || t.partial || a.partial };
+             studios: sortNew(st.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
+             partial: p.partial || l.partial || t.partial || a.partial || st.partial };
   }
   const partNote = p => p ? ' ⚠ offline copy — may be incomplete' : '';
   $('#expJson').addEventListener('click', async ()=>{
     toast('Preparing backup…');
     try{
-      const { pkgs, leads, team, asgs, partial } = await fetchAll();
+      const { pkgs, leads, team, asgs, studios, partial } = await fetchAll();
       /* fetch the config fresh — CFG can be built-in DEFAULTS when the load
          failed, and a backup of defaults masquerading as the live config is
          worse than no config at all */
@@ -3116,9 +3310,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         else cfgOut = CFG;
       }
       dl(`fantasy-studio-backup-${stamp()}.json`,
-        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, team, assignments:asgs, config:cfgOut, ...(cfgNote?{configNote:cfgNote}:{}) }, null, 1),
+        JSON.stringify({ exportedAt:new Date().toISOString(), packages:pkgs, leads, team, assignments:asgs, studios, config:cfgOut, ...(cfgNote?{configNote:cfgNote}:{}) }, null, 1),
         'application/json');
-      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads, ${team.length} team, ${asgs.length} assignments${partNote(partial)}${cfgNote ? ' ⚠ config missing' : ''}`);
+      toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads, ${team.length} team, ${asgs.length} assignments, ${studios.length} studios${partNote(partial)}${cfgNote ? ' ⚠ config missing' : ''}`);
     }catch(err){ toast('Backup failed: ' + (err.code||err.message)); }
   });
   $('#expPkgs').addEventListener('click', async ()=>{
@@ -3226,7 +3420,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      the public site, the client portal or the crew page.
      ============================================================ */
   let STUDIOS = [];
-  let _studiosUnsub = null, _studiosLoaded = false, _stuEditId = null, _stuDetailId = null;
+  let _studiosUnsub = null, _studiosLoaded = false, _stuEditId = null, _stuDetailId = null, _studiosErr = '';
   const STUDIOS_CAP = 300;
   function studioById(id){ return STUDIOS.find(s=>s.id===id) || null; }
   const isStudioJob = x => !!x && (x.clientType||'direct') === 'studio';
@@ -3235,6 +3429,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function loadStudios(){
     if(_studiosUnsub){ renderB2B(); return; }
+    _studiosErr = '';
     try{
       _studiosUnsub = onSnapshot(query(collection(db,'studios'), orderBy('createdAt','desc'), limit(STUDIOS_CAP)), snap=>{
         STUDIOS = snap.docs.map(d=>({ id:d.id, ...d.data() }))
@@ -3244,10 +3439,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         renderB2B();
       }, err=>{
         try{ if(_studiosUnsub) _studiosUnsub(); }catch(e){} _studiosUnsub = null;
-        const el = $('#studioList');
-        if(el) el.innerHTML = `<div class="empty">Could not load studios (${esc(err.code||err.message)})${(err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : ''}</div>`;
+        _studiosErr = 'Could not load studios (' + (err.code||err.message) + ')'
+          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : '');
+        renderStudioList();
       });
-    }catch(err){ const el = $('#studioList'); if(el) el.innerHTML = `<div class="empty">Could not load studios (${esc(err.code||err.message)})</div>`; }
+    }catch(err){ _studiosErr = 'Could not load studios (' + (err.code||err.message) + ')'; renderStudioList(); }
   }
 
   function renderB2B(){
@@ -3294,6 +3490,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function renderStudioList(){
     const el = $('#studioList'); if(!el) return;
+    if(_studiosErr){ el.innerHTML = errBox(_studiosErr, 'studios'); return; }
     if(!STUDIOS.length){
       el.innerHTML = _studiosLoaded
         ? '<div class="empty2"><span class="ic">🏢</span>No partner studios yet — add the studios that hire Fantasy Studio.</div>'
@@ -3305,6 +3502,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + (inact.length ? `<div class="grp">Inactive<b>${inact.length}</b></div>` + inact.map(stuCardHTML).join('') : '');
   }
   $('#studioList').addEventListener('click', e=>{
+    if(e.target.closest('[data-retry]')){ loadStudios(); toast('Reconnecting…'); return; }
     const card = e.target.closest('[data-stu]'); if(!card) return;
     openStudioDetail(card.dataset.stu);
   });
@@ -3334,8 +3532,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeStuUI(){ $('#stuModal').classList.remove('open'); $('#stuBackdrop').classList.remove('open'); _stuEditId = null; }
   function closeStu(){
-    if(history.state && history.state.view === 'stusheet'){ history.back(); }
-    else closeStuUI();
+    backFrom('stusheet', closeStuUI);
   }
   $('#stuClose').addEventListener('click', closeStu);
   $('#stuBackdrop').addEventListener('click', closeStu);
@@ -3397,7 +3594,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _stuDetailId = id;
     renderStudioDetail();
     $('#studioListView').hidden = true; $('#studioDetailView').hidden = false;
-    window.scrollTo(0,0);
+    scrollTopNow();
     pushView('studio', '#b2b/studio');
   }
   function closeStudioDetail(){
@@ -3416,6 +3613,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const el = $('#studioDetailView'); if(!el) return;
     const s = studioById(_stuDetailId);
     if(!s){ el.innerHTML = '<div class="empty">Studio not found — it may have been removed.</div>'; return; }
+    /* Any package/studio snapshot re-renders this page. Rebuilding the rate
+       card from the SAVED map threw away whatever the owner was typing, so
+       capture the live rows (and the caret) and put them back afterwards. */
+    const _draft = $$('#stuRateList [data-srate]').map(r=>({
+      name: r.querySelector('[data-k="name"]').value,
+      rate: r.querySelector('[data-k="rate"]').value
+    }));
+    const _saved = Object.entries(s.rateCard || {}).map(([n,v])=>({ name:n, rate:String(Number(v)||0) }));
+    const _dirty = _draft.length && JSON.stringify(_draft) !== JSON.stringify(_saved);
+    const _ae = document.activeElement;
+    const _focus = (_ae && _ae.closest && _ae.closest('#stuRateList'))
+      ? { row: $$('#stuRateList [data-srate]').indexOf(_ae.closest('[data-srate]')),
+          k: _ae.dataset.k, caret: _ae.selectionStart }
+      : null;
     const jobs = studioJobs(s.id).sort((a,b)=>{
       const da = a.quoteDate||'', db2 = b.quoteDate||'';
       return da<db2?1:da>db2?-1:0;   /* newest first */
@@ -3423,9 +3634,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const conf = [...jobs].filter(x=>CONFIRMED_ST.includes(x.status||'draft')).reverse();  /* oldest first for the running balance */
     let run = 0;
     const led = conf.map(x=>{
-      const billed = (x.totals||{}).finalPrice||0;
-      const got = (x.payments||[]).reduce((n,p)=>n+(Number(p.amount)||0),0);
-      const out = Math.max(0, billed - got);
+      /* totals.* is what the studio card, the B2B tiles and Money Analytics
+         all use — deriving 'received' from the payment list instead made this
+         ledger disagree with them whenever an advance was typed in the
+         builder without an itemised payment row */
+      const t = x.totals||{};
+      const billed = Number(t.finalPrice)||0;
+      const got = Math.max(0, Number(t.advance)||0);
+      const out = Math.max(0, Number(t.balance)||0);
       run += out;
       return { x, billed, got, out, run };
     });
@@ -3468,16 +3684,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
           </div>`).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
       </div>`;
+    /* put unsaved rate-card typing back after the rebuild */
+    if(_dirty){
+      $('#stuRateList').innerHTML = _draft.map(r=>stuRateRow(r.name, r.rate)).join('');
+      const warn = document.createElement('div');
+      warn.className = 'as-warn';
+      warn.textContent = '⚠ Unsaved rate-card changes — tap Save Rate Card.';
+      $('#stuRateList').insertAdjacentElement('beforebegin', warn);
+      if(_focus && _focus.row >= 0){
+        const row = $$('#stuRateList [data-srate]')[_focus.row];
+        const inp = row && row.querySelector(`[data-k="${_focus.k}"]`);
+        if(inp){ inp.focus(); try{ inp.setSelectionRange(_focus.caret, _focus.caret); }catch(e){} }
+      }
+    }
   }
   $('#studioDetailView').addEventListener('click', async e=>{
     if(e.target.closest('#stuBack')){
-      if(history.state && history.state.view === 'studio'){ history.back(); }
-      else closeStudioDetail();
+      backFrom('studio', closeStudioDetail);
       return;
     }
     if(e.target.closest('[data-stuedit]')){ const s = studioById(_stuDetailId); if(s) openStu(s); return; }
     if(e.target.closest('[data-stunewjob]')){
       const s = studioById(_stuDetailId); if(!s) return;
+      if(!canLeaveEditor()) return;
       $('#tabPkgs').click();
       openPkgEdit(null, { studio: s });
       return;
@@ -3502,7 +3731,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const j = e.target.closest('[data-stujob]');
     if(j){
       const x = PKGS.find(p=>p.id===j.dataset.stujob);
-      if(x){ $('#tabPkgs').click(); openPkgEdit(x); }
+      if(x){ if(!canLeaveEditor()) return; $('#tabPkgs').click(); openPkgEdit(x); }
     }
   });
 
@@ -3521,11 +3750,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeJtUI(){ $('#jtModal').classList.remove('open'); $('#jtBackdrop').classList.remove('open'); }
   function closeJt(){
-    if(history.state && history.state.view === 'jt'){ history.back(); }
-    else closeJtUI();
+    backFrom('jt', closeJtUI);
   }
   $('#jtOpts').addEventListener('click', e=>{
     if(e.target.closest('[data-jt-direct]')){
+      if(!canLeaveEditor()) return;
       closeJtUI();
       if($('#pkgView').hidden) $('#tabPkgs').click();
       openPkgEdit(null);
@@ -3543,6 +3772,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pick = e.target.closest('[data-jt-pick]');
     if(pick){
       const s = studioById(pick.dataset.jtPick);
+      if(!canLeaveEditor()) return;
       closeJtUI();
       if(s){
         if($('#pkgView').hidden) $('#tabPkgs').click();
@@ -3565,8 +3795,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeStatusUI(){ $('#stModal').classList.remove('open'); $('#stBackdrop').classList.remove('open'); statusId = null; }
   function closeStatus(){
-    if(history.state && history.state.view === 'stsheet'){ history.back(); }
-    else closeStatusUI();
+    backFrom('stsheet', closeStatusUI);
   }
   $('#stClose').addEventListener('click', closeStatus);
   $('#stBackdrop').addEventListener('click', closeStatus);
@@ -3636,8 +3865,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closePayUI(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
   function closePay(){
-    if(history.state && history.state.view === 'pay'){ history.back(); }
-    else closePayUI();
+    backFrom('pay', closePayUI);
   }
   $('#payQuick').addEventListener('click', e=>{
     const b = e.target.closest('[data-qa]'); if(!b) return;
@@ -3656,11 +3884,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* there was no upper bound at all: a stray extra digit turned ₹15,000 into
        ₹1,50,000 and was stored without a word */
     const due = Math.max(0, Number((x.totals||{}).balance) || 0);
-    if(due > 0 && amount > due){
+    if(amount > due){
+      /* the `due > 0` version of this guard skipped the ONE case where every
+         rupee is an overpayment: a package already fully paid */
       const over = amount - due;
-      if(!confirm(`${inr(amount)} is ${inr(over)} more than the ₹${due.toLocaleString('en-IN')} still due on this package.\n\nRecord it anyway?`)){
-        $('#payAmt').focus(); return;
-      }
+      const msg = due === 0
+        ? `This package is already fully paid — nothing is due.\n\nRecording ${inr(amount)} will push it ${inr(over)} into overpayment (and inflate your money reports).\n\nRecord it anyway?`
+        : `${inr(amount)} is ${inr(over)} more than the ${inr(due)} still due on this package.\n\nRecord it anyway?`;
+      if(!confirm(msg)){ $('#payAmt').focus(); return; }
     }
     const payment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
                       amount, date: $('#payDate').value || todayISO(), mode: payMode };
@@ -3761,15 +3992,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeFinUI(){ $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); }
   function closeFin(){
-    if(history.state && history.state.view === 'fin'){ history.back(); }
-    else closeFinUI();
+    backFrom('fin', closeFinUI);
   }
   function renderFin(){
     const pays = finPayments().filter(p=>/^\d{4}-\d{2}-\d{2}/.test(p.date));
     const confirmed = livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft'));
     const outstanding = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
-    const allGot = pays.reduce((s,p)=>s+p.amt,0);
+    /* Same basis as the table's Collected column (totals.advance), so the
+       tile and the rows can never disagree. An advance typed in the builder
+       counts as received even when it has no itemised payment row. */
+    const allGot = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).advance||0),0);
+    const allRows = pays.reduce((s,p)=>s+p.amt,0);
     const y = Number(finYear);
     /* cash-flow splits for the selected FY (by payment date) */
     const inFy = pays.filter(p=>fyStartOf(p.date) === y);
@@ -3815,7 +4049,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="fintiles">
         <div class="stat"><b>${inr(outstanding)}</b><span>to collect</span></div>
         <div class="stat"><b>${inr(bookedVal)}</b><span>booked value</span></div>
-        <div class="stat"><b>${inr(allGot)}</b><span>collected · all time</span></div>
+        <div class="stat"><b>${inr(allGot)}</b><span>received · all time</span></div>
       </div>
       <div class="finyr">
         <button data-fy="-1" type="button" aria-label="Previous financial year">‹</button>
@@ -3823,6 +4057,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button data-fy="1" type="button" aria-label="Next financial year">›</button>
       </div>
       <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'} this FY</span></div>
+      ${allRows < allGot ? `<div class="finnote">Online/cash covers itemised payments only — ${inr(allGot - allRows)} was entered straight as an advance in the builder, so it is counted as received but has no mode.</div>` : ''}
       ${(()=>{ const b = inFy.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
                return b > 0 ? `<div class="finsplit"><span>💍 Direct <b>${inr(got - b)}</b></span><span>🏢 Studio <b>${inr(b)}</b></span></div>` : ''; })()}
       <div class="finh">Quarterly · ${fyLabel(y)}</div>
@@ -3858,8 +4093,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeEvUI(){ $('#evModal').classList.remove('open'); $('#evBackdrop').classList.remove('open'); }
   function closeEv(){
-    if(history.state && history.state.view === 'ev'){ history.back(); }
-    else closeEvUI();
+    backFrom('ev', closeEvUI);
   }
   function renderEv(){
     if(_evIdx > _upEvents.length-1) _evIdx = Math.max(0, _upEvents.length-1);
@@ -3891,7 +4125,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const st = pk.status||'draft';
     const tt = pk.totals||{};
     const paid = Number(tt.advance)||0, bal = Math.max(0,Number(tt.balance)||0), fin = Number(tt.finalPrice)||0;
-    const crew = ASGS.filter(a=>a.pkgId===pk.id && a.date===ev.date);
+    const crew = evCrew(pk.id, ev.date, ev.title);
     const events = (pk.events||[]).map(e2=>{
       const cur = e2.date === ev.date;
       const svcs = (e2.items||[]).map(it=>`${esc(it.service)}${Number(it.qty)>1?' ×'+Number(it.qty):''}`).join(', ');
@@ -3942,7 +4176,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-evopen]')){
       const pk = PKGS.find(p=>p.id===ev.id);
-      if(pk){ closeEvUI(); $('#tabPkgs').click(); openPkgEdit(pk); }
+      if(pk){ if(!canLeaveEditor()) return; closeEvUI(); $('#tabPkgs').click(); openPkgEdit(pk); }
       return;
     }
     if(e.target.closest('[data-evlead]')){
@@ -3973,8 +4207,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeUpUI(){ $('#upModal').classList.remove('open'); $('#upBackdrop').classList.remove('open'); }
   function closeUpList(){
-    if(history.state && history.state.view === 'uplist'){ history.back(); }
-    else closeUpUI();
+    backFrom('uplist', closeUpUI);
   }
   function renderUpList(){
     if(!_upEvents.length){ closeUpUI(); return; }
@@ -4014,8 +4247,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeQaUI(){ $('#qaModal').classList.remove('open'); $('#qaBackdrop').classList.remove('open'); }
   function closeQa(){
-    if(history.state && history.state.view === 'qa'){ history.back(); }
-    else closeQaUI();
+    backFrom('qa', closeQaUI);
   }
   function renderQaMain(){
     $('#qaWho').textContent = 'The things you do most — one tap away';
@@ -4128,13 +4360,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- builder ---------- */
   $('#pkgNew').addEventListener('click', ()=>openJobType());
   $('#pkgBack').addEventListener('click', ()=>{
-    if(pkgDirty() && !confirm('Discard unsaved changes?')) return;
-    /* close the editor BEFORE history.back() — the popstate handler re-checks
+    /* closes the editor BEFORE history.back() — the popstate handler re-checks
        dirtiness, and an already-hidden editor is what tells it "already
        answered", instead of a second spurious prompt */
-    _pkgBaseline = '';
-    $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
-    if(history.state && history.state.view === 'pkgedit'){ history.back(); }
+    if(!canLeaveEditor()) return;
+    backFrom('pkgedit');
   });
 
   function rateOptions(selected){
@@ -4241,6 +4471,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pcName').value = stu ? (stu.name||'') : (x ? (x.clientName||'') : '');
     $('#pcCareOf').value = (!stu && x) ? (x.careOf||'') : '';
     $('#pcPhone').value = (!stu && x) ? (x.clientPhone||'') : '';
+    /* The phone box only ever holds the LAST 10 DIGITS, so rebuilding the
+       dialling number from it stamped '91' on every NRI client — every later
+       WhatsApp/Call went to a wrong Indian number. Remember the full number
+       this package (or lead) arrived with and keep it while the last 10
+       digits are unchanged. */
+    _phoneFullAtOpen = (!stu && x) ? String(x.clientPhoneFull || '') : '';
     $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
     $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[]}]).map(evCardHTML).join('');
     refreshAllSvcChips();
@@ -4267,12 +4503,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       `<button type="button" data-bst="${s}" class="${_bStatus===s?'on':''}"><i class="dot ${s}" style="margin-right:.3em"></i>${STATUS_LABEL(s)}</button>`).join('');
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
-    window.scrollTo(0,0);
+    scrollTopNow();
     pushView('pkgedit', '#packages/edit');
     _pkgBaseline = JSON.stringify(readForm());
   }
   let _pkgBaseline = '';
   let _advanceAtOpen = 0;
+  let _phoneFullAtOpen = '';
   let _bStatus = 'draft';
   $('#bStatusPills').addEventListener('click', e=>{
     const b = e.target.closest('[data-bst]'); if(!b) return;
@@ -4333,7 +4570,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       clientName: _b2b ? typed.studioName : $('#pcName').value.trim(),
       careOf: _b2b ? '' : $('#pcCareOf').value.trim(),
       clientPhone: _b2b ? '' : normPhone($('#pcPhone').value),
-      clientPhoneFull: _b2b ? '' : normPhoneFull($('#pcPhone').value),
+      clientPhoneFull: _b2b ? '' : keepPhoneFull($('#pcPhone').value),
       quoteDate: $('#pcDate').value || todayISO(),
       events,
       album,
@@ -4503,16 +4740,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         res = await settle(setDoc(ref, { ...d, quoteNo, status: newStatus,
           ...(newStatus === 'sent' ? { sentAt: todayISO() } : {}),
           createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
-        editingId = ref.id;
+        /* only adopt the new id if the write was NOT refused — otherwise every
+           retry would update a document that does not exist, and Save could
+           never succeed again */
+        if(res !== 'denied') editingId = ref.id;
       }
-      toast(res === 'denied' ? 'NOT saved — the server refused the write. Your changes are still on screen; try again.'
-        : res === 'queued' ? `Saved offline as ${STATUS_LABEL(newStatus)} — will sync`
+      if(res === 'denied'){
+        /* leave the form dirty and the editor open: the baseline must NOT be
+           reset or the owner can walk away from unsaved work believing it
+           saved, and no learned rates / phone index from a refused write */
+        toast('NOT saved — the server refused the write. Your changes are still on screen; try again.');
+        return;
+      }
+      toast(res === 'queued' ? `Saved offline as ${STATUS_LABEL(newStatus)} — will sync`
         : `Package saved — ${STATUS_LABEL(newStatus)}`);
       /* only non-drafts feed the portal's "is this a client?" pre-check —
          indexing a draft made strangers pass the check, burn a real OTP and
          then hit "No bookings found" (the portal hides drafts) */
-      if(res !== 'denied' && d.clientPhone && newStatus !== 'draft') ensurePhoneIndex(d.clientPhone);
+      if(d.clientPhone && newStatus !== 'draft') ensurePhoneIndex(d.clientPhone);
       _pkgBaseline = JSON.stringify(readForm());
+      /* An advance typed straight into the builder is not a payment record, so
+         it never showed in the payment list, the receipts or the cash-flow
+         splits. Offer to record the difference so payments stay the single
+         source of truth. */
+      const _savedPkg = PKGS.find(pk=>pk.id===editingId);
+      const _paidRows = _savedPkg && Array.isArray(_savedPkg.payments)
+        ? _savedPkg.payments.reduce((n,p)=>n+(Number(p.amount)||0),0) : 0;
+      const _gap = Math.round((Number(d.totals.advance)||0) - _paidRows);
       /* learn the rates used, so the next quote prefills them automatically —
          NOT from studio jobs: negotiated B2B rates must never leak into the
          retail rates offered to direct wedding clients */
@@ -4524,6 +4778,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         setDoc(doc(db,'config','site'), { learnedRates: learned }, { merge: true });
       }catch(e){}
       loadPkgs();
+      /* Don't offer to "add the missing payment" here: paySave INCREMENTS
+         totals.advance, so recording it would double the money. Just say so —
+         the money reports below already treat totals.advance as received. */
+      if(_gap > 0) toast(`Saved. Note: ${inr(_gap)} of the advance has no payment entry — add it via ＋ Payment for a receipt and the cash/online split.`);
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
   });
@@ -4533,10 +4791,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast('Preparing PDF…');
       const { buildQuotePdf } = await import('./pdf-template.js');
       /* a package with a saved term selection prints exactly those terms;
-         older packages (no selection stored) fall back to the master list */
-      const docPdf = await buildQuotePdf(x, pdfContact(), Array.isArray(x.pdfTerms) ? x.pdfTerms : pdfTerms());
-      const safe = String(x.clientName||'Client').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Client';
-      const fname = `Fantasy_Studio_Quote_${safe}${x.quoteNo ? '_' + x.quoteNo : ''}.pdf`;
+         older packages (no selection stored) fall back to the master list.
+         A studio job prints the partner studio's own agreed terms instead of
+         the retail list — and never the studio name on a white-label job. */
+      let useTerms = Array.isArray(x.pdfTerms) ? x.pdfTerms : pdfTerms();
+      if(isStudioJob(x)){
+        const st = studioById(x.studioId);
+        useTerms = (st && st.paymentTerms) ? [st.paymentTerms] : [];
+      }
+      const docPdf = await buildQuotePdf(x, pdfContact(), useTerms);
+      const safe = String((x.whiteLabel ? (x.endClientName || 'Quotation') : x.clientName) || 'Client')
+        .replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Client';
+      const fname = `${x.whiteLabel ? 'Quotation' : 'Fantasy_Studio_Quote'}_${safe}${x.quoteNo ? '_' + x.quoteNo : ''}.pdf`;
       if(share){
         /* hand the PDF straight to WhatsApp via the system share sheet */
         try{
