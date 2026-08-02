@@ -54,6 +54,17 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .fld input,.fld select,.fld textarea{width:100%;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.7em .8em}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
 .pwrap{position:relative}
+/* ---- dd-mm-yyyy date fields ----
+   A native <input type="date"> prints the VIEWER's locale: the same 2 August
+   2026 reads 02-08-2026 on an Indian device and 8-2-2026 on a US-set phone or
+   laptop, and CSS cannot reorder the day/month boxes. Hide the browser's own
+   text and paint dd-mm-yyyy over it (script at the end of the page). The input
+   underneath is untouched: native calendar, native picker, value still
+   yyyy-mm-dd for Firestore and the CSVs. */
+.dwrap{position:relative;display:block}
+.dwrap>input[type=date]{color:transparent;-webkit-text-fill-color:transparent}
+.dwrap>.dtxt{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
+.dwrap>.dtxt.ph{opacity:.45}
 .pwrap input{padding-right:2.9em}
 .pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:8px}
 .pwrap button svg{width:20px;height:20px;display:block}
@@ -1907,7 +1918,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <a href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener">WhatsApp</a>
           <button class="lead-x" data-del-lead>Delete</button>
           <span>${when}</span>
-          ${l.weddingDate ? `<span>· 💍 ${esc(l.weddingDate)}</span>` : ''}
+          ${l.weddingDate ? `<span>· 💍 ${esc(dmy(l.weddingDate))}</span>` : ''}
           <select data-status>
             ${STATUSES.map(s=>`<option value="${s}" ${(l.status||'new')===s?'selected':''}>${s}</option>`).join('')}
           </select>
@@ -1928,7 +1939,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       l.quote.events.forEach(ev=>{
         const svcs = Object.entries(ev.services||{}).filter(([,q])=>q>0)
           .map(([k,q])=>`${SERVICE_LABELS[k]||k}${q>1?' ×'+q:''}`).join(', ');
-        if(svcs) h += `<div class="ln"><span>${esc(ev.type)}${ev.date?' · '+esc(ev.date):''}</span><span>${esc(svcs)}</span></div>`;
+        if(svcs) h += `<div class="ln"><span>${esc(ev.type)}${ev.date?' · '+esc(dmy(ev.date)):''}</span><span>${esc(svcs)}</span></div>`;
       });
       if(l.quote.albumSheets) h += `<div class="ln"><span>Album</span><span>${l.quote.albumSheets} sheets</span></div>`;
       if(l.quote.promo) h += `<div class="ln"><span>Promo</span><span>${esc(l.quote.promo)}</span></div>`;
@@ -2305,6 +2316,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return own.concat(extra);
   };
   const todayISO = () => new Date().toLocaleDateString('en-CA');
+  /* Every date this panel SHOWS is day-first. Dates are stored yyyy-mm-dd
+     (sortable, what Firestore and the CSVs want); this is the one place that
+     turns a stored date into the written form — 2026-08-02 → 02-08-2026 —
+     for the few spots that print numbers instead of "2 Aug". */
+  const dmy = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'')
+    ? d.slice(8,10) + '-' + d.slice(5,7) + '-' + d.slice(0,4) : (d||'');
 
   /* ---------- delivery tracker (booked → delivered) ---------- */
   const dSteps = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULTS.deliverySteps);
@@ -5243,7 +5260,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const hist = (x.payments||[]);
     $('#payHist').innerHTML = hist.length
       ? '<b style="color:var(--gold-b)">Previous payments</b>' + hist.map(pm=>
-          `<div><span>${esc(pm.date||'')} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(pm.id||'')}" data-amt="${Number(pm.amount)||0}" data-date="${esc(pm.date||'')}" data-mode="${esc(pm.mode||'')}" title="Remove this payment">✕</button></span></div>`).join('')
+          `<div><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(pm.id||'')}" data-amt="${Number(pm.amount)||0}" data-date="${esc(pm.date||'')}" data-mode="${esc(pm.mode||'')}" title="Remove this payment">✕</button></span></div>`).join('')
       : '';
     const wasOpen = $('#payModal').classList.contains('open');
     $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
@@ -6301,6 +6318,63 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     await makePdf(d);
   });
 }
+</script>
+<script>
+/* Paint dd-mm-yyyy over every date field, on every device — see .dwrap in the
+   stylesheet. Runs before the app (classic script, module scripts are
+   deferred) so the fields are wrapped before anything fills them in. */
+(function(){
+  const dmy = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'')
+    ? v.slice(8,10) + '-' + v.slice(5,7) + '-' + v.slice(0,4) : '';
+  function paint(inp){
+    const t = inp.__dtxt; if(!t) return;
+    const v = dmy(inp.value);
+    t.textContent = v || 'dd-mm-yyyy';
+    t.classList.toggle('ph', !v);
+  }
+  /* font size flips at the mobile breakpoint (16px, so iOS does not zoom) —
+     keep the painted text on the same metrics as the box it sits in */
+  function sync(inp){
+    const t = inp.__dtxt; if(!t) return;
+    const cs = getComputedStyle(inp);
+    t.style.fontFamily = cs.fontFamily; t.style.fontSize = cs.fontSize;
+    t.style.fontWeight = cs.fontWeight; t.style.letterSpacing = cs.letterSpacing;
+    t.style.paddingLeft = cs.paddingLeft;
+  }
+  const NATIVE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function wrap(inp){
+    if(inp.__dtxt) return;
+    /* read the colour BEFORE the move: inside .dwrap the input's own colour is
+       transparent, and getComputedStyle hands back a live object */
+    const colour = getComputedStyle(inp).color;
+    const w = document.createElement('span'); w.className = 'dwrap';
+    inp.parentNode.insertBefore(w, inp); w.appendChild(inp);
+    const t = document.createElement('span'); t.className = 'dtxt';
+    t.setAttribute('aria-hidden', 'true');   /* the input still reads its real value to a screen reader */
+    t.style.color = colour;
+    w.appendChild(t); inp.__dtxt = t;
+    sync(inp);
+    inp.addEventListener('input', () => paint(inp));
+    inp.addEventListener('change', () => paint(inp));
+    /* the panel fills these from script (today's date, a saved package) and an
+       assignment fires no event — repaint on the property itself */
+    Object.defineProperty(inp, 'value', { configurable: true,
+      get(){ return NATIVE.get.call(this); },
+      set(v){ NATIVE.set.call(this, v); paint(this); } });
+    paint(inp);
+  }
+  const each = fn => document.querySelectorAll('input[type=date]').forEach(fn);
+  let queued = false;
+  /* setTimeout, not requestAnimationFrame: rAF never fires while the tab is in
+     the background, and event cards get built there */
+  function scan(){ queued = false; each(wrap); }
+  const queue = () => { if(!queued){ queued = true; setTimeout(scan, 0); } };
+  scan();
+  /* event cards are built and rebuilt by script long after load */
+  new MutationObserver(queue).observe(document.documentElement, { childList:true, subtree:true });
+  let rz;
+  addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => each(sync), 150); });
+})();
 </script>
 </body>
 </html>

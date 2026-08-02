@@ -605,6 +605,17 @@ header.nav.scrolled{
 .fg input:focus:not(:focus-visible),.fg textarea:focus:not(:focus-visible),.fg select:focus:not(:focus-visible){outline:none}
 .fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--gold);background:#fff;box-shadow:0 0 0 3px rgba(184,144,43,.1)}
 .fg textarea{resize:vertical;min-height:110px}
+/* ---- dd-mm-yyyy date fields ----
+   A native <input type="date"> prints the VIEWER's locale: the same 2 August
+   2026 reads 02-08-2026 on an Indian device and 8-2-2026 on a US-set phone or
+   laptop, and CSS cannot reorder the day/month boxes. Hide the browser's own
+   text and paint dd-mm-yyyy over it (script at the end of the page). The input
+   underneath is untouched: native calendar, native picker, value still
+   yyyy-mm-dd for Firestore and the CSVs. */
+.dwrap{position:relative;display:block}
+.dwrap>input[type=date]{color:transparent;-webkit-text-fill-color:transparent}
+.dwrap>.dtxt{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
+.dwrap>.dtxt.ph{opacity:.45}
 
 /* ============================================================
    FOOTER
@@ -3277,6 +3288,63 @@ window.__applyRemoteConfig = function(cfg){
       new Promise(function(res){ setTimeout(function(){ res(false); }, 2500); })
     ]);
   };
+})();
+</script>
+<script>
+/* Paint dd-mm-yyyy over every date field, on every device — see .dwrap in the
+   stylesheet. Runs before the app (classic script, module scripts are
+   deferred) so the fields are wrapped before anything fills them in. */
+(function(){
+  const dmy = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'')
+    ? v.slice(8,10) + '-' + v.slice(5,7) + '-' + v.slice(0,4) : '';
+  function paint(inp){
+    const t = inp.__dtxt; if(!t) return;
+    const v = dmy(inp.value);
+    t.textContent = v || 'dd-mm-yyyy';
+    t.classList.toggle('ph', !v);
+  }
+  /* font size flips at the mobile breakpoint (16px, so iOS does not zoom) —
+     keep the painted text on the same metrics as the box it sits in */
+  function sync(inp){
+    const t = inp.__dtxt; if(!t) return;
+    const cs = getComputedStyle(inp);
+    t.style.fontFamily = cs.fontFamily; t.style.fontSize = cs.fontSize;
+    t.style.fontWeight = cs.fontWeight; t.style.letterSpacing = cs.letterSpacing;
+    t.style.paddingLeft = cs.paddingLeft;
+  }
+  const NATIVE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function wrap(inp){
+    if(inp.__dtxt) return;
+    /* read the colour BEFORE the move: inside .dwrap the input's own colour is
+       transparent, and getComputedStyle hands back a live object */
+    const colour = getComputedStyle(inp).color;
+    const w = document.createElement('span'); w.className = 'dwrap';
+    inp.parentNode.insertBefore(w, inp); w.appendChild(inp);
+    const t = document.createElement('span'); t.className = 'dtxt';
+    t.setAttribute('aria-hidden', 'true');   /* the input still reads its real value to a screen reader */
+    t.style.color = colour;
+    w.appendChild(t); inp.__dtxt = t;
+    sync(inp);
+    inp.addEventListener('input', () => paint(inp));
+    inp.addEventListener('change', () => paint(inp));
+    /* the panel fills these from script (today's date, a saved package) and an
+       assignment fires no event — repaint on the property itself */
+    Object.defineProperty(inp, 'value', { configurable: true,
+      get(){ return NATIVE.get.call(this); },
+      set(v){ NATIVE.set.call(this, v); paint(this); } });
+    paint(inp);
+  }
+  const each = fn => document.querySelectorAll('input[type=date]').forEach(fn);
+  let queued = false;
+  /* setTimeout, not requestAnimationFrame: rAF never fires while the tab is in
+     the background, and event cards get built there */
+  function scan(){ queued = false; each(wrap); }
+  const queue = () => { if(!queued){ queued = true; setTimeout(scan, 0); } };
+  scan();
+  /* event cards are built and rebuilt by script long after load */
+  new MutationObserver(queue).observe(document.documentElement, { childList:true, subtree:true });
+  let rz;
+  addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => each(sync), 150); });
 })();
 </script>
 </body>
