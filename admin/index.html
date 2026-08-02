@@ -647,7 +647,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 }
 
 /* ==== Home stats: all four tiles on ONE line ==== */
-#pkgStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
+/* six tracks so the row splits 3 money tiles + 2 count tiles cleanly */
+#pkgStats{grid-template-columns:repeat(6,1fr);gap:.4rem}
+#pkgStats .stat{grid-column:span 2}
+#pkgStats .stat.wide{grid-column:span 3}
 #pkgStats .stat{padding:.55rem .2rem}
 #pkgStats .stat b{font-size:clamp(.72rem,3.3vw,1.2rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #pkgStats .stat span{font-size:.5rem;letter-spacing:.05em}
@@ -688,7 +691,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* ==== analytics + event sheets (reuse the payment modal shell) ==== */
 .pay-modal.fin{width:min(94vw,420px);max-height:86vh;overflow:auto;overscroll-behavior:contain}
 @media(max-width:560px){ .pay-modal.fin{width:100%;max-height:88vh} }
-.fintiles{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:.2rem 0 .9rem}
+/* the money that leaves: same tappable money tile, but it opens the Team tab
+   where crew pay is actually settled — so it must not wear the 📊 badge that
+   promises the analytics sheet */
+.stat.money.out b{color:#e8a598}
+.stat.money.out::after{content:"🎬"}
+.fintiles{display:grid;grid-template-columns:repeat(2,1fr);gap:.45rem;margin:.2rem 0 .9rem}
+@media(min-width:700px){ .fintiles{grid-template-columns:repeat(4,1fr)} }
 .fintiles .stat{padding:.55rem .3rem}
 .fintiles .stat b{font-size:.95rem}
 .finyr{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .55rem}
@@ -696,6 +705,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .finyr b{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.05rem}
 .finsplit{display:flex;gap:.7rem;flex-wrap:wrap;margin:0 0 .55rem;font-size:.72rem;color:var(--mut)}
 .finsplit b{color:var(--gold-b);font-weight:500}
+/* the money that leaves reads in a different colour from the money that arrives */
+.finsplit.out b{color:#e8a598}
+.finsplit.out span:last-child b{color:var(--ok)}
 .finrow{display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
 .finrow:last-child{border-bottom:0}
 .finrow .mo{flex:0 0 34px;color:var(--mut)}
@@ -2633,6 +2645,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#pkgStats').addEventListener('click', e=>{
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
+    if(e.target.closest('[data-goteam]')){ $('#tabTeam').click(); return; }
     const t = e.target.closest('[data-goto]'); if(!t) return;
     /* only block while the editor is genuinely ON SCREEN — it used to stay
        flagged open behind another tab and silently kill these taps */
@@ -2651,11 +2664,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
     const newMonth = livePkgs().filter(x=>x.createdAt && x.createdAt.toDate && x.createdAt.toDate() >= mStart).length;
     /* the two money tiles share one line — tapping either opens the money analytics sheet */
+    /* what the crew are owed — the money that leaves. Same basis as the Team
+       tab's "crew pay due" tile, so the two screens can never disagree. */
+    const crewDue = ASGS.reduce((s,a)=>s + ((a.pay||{}).paid ? 0 : (Number((a.pay||{}).amount)||0)), 0);
+    /* Compact on these tiles by necessity: they are a quarter of a phone wide
+       and the full figure was being cut off mid-number. The exact rupees stay
+       one long-press away in the title. */
     el.innerHTML = `
-      <div class="stat money" data-fin role="button" tabindex="0" title="Open money analytics"><b>${inr(outstanding)}</b><span>left to collect</span></div>
-      <div class="stat money" data-fin role="button" tabindex="0" title="Open money analytics"><b>${inr(bookedVal)}</b><span>booked value</span></div>
-      <div class="stat" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
-      <div class="stat" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>`;
+      <div class="stat money" data-fin role="button" tabindex="0" title="${inr(outstanding)} — open money analytics"><b>${inrShort(outstanding)}</b><span>left to collect</span></div>
+      <div class="stat money" data-fin role="button" tabindex="0" title="${inr(bookedVal)} — open money analytics"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
+      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + ' — open the Team tab' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span></div>
+      <div class="stat wide" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
+      <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>`;
   }
   /* one shoot at a time: the very next event as a single tappable card —
      tapping it opens the full event + package sheet, with ‹ › to browse
@@ -3662,6 +3682,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           warnIfCapped('assignments', snap.size, ASGS_CAP);
           _asgsLoaded = true;
           renderTeam();
+          renderPkgStats();   /* the crew-pay tile on Home reads these */
+          if($('#finModal').classList.contains('open')) renderFin();
           if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
         }, err=>{
           try{ if(_asgsUnsub) _asgsUnsub(); }catch(e){} _asgsUnsub = null;
@@ -5603,6 +5625,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const got = inFy.reduce((s,p)=>s+p.amt,0);
     const online = inFy.filter(p=>p.mode==='online').reduce((s,p)=>s+p.amt,0);
     const cash = inFy.filter(p=>p.mode==='cash').reduce((s,p)=>s+p.amt,0);
+    /* ---- the expense side: crew pay ----
+       Owed is all-time, like "to collect" on the income side. Paid is bucketed
+       by the date it was marked paid, like the cash-flow splits above, so
+       "in hand" below compares like with like: money that came in this FY less
+       money that went out this FY. Same basis as the Team tab's "crew pay due"
+       tile, so the two screens can never disagree. */
+    const payOf = a => Number((a.pay||{}).amount)||0;
+    const crewDue     = ASGS.reduce((s,a)=>s + ((a.pay||{}).paid ? 0 : payOf(a)), 0);
+    const crewPaidAll = ASGS.reduce((s,a)=>s + ((a.pay||{}).paid ? payOf(a) : 0), 0);
+    const crewPaidFy  = ASGS.reduce((s,a)=>{
+      const pd = (a.pay||{}).paidDate || '';
+      return s + (((a.pay||{}).paid && /^\d{4}-\d{2}-\d{2}$/.test(pd) && fyStartOf(pd) === y) ? payOf(a) : 0);
+    }, 0);
+    /* a crew payment marked paid before paidDate was stored has no date to
+       bucket by — say so rather than quietly dropping it out of the FY line */
+    const crewPaidUndated = crewPaidAll - ASGS.reduce((s,a)=>{
+      const pd = (a.pay||{}).paidDate || '';
+      return s + (((a.pay||{}).paid && /^\d{4}-\d{2}-\d{2}$/.test(pd)) ? payOf(a) : 0);
+    }, 0);
+    const money = v => `<b title="${inr(v)}">${inrShort(v)}</b>`;
     /* ---- the systematic table: every period shows Billed / Collected / Balance,
        from confirmed bookings anchored to their first event date ---- */
     const anchor = x => {
@@ -5633,23 +5675,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
     const fyTot = byFy[y] || Z();
     const fys = Object.keys(byFy).map(Number).sort((a,b)=>b-a);
-    const amt = v => v ? inr(v) : '—';
+    /* four money columns on a phone: the full figure does not fit, and this is
+       a summary table — the exact rupees stay in the title */
+    const amt = v => v ? `<span title="${inr(v)}">${inrShort(v)}</span>` : '—';
     const row3 = (label, o, cls='', attrs='') => `
       <div class="ledrow finled ${cls}" ${attrs}><span class="l-ev">${label}</span><b>${amt(o.billed)}</b><b style="color:var(--ok)">${amt(o.recv)}</b><b class="${o.due>0?'neg':''}">${amt(o.due)}</b></div>`;
     const HD = '<div class="ledrow finled hd"><span class="l-ev">Period</span><b>Billed</b><b>Collected</b><b>Balance</b></div>';
     $('#finWho').textContent = 'Financial-year view (Apr–Mar) — billed / collected / balance per period, from confirmed bookings by event date';
     $('#finBody').innerHTML = `
       <div class="fintiles">
-        <div class="stat"><b>${inr(outstanding)}</b><span>to collect</span></div>
-        <div class="stat"><b>${inr(bookedVal)}</b><span>booked value</span></div>
-        <div class="stat"><b>${inr(allGot)}</b><span>received · all time</span></div>
+        <div class="stat" title="${inr(outstanding)}"><b>${inrShort(outstanding)}</b><span>to collect</span></div>
+        <div class="stat" title="${inr(bookedVal)}"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
+        <div class="stat" title="${inr(allGot)}"><b>${inrShort(allGot)}</b><span>received · all time</span></div>
+        <div class="stat money out" title="${_asgsLoaded ? inr(crewDue) : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span></div>
       </div>
       <div class="finyr">
         <button data-fy="-1" type="button" aria-label="Previous financial year">‹</button>
         <b>${fyLabel(y)}</b>
         <button data-fy="1" type="button" aria-label="Next financial year">›</button>
       </div>
-      <div class="finsplit"><span>💳 Online <b>${inr(online)}</b></span><span>💵 Cash <b>${inr(cash)}</b></span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'} this FY</span></div>
+      <div class="finsplit"><span>💳 Online ${money(online)}</span><span>💵 Cash ${money(cash)}</span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'} this FY</span></div>
+      <div class="finsplit out"><span>🎬 Crew paid ${money(crewPaidFy)}</span><span>⏳ Still owed ${money(crewDue)}</span><span>💼 In hand ${money(got - crewPaidFy)}</span></div>
+      ${crewPaidUndated > 0 ? `<div class="finnote">${inr(crewPaidUndated)} of crew pay was marked paid before payment dates were kept, so it sits outside every financial year — it is still counted in "still owed" having left, just not in this FY's crew-paid line.</div>` : ''}
       ${allRows < allGot ? `<div class="finnote">Online/cash covers itemised payments only — ${inr(allGot - allRows)} was entered straight as an advance in the builder, so it is counted as received but has no mode.</div>` : ''}
       ${(()=>{ const b = inFy.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
                return b > 0 ? `<div class="finsplit"><span>💍 Direct <b>${inr(got - b)}</b></span><span>🏢 Studio <b>${inr(b)}</b></span></div>` : ''; })()}
