@@ -471,6 +471,69 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
 .as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
 
+/* ==== Team console: attention list, leaderboard, squad cards ====
+   All of it is derived from the assignment docs the tab already holds. */
+#teamStats{grid-template-columns:repeat(2,1fr)}
+#teamStats .stat.month{grid-column:1 / -1}
+@media(min-width:700px){ #teamStats{grid-template-columns:repeat(4,1fr)} }
+.stat.warn{border-color:rgba(255,176,84,.5)}
+.stat.warn b{color:#ffb054}
+.stat[data-goatt]{cursor:pointer}
+@media(hover:hover){ .stat[data-goatt]:hover{border-color:var(--gold)} }
+.att{border-color:rgba(255,176,84,.45)}
+.att h3{color:#ffb054}
+.att-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px dashed var(--line);cursor:pointer;font-size:.85rem}
+.att-row:last-child{border-bottom:0}
+.att-row .w{font-family:var(--serif);color:var(--gold-b);font-size:.82rem;min-width:52px;flex:0 0 auto}
+.att-row .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-row .t span{color:var(--mut);font-size:.78rem}
+.att-row .tag{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.22em .7em;font-weight:600}
+.att-row .tag.none{color:var(--err);background:rgba(224,122,106,.14)}
+.att-row .tag.wait{color:#ffb054;background:rgba(255,176,84,.14)}
+@media(hover:hover){ .att-row:hover .t{color:var(--gold-b)} }
+
+.lbtog{margin-left:auto;display:inline-flex;gap:.3rem}
+.lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
+.lbtog button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.lb-row{display:flex;align-items:center;gap:.65rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
+.lb-row:last-child{border-bottom:0}
+.lb-row .pos{flex:0 0 auto;width:26px;text-align:center;font-family:var(--serif);font-size:.95rem;color:var(--mut)}
+.lb-row.top .pos{font-size:1.1rem}
+.av{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;font-weight:600;letter-spacing:.02em;background:rgba(184,144,43,.16);border:1px solid var(--line);color:var(--gold-b)}
+.lb-row.g1 .av{background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;border-color:transparent}
+.lb-row.g2 .av{background:rgba(200,200,205,.2);color:#dcdce2;border-color:rgba(200,200,205,.35)}
+.lb-row.g3 .av{background:rgba(190,124,74,.22);color:#e0a877;border-color:rgba(190,124,74,.4)}
+.lb-mid{flex:1;min-width:0}
+.lb-mid b{display:block;font-size:.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:.28rem;overflow:hidden}
+.lb-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#C9A347,#E2C275)}
+.lb-n{flex:0 0 auto;text-align:right;line-height:1.15}
+.lb-n b{display:block;font-family:var(--serif);color:var(--gold-b);font-size:1rem}
+.lb-n span{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+
+.sq{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.8rem .9rem;margin-bottom:.6rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.sq.off{opacity:.6}
+.sq-h{display:flex;align-items:center;gap:.7rem}
+.sq-av{position:relative;flex:0 0 auto;width:46px;height:46px}
+.sq-av svg{width:46px;height:46px;transform:rotate(-90deg)}
+.sq-av .rbg{fill:none;stroke:rgba(226,194,117,.16);stroke-width:6}
+.sq-av .rfg{fill:none;stroke:#C9A347;stroke-width:6;stroke-linecap:round;stroke-dasharray:113.1}
+.sq-av i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--serif);font-size:1rem;color:var(--gold-b)}
+.sq-t{flex:1;min-width:0}
+.sq-t b{display:block;font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-t span{font-size:.72rem;color:var(--mut)}
+.sq-lv{flex:0 0 auto;text-align:right;line-height:1.2}
+.sq-lv b{display:block;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
+.sq-lv span{font-size:.6rem;color:var(--mut)}
+.sq-m{display:flex;flex-wrap:wrap;gap:.3rem .55rem;margin-top:.6rem;font-size:.7rem;color:var(--mut)}
+.sq-m b{color:var(--text);font-weight:500}
+.sq-m .due{color:#ffb054}
+.sq-m .ok{color:var(--ok)}
+.sq-acts{display:flex;gap:.4rem;margin-top:.65rem}
+.sq-acts button,.sq-acts a{flex:1;text-align:center;text-decoration:none;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.4em .5em;font-size:.74rem;cursor:pointer;min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+.sq-acts .warn{border-color:rgba(224,122,106,.5);color:var(--err)}
+@media(hover:hover){ .sq-acts button:hover,.sq-acts a:hover{border-color:var(--gold)} }
+
 /* ==== polish pass: one visual system across admin / crew / client ====
    Depth on surfaces, a signature gold hairline under the header, unified
    focus rings and button shadows. Keep these values in step with the same
@@ -911,14 +974,29 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <p class="sub">People who signed in on the crew page and asked to join. Approving opens a member card with their details filled in.</p>
       <div id="teamReqs"></div>
     </div>
+    <div class="sec att" id="attSec" hidden>
+      <h3>⚠️ Needs attention <span id="attCount" style="font-size:.7rem;color:var(--mut)"></span></h3>
+      <p class="sub">Events with nobody on them, and crew who haven't confirmed a shoot that's coming up. Tap a row to fix it.</p>
+      <div id="attList"></div>
+    </div>
     <div class="sec">
       <h3>📅 Upcoming events</h3>
       <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
       <div id="teamEvents"></div>
     </div>
+    <div class="sec" id="lbSec" hidden>
+      <h3>🏆 Crew leaderboard
+        <span class="lbtog" id="lbTog">
+          <button type="button" data-lb="m">Month</button>
+          <button type="button" data-lb="y" class="on">Year</button>
+          <button type="button" data-lb="all">All time</button>
+        </span>
+      </h3>
+      <div id="lbList"></div>
+    </div>
     <div class="sec">
-      <h3>👥 Team members</h3>
-      <p class="sub">Their phone number is their crew-page login.</p>
+      <h3>👥 Squad</h3>
+      <p class="sub">Rank comes from work done — a shoot is 10 XP, a finished edit 5, a confirmed assignment 2. Their phone number is their crew-page login.</p>
       <div id="teamMembers"></div>
       <button class="addrow" id="tmAdd">＋ Add team member</button>
     </div>
@@ -3215,6 +3293,126 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }).join('');
   }
 
+  /* ============================================================
+     TEAM CONSOLE — the same rank maths the crew page shows its own
+     members, so a level here and a level there always agree. Everything
+     is derived from the assignment docs this tab already holds.
+     ============================================================ */
+  const XP_EVENT = 10, XP_ACK = 2, XP_EDIT = 5;
+  const TEAM_RANKS = [
+    { xp:0,    t:'Rookie' },  { xp:50,   t:'Crew' },    { xp:120,  t:'Shooter' },
+    { xp:250,  t:'Senior' },  { xp:450,  t:'Lead' },    { xp:750,  t:'Veteran' },
+    { xp:1200, t:'Master' },  { xp:1800, t:'Legend' },  { xp:2600, t:'Icon' },
+    { xp:3600, t:'Maestro' },
+  ];
+  function tmRank(xp){
+    let i = 0;
+    while(i + 1 < TEAM_RANKS.length && xp >= TEAM_RANKS[i+1].xp) i++;
+    const cur = TEAM_RANKS[i], next = TEAM_RANKS[i+1] || null;
+    return { lvl:i+1, title:cur.t,
+             pct: next ? Math.min(100, Math.round(100*(xp-cur.xp)/(next.xp-cur.xp))) : 100 };
+  }
+  const initials = n => String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '?';
+  function memberStats(mid){
+    const today = todayISO(), mon = today.slice(0,7);
+    const list = ASGS.filter(a=>a.memberId === mid);
+    const done = list.filter(a=>(a.date||'') < today);
+    const up   = list.filter(a=>(a.date||'') >= today);
+    const acks = list.filter(a=>a.status === 'acknowledged').length;
+    const edits = list.filter(a=>a.workDone).length;
+    const due = list.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+    const xp = done.length*XP_EVENT + acks*XP_ACK + edits*XP_EDIT;
+    return { list, done, up, acks, edits, due, xp, rank: tmRank(xp),
+             month: done.filter(a=>(a.date||'').slice(0,7) === mon).length,
+             pending: up.filter(a=>a.status !== 'acknowledged').length,
+             next: up.map(a=>a.date).filter(Boolean).sort()[0] || '',
+             rate: list.length ? Math.round(100*acks/list.length) : null };
+  }
+
+  /* what the owner has to act on today: events with nobody on them, and
+     crew who have not confirmed a shoot that is nearly here */
+  function renderAttention(){
+    const sec = $('#attSec'), el = $('#attList'); if(!sec || !el) return;
+    const today = todayISO();
+    const soon = new Date(Date.now() + 7*864e5).toLocaleDateString('en-CA');
+    const empty = teamUpcoming().filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length);
+    const unconf = ASGS.filter(a=>(a.date||'') >= today && (a.date||'') <= soon && a.status !== 'acknowledged')
+      .sort((a,b)=>a.date<b.date?-1:1);
+    const n = empty.length + unconf.length;
+    sec.hidden = !n;
+    $('#attCount').textContent = n ? `(${n})` : '';
+    if(!n) return;
+    el.innerHTML =
+      empty.map(({pk, ev, idx})=>`
+        <div class="att-row" data-asadd data-aspk="${pk.id}" data-asev="${idx}" role="button" tabindex="0">
+          <span class="w">${esc(stepDate(ev.date))}</span>
+          <span class="t">${esc(ev.title||'Event')} <span>· ${esc(pk.clientName||'')}</span></span>
+          <span class="tag none">no crew</span>
+        </div>`).join('')
+      + unconf.map(a=>`
+        <div class="att-row" data-asedit="${a.id}" role="button" tabindex="0">
+          <span class="w">${esc(stepDate(a.date))}</span>
+          <span class="t">${esc(a.memberName||'—')} <span>· ${esc(a.eventTitle||'Event')}</span></span>
+          <span class="tag wait">not confirmed</span>
+        </div>`).join('');
+  }
+  $('#attList').addEventListener('click', e=>{
+    const add = e.target.closest('[data-asadd]');
+    if(add){
+      const pk = PKGS.find(p=>p.id===add.dataset.aspk); if(!pk) return;
+      const ev = (pk.events||[])[Number(add.dataset.asev)]; if(!ev) return;
+      openAs({ pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+               eventTitle: ev.title||'', date: ev.date||'', venue: ev.venue||'' }, null);
+      return;
+    }
+    const ed = e.target.closest('[data-asedit]');
+    if(ed){
+      const a = ASGS.find(v=>v.id===ed.dataset.asedit); if(!a) return;
+      openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
+               eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
+    }
+  });
+
+  /* the league table — the one view that says who is actually carrying the season */
+  let _lbPeriod = 'y';
+  function renderLeaderboard(){
+    const sec = $('#lbSec'), el = $('#lbList'); if(!sec || !el) return;
+    const today = todayISO();
+    const from = _lbPeriod === 'm' ? today.slice(0,7) : _lbPeriod === 'y' ? today.slice(0,4) : '';
+    const done = ASGS.filter(a=>(a.date||'') < today && (!from || (a.date||'').startsWith(from)));
+    sec.hidden = !ASGS.length;
+    if(!ASGS.length) return;
+    const by = {};
+    done.forEach(a=>{
+      const k = a.memberId || a.memberName || '?';
+      by[k] = by[k] || { name: (memberById(a.memberId)||{}).name || a.memberName || '—', id: a.memberId, n:0, amt:0 };
+      by[k].n++; by[k].amt += Number((a.pay||{}).amount)||0;
+    });
+    const rows = Object.values(by).sort((a,b)=>b.n - a.n || b.amt - a.amt);
+    if(!rows.length){
+      el.innerHTML = `<div class="empty" style="padding:.8rem 0">No shoots completed ${_lbPeriod==='m'?'this month':_lbPeriod==='y'?'this year':'yet'}.</div>`;
+      return;
+    }
+    const top = rows[0].n || 1;
+    const medal = i => i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1);
+    el.innerHTML = rows.slice(0,12).map((r,i)=>`
+      <div class="lb-row ${i<3?'top g'+(i+1):''}">
+        <span class="pos">${medal(i)}</span>
+        <span class="av">${esc(initials(r.name))}</span>
+        <span class="lb-mid">
+          <b>${esc(r.name)}</b>
+          <span class="lb-bar"><i style="width:${Math.round(100*r.n/top)}%"></i></span>
+        </span>
+        <span class="lb-n"><b>${r.n}</b><span>${r.amt ? inr(r.amt) : 'shoots'}</span></span>
+      </div>`).join('');
+  }
+  $('#lbTog').addEventListener('click', e=>{
+    const b = e.target.closest('[data-lb]'); if(!b || b.dataset.lb === _lbPeriod) return;
+    _lbPeriod = b.dataset.lb;
+    $$('#lbTog button').forEach(x=>x.classList.toggle('on', x === b));
+    renderLeaderboard();
+  });
+
   let _tmShowInactive = false;
   function renderTeamMembers(){
     const el = $('#teamMembers'); if(!el) return;
@@ -3225,14 +3423,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : '<div class="skel"></div>';
       return;
     }
-    const act = TEAM.filter(m=>m.active !== false);
-    const inact = TEAM.filter(m=>m.active === false);
-    const row = m => `
-      <div class="up-ev ${m.active === false ? 'tm-inactive' : ''}" data-tmedit="${m.id}">
-        <span class="what"><b>${esc(m.name||'—')}</b> <span>· ${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone — cannot log in'}</span></span>
-        ${m.phone ? `<a class="act" style="text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.28em .7em;font-size:.75rem" href="tel:${esc(m.phone)}" onclick="event.stopPropagation()">📞</a>` : ''}
-        <button class="act" data-tmedit2>Edit</button>
+    /* busiest first, so the roster reads as a squad sheet rather than a list */
+    const act = TEAM.filter(m=>m.active !== false)
+      .map(m=>({ m, s: memberStats(m.id) }))
+      .sort((a,b)=>b.s.xp - a.s.xp);
+    const inact = TEAM.filter(m=>m.active === false).map(m=>({ m, s: memberStats(m.id) }));
+    const peak = Math.max(1, ...act.map(x=>x.s.up.length));
+    const C = 113.1;   /* 2πr for r=18 */
+    const row = ({m, s}) => {
+      const wa = m.phone ? String(normPhoneFull(m.phone)).replace(/\D/g,'') : '';
+      return `
+      <div class="sq ${m.active === false ? 'off' : ''}" data-tmedit="${m.id}">
+        <div class="sq-h">
+          <span class="sq-av">
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+              <circle class="rbg" cx="20" cy="20" r="18"></circle>
+              <circle class="rfg" cx="20" cy="20" r="18" style="stroke-dashoffset:${C - C*s.rank.pct/100}"></circle>
+            </svg>
+            <i>${esc(initials(m.name))}</i>
+          </span>
+          <span class="sq-t">
+            <b>${esc(m.name||'—')}</b>
+            <span>${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone'}</span>
+          </span>
+          <span class="sq-lv"><b>Lv ${s.rank.lvl}</b><span>${esc(s.rank.title)}</span></span>
+        </div>
+        <div class="sq-m">
+          <span>🎬 <b>${s.done.length}</b> done</span>
+          <span>📆 <b>${s.month}</b> this month</span>
+          <span>⏭ <b>${s.up.length}</b> ahead</span>
+          ${s.rate == null ? '' : `<span class="${s.rate >= 80 ? 'ok' : ''}">⚡ <b>${s.rate}%</b> confirmed</span>`}
+          ${s.pending ? `<span class="due">⏳ <b>${s.pending}</b> unconfirmed</span>` : ''}
+          ${s.due ? `<span class="due">💰 <b>${inr(s.due)}</b> due</span>` : ''}
+          ${s.next ? `<span>next <b>${esc(stepDate(s.next))}</b></span>` : '<span>free</span>'}
+        </div>
+        <div class="lb-bar" title="Upcoming workload"><i style="width:${Math.round(100*s.up.length/peak)}%"></i></div>
+        <div class="sq-acts">
+          <button type="button" data-tmedit2>Edit</button>
+          ${m.phone ? `<a href="tel:${esc(m.phone)}" onclick="event.stopPropagation()">📞 Call</a>` : ''}
+          ${wa ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()">WhatsApp</a>` : ''}
+        </div>
       </div>`;
+    };
     el.innerHTML = act.map(row).join('')
       + (inact.length ? `<div class="grp tog ${_tmShowInactive?'':'closed'}" data-tmgrp role="button" tabindex="0" aria-expanded="${_tmShowInactive}"><span class="car">▾</span>Inactive<b>${inact.length}</b></div>` + (_tmShowInactive ? inact.map(row).join('') : '') : '');
   }
@@ -3335,21 +3567,32 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderTeamStats(){
     const el = $('#teamStats'); if(!el) return;
+    const today = todayISO();
     const due = ASGS.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
     const up = teamUpcoming();
     const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length).length;
+    const unconf = ASGS.filter(a=>(a.date||'') >= today && a.status !== 'acknowledged').length;
     el.innerHTML = `
       <div class="stat month"><b>${inr(due)}</b><span>crew pay due</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming events</span></div>
-      <div class="stat"><b>${unfilled}</b><span>with no crew</span></div>
-      <div class="stat"><b>${activeTeam().length}</b><span>active members</span></div>`;
+      <div class="stat ${unfilled?'warn':''}" data-goatt role="button" tabindex="0"><b>${unfilled}</b><span>with no crew</span></div>
+      <div class="stat ${unconf?'warn':''}" data-goatt role="button" tabindex="0"><b>${unconf}</b><span>unconfirmed</span></div>
+      <div class="stat"><b>${activeTeam().length}</b><span>active crew</span></div>`;
   }
+  $('#teamStats').addEventListener('click', e=>{
+    if(!e.target.closest('[data-goatt]')) return;
+    const sec = $('#attSec');
+    if(sec && !sec.hidden) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+    else toast('Nothing needs attention — every event has crew and everyone has confirmed ✓');
+  });
 
   function renderTeam(){
     if(!$('#teamView')) return;
     renderTeamStats();
     renderTeamReqs();
+    renderAttention();
     renderTeamEvents();
+    renderLeaderboard();
     renderTeamMembers();
     renderTeamPay();
   }
