@@ -229,8 +229,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cd-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
 .cd-head h3{flex:1;min-width:0;margin:0}
 .cd-head .mini{margin-top:0;flex:0 0 auto;white-space:nowrap}
-#calAdd h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem}
-#calAdd .qe-d{font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+#calAdd{border-color:rgba(226,194,117,.45)}
 #qeMode button{font-size:.78rem;padding:.55em .2em}
 #qeStatus button{font-size:.78rem;padding:.5em .2em}
 #calAdd .evchips{margin-top:-.55rem}
@@ -707,13 +706,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <!-- quick add: lives OUTSIDE #calDetail on purpose — that box is rebuilt on
          every packages snapshot, which would wipe whatever is half-typed here -->
     <div class="sec" id="calAdd" hidden>
-      <h3>＋ Add an event <span class="qe-d" id="qeDateLbl"></span></h3>
+      <h3>＋ Add an event</h3>
       <div class="mode-pills" id="qeMode">
         <button type="button" data-qem="client" class="on">💍 Client</button>
         <button type="button" data-qem="studio">🏢 B2B</button>
         <button type="button" data-qem="existing">📋 Existing</button>
       </div>
       <div id="qeFields"></div>
+      <div class="fld"><label>Date</label><input id="qeDate" type="date" /></div>
       <div class="fld"><label>Event</label><input id="qeTitle" placeholder="e.g. NIKAH" /></div>
       <div class="evchips" id="qeChips"></div>
       <div class="fld"><label>Venue (optional)</label><input id="qeVenue" placeholder="e.g. Taj Banquet Hall" /></div>
@@ -1354,6 +1354,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
     const fab = $('#fabBtn'); if(fab) fab.hidden = (id !== 'tabHome');   /* quick actions live on Home */
+    /* the quick add-event form is MOVED between Home and the B2B studio page —
+       leaving the page it is sitting on closes it rather than stranding it */
+    if(typeof closeCalAdd === 'function' && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')) closeCalAdd();
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
     if(id === 'tabHome'){
@@ -2579,7 +2582,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function renderCalDetail(){
     const box = $('#calDetail'); if(!box) return;
-    if(!calSel){ box.innerHTML = '<div class="empty">Tap a date to see its events.</div>'; closeCalAdd(); return; }
+    if(!calSel){
+      box.innerHTML = '<div class="empty">Tap a date to see its events.</div>';
+      /* only the Home copy depends on a selected date — a form open on a
+         studio's B2B page must survive every packages snapshot */
+      if(_qeAnchor === 'home') closeCalAdd();
+      return;
+    }
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     box.innerHTML = `<div class="sec">
@@ -2650,14 +2659,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      No rates are asked for here: the event carries items:[], contributes ₹0 to
      the totals, and the full builder fills in the money later. */
   let _qeMode = 'client', _qeStatus = 'booked';
+  /* the same form serves two pages, so it remembers where it was opened from:
+     'home' = under the calendar day box, 'b2b' = under a studio's page.
+     _qeStudio pins it to that studio (no client mode, and Existing lists only
+     that studio's jobs). */
+  let _qeAnchor = 'home', _qeStudio = null;
   function syncQeDate(){
-    const el = $('#qeDateLbl'); if(!el) return;
-    el.textContent = calSel ? new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : '';
+    const el = $('#qeDate'); if(!el) return;
+    /* on Home the tapped date always wins — tap another cell, the form follows */
+    if(_qeAnchor === 'home' && calSel) el.value = calSel;
   }
   function syncQePills(){
     $$('#qeMode button').forEach(b=>b.classList.toggle('on', b.dataset.qem === _qeMode));
     $$('#qeStatus button').forEach(b=>b.classList.toggle('on', b.dataset.qest === _qeStatus));
     $('#qeStWrap').hidden = (_qeMode === 'existing');   /* an existing booking keeps its own status */
+    /* a studio's own page never starts a direct-client booking */
+    $('#qeMode [data-qem="client"]').hidden = !!_qeStudio;
   }
   function renderQeFields(){
     const el = $('#qeFields'); if(!el) return;
@@ -2672,34 +2689,51 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <input id="qePhone" type="tel" inputmode="numeric" placeholder="10-digit mobile — this is the client's portal login" />
         </div>`;
     }else if(_qeMode === 'studio'){
-      const acts = STUDIOS.filter(s=>s.active !== false);
+      /* a studio deactivated later must still be offered while its own page is open */
+      const acts = STUDIOS.filter(s=>s.active !== false || s.id === _qeStudio);
       el.innerHTML = acts.length ? `
         <div class="fld"><label>Partner studio</label>
-          <select id="qeStudio">${acts.map(s=>`<option value="${esc(s.id)}">${esc(s.name||'—')}${s.city ? ' · ' + esc(s.city) : ''}</option>`).join('')}</select>
+          <select id="qeStudio">${acts.map(s=>`<option value="${esc(s.id)}" ${s.id === _qeStudio ? 'selected' : ''}>${esc(s.name||'—')}${s.city ? ' · ' + esc(s.city) : ''}</option>`).join('')}</select>
         </div>
         <div class="fld"><label>For end client (optional)</label>
           <input id="qeEnd" placeholder="the studio's own client" />
         </div>`
       : `<div class="qe-warn">No partner studios yet — add one in the <b>B2B</b> tab first, then come back here.</div>`;
     }else{
-      const list = livePkgs();
+      /* opened from a studio's page, "Existing" means that studio's own jobs */
+      const list = _qeStudio ? studioJobs(_qeStudio) : livePkgs();
       el.innerHTML = list.length ? `
         <div class="fld"><label>Add this date to</label>
           <select id="qePkg">${list.map(x=>`<option value="${esc(x.id)}">${x.quoteNo ? esc(x.quoteNo) + ' · ' : ''}${esc(x.clientName||'—')}${isStudioJob(x) ? ' 🏢' : ''} · ${esc(STATUS_LABEL(x.status||'draft'))}</option>`).join('')}</select>
         </div>
-        <p class="qe-note" style="margin:-.4rem 0 .8rem">Newest bookings first. Use this for day 2 / day 3 of the same wedding.</p>`
-      : `<div class="qe-warn">No bookings yet — start one with <b>Client</b> or <b>B2B</b>.</div>`;
+        <p class="qe-note" style="margin:-.4rem 0 .8rem">${_qeStudio ? 'This studio\'s jobs, newest first.' : 'Newest bookings first.'} Use this for day 2 / day 3 of the same function.</p>`
+      : `<div class="qe-warn">${_qeStudio ? 'No jobs for this studio yet — start one with <b>🏢 B2B</b>.' : 'No bookings yet — start one with <b>Client</b> or <b>B2B</b>.'}</div>`;
     }
     syncQePills();
   }
-  function openCalAdd(){
-    if(!calSel){ toast('Tap a date first'); return; }
-    _qeMode = 'client'; _qeStatus = 'booked';
+  /* opts.studio — a studio doc: opens on that studio's B2B page instead of Home.
+     The form is MOVED rather than duplicated, so there is one set of fields and
+     one save path. Both anchors are containers that are never innerHTML-rebuilt
+     (#studioDetailView is, so the B2B copy sits after it, not inside it). */
+  function openCalAdd(opts){
+    const node = $('#calAdd'); if(!node) return;
+    const stu = (opts && opts.studio) || null;
+    _qeStudio = stu ? stu.id : null;
+    _qeAnchor = stu ? 'b2b' : 'home';
+    if(_qeAnchor === 'home'){
+      if(!calSel){ toast('Tap a date first'); return; }
+      $('#homeView').insertBefore(node, $('#followups'));
+    }else{
+      $('#calView').appendChild(node);
+    }
+    _qeMode = stu ? 'studio' : 'client';
+    _qeStatus = 'booked';
     $('#qeTitle').value = ''; $('#qeVenue').value = '';
+    $('#qeDate').value = (_qeAnchor === 'home' ? calSel : (calSel || todayISO()));
     $('#qeChips').innerHTML = EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-qename="${esc(n)}">${esc(n)}</button>`).join('');
-    renderQeFields(); syncQeDate();
-    $('#calAdd').hidden = false;
-    setTimeout(()=>{ const b = $('#calAdd'); if(b && !b.hidden) b.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
+    renderQeFields();
+    node.hidden = false;
+    setTimeout(()=>{ if(!node.hidden) node.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
   }
   function closeCalAdd(){ const b = $('#calAdd'); if(b) b.hidden = true; }
   $('#qeMode').addEventListener('click', e=>{
@@ -2716,8 +2750,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   $('#qeCancel').addEventListener('click', closeCalAdd);
   $('#qeSave').addEventListener('click', async ()=>{
-    const date = calSel;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Tap a date first'); return; }
+    const date = $('#qeDate').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this event'); $('#qeDate').focus(); return; }
     const title = $('#qeTitle').value.trim();
     if(!title){ toast('Give the event a name'); $('#qeTitle').focus(); return; }
     const ev = { title, date, venue: $('#qeVenue').value.trim(), items: [] };
@@ -3808,6 +3842,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
     _stuDetailId = null;
+    closeCalAdd();   /* the quick-add form belongs to the studio page above it */
   }
   const stuRateRow = (name, rate) => `
     <div class="row" data-srate>
@@ -3866,6 +3901,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <a class="mini stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
           <button class="mini" type="button" data-stuedit>Edit</button>
           <button class="mini" type="button" data-stunewjob>＋ New job</button>
+          <button class="mini" type="button" data-stuaddev>＋ Add event</button>
         </div>
       </div>
       <div class="sec">
@@ -3917,6 +3953,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!canLeaveEditor()) return;
       $('#tabPkgs').click();
       openPkgEdit(null, { studio: s });
+      return;
+    }
+    /* quick date for this studio — same form as the calendar day box */
+    if(e.target.closest('[data-stuaddev]')){
+      const s = studioById(_stuDetailId); if(!s) return;
+      openCalAdd({ studio: s });
       return;
     }
     if(e.target.closest('#stuRateAdd')){ $('#stuRateList').insertAdjacentHTML('beforeend', stuRateRow('', 0)); return; }
