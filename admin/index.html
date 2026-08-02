@@ -899,7 +899,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec upco" id="followups" hidden></div>
     <div class="sec">
-      <h3>📸 Booked &amp; recent deliveries</h3>
+      <h3>📸 Bookings</h3>
+      <div class="fchips" id="homeTabs"></div>
       <div id="homeBooked"><div class="skel"></div><div class="skel"></div></div>
     </div>
     <div class="stats" id="pkgStats"></div>
@@ -2564,19 +2565,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderHomeBooked();
   }
   const HOME_BOOKED_N = 10;
-  let _homeBookedAll = false;
+  let _homeBookedAll = false, _homeTab = 'next';
+  /* A booking has three lives: still to shoot, shot and being worked on, and
+     handed over. They were one undifferentiated list, so the wedding being
+     edited this week sat between one booked for December and one delivered in
+     March. The split is by the DATES, so a package moves itself along. */
+  function homeGroups(){
+    const today = todayISO();
+    const dates = x => (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    const booked = livePkgs().filter(x=>(x.status||'draft')==='booked');
+    const lastOf = x => { const d = dates(x); return d.length ? d[d.length-1] : ''; };
+    return {
+      /* no dates yet still counts as ahead — it has not been shot */
+      next: booked.filter(x=>{ const d = dates(x); return !d.length || d.some(v=>v >= today); })
+        .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db = nextShootDate(b)||'9999'; return da<db?-1:da>db?1:0; }),
+      ongoing: booked.filter(x=>{ const d = dates(x); return d.length && d.every(v=>v < today); })
+        .sort((a,b)=>lastOf(a) < lastOf(b) ? 1 : -1),
+      delivered: livePkgs().filter(x=>(x.status||'draft')==='delivered')
+        .sort((a,b)=>{ const da = a.deliveredAt||lastOf(a)||'', db = b.deliveredAt||lastOf(b)||''; return da<db?1:-1; }),
+    };
+  }
+  const HOME_TABS = [['next','Coming next'],['ongoing','Ongoing'],['delivered','Delivered']];
+  const HOME_EMPTY = {
+    next: 'Nothing booked ahead — a package lands here the moment its status is <b style="color:var(--ok)">booked</b>.',
+    ongoing: 'Nothing in post right now — a booking moves here the day after its last function.',
+    delivered: 'Nothing delivered yet — mark a package <b>delivered</b> once everything is handed over.',
+  };
+  $('#homeTabs').addEventListener('click', e=>{
+    const b = e.target.closest('[data-htab]'); if(!b || b.dataset.htab === _homeTab) return;
+    _homeTab = b.dataset.htab;
+    _homeBookedAll = false;          /* each tab starts at its own first ten */
+    renderHomeBooked();
+  });
   function renderHomeBooked(){
     const el = $('#homeBooked'); if(!el) return;
-    /* booked (sorted by next shoot) + anything delivered in the last 7 days, so a card doesn't vanish the moment it's marked delivered */
-    const cutoff = new Date(Date.now() - 7*864e5).toLocaleDateString('en-CA');
-    const booked = livePkgs().filter(x=>(x.status||'draft')==='booked')
-      .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
-    const recent = livePkgs().filter(x=>(x.status||'draft')==='delivered' && (x.deliveredAt||'') >= cutoff);
-    const show = [...booked, ...recent];
+    const g = homeGroups();
+    $('#homeTabs').innerHTML = HOME_TABS.map(([k,l])=>
+      `<button type="button" data-htab="${k}" class="${_homeTab===k?'on':''}">${l}<b>${g[k].length}</b></button>`).join('');
+    const show = g[_homeTab] || [];
     if(!show.length){
       el.innerHTML = _pkgsErr ? errBox(_pkgsErr, 'pkgs')
         : _pkgsLoaded
-        ? '<div class="empty2"><span class="ic">📸</span>No booked packages yet — open a quote and set its status to <b style="color:var(--ok)">booked</b>.</div>'
+        ? `<div class="empty2"><span class="ic">📸</span>${HOME_EMPTY[_homeTab]}</div>`
         : '<div class="skel"></div><div class="skel"></div>';
       return;
     }
