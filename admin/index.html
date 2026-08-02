@@ -1027,8 +1027,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     </div>
     <div class="sec" id="edSec" hidden>
       <h3>✂️ Editing desk <span id="edCount" style="font-size:.7rem;color:var(--mut)"></span></h3>
-      <p class="sub">Post-production, by due date. Assign an editor from an event above — pick them in the crew list and the sheet asks for a due date instead of a call time.</p>
+      <p class="sub">Post-production, by due date. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event including ones already shot — or pick an editor from an upcoming event above. Either way the sheet asks for a due date instead of a call time.</p>
       <div id="edList"></div>
+      <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
     </div>
     <div class="sec" id="lbSec" hidden>
       <h3>🏆 Crew leaderboard
@@ -1178,6 +1179,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <button class="pay-close" id="asClose" type="button" aria-label="Close">&times;</button>
   <h3 id="asTitle">Assign Crew</h3>
   <div class="who" id="asWho"></div>
+  <div class="fld" id="asBookWrap" hidden><label>Booking</label><select id="asBook"></select></div>
   <button class="copycrew" id="asCopy" type="button" hidden></button>
   <div class="fld"><label>Team member <em id="asPickHint">tap one, or several</em></label>
     <div class="crewpick" id="asPick"></div>
@@ -3480,8 +3482,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderEditDesk(){
     const sec = $('#edSec'), el = $('#edList'); if(!sec || !el) return;
     const jobs = ASGS.filter(a=>a.kind === 'edit');
-    sec.hidden = !jobs.length;
-    if(!jobs.length) return;
+    sec.hidden = false;               /* ＋ Assign editing lives here — never hide it away */
+    if(!jobs.length){
+      $('#edCount').textContent = '';
+      el.innerHTML = '<div class="empty" style="padding:.5rem 0">No editing assigned yet. Use <b style="color:var(--gold-b)">＋ Assign editing</b> below — it reaches shoots that have already happened.</div>';
+      return;
+    }
     const today = todayISO();
     const open = jobs.filter(a=>!a.workDone).sort((a,b)=>(a.dueDate||'9999') < (b.dueDate||'9999') ? -1 : 1);
     const done = jobs.filter(a=>a.workDone).sort((a,b)=>(a.dueDate||'') > (b.dueDate||'') ? -1 : 1);
@@ -3545,6 +3551,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const a = ASGS.find(v=>v.id===r.dataset.asedit); if(!a) return;
     openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
              eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
+  });
+
+  /* Editing is handed out AFTER the shoot, so it cannot come off the upcoming
+     list — that only reaches forward. This offers every booked event from the
+     last eight months onward, most recent first, which is where a wedding
+     waiting to be edited actually sits. */
+  function bookingRows(){
+    const cutoff = new Date(Date.now() - 240*864e5).toLocaleDateString('en-CA');
+    const rows = [];
+    livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft')).forEach(pk=>{
+      (pk.events||[]).forEach((ev, idx)=>{
+        if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') && ev.date >= cutoff) rows.push({ pk, ev, idx });
+      });
+    });
+    return rows.sort((a,b)=>a.ev.date < b.ev.date ? 1 : -1);
+  }
+  const ctxOfRow = r => ({ pkgId: r.pk.id, quoteNo: r.pk.quoteNo||'', clientName: r.pk.clientName||'',
+                           eventTitle: r.ev.title||'', date: r.ev.date||'', venue: r.ev.venue||'' });
+  function fillBookings(){
+    const today = todayISO();
+    $('#asBook').innerHTML = _bookRows.map((r,i)=>
+      `<option value="${i}">${esc(stepDate(r.ev.date))}${r.ev.date < today ? ' (shot)' : ''} · ${esc(r.pk.clientName||'—')} · ${esc(r.ev.title||'Event')}</option>`).join('');
+  }
+  $('#edAdd').addEventListener('click', ()=>{
+    _bookRows = bookingRows();
+    if(!_bookRows.length){ toast('No booked events yet — book a package first, then assign its editing'); return; }
+    fillBookings();
+    openAs(ctxOfRow(_bookRows[0]), null, { pickBooking: true, forceEdit: true });
+  });
+  $('#asBook').addEventListener('change', ()=>{
+    const r = _bookRows[Number($('#asBook').value)]; if(!r) return;
+    _asCtx = ctxOfRow(r);
+    $('#asWho').textContent = `${_asCtx.eventTitle||'Event'} · ${_asCtx.clientName||'—'} · ${stepDate(_asCtx.date)||_asCtx.date}`;
+    $('#asDue').value = '';            /* re-derived from the new event */
+    renderAsPick(); syncAsUI(); refreshAsConflict();
   });
 
   /* the league table — the one view that says who is actually carrying the season */
@@ -3947,7 +3988,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(sel && !list.some(m=>m.id===sel)){ const g = memberById(sel); if(g) list.unshift(g); }
     const busyOf = m => _asCtx ? asgConflicts(m.id, _asCtx.date, _asEditId) : [];
     /* wanted for this event and free → first; busy → last */
-    const rank = m => (busyOf(m).length ? 2 : 0) - (need[String(m.role||'').toLowerCase()] ? 1 : 0);
+    const rank = m => _asForceEdit
+      ? (roleIsEdit(m.role) ? 0 : 1)                                  /* editors first */
+      : (busyOf(m).length ? 2 : 0) - (need[String(m.role||'').toLowerCase()] ? 1 : 0);
     list.sort((a,b)=>rank(a) - rank(b));
     el.innerHTML = list.map(m=>{
       const busy = busyOf(m);
@@ -4004,14 +4047,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     refreshAsConflict();
     toast(`${ids.length} member${ids.length===1?'':'s'} picked — check the details, then Save`);
   });
-  function openAs(ctx, a){
+  let _asForceEdit = false, _bookRows = [];
+  function openAs(ctx, a, opts){
     _asEditId = a ? a.id : null;
     _asCtx = ctx;
-    $('#asTitle').textContent = a ? 'Edit Assignment' : 'Assign Crew';
+    _asForceEdit = !!(opts && opts.forceEdit);
+    $('#asBookWrap').hidden = !(opts && opts.pickBooking);
+    $('#asTitle').textContent = a ? 'Edit Assignment' : (_asForceEdit ? 'Assign Editing' : 'Assign Crew');
     $('#asWho').textContent = `${ctx.eventTitle||'Event'} · ${ctx.clientName||'—'} · ${stepDate(ctx.date)||ctx.date}${ctx.venue ? ' · ' + ctx.venue : ''}`;
     _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
     renderAsPick();
-    $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role : TEAM_ROLES[0];
+    $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role
+      : (_asForceEdit && TEAM_ROLES.includes('editor')) ? 'editor' : TEAM_ROLES[0];
     $('#asCall').value = a ? (a.callTime||'') : '';
     $('#asDue').value = a ? (a.dueDate||'') : '';
     $('#asDeliver').value = a ? (a.deliver||'') : '';
