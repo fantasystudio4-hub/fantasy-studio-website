@@ -270,6 +270,13 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 #qeSvc > label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
 .qe-tot{text-align:right;font-family:var(--serif);font-weight:700;color:var(--gold-b);margin:.45rem 0 .1rem;min-height:1em}
 .qe-warn{color:var(--gold-b);font-size:.78rem;background:rgba(184,144,43,.1);border:1px dashed var(--line);border-radius:8px;padding:.6rem .7rem;margin-bottom:.8rem}
+/* time of day, wherever an event is listed */
+.slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
+.slotpill.morning{color:#e3c67a;background:rgba(227,198,122,.14)}
+.slotpill.evening{color:#a9a6e0;background:rgba(169,166,224,.16)}
+.slotpill.full{color:#9adbb2;background:rgba(154,219,178,.14)}
+.slotpills{margin-bottom:0}
+.slotpills button{font-size:.8rem;padding:.5em .4em}
 
 /* balance-due pill on upcoming shoots */
 .up-ev .due,.uh-row .due{color:var(--gold-b);border:1px solid rgba(184,144,43,.55);background:rgba(184,144,43,.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500;border-radius:20px}
@@ -993,6 +1000,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="fld"><label>Date</label><input id="qeDate" type="date" /></div>
       <div class="fld"><label>Event</label><input id="qeTitle" placeholder="e.g. NIKAH" /></div>
       <div class="evchips" id="qeChips"></div>
+      <div class="fld"><label>Time of day</label>
+        <div class="mode-pills slotpills" id="qeSlot" data-slot></div>
+      </div>
       <div class="fld"><label>Venue (optional)</label><input id="qeVenue" placeholder="e.g. Taj Banquet Hall" /></div>
       <!-- same rows, chips and rate card as the quotation builder. A B2B event
            prices at the partner studio's negotiated card, a client event at
@@ -2349,6 +2359,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const dmy = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'')
     ? d.slice(8,10) + '-' + d.slice(5,7) + '-' + d.slice(0,4) : (d||'');
 
+  /* Time of day on an event. Two functions on one date are the whole reason to
+     ask: a morning Nikah and an evening Reception read as one blur on a
+     calendar row, and the crew turn up at the wrong end of the day. Optional —
+     blank stays blank, so nothing saved before this existed gets a time it
+     never had. */
+  const SLOTS = [['morning','🌅 Morning'], ['evening','🌆 Evening'], ['full','☀️ Full day']];
+  const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
+  const slotName = s => SLOT_LABEL[String(s||'')] || '';
+  const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slotName(s))}</span>` : '';
+  /* for plain-text places — WhatsApp, confirm dialogs, the PDF */
+  const slotSuffix = s => slotName(s) ? ' (' + slotName(s) + ')' : '';
+
   /* ---------- delivery tracker (booked → delivered) ---------- */
   const dSteps = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULTS.deliverySteps);
   const stepDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
@@ -2401,7 +2423,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function waQuoteText(x){
     const tt = x.totals||{};
-    const evs = (x.events||[]).map(ev=>`• ${ev.title||'Event'}${ev.date?' — '+stepDate(ev.date):''}`).join('\n');
+    const evs = (x.events||[]).map(ev=>`• ${ev.title||'Event'}${ev.date?' — '+stepDate(ev.date):''}${slotSuffix(ev.slot)}`).join('\n');
     return `*Fantasy Studio* — Quotation ${x.quoteNo||''}\n\n${evs}\n\nPackage total: ${inr(tt.finalPrice||0)}\n50% advance confirms your dates · 40% on event day · 10% at delivery.\n\n${pdfContact().phone||''} · ${pdfContact().website||''}`;
   }
   function waReceiptText(x, pm, balance){
@@ -2679,7 +2701,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <i class="dot ${e.status}"></i>
         <div class="uh-mid">
           <b>${esc(e.title)}</b>
-          <span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue ? ' · 📍 ' + esc(e.venue) : ''}</span>
+          <span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue ? ' · 📍 ' + esc(e.venue) : ''}</span>${slotTag(e.slot)}
         </div>
         ${due > 0 ? `<span class="due">${inr(due)} due</span>` : ''}
         <span class="chev2">›</span>
@@ -3097,7 +3119,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     livePkgs().forEach(pk=>{
       (pk.events||[]).forEach(ev=>{
         if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
-          evs.push({ date: ev.date, title: ev.title||'Event', client: pk.clientName||'', quoteNo: pk.quoteNo||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
+          evs.push({ date: ev.date, title: ev.title||'Event', slot: ev.slot||'', client: pk.clientName||'', quoteNo: pk.quoteNo||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
       });
     });
     liveLeads().forEach(l=>{
@@ -3166,7 +3188,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
         <i class="dot ${e.status}"></i>
-        <div class="cal-ev-t"><b>${esc(e.title)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="act" data-openev>Open</button>
       </div>`;
     }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
@@ -3306,6 +3328,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qeTitle').value = ''; $('#qeVenue').value = '';
     $('#qeDate').value = (_qeAnchor === 'home' ? calSel : (calSel || todayISO()));
     $('#qeChips').innerHTML = EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-qename="${esc(n)}">${esc(n)}</button>`).join('');
+    $('#qeSlot').innerHTML = SLOTS.map(([v,l])=>`<button type="button" data-sv="${v}">${l}</button>`).join('');
     renderQeFields();
     qeResetSvc();   /* never carry the last event's services into the next one */
     node.hidden = false;
@@ -3360,6 +3383,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     qeCompute();
   });
   $('#calAdd').addEventListener('click', e=>{
+    /* time of day: tap to set, tap the lit one again to clear it */
+    const sl = e.target.closest('#qeSlot [data-sv]');
+    if(sl){
+      const on = sl.classList.contains('on');
+      $$('#qeSlot button').forEach(b=>b.classList.remove('on'));
+      if(!on) sl.classList.add('on');
+      return;
+    }
     if(e.target.closest('[data-qm]') || e.target.closest('[data-qp]')){
       const q = e.target.closest('.itemrow').querySelector('[data-f="qty"]');
       q.value = Math.max(1, (Number(q.value)||1) + (e.target.closest('[data-qp]') ? 1 : -1));
@@ -3401,7 +3432,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const title = $('#qeTitle').value.trim();
     if(!title){ toast('Give the event a name'); $('#qeTitle').focus(); return; }
     const items = qeItems();
-    const ev = { title, date, venue: $('#qeVenue').value.trim(), items };
+    const slot = ($('#qeSlot [data-sv].on') || {dataset:{}}).dataset.sv || '';
+    const ev = { title, date, slot, venue: $('#qeVenue').value.trim(), items };
 
     /* work out what we are writing, and refuse early rather than half-way */
     let pk = null, stu = null, name = '', rawPhone = '', phone = '';
@@ -3656,7 +3688,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const qnoOf = x => (x && x.quoteNo) ? String(x.quoteNo) : '';
   const pkgLabel = x => [qnoOf(x), (x && x.clientName) || '—'].filter(Boolean).join(' · ');
   const qnoTag = q => q ? `<span class="qtag">${esc(q)}</span>` : '';
-  const asWhoText = c => [c.quoteNo, c.eventTitle || 'Event', c.clientName || '—',
+  const asWhoText = c => [c.quoteNo, (c.eventTitle || 'Event') + slotSuffix(c.slot), c.clientName || '—',
                           stepDate(c.date) || c.date].filter(Boolean).join(' · ');
 
   /* booked-package events from today onward, soonest first */
@@ -3763,7 +3795,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="tm-ev-h">
           <span class="when">${stepDate(ev.date)}</span>
           <span class="away ${days<=2?'soon':''}">${away}</span>
-          <b>${esc(ev.title||'Event')}</b>
+          <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}</b>
           <span class="cl">· ${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
           <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
         </div>
@@ -3926,7 +3958,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const r = e.target.closest('[data-asedit]'); if(!r) return;
     const a = ASGS.find(v=>v.id===r.dataset.asedit); if(!a) return;
     openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
-             eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
+             eventTitle: a.eventTitle||'', slot: a.slot||'', date: a.date||'', venue: a.venue||'' }, a);
   });
 
   /* Editing is handed out AFTER the shoot, so it cannot come off the upcoming
@@ -3957,7 +3989,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const whole = $('#asWhole').checked;
     const ev = whole ? r.evs[r.evs.length-1] : (r.evs[Number($('#asBookEv').value)] || r.evs[r.evs.length-1]);
     return { pkgId: r.pk.id, quoteNo: r.pk.quoteNo||'', clientName: r.pk.clientName||'',
-             eventTitle: ev.title||'', date: ev.date||'', venue: ev.venue||'' };
+             eventTitle: ev.title||'', slot: ev.slot||'', date: ev.date||'', venue: ev.venue||'' };
   }
   function fillBookings(){
     const today = todayISO();
@@ -4210,7 +4242,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           : '';
         return `
         <div class="pm-row">
-          <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')} <span>· ${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'')}</span></span>
+          <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)} <span>· ${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'')}</span></span>
           <span class="amt2">${inr((p.amount)||0)}</span>
           ${p.paid
             ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to mark unpaid">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
@@ -4556,6 +4588,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         eventTitle: (ed && $('#asWhole').checked) ? 'All functions' : (_asCtx.eventTitle||''),
         date: (ed && $('#asWhole').checked) ? (lastEventDate(_asCtx.pkgId) || _asCtx.date || '') : (_asCtx.date||''),
         venue: ed ? '' : (_asCtx.venue||''),
+        /* a whole-booking editing job spans every function, so it carries no
+           single time of day */
+        slot: (ed && $('#asWhole').checked) ? '' : (_asCtx.slot||''),
         callTime: ed ? '' : ($('#asCall').value||''), role: r,
         /* empty strings rather than absent keys: a member switched off editing
            must lose the deadline, not keep a stale one */
@@ -4639,7 +4674,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const pk = PKGS.find(p=>p.id===btn.dataset.aspk); if(!pk) return null;
       const ev = (pk.events||[])[Number(btn.dataset.asev)]; if(!ev) return null;
       return { pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
-               eventTitle: ev.title||'', date: ev.date||'', venue: ev.venue||'' };
+               eventTitle: ev.title||'', slot: ev.slot||'', date: ev.date||'', venue: ev.venue||'' };
     };
     if(add){ const ctx = evCtx(add); if(ctx) openAs(ctx, null); return; }
     if(sync){
@@ -4665,16 +4700,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         return;
       }
       const ctx = { pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
-                    eventTitle: target.title||'', date: target.date||'', venue: target.venue||'' };
+                    eventTitle: target.title||'', slot: target.slot||'', date: target.date||'', venue: target.venue||'' };
       (async ()=>{
         try{
-          const patch = { eventTitle: ctx.eventTitle, date: ctx.date, venue: ctx.venue,
+          const patch = { eventTitle: ctx.eventTitle, slot: ctx.slot||'', date: ctx.date, venue: ctx.venue,
                           status: 'assigned', ackAt: deleteField(), updatedAt: serverTimestamp() };
           const res = await settle(updateDoc(doc(db,'assignments',a.id), patch));
           const sm = settleMsg(res, 'Assignment synced to the new event details — the member will confirm again');
           toast(sm.msg);
           if(!sm.ok) return;
-          Object.assign(a, { eventTitle: ctx.eventTitle, date: ctx.date, venue: ctx.venue, status: 'assigned' });
+          Object.assign(a, { eventTitle: ctx.eventTitle, slot: ctx.slot||'', date: ctx.date, venue: ctx.venue, status: 'assigned' });
           delete a.ackAt;
           renderTeam();
         }catch(err){ toast('Sync failed'); }
@@ -4684,7 +4719,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(edit){
       const a = ASGS.find(v=>v.id===edit.dataset.asedit); if(!a) return;
       openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
-               eventTitle: a.eventTitle||'', date: a.date||'', venue: a.venue||'' }, a);
+               eventTitle: a.eventTitle||'', slot: a.slot||'', date: a.date||'', venue: a.venue||'' }, a);
     }
   });
 
@@ -5688,7 +5723,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const cur = e2.date === ev.date;
       const svcs = (e2.items||[]).map(it=>`${esc(it.service)}${Number(it.qty)>1?' ×'+Number(it.qty):''}`).join(', ');
       return `<div class="ev-e ${cur?'cur':''}">
-        <b>${esc(e2.title||'Event')}${cur ? ' · this shoot' : ''}</b>
+        <b>${esc(e2.title||'Event')}${slotTag(e2.slot)}${cur ? ' · this shoot' : ''}</b>
         <span>${e2.date ? esc(stepDate(e2.date)) : 'date TBD'}${e2.venue ? ' · 📍 '+esc(e2.venue) : ''}</span>
         ${svcs ? `<em>${svcs}</em>` : ''}
       </div>`;
@@ -5989,6 +6024,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>Date</label><input data-f="date" type="date" value="${esc(ev.date||'')}" /></div>
       </div>
       <div class="evchips" data-evchips ${ev.title?'hidden':''}>${EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-evname="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <div class="fld"><label>Time of day</label>
+        <div class="mode-pills slotpills" data-slot>
+          ${SLOTS.map(([v,l])=>`<button type="button" data-sv="${v}" class="${(ev.slot||'')===v?'on':''}">${l}</button>`).join('')}
+        </div>
+      </div>
       <div class="dwarn" data-dwarn hidden></div>
       <div class="fld"><label>Venue (optional)</label><input data-f="venue" value="${esc(ev.venue||'')}" /></div>
       <button type="button" class="copyprev" data-copyprev>⧉ Same services as previous event</button>
@@ -6108,6 +6148,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const events = $$('#pkgEvents .pkg-ev').map(card=>({
       title: card.querySelector('[data-f="title"]').value.trim(),
       date:  card.querySelector('[data-f="date"]').value,
+      slot:  (card.querySelector('[data-slot] button.on') || {dataset:{}}).dataset.sv || '',
       venue: card.querySelector('[data-f="venue"]').value.trim(),
       items: [...card.querySelectorAll('.itemrow')].map(r=>{
         const sel = r.querySelector('[data-f="service"]').value;
@@ -6225,6 +6266,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       e.target.closest('.itemrow').remove();
       if(card) refreshSvcChips(card);
       computePkg(); return;
+    }
+    /* time of day: tap to set, tap the lit one again to clear it */
+    const sl = e.target.closest('[data-sv]');
+    if(sl && sl.closest('[data-slot]')){
+      const on = sl.classList.contains('on');
+      sl.closest('[data-slot]').querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+      if(!on) sl.classList.add('on');
+      computePkg(); return;   /* keeps the dirty check honest */
     }
     if(e.target.closest('[data-additem]')){ e.target.closest('.pkg-ev').querySelector('.items').insertAdjacentHTML('beforeend', itemRowHTML({})); return; }
     if(e.target.closest('[data-rmev]')){ e.target.closest('.pkg-ev').remove(); computePkg(); return; }

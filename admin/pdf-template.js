@@ -252,7 +252,12 @@ export async function buildQuotePdf(pkg, contact, terms){
     doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
     /* numbered on a multi-day booking, so the couple can see it is day 2 of 3 */
     doc.text((multiEvent ? (evIdx + 1) + '.  ' : '') + String(ev.title || 'EVENT').toUpperCase(), ML, y + 15);
-    const right = [fmtDateHuman(ev.date), ev.venue].filter(Boolean).join('  •  ');
+    /* the time of day sits with the date on the event bar, so a morning Nikah
+       and an evening Reception on the same date can never be read as one */
+    const SLOT_LABEL = { morning: 'Morning', evening: 'Evening', full: 'Full day' };
+    const slot = SLOT_LABEL[String(ev.slot || '')] || '';
+    const right = [[fmtDateHuman(ev.date), slot].filter(Boolean).join(' · '), ev.venue]
+      .filter(Boolean).join('  •  ');
     if (right) {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
       doc.text(right, MR, y + 14, { align: 'right' });

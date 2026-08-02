@@ -146,7 +146,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ev.past b::after{content:" ✓";color:var(--ok);font-size:.8em}
 .ev.past{opacity:.72}
 .ev.next{border-left:2px solid var(--gold);padding-left:.65rem;margin-left:-.05rem}
-.ev .evtag{display:inline-block;font-size:.54rem;letter-spacing:.12em;text-transform:uppercase;color:#14110a;background:var(--gold-b);border-radius:12px;padding:.15em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
+.ev .slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
+.slotpill.morning{color:#e3c67a;background:rgba(227,198,122,.14)}
+.slotpill.evening{color:#a9a6e0;background:rgba(169,166,224,.16)}
+.slotpill.full{color:#9adbb2;background:rgba(154,219,178,.14)}
+.evtag{display:inline-block;font-size:.54rem;letter-spacing:.12em;text-transform:uppercase;color:#14110a;background:var(--gold-b);border-radius:12px;padding:.15em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
 /* a second booking opens collapsed — the money line stays visible */
 .pkg.collapsed .sec{display:none}
 .pkg.can-toggle .pkg-h{cursor:pointer}
@@ -379,6 +383,11 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+/* time of day on an event, denormalised onto the assignment by the panel */
+const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
+const slotName = s => SLOT_LABEL[String(s||'')] || '';
+const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slotName(s))}</span>` : '';
+
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
@@ -912,7 +921,7 @@ function pkgHTML(x, canToggle, collapsed){
     const isNext = dated && ev.date === _nextDate;
     return `
     <div class="ev ${past?'past':''} ${isNext?'next':''}">
-      <b>${esc(ev.title||'Event')}${isNext ? `<span class="evtag">${ev.date === _today ? 'today' : 'next up'}</span>` : ''}</b>
+      <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}${isNext ? `<span class="evtag">${ev.date === _today ? 'today' : 'next up'}</span>` : ''}</b>
       <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
       ${(ev.items||[]).length ? `<ul>${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}</ul>` : ''}
     </div>`;

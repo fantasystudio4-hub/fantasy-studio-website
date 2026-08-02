@@ -77,7 +77,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .asg-h{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
 .asg-h .when{font-family:var(--serif);color:var(--gold-b);font-size:1rem;white-space:nowrap}
 .asg-h b{font-family:var(--serif);color:#fff;font-size:1.05rem}
-.asg-h .chip{margin-left:auto;border-radius:20px;padding:.22em .8em;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.asg-h .slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
+.slotpill.morning{color:#e3c67a;background:rgba(227,198,122,.14)}
+.slotpill.evening{color:#a9a6e0;background:rgba(169,166,224,.16)}
+.slotpill.full{color:#9adbb2;background:rgba(154,219,178,.14)}
+.chip{margin-left:auto;border-radius:20px;padding:.22em .8em;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;white-space:nowrap}
 .chip.seen{color:var(--ok);background:rgba(76,175,125,.13)}
 .chip.wait{color:#ffb054;background:rgba(255,176,84,.13)}
 .chip.late{color:var(--err);background:rgba(224,122,106,.14)}
@@ -424,6 +428,11 @@ window.addEventListener('beforeinstallprompt', e=>{
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+/* time of day on an event, denormalised onto the assignment by the panel */
+const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
+const slotName = s => SLOT_LABEL[String(s||'')] || '';
+const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slotName(s))}</span>` : '';
+
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
@@ -748,13 +757,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     <div class="asg ${past?'past':''}">
       <div class="asg-h">
         <span class="when">${esc(fmtShort(a.date))}</span>
-        <b>${esc(a.eventTitle||'Event')}</b>
+        <b>${esc(a.eventTitle||'Event')}${slotTag(a.slot)}</b>
         ${past
           ? (seen ? '<span class="chip seen">✓ confirmed</span>' : '')
           : `<span class="chip ${seen?'seen':'wait'}">${seen ? '✓ confirmed' : 'please confirm'}</span>`}
       </div>
       <div class="lines">
-        <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}</span></div>
+        <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}${slotName(a.slot) ? ' · ' + esc(slotName(a.slot)) : ''}</span></div>
         ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
         ${a.callTime ? `<div class="ln"><span>Call time</span><span>${esc(fmtTime(a.callTime))}</span></div>` : ''}
@@ -880,7 +889,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _cdAsg = a;
     $('#cdCard').hidden = !a;
     if(!a) return;
-    $('#cdTitle').textContent = a.eventTitle || 'Event';
+    $('#cdTitle').textContent = (a.eventTitle || 'Event') + (slotName(a.slot) ? ' · ' + slotName(a.slot) : '');
     $('#cdMeta').innerHTML = [
       esc(fmtDate(a.date)),
       a.callTime ? '⏰ ' + esc(fmtTime(a.callTime)) : '',
@@ -1080,7 +1089,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#payRows').innerHTML = withPay.map(a=>{
         const p = a.pay||{};
         return `<div class="payrow">
-          <span class="ev2">${esc(fmtShort(a.date))} · ${esc(a.eventTitle||'Event')}${a.clientName ? ` <span>· ${esc(a.clientName)}</span>` : ''}</span>
+          <span class="ev2">${esc(fmtShort(a.date))} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)}${a.clientName ? ` <span>· ${esc(a.clientName)}</span>` : ''}</span>
           <span class="amt">${inr(p.amount)}</span>
           <span class="paypill ${p.paid?'yes':'no'}">${p.paid ? 'paid' + (p.paidDate ? ' ' + fmtShort(p.paidDate) : '') : 'due'}</span>
         </div>`;
