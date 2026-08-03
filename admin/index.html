@@ -266,6 +266,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .qe-note{font-size:.74rem;color:var(--mut);margin-top:.8rem}
 /* the service picker on the quick sheet. NOT a .fld: that would drag the
    full-width .fld input styling onto the qty / rate boxes inside .itemrow */
+#qeQueue:not(:empty){margin:0 0 .8rem;border:1px dashed var(--line);border-radius:10px;padding:.1rem .7rem}
+#qeQueue .qeq-h{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);padding:.5rem 0 .1rem}
+#qeMore{margin-bottom:.9rem}
 #qeSvc{margin-bottom:.8rem;text-align:left}
 #qeSvc > label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
 .qe-tot{text-align:right;font-family:var(--serif);font-weight:700;color:var(--gold-b);margin:.45rem 0 .1rem;min-height:1em}
@@ -1020,6 +1023,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <button type="button" data-qem="existing">📋 Existing</button>
       </div>
       <div id="qeFields"></div>
+      <!-- dates banked so far. One job, several functions — the same shape the
+           quotation builder gives a client booking. -->
+      <div id="qeQueue"></div>
       <div class="fld"><label>Date</label><input id="qeDate" type="date" /></div>
       <div class="fld"><label>Event</label><input id="qeTitle" placeholder="e.g. NIKAH" /></div>
       <div class="evchips" id="qeChips"></div>
@@ -1037,6 +1043,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <button class="addrow" type="button" id="qeAddItem">＋ Add custom service</button>
         <div class="qe-tot" id="qeTot"></div>
       </div>
+      <button class="addrow" type="button" id="qeMore">＋ Add another date to this job</button>
       <div class="fld" id="qeStWrap"><label>Save as</label>
         <div class="mode-pills" id="qeStatus">
           <button type="button" data-qest="draft">Draft</button>
@@ -3383,12 +3390,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qeSlot').innerHTML = SLOTS.map(([v,l])=>`<button type="button" data-sv="${v}">${l}</button>`).join('');
     renderQeFields();
     qeResetSvc();   /* never carry the last event's services into the next one */
+    _qeQueue = []; renderQeQueue();
     node.hidden = false;
     syncFabs();   /* the floating buttons would sit on top of the Save row */
     setTimeout(()=>{ if(!node.hidden) node.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
   }
   function closeCalAdd(){
     const b = $('#calAdd'); if(b) b.hidden = true;
+    /* a saved or abandoned job must not leave its dates behind for the next one */
+    _qeQueue = []; renderQeQueue();
     if(typeof syncFabs === 'function') syncFabs();
   }
   $('#qeMode').addEventListener('click', e=>{
@@ -3477,15 +3487,70 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       qeRefreshSvc(); qeCompute();
     }
   });
+  /* ---- several dates, one job ----
+     A wedding is rarely one function, and this sheet could only ever save the
+     first: the owner had to save, reopen and use 📋 Existing for day 2 and day
+     3. Dates are banked here instead and written as one package's events, the
+     same shape the quotation builder gives a client booking. */
+  let _qeQueue = [];
+  /* the date box auto-fills from the tapped calendar day, so a filled date on
+     its own does not mean the owner has started another event — the title,
+     venue, time or services do */
+  const qeFormStarted = () => !!($('#qeTitle').value.trim() || $('#qeVenue').value.trim()
+    || $('#qeSlot [data-sv].on') || qeItems().length);
+  function qeReadEvent(){
+    const date = $('#qeDate').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this event'); $('#qeDate').focus(); return null; }
+    const title = $('#qeTitle').value.trim();
+    if(!title){ toast('Give the event a name'); $('#qeTitle').focus(); return null; }
+    return { title, date, slot: ($('#qeSlot [data-sv].on') || {dataset:{}}).dataset.sv || '',
+             venue: $('#qeVenue').value.trim(), items: qeItems() };
+  }
+  function qeClearEvent(){
+    $('#qeTitle').value = ''; $('#qeVenue').value = '';
+    $$('#qeSlot button').forEach(b=>b.classList.remove('on'));
+    qeResetSvc();
+  }
+  function renderQeQueue(){
+    const el = $('#qeQueue'); if(!el) return;
+    el.innerHTML = _qeQueue.length
+      ? `<div class="qeq-h">${_qeQueue.length} date${_qeQueue.length>1?'s':''} on this job</div>`
+        + _qeQueue.map((ev,i)=>`
+        <div class="up-ev exprow">
+          <span class="when">${esc(dmy(ev.date))}</span>
+          <span class="what">${esc(ev.title)}${slotTag(ev.slot)}${ev.venue ? `<span> · ${esc(ev.venue)}</span>` : ''}</span>
+          <b>${itemsGross(ev.items) ? esc(inrShort(itemsGross(ev.items))) : ''}</b>
+          <button class="lead-x" data-qerm="${i}" title="Remove this date">✕</button>
+        </div>`).join('')
+      : '';
+    /* "all" rather than a count: the form may or may not hold one more, and a
+       number that goes stale as you type is worse than no number */
+    $('#qeSave').textContent = _qeQueue.length ? 'Save all dates' : 'Save event';
+  }
+  $('#qeQueue').addEventListener('click', e=>{
+    const b = e.target.closest('[data-qerm]'); if(!b) return;
+    _qeQueue.splice(Number(b.dataset.qerm), 1);
+    renderQeQueue();
+  });
+  $('#qeMore').addEventListener('click', ()=>{
+    const ev = qeReadEvent(); if(!ev) return;
+    _qeQueue.push(ev);
+    qeClearEvent();
+    renderQeQueue();
+    toast(`${ev.title} added — now enter the next date`);
+    $('#qeDate').focus();
+  });
   $('#qeCancel').addEventListener('click', closeCalAdd);
   $('#qeSave').addEventListener('click', async ()=>{
-    const date = $('#qeDate').value;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this event'); $('#qeDate').focus(); return; }
-    const title = $('#qeTitle').value.trim();
-    if(!title){ toast('Give the event a name'); $('#qeTitle').focus(); return; }
-    const items = qeItems();
-    const slot = ($('#qeSlot [data-sv].on') || {dataset:{}}).dataset.sv || '';
-    const ev = { title, date, slot, venue: $('#qeVenue').value.trim(), items };
+    /* the banked dates, plus whatever is still on the form. With nothing
+       banked this is exactly the old single-event path. */
+    const evs = [..._qeQueue];
+    if(qeFormStarted() || !evs.length){
+      const ev = qeReadEvent(); if(!ev) return;
+      evs.push(ev);
+    }
+    if(!evs.length){ toast('Add at least one date'); $('#qeDate').focus(); return; }
+    const items = evs.flatMap(e=>e.items||[]);
 
     /* work out what we are writing, and refuse early rather than half-way */
     let pk = null, stu = null, name = '', rawPhone = '', phone = '';
@@ -3518,9 +3583,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const status = _qeMode === 'existing' ? (pk.status||'draft') : _qeStatus;
     if(status === 'booked'){
-      const busy = dateConflicts(date, pk ? pk.id : null, name);
-      if(busy.length >= DATE_EVENT_CAP
-         && !confirm(`⚠ Heavy day: ${stepDate(date)} already has ${busy.length} events booked (${busy[0].title} — ${busy[0].client}${busy.length>1 ? ', +' + (busy.length-1) + ' more' : ''}). Add anyway?`)) return;
+      /* every date being saved, not just the last one typed */
+      const busy = evs.map(e=>({ d: e.date, c: dateConflicts(e.date, pk ? pk.id : null, name) }))
+                      .filter(r=>r.c.length >= DATE_EVENT_CAP);
+      if(busy.length){
+        const f = busy[0];
+        if(!confirm(`⚠ Heavy day: ${stepDate(f.d)} already has ${f.c.length} events booked (${f.c[0].title} — ${f.c[0].client}${f.c.length>1 ? ', +' + (f.c.length-1) + ' more' : ''})${busy.length>1 ? `, and ${busy.length-1} more of these dates ${busy.length===2?'is':'are'} full too` : ''}. Add anyway?`)) return;
+      }
     }
 
     const btn = $('#qeSave'); if(btn.disabled) return;
@@ -3528,7 +3597,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       let res, okMsg;
       if(_qeMode === 'existing'){
-        const events = [...(pk.events||[]), ev];
+        const events = [...(pk.events||[]), ...evs];
         const patch = { events, updatedAt: serverTimestamp() };
         /* A priced event has to move the money with it, or the booking keeps
            its old total: the balance would be wrong, the payment sheet would
@@ -3546,7 +3615,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }
         res = await settle(updateDoc(doc(db,'packages',pk.id), patch));
         if(res !== 'denied'){ pk.events = events; if(patch.totals) pk.totals = patch.totals; }
-        okMsg = `Added to ${pk.quoteNo ? pk.quoteNo + ' · ' : ''}${pk.clientName||''}`
+        okMsg = `${evs.length > 1 ? evs.length + ' dates added to' : 'Added to'} ${pk.quoteNo ? pk.quoteNo + ' · ' : ''}${pk.clientName||''}`
               + (items.length ? ` — ${inr(patch.totals.finalPrice)} total` : '');
       }else{
         const b2b = _qeMode === 'studio';
@@ -3556,7 +3625,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           clientPhone: b2b ? '' : phone,
           clientPhoneFull: b2b || !phone ? '' : normPhoneFull(rawPhone),
           quoteDate: todayISO(),
-          events: [ev],
+          events: evs,
           album: { sheets:0, perSheet:0, price:0 },
           addons: [],
           pdfTerms: b2b ? [] : pdfTerms(),
@@ -3575,6 +3644,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            stranger burn a real OTP and then land on "No bookings found" */
         if(res !== 'denied' && !b2b && phone.length === 10 && status !== 'draft') ensurePhoneIndex(phone);
         okMsg = `${quoteNo} saved — ${STATUS_LABEL(status)}`
+              + (evs.length > 1 ? ` · ${evs.length} dates` : '')
               + (items.length ? ` · ${inr(itemsGross(items))}` : '');
       }
       if(res === 'denied'){ toast('NOT saved — the server refused the write. Nothing was added.'); return; }
