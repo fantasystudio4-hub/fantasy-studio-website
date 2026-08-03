@@ -3,5 +3,6 @@ Allow: /
 Disallow: /admin/
 Disallow: /client/
 Disallow: /team/
+Disallow: /studio/
 
 Sitemap: https://www.fantasystudio.in/sitemap.xml

@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Fantasy Studio — Partner</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="FS Partner" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta name="theme-color" content="#B8902B" />
+<style>
+/* ==== polish pass: one visual system across admin / crew / client / partner ==== */
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
+  --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;font-size:15px;line-height:1.55}
+.wrap{max-width:640px;margin:0 auto;padding:0 clamp(14px,4vw,22px) calc(40px + env(safe-area-inset-bottom))}
+a{color:var(--gold-b)}
+button,input,textarea{font-family:var(--sans);font-size:16px}
+:focus-visible{outline:2px solid var(--gold-b);outline-offset:2px;border-radius:4px}
+
+header{position:sticky;top:0;z-index:20;background:rgba(20,17,10,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding-top:env(safe-area-inset-top)}
+header::after{content:"";display:block;height:1px;background:linear-gradient(90deg,transparent,var(--gold-b),transparent);opacity:.5}
+.hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.65rem;padding:.65rem clamp(14px,4vw,22px)}
+.hd svg{width:34px;height:34px;flex:none}
+.hd b{font-family:var(--serif);font-size:1.02rem;display:block;line-height:1.2}
+.hd span.tag{font-size:.68rem;color:var(--mut);letter-spacing:.14em;text-transform:uppercase}
+.hd > div{flex:1;min-width:0}
+.net{font-size:.66rem;color:#e5b57f;border:1px solid rgba(229,181,127,.4);border-radius:20px;padding:.12rem .5rem;flex:none}
+.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.34rem .7rem;font-size:.78rem;cursor:pointer;flex:none;min-height:36px}
+.out:active{color:var(--gold-b)}
+
+.login{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.35rem 1.2rem;margin-top:1.6rem}
+.login h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:.3rem}
+.login .sub{color:var(--mut);font-size:.85rem;margin-bottom:1.1rem}
+.fld{margin-bottom:.95rem}
+.fld label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:.35rem}
+.phwrap{display:flex;align-items:center;gap:.4rem;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.15rem .6rem}
+.phwrap b{color:var(--mut);font-weight:500}
+.ccin{width:3ch;background:none;border:0;color:var(--text);padding:.6rem 0}
+.phwrap input:last-child{flex:1;background:none;border:0;color:var(--text);padding:.6rem 0;min-width:0}
+.phwrap input:focus{outline:none}
+.cchint{font-size:.72rem;color:var(--mut);margin-top:.3rem}
+.otp{display:flex;gap:.45rem;justify-content:space-between}
+.otp input{flex:1 1 0;min-width:0;max-width:52px;text-align:center;background:var(--ink);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.7rem 0;font-size:1.1rem}
+.gbtn{display:block;width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#191307;font-weight:600;border-radius:10px;padding:.85rem;cursor:pointer;margin-top:.4rem;position:relative;min-height:48px}
+.gbtn:disabled{opacity:.65;cursor:default}
+.gbtn.busy{color:transparent}
+.gbtn.busy::before{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border:2px solid #191307;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mini{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.42rem .8rem;font-size:.8rem;cursor:pointer;min-height:38px}
+.mini:active{color:var(--gold-b)}
+.err{background:rgba(224,122,106,.12);border:1px solid rgba(224,122,106,.4);color:#f0b3a8;border-radius:10px;padding:.6rem .8rem;font-size:.85rem;margin-top:.8rem}
+.note{color:var(--mut);font-size:.78rem;margin-top:.9rem}
+.crewlink{display:block;margin-top:1.1rem;padding-top:1rem;border-top:1px dashed var(--line);color:var(--mut);font-size:.8rem;text-decoration:none;min-height:44px}
+.crewlink b{color:var(--gold-b);font-weight:500}
+.crewlink:active b{text-decoration:underline}
+@media(hover:hover){ .crewlink:hover b{text-decoration:underline} }
+.rowbtns{display:flex;gap:.6rem;margin-top:.7rem}
+.rowbtns .mini{flex:1;text-align:center;text-decoration:none;color:var(--mut);display:flex;align-items:center;justify-content:center;gap:.35rem}
+
+.skel{height:74px;border-radius:14px;background:var(--panel);border:1px solid var(--line);margin-top:1.1rem;position:relative;overflow:hidden}
+.skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.07),transparent);animation:sh 1.4s infinite}
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.empty{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.4rem 1.2rem;margin-top:1.6rem;color:var(--mut);font-size:.9rem}
+.empty h2{font-family:var(--serif);color:var(--text);font-size:1.15rem;margin-bottom:.4rem}
+
+.hello{margin:1.4rem 0 0}
+.hello .hi{color:var(--mut);font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}
+.hello h1{font-family:var(--serif);font-size:1.5rem;line-height:1.25}
+.hello .sub{color:var(--mut);font-size:.85rem;margin-top:.15rem}
+
+.nextup{background:var(--panel);border:1px solid var(--gold-d);border-radius:14px;padding:1rem 1.1rem;margin-top:1.1rem}
+.nextup .lbl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b)}
+.nextup h2{font-family:var(--serif);font-size:1.12rem;margin:.2rem 0 .1rem}
+.nextup .evm{color:var(--mut);font-size:.85rem}
+.cd{display:flex;gap:.9rem;margin-top:.6rem}
+.cd div{text-align:center;min-width:52px}
+.cd b{display:block;font-size:1.25rem;color:var(--gold-b);font-variant-numeric:tabular-nums}
+.cd span{font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.cd .today{font-size:1rem;color:var(--gold-b);font-family:var(--serif)}
+.nu-acts{display:flex;gap:.6rem;margin-top:.75rem;flex-wrap:wrap}
+.nu-acts .mini{text-decoration:none;display:inline-flex;align-items:center;gap:.3rem}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1.1rem}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.75rem .85rem}
+.tile b{display:block;font-size:1.18rem;color:var(--gold-b);font-variant-numeric:tabular-nums}
+.tile span{font-size:.7rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
+.tile.due b{color:#e5b57f}
+.tile.ok b{color:var(--ok)}
+
+h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
+.secl small{font-family:var(--sans);font-size:.72rem;color:var(--mut);font-weight:400;margin-left:.4rem}
+
+.pkg{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:.9rem;overflow:hidden}
+.pkg-h{display:flex;align-items:center;gap:.5rem;padding:.85rem 1rem;cursor:default;flex-wrap:wrap}
+.pkg.can-toggle .pkg-h{cursor:pointer}
+.pkg-h h3{font-family:var(--serif);font-size:1.02rem;flex:1;min-width:0;overflow-wrap:anywhere}
+.pkm{flex-basis:100%;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-width:0}
+.pkg-h .qno{font-size:.68rem;color:var(--mut);letter-spacing:.06em}
+.chev{color:var(--mut);transition:transform .2s;flex:none}
+.pkg.collapsed .chev{transform:rotate(-90deg)}
+.pkg.collapsed .sec{display:none}
+.chip{font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:.16rem .55rem;border:1px solid;flex:none}
+.chip.sent{color:#7fb2e5;border-color:rgba(127,178,229,.45)}
+.chip.unconfirmed{color:#cf8d85;border-color:rgba(207,141,133,.45)}
+.chip.booked{color:var(--ok);border-color:rgba(76,175,125,.45)}
+.chip.delivered{color:#9adbb2;border-color:rgba(154,219,178,.45)}
+.chip.wl{color:var(--gold-b);border-color:var(--line);text-transform:none;letter-spacing:.02em}
+.sums{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--line);cursor:pointer}
+.sums div{padding:.55rem .4rem;text-align:center}
+.sums b{display:block;font-size:.92rem;color:var(--text);font-variant-numeric:tabular-nums}
+.sums span{font-size:.62rem;color:var(--mut);letter-spacing:.08em;text-transform:uppercase}
+.sums .due2 b{color:#e5b57f}
+.sums .ok2 b{color:var(--ok)}
+.sec{padding:.9rem 1rem;border-top:1px solid var(--line)}
+.sec h4{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.55rem}
+.ev{padding:.5rem 0;border-bottom:1px dashed var(--line)}
+.ev:last-child{border-bottom:0}
+.ev b{font-weight:500}
+.ev.past{opacity:.72}
+.ev.past > b::after{content:" ✓";color:var(--ok)}
+.ev.next{border-left:2px solid var(--gold);padding-left:.6rem;margin-left:-.6rem}
+.evtag{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-b);border:1px solid var(--gold-d);border-radius:20px;padding:.08rem .45rem;margin-left:.45rem;vertical-align:2px}
+.evm{color:var(--mut);font-size:.82rem;margin-top:.1rem}
+.vlink{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted var(--gold-d)}
+.ev ul{list-style:none;margin-top:.35rem}
+.ev li{font-size:.82rem;color:var(--mut);padding:.1rem 0 .1rem 1rem;position:relative}
+.ev li::before{content:"·";position:absolute;left:.3rem;color:var(--gold-d)}
+.slotpill{font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;border-radius:20px;padding:.08rem .45rem;margin-left:.45rem;vertical-align:2px;border:1px solid}
+.slotpill.morning{color:#e8c77f;border-color:rgba(232,199,127,.45)}
+.slotpill.evening{color:#c7a6e8;border-color:rgba(199,166,232,.45)}
+.slotpill.full{color:#8fd0e8;border-color:rgba(143,208,232,.45)}
+.crewrow{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
+.crewchip{font-size:.72rem;color:var(--text);background:var(--ink);border:1px solid var(--line);border-radius:20px;padding:.18rem .6rem}
+.crewchip i{font-style:normal;color:var(--mut)}
+.crewnote{font-size:.74rem;color:var(--mut);margin-top:.35rem}
+.ln{display:flex;justify-content:space-between;gap:1rem;padding:.22rem 0;font-size:.88rem}
+.ln span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ln.big{font-size:1rem;font-weight:600;color:var(--gold-b);border-top:1px solid var(--line);margin-top:.3rem;padding-top:.5rem}
+.ln.due span:last-child{color:#e5b57f}
+.paybar{height:5px;border-radius:4px;background:var(--ink);margin-top:.55rem;overflow:hidden}
+.paybar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-b))}
+.payleg{display:flex;justify-content:space-between;font-size:.72rem;color:var(--mut);margin-top:.3rem}
+.payleg .rest{color:#e5b57f}
+.payrow{display:flex;justify-content:space-between;gap:1rem;padding:.28rem 0;font-size:.84rem;color:var(--mut)}
+.payrow b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.paynow{display:block;width:100%;margin-top:.7rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#191307;font-weight:600;border-radius:10px;padding:.7rem;cursor:pointer;min-height:44px}
+
+.ledger{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:.9rem;overflow:hidden}
+.ledhead,.ledrow{display:grid;grid-template-columns:minmax(0,1.4fr) auto auto auto;gap:.6rem;padding:.55rem 1rem;align-items:baseline}
+.ledhead{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--line)}
+.ledhead span:not(:first-child),.ledrow span:not(:first-child){text-align:right}
+.ledrow{border-bottom:1px dashed var(--line);font-size:.84rem}
+.ledrow:last-of-type{border-bottom:0}
+.ledrow .who b{display:block;font-weight:500;overflow-wrap:anywhere}
+.ledrow .who i{font-style:normal;font-size:.68rem;color:var(--mut)}
+.ledrow span{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ledrow .owed{color:#e5b57f}
+.ledrow .zero{color:var(--ok)}
+.ledfoot{display:flex;justify-content:space-between;padding:.7rem 1rem;border-top:1px solid var(--line);font-size:.92rem}
+.ledfoot b{color:#e5b57f;font-variant-numeric:tabular-nums}
+.ledfoot.clear b{color:var(--ok)}
+
+.help{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;margin-top:1.6rem}
+.help p{color:var(--mut);font-size:.84rem;margin-bottom:.6rem}
+
+.toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#0d0b06;border:1px solid var(--gold-d);color:var(--text);border-radius:24px;padding:.55rem 1.1rem;font-size:.85rem;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.pay-back{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.25s;z-index:40}
+.pay-back.open{opacity:1;pointer-events:auto}
+.pay-sheet{position:fixed;left:0;right:0;bottom:0;background:#1c1710;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:1rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));transform:translateY(105%);transition:.28s;z-index:50;max-width:640px;margin:0 auto;max-height:88vh;overflow:auto}
+.pay-sheet.open{transform:translateY(0)}
+.pay-sheet::before{content:"";display:block;width:44px;height:4px;border-radius:4px;background:var(--line);margin:0 auto .8rem}
+.pay-sheet h3{font-family:var(--serif);font-size:1.05rem;margin-bottom:.7rem}
+.amtwrap{display:flex;align-items:center;gap:.4rem;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.15rem .7rem;margin-bottom:.6rem}
+.amtwrap b{color:var(--mut)}
+.amtwrap input{flex:1;background:none;border:0;color:var(--text);padding:.6rem 0;font-size:1.05rem;min-width:0}
+.amtwrap input:focus{outline:none}
+.chips{display:flex;gap:.5rem;margin-bottom:.9rem}
+.chips button{flex:1}
+.payapp{display:flex;align-items:center;gap:.7rem;width:100%;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;margin-top:.55rem;color:var(--text);text-decoration:none;font-size:.92rem}
+.payapp b{flex:1;font-weight:500;text-align:left}
+.payapp .go{color:var(--mut);font-size:.75rem}
+.vpa{display:flex;align-items:center;justify-content:space-between;gap:.6rem;color:var(--mut);font-size:.78rem;margin-top:.8rem}
+.vpa code{color:var(--text);font-family:ui-monospace,monospace;font-size:.8rem;overflow-wrap:anywhere}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="hd">
+    <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#B8902B" stroke-width="3"/><text x="50" y="62" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#E2C275">FS</text></svg>
+    <div><b>Fantasy Studio</b><span class="tag">Partner</span></div>
+    <span class="net" id="netDot" hidden>offline</span>
+    <button class="out" id="logoutBtn" hidden>Logout</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div id="loadingView">
+    <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+  </div>
+
+  <div id="loginView" hidden>
+    <div class="login">
+      <h1>Partner sign in</h1>
+      <p class="sub">For studios that book Fantasy Studio for their client events — see your jobs, the crew on them and your account, live.</p>
+      <div id="phoneStep">
+        <div class="fld"><label>Registered mobile number</label>
+          <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
+          <div class="cchint">Outside India? Change 91 to your country code.</div>
+        </div>
+        <button class="gbtn" id="sendOtp">Get OTP</button>
+      </div>
+      <div id="otpStep" hidden>
+        <div class="fld"><label>OTP sent to <span id="otpTo"></span></label>
+          <div class="otp" id="otpBoxes">
+            <input type="tel" inputmode="numeric" autocomplete="one-time-code" aria-label="OTP digit 1 of 6" />
+            <input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2 of 6" />
+            <input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3 of 6" />
+            <input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4 of 6" />
+            <input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 5 of 6" />
+            <input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 6 of 6" />
+          </div>
+        </div>
+        <button class="gbtn" id="verifyOtp">Verify &amp; Sign In</button>
+        <div class="rowbtns">
+          <button class="mini" id="otpResend">Resend OTP</button>
+          <button class="mini" id="otpBack">Change number</button>
+        </div>
+      </div>
+      <div class="err" id="loginErr" role="alert" hidden></div>
+      <div class="note">Use the mobile number Fantasy Studio has on file for your studio.</div>
+      <a class="crewlink" href="../client/">💍 Booked your own wedding with us? <b>Client login</b> →</a>
+      <a class="crewlink" style="margin-top:.4rem;padding-top:.5rem;border-top:0" href="../team/">🎬 Fantasy Studio crew? <b>Sign in here</b> →</a>
+    </div>
+  </div>
+
+  <div id="noAccessView" hidden>
+    <div class="empty">
+      <h2>No partner account on this number</h2>
+      <p>This number is not set up for partner access yet. If your studio works with Fantasy Studio, call us and we will switch it on — it takes a minute.</p>
+      <div class="rowbtns">
+        <a class="mini" id="naCall" href="tel:+918686868803">📞 Call</a>
+        <a class="mini" id="naWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="mini" id="naLogout">Sign out</button>
+      </div>
+      <a class="crewlink" href="../client/">💍 Looking for your own wedding booking? <b>Client login</b> →</a>
+    </div>
+  </div>
+
+  <div id="errorView" hidden>
+    <div class="empty">
+      <h2>We hit a snag</h2>
+      <p id="errMsg">Could not load your account.</p>
+      <div class="rowbtns">
+        <button class="mini" id="errRetry">Try again</button>
+        <a class="mini" id="errCall" href="tel:+918686868803">📞 Call us</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="appView" hidden>
+    <div class="hello" id="helloBox"></div>
+    <div id="nextupBox"></div>
+    <div id="tilesBox"></div>
+    <div id="jobsBox"></div>
+    <div id="ledgerBox"></div>
+    <div id="ratesBox"></div>
+    <div class="help" id="helpBox">
+      <p>Questions about a job or a payment? We're one tap away.</p>
+      <div class="rowbtns">
+        <a class="mini" id="helpCall" href="tel:+918686868803">📞 Call</a>
+        <a class="mini" id="helpWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="pay-back" id="payBack"></div>
+<div class="pay-sheet" id="paySheet" role="dialog" aria-modal="true" aria-label="Pay Fantasy Studio">
+  <h3>Pay Fantasy Studio</h3>
+  <div class="amtwrap"><b>₹</b><input id="payAmt" type="tel" inputmode="numeric" aria-label="Amount in rupees" /></div>
+  <div class="chips">
+    <button class="mini" id="payFull">Full balance</button>
+    <button class="mini" id="payHalf">Half</button>
+  </div>
+  <div id="payApps"></div>
+  <div class="vpa" id="payVpa" hidden><span>UPI ID: <code id="vpaText"></code></span><button class="mini" id="vpaCopy">Copy</button></div>
+  <a class="payapp" id="payDone" target="_blank" rel="noopener" style="margin-top:.9rem"><b>I've paid — tell Fantasy Studio</b><span class="go">WhatsApp →</span></a>
+  <button class="mini" id="payClose" style="width:100%;margin-top:.8rem">Close</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../firebase-config.js"></script>
+<script>
+/* site-wide worker: network-first pages, so deploys always show instantly */
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
+}
+</script>
+<script type="module">
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
+
+const show = id => { ['loadingView','loginView','noAccessView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+
+if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
+  document.body.innerHTML = '<div class="wrap"><div class="empty">Not configured yet.</div></div>';
+}else{
+
+/* CDN imports can fail on a flaky connection — fail to a view with a call
+   button, never a blank page (same guard the client portal carries) */
+let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber;
+let getFirestore, collection, doc, getDoc, query, where, onSnapshot;
+try{
+  ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
+  ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
+  ({ getFirestore, collection, doc, getDoc, query, where, onSnapshot } =
+    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
+}catch(e){
+  $('#errMsg').textContent = 'Could not reach the sign-in service — check your connection and try again.';
+  $('#errRetry').addEventListener('click', ()=>location.reload());
+  show('errorView');
+  throw e;
+}
+
+/* a NAMED app gives the partner page its own session storage — signing in
+   here never touches an admin, crew or client session on the same phone */
+const app  = initializeApp(window.FIREBASE_CONFIG, 'studio');
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+/* ---------- shared helpers (same conventions as crew/client portals) ---------- */
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const isDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'');
+const human = d => isDate(d) ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
+const dmy = d => isDate(d) ? d.slice(8,10)+'-'+d.slice(5,7)+'-'+d.slice(0,4) : (d||'');
+const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+const shMoney = n => { n = Math.round(Number(n)||0);
+  if(n >= 1e7) return '₹' + (+((n/1e7).toFixed(1))) + ' Cr';
+  if(n >= 1e5) return '₹' + (+((n/1e5).toFixed(1))) + ' L';
+  if(n >= 1e3) return '₹' + (+((n/1e3).toFixed(1))) + 'k';
+  return '₹' + n.toLocaleString('en-IN'); };
+const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
+const slotTag = s => SLOT_LABEL[String(s||'')] ? `<span class="slotpill ${esc(s)}">${esc(SLOT_LABEL[s])}</span>` : '';
+const STATUS_LABEL = s => s === 'unconfirmed' ? 'not confirmed' : s;
+
+/* net dot */
+const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
+addEventListener('online', updNet); addEventListener('offline', updNet); updNet();
+
+/* Enter/Space on div "buttons" */
+document.addEventListener('keydown', e=>{
+  if((e.key==='Enter'||e.key===' ') && e.target.matches('[tabindex="0"][role="button"]')){ e.preventDefault(); e.target.click(); }
+});
+
+/* ---------- contact: hardcoded fallback, upgraded from config/site ---------- */
+const DEFAULT_PHONE = '+91 86868 68803';
+let CONTACT = { phone: DEFAULT_PHONE, upi: '', upiAlt: '' };
+const contactDigits = () => CONTACT.phone.replace(/\D/g,'');
+function applyContact(){
+  const tel = 'tel:+' + contactDigits();
+  const wa  = 'https://wa.me/' + contactDigits();
+  [['#naCall',tel],['#errCall',tel],['#helpCall',tel]].forEach(([s,h])=>{ const el=$(s); if(el) el.href = h; });
+  [['#naWa',wa],['#helpWa',wa]].forEach(([s,h])=>{ const el=$(s); if(el) el.href = h; });
+}
+(async ()=>{
+  try{
+    const s = await getDoc(doc(db,'config','site'));
+    if(s.exists()){
+      const c = (s.data()||{}).contact || {};
+      if(c.phone) CONTACT.phone = c.phone;
+      const okVpa = v => /^[\w.\-]+@[\w.\-]+$/.test(String(v||''));
+      if(okVpa(c.upi)) CONTACT.upi = String(c.upi);
+      if(okVpa(c.upiAlt)) CONTACT.upiAlt = String(c.upiAlt);
+    }
+  }catch(e){}
+  applyContact();
+})();
+
+/* ---------- login: pre-OTP check against the hashed phone index ----------
+   Fails OPEN — a genuine partner must never be locked out by an offline
+   check. Unknown numbers save an SMS and get a clear message instead. */
+async function phoneKey(p){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fs:' + p));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function isKnownNumber(p){
+  try{ return (await getDoc(doc(db,'phoneIndex', await phoneKey(p)))).exists(); }
+  catch(e){ return true; }
+}
+
+function authMsg(err){
+  const c = (err && err.code) || '';
+  if(c.includes('invalid-phone-number')) return 'That mobile number does not look right.';
+  if(c.includes('invalid-verification-code')) return 'Wrong OTP — check and try again.';
+  if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
+  if(c.includes('network-request-failed')) return 'No internet — check your connection.';
+  if(c.includes('captcha-check-failed') || c.includes('missing-recaptcha'))
+    return 'That security check expired. Tap Resend OTP to get a fresh code.';
+  if(c.includes('code-expired')) return 'That OTP has expired — tap Resend OTP for a new one.';
+  if(c.includes('quota-exceeded')) return 'Too many sign-in attempts today — call Fantasy Studio and try later.';
+  if(c.includes('user-disabled')) return 'This account has been disabled — talk to Fantasy Studio.';
+  return 'Sign-in did not go through. Please try again, or call Fantasy Studio.';
+}
+const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false; };
+const hideErr = sel => { $(sel).hidden = true; };
+
+function wireOtpBoxes(wrapSel, onFull){
+  const boxes = $$(wrapSel + ' input');
+  const full = () => boxes.every(x=>x.value);
+  boxes.forEach((b,i)=>{
+    b.addEventListener('input', ()=>{
+      const v = b.value.replace(/\D/g,'');
+      if(v.length > 1){
+        v.split('').slice(0, boxes.length - i).forEach((ch,j)=>boxes[i+j].value = ch);
+        boxes[Math.min(i + v.length, boxes.length) - 1].focus();
+      }else{
+        b.value = v;
+        if(v && i < boxes.length-1) boxes[i+1].focus();
+      }
+      if(full() && onFull) onFull();
+    });
+    b.addEventListener('keydown', e=>{ if(e.key==='Backspace' && !b.value && i>0) boxes[i-1].focus(); });
+    b.addEventListener('paste', e=>{
+      const t = (e.clipboardData.getData('text')||'').replace(/\D/g,'');
+      if(t.length >= boxes.length){
+        e.preventDefault();
+        boxes.forEach((x,j)=>x.value = t[j]||'');
+        boxes[boxes.length-1].focus();
+        if(full() && onFull) onFull();
+      }
+    });
+  });
+  return () => boxes.map(b=>b.value).join('');
+}
+const otpCode = wireOtpBoxes('#otpBoxes', ()=>{ const b=$('#verifyOtp'); if(!$('#otpStep').hidden && !b.disabled) b.click(); });
+const clearBoxes = sel => $$(sel + ' input').forEach(b=>b.value='');
+
+const _cool = new Map();
+function startCooldown(btn, secs = 30){
+  if(!btn) return;
+  clearInterval(_cool.get(btn));
+  let s = secs;
+  btn.disabled = true;
+  btn.textContent = `Resend OTP (${s}s)`;
+  const iv = setInterval(()=>{
+    s--;
+    if(s <= 0){ clearInterval(iv); btn.disabled = false; btn.textContent = 'Resend OTP'; }
+    else btn.textContent = `Resend OTP (${s}s)`;
+  }, 1000);
+  _cool.set(btn, iv);
+}
+
+/* India keeps strict 10-digit checks, other countries 6–14 national digits;
+   absorbs a duplicated country code and the trunk zero (same as the portals) */
+function readPhone(ccSel, phSel){
+  let cc = ($(ccSel).value||'').replace(/\D/g,'') || '91';
+  let p  = ($(phSel).value||'').replace(/\D/g,'');
+  if(p.length > 10 && p.indexOf(cc) === 0) p = p.slice(cc.length);
+  p = p.replace(/^0+/, '');
+  const ok = cc === '91' ? p.length === 10 : (p.length >= 6 && p.length <= 14);
+  return { cc, p, ok, full: '+' + cc + p, pretty: '+' + cc + ' ' + p, last10: (cc + p).slice(-10) };
+}
+
+let confirmation = null, verifier = null;
+/* fresh verifier per send — a cached grecaptcha token is single-use and
+   breaks the first Resend (same fix the other portals carry) */
+function getVerifier(btnId){
+  try{ if(verifier) verifier.clear(); }catch(e){}
+  verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
+  return verifier;
+}
+
+async function doSendOtp(){
+  hideErr('#loginErr');
+  const ph = readPhone('#cc','#phone');
+  if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
+  const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
+  try{
+    if(!(await isKnownNumber(ph.last10))){
+      showErr('#loginErr', 'This number is not registered with Fantasy Studio yet — call us on ' + CONTACT.phone + ' to set up partner access.');
+      return;
+    }
+    confirmation = await signInWithPhoneNumber(auth, ph.full, getVerifier('sendOtp'));
+    $('#otpTo').textContent = ph.pretty;
+    $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
+    clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
+    startCooldown($('#otpResend'));
+    toast('OTP sent to ' + ph.pretty);
+  }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
+  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
+}
+$('#sendOtp').addEventListener('click', doSendOtp);
+$('#otpResend').addEventListener('click', doSendOtp);
+$('#verifyOtp').addEventListener('click', async ()=>{
+  hideErr('#loginErr');
+  const code = otpCode();
+  if(code.length !== 6){ showErr('#loginErr','Enter the 6-digit OTP.'); return; }
+  const btn = $('#verifyOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Verifying…';
+  try{ await confirmation.confirm(code); }
+  catch(err){ showErr('#loginErr', err); }
+  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
+});
+$('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
+$('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+$('#naLogout').addEventListener('click', ()=>signOut(auth));
+$('#errRetry').addEventListener('click', ()=>location.reload());
+
+/* ---------- data: my studio(s) + their jobs, live ---------- */
+let _phone10 = '';
+let STUS = [];                       // my studio docs
+let PKGMAP = new Map();              // studioId -> its packages
+let _stuUnsub = null, _pkgUnsubs = new Map();
+let _stuLoaded = false, _stuErr = null;
+let _pkgErrs = new Map();            // studio id -> its packages listener error (per-studio, so one studio's success never hides another's failure)
+let _pkgSeen = new Set();            // studio ids whose packages listener has delivered once
+let _openJobs = null;                // Set of expanded package ids (null = not initialised)
+
+function stopData(){
+  try{ if(_stuUnsub) _stuUnsub(); }catch(e){} _stuUnsub = null;
+  _pkgUnsubs.forEach(u=>{ try{ u(); }catch(e){} }); _pkgUnsubs.clear();
+  STUS = []; PKGMAP = new Map(); _stuLoaded = false; _stuErr = null;
+  _pkgErrs = new Map(); _pkgSeen = new Set(); _openJobs = null;
+  clearInterval(_cdT);
+}
+
+onAuthStateChanged(auth, user=>{
+  stopData();
+  $('#logoutBtn').hidden = !user;
+  if(!user){
+    show('loginView');
+    $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
+    return;
+  }
+  if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
+  _phone10 = user.phoneNumber.slice(-10);
+  show('loadingView');
+  /* both conditions mirror the firestore.rules studios branch exactly —
+     anything broader is refused server-side */
+  _stuUnsub = onSnapshot(query(collection(db,'studios'),
+      where('phone10','==',_phone10), where('active','==',true)), snap=>{
+    _stuLoaded = true; _stuErr = null;
+    STUS = snap.docs.map(d=>({ id:d.id, ...d.data() }))
+      .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+    syncPkgListeners();
+    route();
+  }, err=>{
+    _stuLoaded = true; _stuErr = err; STUS = [];
+    route();
+  });
+});
+
+function syncPkgListeners(){
+  const ids = new Set(STUS.map(s=>s.id));
+  /* drop listeners for studios that vanished */
+  [..._pkgUnsubs.keys()].filter(id=>!ids.has(id)).forEach(id=>{
+    try{ _pkgUnsubs.get(id)(); }catch(e){}
+    _pkgUnsubs.delete(id); PKGMAP.delete(id); _pkgSeen.delete(id); _pkgErrs.delete(id);
+  });
+  /* add listeners for new ones — filters mirror the packages rules branch */
+  STUS.forEach(s=>{
+    if(_pkgUnsubs.has(s.id)) return;
+    const u = onSnapshot(query(collection(db,'packages'),
+        where('clientType','==','studio'), where('studioId','==',s.id)), snap=>{
+      _pkgErrs.delete(s.id);
+      _pkgSeen.add(s.id);
+      PKGMAP.set(s.id, snap.docs.map(d=>({ id:d.id, ...d.data() })));
+      route();
+    }, err=>{
+      _pkgErrs.set(s.id, err);
+      _pkgSeen.add(s.id);   /* an error still counts as "answered" — never a stuck spinner */
+      route();
+    });
+    _pkgUnsubs.set(s.id, u);
+  });
+}
+
+function route(){
+  if(!_stuLoaded) return;
+  if(_stuErr){
+    $('#errMsg').textContent = String(_stuErr.code||'').includes('permission')
+      ? 'Partner access is not switched on server-side right now — call Fantasy Studio and mention the partner portal.'
+      : 'Connection problem — check your internet and try again.';
+    show('errorView');
+    return;
+  }
+  if(!STUS.length){ show('noAccessView'); return; }
+  /* wait for every studio's first packages answer — no flash of "no jobs" */
+  if(!STUS.every(s=>_pkgSeen.has(s.id))){ show('loadingView'); return; }
+  show('appView');
+  render();
+}
+
+/* ---------- render ---------- */
+const allJobs = () => [...PKGMAP.values()].flat()
+  .filter(x=>!x.deleted && (x.status||'draft') !== 'draft');
+const CONFIRMED_ST = ['booked','delivered'];
+const jobLabel = x => x.endClientName || x.studioName || x.clientName || 'Your client';
+
+function nextEventDate(x){
+  const t = todayISO();
+  return (x.events||[]).map(e=>e.date).filter(d=>isDate(d) && d >= t).sort()[0] || '';
+}
+function lastEventDate(x){
+  return (x.events||[]).map(e=>e.date).filter(isDate).sort().slice(-1)[0] || '';
+}
+
+let _cdT = null;
+
+function render(){
+  const jobs = allJobs();
+  renderHello();
+  renderNextUp(jobs);
+  renderTiles(jobs);
+  renderJobs(jobs);
+  renderLedger(jobs);
+  renderRates();
+}
+
+function renderHello(){
+  const names = STUS.map(s=>s.name||'Your studio');
+  const one = STUS.length === 1 ? STUS[0] : null;
+  $('#helloBox').innerHTML = `
+    <div class="hi">Namaste</div>
+    <h1>${esc(names.join(' · '))}</h1>
+    ${one && (one.ownerName || one.city) ? `<div class="sub">${esc([one.ownerName, one.city].filter(Boolean).join(' · '))}</div>` : ''}
+    ${one && one.paymentTerms ? `<div class="sub">Terms: ${esc(one.paymentTerms)}</div>` : ''}`;
+}
+
+function renderNextUp(jobs){
+  clearInterval(_cdT);
+  const t = todayISO();
+  const upcoming = jobs.flatMap(x =>
+    (x.events||[]).filter(e=>isDate(e.date) && e.date >= t)
+      .map(e=>({ ...e, job: x }))
+  ).sort((a,b)=>a.date.localeCompare(b.date));
+  const nu = upcoming[0];
+  if(!nu){ $('#nextupBox').innerHTML = ''; return; }
+  $('#nextupBox').innerHTML = `
+    <div class="nextup">
+      <div class="lbl">Next event</div>
+      <h2>${esc(nu.title||'Event')}${slotTag(nu.slot)}</h2>
+      <div class="evm">${esc(jobLabel(nu.job))}${nu.job.quoteNo ? ' · ' + esc(nu.job.quoteNo) : ''}</div>
+      <div class="evm">${human(nu.date)}${nu.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(nu.venue)}" target="_blank" rel="noopener">📍 ${esc(nu.venue)}</a>` : ''}</div>
+      <div class="cd" id="cdBox"></div>
+      <div class="nu-acts">
+        <button class="mini" id="icsBtn">📅 Add to calendar</button>
+        ${nu.venue ? `<a class="mini" style="text-decoration:none" href="https://maps.google.com/?q=${encodeURIComponent(nu.venue)}" target="_blank" rel="noopener">🧭 Directions</a>` : ''}
+      </div>
+    </div>`;
+  $('#icsBtn').addEventListener('click', ()=>downloadIcs(nu));
+  const HOUR = { morning: 8, evening: 17, full: 8 };
+  const target = new Date(nu.date + 'T00:00');
+  target.setHours(HOUR[nu.slot] ?? 9, 0, 0, 0);
+  const tick = ()=>{
+    const el = $('#cdBox'); if(!el){ clearInterval(_cdT); return; }
+    const ms = target - Date.now();
+    if(nu.date === todayISO() || ms <= 0){
+      el.innerHTML = `<div class="today">🎉 It's event day — the crew is on it</div>`;
+      return;
+    }
+    const d = Math.floor(ms/864e5), h = Math.floor(ms%864e5/36e5), m = Math.floor(ms%36e5/6e4);
+    el.innerHTML = `<div><b>${d}</b><span>days</span></div><div><b>${h}</b><span>hrs</span></div><div><b>${m}</b><span>min</span></div>`;
+  };
+  tick();
+  _cdT = setInterval(tick, 30000);
+}
+
+function downloadIcs(nu){
+  const dt = nu.date.replace(/-/g,'');
+  const end = new Date(nu.date + 'T00:00'); end.setDate(end.getDate()+1);
+  const dtEnd = end.toLocaleDateString('en-CA').replace(/-/g,'');
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Fantasy Studio//Partner//EN','BEGIN:VEVENT',
+    'UID:' + (nu.job.id||'fs') + '-' + dt + '@fantasystudio.in',
+    'DTSTART;VALUE=DATE:' + dt, 'DTEND;VALUE=DATE:' + dtEnd,
+    'SUMMARY:' + String((nu.title||'Event') + ' — ' + jobLabel(nu.job)).replace(/[\n,;]/g,' '),
+    ...(nu.venue ? ['LOCATION:' + String(nu.venue).replace(/[\n,;]/g,' ')] : []),
+    'END:VEVENT','END:VCALENDAR'];
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type:'text/calendar' }));
+  a.download = 'fantasy-studio-' + dt + '.ics';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+
+function renderTiles(jobs){
+  const t = todayISO();
+  const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
+  const upEv = jobs.reduce((n,x)=>n + (x.events||[]).filter(e=>isDate(e.date) && e.date >= t).length, 0);
+  const open = jobs.filter(x=>['sent','unconfirmed','booked'].includes(x.status||'draft')).length;
+  const life = conf.reduce((s,x)=>s + (Number((x.totals||{}).finalPrice)||0), 0);
+  const due  = conf.reduce((s,x)=>s + Math.max(0, Number((x.totals||{}).balance)||0), 0);
+  $('#tilesBox').innerHTML = `
+    <div class="tiles">
+      <div class="tile"><b>${upEv}</b><span>upcoming events</span></div>
+      <div class="tile"><b>${open}</b><span>open jobs</span></div>
+      <div class="tile ok"><b>${shMoney(life)}</b><span>lifetime work</span></div>
+      <div class="tile ${due>0?'due':'ok'}"><b>${due>0 ? shMoney(due) : '✓ Clear'}</b><span>${due>0?'balance to pay':'account settled'}</span></div>
+    </div>`;
+}
+
+/* crew chips for one event — from the pay-free summary the admin panel
+   mirrors onto the package (never from assignments). Matched on date AND
+   slot: two functions on the same day (Haldi morning, Reception evening)
+   must each show only their own crew; ''/'full' on either side means
+   all-day and matches everything that date. */
+function crewFor(x, ev){
+  return (Array.isArray(x.crew) ? x.crew : []).filter(c=>c.kind !== 'edit' && c.date === ev.date
+    && (!c.slot || c.slot === 'full' || !ev.slot || ev.slot === 'full' || c.slot === ev.slot));
+}
+function crewChips(list){
+  if(!list.length) return '';
+  return `<div class="crewrow">${list.map(c=>
+    `<span class="crewchip">${esc(c.name||'Crew')}${c.role ? ` <i>· ${esc(c.role)}</i>` : ''}</span>`).join('')}</div>`;
+}
+
+function jobHTML(x, canToggle, collapsed){
+  const st = x.status||'draft';
+  const tt = x.totals||{};
+  const paid = Math.max(0, Number(tt.advance)||0);
+  const bal = Math.max(0, Number(tt.balance)||0);
+  const t = todayISO();
+  const nextD = nextEventDate(x);
+  const renderedCrew = new Set();
+  const evs = (x.events||[]).map(ev=>{
+    const dated = isDate(ev.date);
+    const past = dated && ev.date < t;
+    const isNext = dated && ev.date === nextD;
+    const crew = crewFor(x, ev);
+    crew.forEach(c=>renderedCrew.add(c));
+    return `
+    <div class="ev ${past?'past':''} ${isNext?'next':''}">
+      <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}${isNext ? `<span class="evtag">${ev.date === t ? 'today' : 'next up'}</span>` : ''}</b>
+      <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
+      ${(ev.items||[]).length ? `<ul>${(ev.items||[]).map(it=>`<li>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</li>`).join('')}</ul>` : ''}
+      ${crew.length ? crewChips(crew) : (past || !dated ? '' : '<div class="crewnote">Crew to be confirmed</div>')}
+    </div>`;
+  }).join('');
+  const editors = (Array.isArray(x.crew) ? x.crew : []).filter(c=>c.kind === 'edit');
+  const strays = (Array.isArray(x.crew) ? x.crew : []).filter(c=>c.kind !== 'edit' && !renderedCrew.has(c));
+  const pays = (x.payments||[]).length
+    ? `<div class="sec"><h4>Payments received</h4>${x.payments.map(pm=>
+        `<div class="payrow"><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
+  return `
+  <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}" data-job="${esc(x.id)}">
+    <div class="pkg-h" ${canToggle ? 'data-jobtoggle role="button" tabindex="0" aria-label="Show or hide this job"' : ''}>
+      <h3>${esc(jobLabel(x))}</h3>
+      ${canToggle ? '<span class="chev">▾</span>' : ''}
+      <span class="pkm">
+        <span class="qno">${esc(x.quoteNo||'')}</span>
+        ${x.whiteLabel ? '<span class="chip wl" title="Delivered under your studio’s brand">🏷 white label</span>' : ''}
+        <span class="chip ${esc(st)}">${esc(STATUS_LABEL(st))}</span>
+      </span>
+    </div>
+    <div class="sums" data-sums role="button" tabindex="0" aria-label="See pricing">
+      <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
+      <div><b>${inr(paid)}</b><span>paid</span></div>
+      <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0?'balance':'all clear'}</span></div>
+    </div>
+    <div class="sec"><h4>Events</h4>${evs || '<div class="evm">Details coming soon.</div>'}
+      ${editors.length ? `<div class="crewnote">🎬 Post-production: ${editors.map(c=>esc(c.name||'Editor')).join(', ')}</div>` : ''}
+      ${strays.length ? `<div class="crewnote">Also on this job: ${strays.map(c=>esc(c.name) + (isDate(c.date) ? ' ('+dmy(c.date)+')' : '')).join(', ')}</div>` : ''}
+    </div>
+    <div class="sec"><h4>Money</h4>
+      ${Number(tt.gross) && Number(tt.discount) ? `<div class="ln"><span>Job total</span><span>${inr(tt.gross)}</span></div>
+      <div class="ln"><span>Partner discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
+      <div class="ln big"><span>Final amount</span><span>${inr(tt.finalPrice||0)}</span></div>
+      <div class="ln"><span>Paid so far</span><span>${inr(paid)}</span></div>
+      <div class="ln due"><span>Balance</span><span>${inr(bal)}</span></div>
+      ${Number(tt.finalPrice) > 0 ? `
+      <div class="paybar"><i style="width:${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}%"></i></div>
+      <div class="payleg">
+        <span><b>${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}% settled</b></span>
+        <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
+      </div>` : ''}
+      ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}">Pay ${inr(bal)} now</button>` : ''}
+    </div>
+    ${pays}
+  </div>`;
+}
+
+function renderJobs(jobs){
+  const box = $('#jobsBox');
+  const errNames = STUS.filter(s=>_pkgErrs.has(s.id)).map(s=>s.name||'one studio');
+  if(errNames.length && !jobs.length){
+    box.innerHTML = `<h2 class="secl">Your jobs</h2>
+      <div class="empty">Could not load your jobs (${esc((_pkgErrs.values().next().value||{}).code||'error')}) — pull to refresh or try again in a minute.</div>`;
+    return;
+  }
+  const warn = errNames.length
+    ? `<div class="empty" style="margin-top:.9rem;border-color:rgba(224,122,106,.4)">⚠ Jobs for ${esc(errNames.join(', '))} could not load right now — what's below may be incomplete. Pull to refresh in a minute.</div>`
+    : '';
+  if(!jobs.length){
+    box.innerHTML = `<h2 class="secl">Your jobs</h2>
+      <div class="empty"><h2>No jobs yet</h2>
+      Once Fantasy Studio quotes or books an event for your studio, it appears here automatically.</div>`;
+    return;
+  }
+  /* upcoming work first (soonest event on top), finished work after (newest first) */
+  const up = jobs.filter(x=>nextEventDate(x)).sort((a,b)=>nextEventDate(a).localeCompare(nextEventDate(b)));
+  const past = jobs.filter(x=>!nextEventDate(x)).sort((a,b)=>lastEventDate(b).localeCompare(lastEventDate(a)));
+  const ordered = [...up, ...past];
+  if(_openJobs === null) _openJobs = new Set(ordered.length ? [ordered[0].id] : []);
+  const canToggle = ordered.length > 1;
+  const multi = STUS.length > 1;
+  box.innerHTML = warn + `<h2 class="secl">Your jobs <small>${ordered.length}</small></h2>` +
+    ordered.map(x=>{
+      const head = multi ? `<div class="evm" style="margin-top:.7rem">${esc(x.studioName||'')}</div>` : '';
+      return head + jobHTML(x, canToggle, canToggle && !_openJobs.has(x.id));
+    }).join('');
+}
+
+function renderLedger(jobs){
+  const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'))
+    .sort((a,b)=>String(a.quoteDate||'').localeCompare(String(b.quoteDate||'')));   /* oldest first — running balance */
+  const box = $('#ledgerBox');
+  if(!conf.length){ box.innerHTML = ''; return; }
+  let run = 0;
+  const rows = conf.map(x=>{
+    const t = x.totals||{};
+    const billed = Number(t.finalPrice)||0;
+    const got = Math.max(0, Number(t.advance)||0);
+    const out = Math.max(0, Number(t.balance)||0);
+    run += out;
+    return `<div class="ledrow">
+      <span class="who"><b>${esc(jobLabel(x))}</b><i>${esc(x.quoteNo||'')}${x.quoteDate ? ' · ' + esc(dmy(x.quoteDate)) : ''}</i></span>
+      <span>${inr(billed)}</span><span>${inr(got)}</span>
+      <span class="${out>0?'owed':'zero'}">${out>0 ? inr(out) : '✓'}</span>
+    </div>`;
+  }).join('');
+  box.innerHTML = `
+    <h2 class="secl">Account with Fantasy Studio <small>confirmed jobs</small></h2>
+    <div class="ledger">
+      <div class="ledhead"><span>Job</span><span>Billed</span><span>Paid</span><span>Due</span></div>
+      ${rows}
+      <div class="ledfoot ${run>0?'':'clear'}"><span>${run>0 ? 'Outstanding balance' : 'Account settled'}</span><b>${run>0 ? inr(run) : '✓ Nothing due'}</b></div>
+    </div>`;
+}
+
+function renderRates(){
+  const box = $('#ratesBox');
+  const blocks = STUS.map(s=>{
+    const entries = Object.entries(s.rateCard||{}).filter(([k])=>k !== '__albumPerSheet')
+      .sort((a,b)=>a[0].localeCompare(b[0]));
+    if(!entries.length) return '';
+    return `
+      <h2 class="secl">Your negotiated rates${STUS.length>1 ? ` <small>${esc(s.name||'')}</small>` : ' <small>auto-applied on every new job</small>'}</h2>
+      <div class="ledger">${entries.map(([k,v])=>
+        `<div class="ln" style="padding:.5rem 1rem;border-bottom:1px dashed var(--line)"><span>${esc(k)}</span><span>${inr(v)}</span></div>`).join('')}
+      </div>`;
+  }).join('');
+  box.innerHTML = blocks;
+}
+
+/* toggle job cards + jump to money */
+document.addEventListener('click', e=>{
+  const tog = e.target.closest('[data-jobtoggle]');
+  if(tog){
+    const card = tog.closest('.pkg');
+    const id = card.dataset.job;
+    if(card.classList.toggle('collapsed')) _openJobs.delete(id); else _openJobs.add(id);
+    return;
+  }
+  const sums = e.target.closest('[data-sums]');
+  if(sums){
+    const card = sums.closest('.pkg');
+    if(card.classList.contains('collapsed')){ card.classList.remove('collapsed'); _openJobs.add(card.dataset.job); }
+    const sec = [...card.querySelectorAll('.sec')].find(s=>s.querySelector('h4') && s.querySelector('h4').textContent === 'Money');
+    if(sec) sec.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+  const pay = e.target.closest('[data-pay]');
+  if(pay) openPay(Number(pay.dataset.pay)||0, pay.dataset.q||'');
+});
+
+/* ---------- pay sheet (UPI) ---------- */
+let _payQ = '';
+function upiApps(){
+  return [
+    { name:'PhonePe',    vpa: CONTACT.upi,    scheme: v=>'phonepe://pay?' + v },
+    { name:'Google Pay', vpa: CONTACT.upiAlt, scheme: v=>'tez://upi/pay?' + v },
+  ].filter(a=>a.vpa);
+}
+function upiQuery(vpa, amt, q){
+  return 'pa=' + encodeURIComponent(vpa) + '&pn=' + encodeURIComponent('Fantasy Studio')
+    + '&cu=INR' + (amt > 0 ? '&am=' + encodeURIComponent(amt.toFixed(2)) : '')
+    + '&tn=' + encodeURIComponent('B2B ' + (q||'payment'));
+}
+function renderPayApps(){
+  const amt = Math.max(0, Math.round(Number($('#payAmt').value)||0));
+  $('#payApps').innerHTML = upiApps().map((a,i)=>
+    `<a class="payapp" href="upi://pay?${esc(upiQuery(a.vpa, amt, _payQ))}" data-i="${i}"><b>${esc(a.name)}</b><span class="go">Pay ${amt>0?inr(amt):''} →</span></a>`).join('');
+  const vpa = CONTACT.upi || CONTACT.upiAlt;
+  $('#payVpa').hidden = !vpa;
+  if(vpa) $('#vpaText').textContent = vpa;
+  $('#payDone').href = 'https://wa.me/' + contactDigits() + '?text='
+    + encodeURIComponent(`Hi Fantasy Studio — we've just paid${amt>0 ? ' ' + inr(amt) : ''} for ${_payQ||'our job'}. Please confirm.`);
+}
+/* the app's own scheme first; the generic upi:// link on the anchor stays as
+   the fallback the browser follows if that app is not installed (same
+   pattern as the client portal — bare upi:// is dead on iOS) */
+$('#payApps').addEventListener('click', e=>{
+  const go = e.target.closest('[data-i]'); if(!go) return;
+  const a = upiApps()[Number(go.dataset.i)]; if(!a) return;
+  const amt = Math.max(0, Math.round(Number($('#payAmt').value)||0));
+  if(!amt){ e.preventDefault(); toast('Enter how much you want to pay'); return; }
+  try{ location.href = a.scheme(upiQuery(a.vpa, amt, _payQ)); }catch(err){}
+});
+let _payFullAmt = 0;
+function openPay(bal, q){
+  _payQ = q; _payFullAmt = bal;
+  $('#payAmt').value = bal || '';
+  renderPayApps();
+  $('#payBack').classList.add('open'); $('#paySheet').classList.add('open');
+}
+function closePay(){ $('#payBack').classList.remove('open'); $('#paySheet').classList.remove('open'); }
+$('#payBack').addEventListener('click', closePay);
+$('#payClose').addEventListener('click', closePay);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closePay(); });
+$('#payAmt').addEventListener('input', renderPayApps);
+$('#payFull').addEventListener('click', ()=>{ $('#payAmt').value = _payFullAmt||''; renderPayApps(); });
+$('#payHalf').addEventListener('click', ()=>{ $('#payAmt').value = Math.ceil((_payFullAmt||0)/2)||''; renderPayApps(); });
+$('#vpaCopy').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText($('#vpaText').textContent); toast('UPI ID copied'); }
+  catch(e){ toast('Could not copy — long-press the ID instead'); }
+});
+
+}
+</script>
+</body>
+</html>

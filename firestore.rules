@@ -75,19 +75,43 @@ service cloud.firestore {
     // the query's own filters; the portal filters on clientPhone only, so an
     // unprovable clientType condition makes the whole query fail and EVERY
     // client sees "we couldn't load your booking".
+    //
+    // The THIRD branch is the B2B partner portal (/studio/). It queries
+    //   where('clientType','==','studio').where('studioId','==', <id>)
+    // so both fields are pinned constants, and ownership is proven by
+    // looking up that studio doc's phone10 against the caller's verified
+    // number — AND the studio must still be active, so deactivating a
+    // partner in the admin panel revokes its job access here too (both
+    // get() calls hit the same doc, so Firestore dedupes them to one
+    // read). Each branch of the OR stays provable from its own portal's
+    // filters, so adding this one cannot break the client query above.
     match /packages/{pkgId} {
       allow read: if isAdmin()
         || (request.auth != null
-            && resource.data.clientPhone == clientPhone10());
+            && resource.data.clientPhone == clientPhone10())
+        || (request.auth != null
+            && resource.data.clientType == 'studio'
+            && resource.data.studioId is string
+            && get(/databases/$(database)/documents/studios/$(resource.data.studioId))
+                 .data.phone10 == clientPhone10()
+            && get(/databases/$(database)/documents/studios/$(resource.data.studioId))
+                 .data.active == true);
       allow write: if isAdmin();
     }
 
-    // B2B partner studios — strictly admin-only (profile, negotiated rate
-    // card, ledger). Never readable by clients, crew or the public site.
-    // (The default-deny match below already enforces this; the explicit
-    // block is here so nobody "fixes" it away by accident.)
+    // B2B partner studios — admin has full access; a signed-in partner may
+    // READ its own studio doc (profile, negotiated rate card) through the
+    // /studio/ portal: the portal queries
+    //   where('phone10','==', <verified last-10>).where('active','==', true)
+    // and both conditions below are proven straight from those filters.
+    // Deactivating a studio in the admin panel therefore switches its
+    // portal access off server-side too. Never writable by anyone but you.
     match /studios/{studioId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin()
+        || (request.auth != null
+            && resource.data.phone10 == clientPhone10()
+            && resource.data.active == true);
+      allow write: if isAdmin();
     }
 
     // studio spending — rent, gear, travel, crew salaries. Admin-only, like

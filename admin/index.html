@@ -1443,10 +1443,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <div class="fld"><label>Owner name</label><input id="stuOwner" autocomplete="off" /></div>
     <div class="fld"><label>City</label><input id="stuCity" autocomplete="off" /></div>
   </div>
-  <div class="fld"><label>Phone</label><input id="stuPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
+  <div class="fld"><label>Phone <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(10-digit mobile = their portal login)</span></label><input id="stuPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
   <div class="fld"><label>GST number <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional)</span></label><input id="stuGst" autocomplete="off" /></div>
   <div class="fld"><label>Payment terms</label><input id="stuTerms" placeholder="e.g. 50% advance · balance on RAW handover" /></div>
-  <div class="fld"><label>Notes</label><textarea id="stuNotes" rows="2"></textarea></div>
+  <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(the studio's portal login can read this — keep private remarks out)</span></label><textarea id="stuNotes" rows="2"></textarea></div>
   <button class="gbtn" id="stuSave" type="button">Save Studio</button>
   <button class="mini" id="stuToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
@@ -2628,6 +2628,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         warnIfCapped('packages', snap.size, PKGS_CAP);
         _pkgsLoaded = true;
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
+        syncStudioCrew();   /* partner portal reads crew off the package doc */
         renderPkgList();
         renderCalendar();
         /* one-time backfill: number packages created before quote numbers existed.
@@ -3755,6 +3756,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase()).replace(/\bIphone\b/g, 'iPhone');
   let TEAM = [], ASGS = [], REQS = [];
   let _teamUnsub = null, _asgsUnsub = null, _reqsUnsub = null, _teamLoaded = false, _asgsLoaded = false;
+  let _asgsFresh = false;   /* true once a server (non-cache) assignments snapshot has arrived */
   /* a listener error used to be painted into the list and then wiped by the
      next render's skeleton — the owner was left staring at a shimmer forever
      with no way to retry. Remember the failure and offer a retry button. */
@@ -3799,6 +3801,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
           warnIfCapped('assignments', snap.size, ASGS_CAP);
           _asgsLoaded = true;
+          if(!snap.metadata.fromCache) _asgsFresh = true;
+          syncStudioCrew();   /* partner portal reads crew off the package doc */
           renderTeam();
           renderPkgStats();   /* the crew-pay tile on Home reads these */
           if($('#finModal').classList.contains('open')) renderFin();
@@ -5070,10 +5074,53 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      ============================================================ */
   let STUDIOS = [];
   let _studiosUnsub = null, _studiosLoaded = false, _stuEditId = null, _stuDetailId = null, _studiosErr = '';
+  let _stuKeyFixed = false;
   const STUDIOS_CAP = 300;
   function studioById(id){ return STUDIOS.find(s=>s.id===id) || null; }
   const isStudioJob = x => !!x && (x.clientType||'direct') === 'studio';
   const studioJobs = id => livePkgs().filter(p=>isStudioJob(p) && p.studioId === id);
+
+  /* ---- partner portal: mirror each studio job's crew onto its package ----
+     The /studio/ portal must never read assignments (they carry crew pay),
+     so a pay-free summary lives on the package doc itself as `crew`.
+     Recomputed after every packages/assignments snapshot and written only
+     when it actually changed — covers assign, edit, delete and re-sync in
+     one place, and backfills every existing studio job on the first load
+     after this deploys. Server-fresh data only; a cache image must never
+     strip a job's crew. */
+  let _crewSyncT = null, _crewSyncBusy = false, _crewSyncAgain = false;
+  const _crewKey = list => (Array.isArray(list) ? list : [])
+    .map(c => [c.name, c.role, c.date, c.slot, c.kind].map(v => String(v || '')).join('|'))
+    .sort().join('~');
+  function syncStudioCrew(){
+    if(!_pkgsFresh || !_asgsFresh) return;
+    clearTimeout(_crewSyncT);
+    _crewSyncT = setTimeout(async ()=>{
+      if(_crewSyncBusy){ _crewSyncAgain = true; return; }
+      _crewSyncBusy = true;
+      try{
+        /* the assignments listener is windowed to the newest ASGS_CAP docs
+           by date — past the cap, older assignments fall out of ASGS and a
+           naive recompute would silently strip crew off old jobs. When the
+           window is full, leave untouched any package whose mirrored crew
+           reaches at or below the window's horizon. */
+        const _capped = ASGS.length >= ASGS_CAP;
+        const _horizon = _capped && ASGS.length ? String(ASGS[ASGS.length-1].date || '') : '';
+        for(const p of livePkgs().filter(isStudioJob)){
+          if(_capped && (Array.isArray(p.crew) ? p.crew : []).some(c => String((c||{}).date || '') <= _horizon)) continue;
+          const want = ASGS.filter(a => a.pkgId === p.id)
+            .map(a => ({ name: a.memberName || '', role: a.role || '', date: a.date || '',
+                         slot: a.slot || '', kind: a.kind === 'edit' ? 'edit' : '' }));
+          if(_crewKey(want) === _crewKey(p.crew)) continue;
+          p.crew = want;   /* keep the local copy in step — no rewrite on the echo snapshot */
+          await settle(updateDoc(doc(db,'packages',p.id), { crew: want }));
+        }
+      }finally{
+        _crewSyncBusy = false;
+        if(_crewSyncAgain){ _crewSyncAgain = false; syncStudioCrew(); }
+      }
+    }, 1200);
+  }
   const CONFIRMED_ST = ['booked','delivered'];
 
   function loadStudios(){
@@ -5085,6 +5132,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
         warnIfCapped('studios', snap.size, STUDIOS_CAP);
         _studiosLoaded = true;
+        /* one-time fix-up: studios saved before the partner portal existed
+           carry no phone10 login key — derive it from the profile phone.
+           Server snapshots only; a stale cache image must never write. */
+        if(!_stuKeyFixed && !snap.metadata.fromCache){
+          _stuKeyFixed = true;
+          STUDIOS.forEach(s=>{
+            if(s.phone10 !== undefined) return;
+            const p10 = String(s.phone||'').replace(/\D/g,'').slice(-10);
+            if(p10.length !== 10) return;
+            s.phone10 = p10;
+            settle(updateDoc(doc(db,'studios',s.id), { phone10: p10 }));
+            ensurePhoneIndex(p10);
+          });
+        }
         renderB2B();
       }, err=>{
         try{ if(_studiosUnsub) _studiosUnsub(); }catch(e){} _studiosUnsub = null;
@@ -5231,8 +5292,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const btn = $('#stuSave'); if(btn.disabled) return;
     const name = $('#stuName').value.trim();
     if(!name){ toast('Studio name is required'); $('#stuName').focus(); return; }
+    /* phone10 is the partner-portal login key: the /studio/ page signs the
+       owner in by OTP and queries studios on this exact field. A number
+       shorter than 10 digits stores '' — no login, and the detail page
+       says so. */
+    const _sp10 = $('#stuPhone').value.replace(/\D/g,'').slice(-10);
     const data = { name, ownerName: $('#stuOwner').value.trim(), city: $('#stuCity').value.trim(),
-                   phone: $('#stuPhone').value.trim(), gst: $('#stuGst').value.trim(),
+                   phone: $('#stuPhone').value.trim(), phone10: _sp10.length === 10 ? _sp10 : '',
+                   gst: $('#stuGst').value.trim(),
                    paymentTerms: $('#stuTerms').value.trim(), notes: $('#stuNotes').value.trim(),
                    updatedAt: serverTimestamp() };
     btn.disabled = true;
@@ -5260,6 +5327,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         STUDIOS.push({ id: ref.id, ...data, rateCard: {}, active: true });
         STUDIOS.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
       }
+      /* the partner portal checks this hashed index before sending an OTP —
+         same index the client portal uses, so one write serves both */
+      if(data.phone10) ensurePhoneIndex(data.phone10);
       renderB2B(); renderPkgList();
       closeStu();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
@@ -5348,6 +5418,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
         ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
         ${s.notes ? `<div class="ln2"><span>Notes</span><span>${esc(s.notes)}</span></div>` : ''}
+        <div class="ln2"><span>Partner portal</span><span>${
+          s.active === false ? 'off — studio is inactive'
+          : (s.phone10 && String(s.phone10).length === 10) ? `✓ signs in at /studio/ with …${esc(String(s.phone10).slice(-4))}`
+          : 'no login yet — add a 10-digit mobile via Edit'}</span></div>
         <div class="ev-acts">
           ${s.phone ? `<a class="mini stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
           <a class="mini stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
