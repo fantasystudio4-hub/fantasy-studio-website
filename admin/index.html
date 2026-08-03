@@ -268,6 +268,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
    full-width .fld input styling onto the qty / rate boxes inside .itemrow */
 #qeQueue:not(:empty){margin:0 0 .8rem;border:1px dashed var(--line);border-radius:10px;padding:.1rem .7rem}
 #qeQueue .qeq-h{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);padding:.5rem 0 .1rem}
+/* the sheet is narrower inside the B2B section than on Home — let a banked
+   date wrap rather than clipping its time of day and venue */
+#qeQueue .what{white-space:normal;overflow:visible;text-overflow:clip}
+#qeQueue .up-ev{align-items:flex-start;padding:.5rem 0}
+#qeQueue .when{padding-top:.15rem}
 #qeMore{margin-bottom:.9rem}
 #qeSvc{margin-bottom:.8rem;text-align:left}
 #qeSvc > label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
@@ -813,7 +818,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   #b2bStats .stat span{font-size:.62rem;letter-spacing:.08em}
 }
 /* the two ways to start something on the B2B list, side by side */
-.b2b-adds{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+/* both actions sit above the list: a season's worth of studios used to bury
+   them below the fold */
+.b2b-adds{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:0 0 .9rem}
 .b2b-adds .addrow{margin:0}
 /* the 🔍 / ＋ pair is fixed bottom-right and sat on top of that add row once
    the studio list was long enough to scroll (Home clears its own the same way) */
@@ -1169,11 +1176,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="sec">
         <h3>🏢 Partner studios</h3>
         <p class="sub">Studios that hire Fantasy Studio — crew on hire, editing, full coverage. Tap a studio for its rate card, jobs &amp; ledger. Strictly admin-only: nothing here ever appears on the website or client pages.</p>
-        <div id="studioList"><div class="skel"></div></div>
         <div class="b2b-adds">
           <button class="addrow" id="stuAdd">＋ Add studio</button>
           <button class="addrow" id="b2bAddEv">＋ Add event</button>
         </div>
+        <div id="studioList"><div class="skel"></div></div>
       </div>
     </div>
     <div id="studioDetailView" hidden></div>
@@ -3379,8 +3386,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_qeAnchor === 'home'){
       if(!calSel){ toast('Tap a date first'); return; }
       $('#homeView').insertBefore(node, $('#upcoming'));   /* directly under the day box */
-    }else{
+    }else if(stu){
+      /* a studio's own page: #studioDetailView is rebuilt on every snapshot,
+         so the form sits after it, never inside it */
       $('#calView').appendChild(node);
+    }else{
+      /* the B2B list: directly under the two buttons it was launched from,
+         not below a season's worth of studios. The .sec around them is never
+         rebuilt — only #studioList itself is. */
+      const adds = $('#calView .b2b-adds');
+      if(adds && adds.parentNode) adds.parentNode.insertBefore(node, adds.nextSibling);
+      else $('#calView').appendChild(node);
     }
     _qeMode = _qeAnchor === 'b2b' ? 'studio' : 'client';
     _qeStatus = 'booked';
