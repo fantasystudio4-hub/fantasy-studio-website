@@ -101,6 +101,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
 .lead-top .newb{font-size:.58rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
+/* "this number has enquired before" — a warning tone, not the gold NEW badge:
+   the two mean opposite things and must not read as the same chip */
+.lead-top .dupb{font-size:.58rem;letter-spacing:.08em;color:#ffb054;border:1px solid rgba(255,176,84,.45);background:rgba(255,176,84,.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
 .lead-top .qno{color:var(--gold-b);letter-spacing:.05em;font-size:.72rem}
 .lt-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}
 .lt-lines .l1{display:flex;align-items:center;gap:.5rem;min-width:0}
@@ -407,7 +410,18 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
 .row{border:1px dashed var(--line);border-radius:10px;padding:.7rem;margin-bottom:.6rem}
 .row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
-textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height:84px}
+/* ready-made packages: one nested card per event inside the preset's .row.
+   Replaced a raw-JSON textarea, so this is the first time these are editable
+   without writing code. */
+.pevs{margin:.35rem 0 .6rem}
+.pev{border:1px dashed var(--line);border-radius:10px;padding:.65rem;margin-bottom:.55rem;background:rgba(255,255,255,.02)}
+.pev .del{float:right;background:none;border:0;color:var(--err);font-size:1.05rem;cursor:pointer;padding:0 .3em}
+.pev .fld{margin-bottom:.55rem}
+.pev .evchips,.pev .svcchips{margin:.1rem 0 .5rem}
+.pev .qchip{padding:.35em .8em;font-size:.74rem}
+.psvc{margin-bottom:.4rem}
+.psvc .pslab{flex:1;min-width:0;color:var(--text);font-size:.82rem;align-self:center}
+.psvc .pslab em{font-style:normal;color:var(--err);font-size:.72em;display:block}
 .addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.6em;cursor:pointer;font-size:.82rem}
 .evchips,.svcchips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.1rem 0 .85rem}
 .qchip{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:30px;padding:.45em 1em;font-size:.8rem;cursor:pointer;transition:.15s;font-family:var(--sans)}
@@ -502,6 +516,9 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .tm-crew .nm2{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm-crew .rl{color:var(--mut);font-size:.7rem;white-space:nowrap}
 .tm-crew .ackpill{margin-left:auto;flex:0 0 auto;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border-radius:14px;padding:.22em .65em;font-weight:600}
+/* sits after the pill, which is what margin-left:auto has already pushed right */
+.tm-crew .csbtn{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.2em .55em;font-size:.8rem;line-height:1.2;cursor:pointer}
+.tm-crew .csbtn:active{background:rgba(184,144,43,.2);border-color:var(--gold)}
 .ackpill.seen{color:var(--ok);background:rgba(76,175,125,.13)}
 .ackpill.wait{color:#c9c0a8;background:rgba(255,255,255,.07)}
 .ackpill.stale{color:#ffb054;background:rgba(255,176,84,.13)}
@@ -522,6 +539,10 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:.62rem;color:var(--ok);letter-spacing:.02em}
 .pm-row .part2{color:#ffb054;border-color:rgba(255,176,84,.5)}
 .pm-row .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.72rem;cursor:pointer;white-space:nowrap}
+/* .grp sets uppercase + wide letter-spacing for its heading text — the button
+   inside it has to opt out or it reads as more heading, not an action */
+.grp .pmall{background:rgba(184,144,43,.16);border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
+.grp .pmall:active{background:rgba(184,144,43,.32)}
 .pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
 .as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
 
@@ -2095,6 +2116,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const list = LEADS.filter(l=>!l.deleted && (!f || (l.status||'new')===f)
       && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)
           || String(l.eventType||'').toLowerCase().includes(q)));
+    /* The same person enquiring twice arrived as two unrelated cards — the
+       website has no idea it has seen them before, so the owner re-quoted a
+       client they were already talking to. Group the live leads by number
+       (last 10 digits, so a +91 form and a bare one are one person) and let
+       each card say it is not the first. LEADS is newest-first, so index 0 is
+       the latest enquiry. */
+    _leadDups = {};
+    LEADS.filter(l=>!l.deleted).forEach(l=>{
+      const p = normPhone(l.phone);
+      if(p.length === 10) (_leadDups[p] = _leadDups[p] || []).push(l);
+    });
     if(!list.length){
       $('#leadList').innerHTML = !_leadsLoaded
         ? '<div class="skel"></div><div class="skel"></div>'
@@ -2106,12 +2138,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#leadList').innerHTML = list.map(l=>{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
+      const sib = leadSiblings(l);
       return `
       <div class="lead" data-id="${l.id}">
         <div class="lead-top" data-toggle role="button" tabindex="0" aria-label="Open lead">
           <span class="nm">${esc(l.name||'—')}</span>
           <span class="src">${esc(l.source==='contact_form'?'enquiry':'builder')}</span>
           ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
+          ${sib.length ? `<span class="dupb" title="This number has ${sib.length + 1} enquiries — open the card to see the others">↩ ${sib.length + 1}× enquiry</span>` : ''}
           <span class="amt">${l.grandTotal ? inr(l.grandTotal) : ''}</span>
         </div>
         <div class="lead-sub">
@@ -2130,8 +2164,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _restore();
   }
 
+  /* live leads sharing this one's number, newest first, excluding itself */
+  let _leadDups = {};
+  function leadSiblings(l){
+    const p = normPhone(l && l.phone);
+    if(p.length !== 10) return [];
+    return (_leadDups[p] || []).filter(o=>o.id !== l.id);
+  }
+
   function leadDetailHTML(l){
     let h = '';
+    const sib = leadSiblings(l);
+    if(sib.length){
+      h += `<h4>↩ Same number, ${sib.length} other enquir${sib.length===1?'y':'ies'}</h4>`
+        + sib.map(o=>{
+            const ots = o.createdAt && o.createdAt.toDate ? o.createdAt.toDate() : null;
+            return `<div class="ln"><span>${esc(ots ? ots.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'date unknown')}${o.eventType ? ' · ' + esc(o.eventType) : ''}</span>`
+              + `<span>${esc(o.status||'new')}${o.grandTotal ? ' · ' + inr(o.grandTotal) : ''}</span></div>`;
+          }).join('')
+        + `<p class="sub" style="margin:.2rem 0 .6rem">Quote the one they are actually waiting on — a second package splits the same client's events and payments across two records.</p>`;
+    }
     if(l.eventType) h += `<div class="ln"><span>Events</span><span>${esc(l.eventType)}</span></div>`;
     if(l.phone) h += `<div class="ln"><span>Phone</span><span>${esc(l.phone)}</span></div>`;
     if(l.message) h += `<h4>Message</h4><div>${esc(l.message)}</div>`;
@@ -2309,9 +2361,54 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const dsteps = (CFG.deliverySteps && CFG.deliverySteps.length) ? CFG.deliverySteps : DEFAULTS.deliverySteps;
     $('#dstepList').innerHTML = dsteps.map(dstepRow).join('');
     $('#pkgListRM').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
+    refreshAllPresetChips();
     $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
     $('#faqList').innerHTML = (CFG.faqs||[]).map(faqRow).join('');
   }
+  /* ---------- ready-made packages ----------
+     These were edited as raw JSON: the one place in the panel where a missing
+     brace blocked the entire Save All, and where a typo published nothing at
+     all to the public site (which validates presets and silently drops a bad
+     one, keeping the built-in). Same rows and quantity steppers the quotation
+     builder uses instead.
+     The limits mirror what the site actually accepts — qty is clamped to 50
+     and the event name to 40 characters there, so accepting more here would
+     just be a number the owner sets and never sees. */
+  const PRESET_QTY_MAX = 50, PRESET_TYPE_MAX = 40;
+  const presetSvcRow = (key, qty) => `
+    <div class="itemrow psvc" data-psvc="${esc(key)}">
+      <div class="l1">
+        <span class="pslab">${esc(SERVICE_LABELS[key] || key)}${SERVICE_LABELS[key] ? '' : ' <em>(not a service on the site — it is ignored there)</em>'}</span>
+        <button class="rm" data-rmpsvc type="button" title="Remove">✕</button>
+      </div>
+      <div class="l2">
+        <div class="mini-f"><label>Qty</label>
+          <div class="qwrap">
+            <button type="button" data-pqm>−</button>
+            <input data-pq type="number" min="1" max="${PRESET_QTY_MAX}" value="${Math.min(PRESET_QTY_MAX, Math.max(1, Number(qty)||1))}" />
+            <button type="button" data-pqp>+</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  const presetEvRow = (ev={}) => `
+    <div class="pev" data-pev>
+      <button class="del" data-rmpev type="button" title="Remove this event">✕</button>
+      <div class="fld"><label>Event</label>
+        <input data-k="type" maxlength="${PRESET_TYPE_MAX}" value="${esc(ev.type||'')}" placeholder="e.g. NIKAH" /></div>
+      <div class="evchips" data-pevchips>${EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-pevname="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <div class="psvcs">${Object.entries(ev.services||{}).filter(([,q])=>Number(q)>0)
+        .map(([k,q])=>presetSvcRow(k,q)).join('')}</div>
+      <div class="svcchips" data-psvcchips></div>
+    </div>`;
+  /* one chip per site service this event does not already carry */
+  function refreshPresetChips(evCard){
+    const box = evCard.querySelector('[data-psvcchips]'); if(!box) return;
+    const used = new Set([...evCard.querySelectorAll('[data-psvc]')].map(r=>r.dataset.psvc));
+    box.innerHTML = Object.keys(SERVICE_LABELS).filter(k=>!used.has(k))
+      .map(k=>`<button type="button" class="qchip" data-addpsvc="${esc(k)}">＋ ${esc(SERVICE_LABELS[k])}</button>`).join('');
+  }
+  const refreshAllPresetChips = () => $$('#pkgListRM [data-pev]').forEach(refreshPresetChips);
   const pkgRow = (key, p) => `
     <div class="row" data-pkg>
       <button class="del" data-del title="Remove">✕</button>
@@ -2322,8 +2419,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>Album sheets</label><input type="number" min="0" data-k="album" value="${Number(p.album)||0}" /></div>
       </div>
       <div class="fld"><label>Description</label><input data-k="desc" value="${esc(p.desc||'')}" /></div>
-      <div class="fld"><label>Events (JSON — type + services with quantities)</label>
-        <textarea class="json" data-k="events">${esc(JSON.stringify(p.events||[], null, 1))}</textarea></div>
+      <label>Events &amp; services</label>
+      <div class="pevs">${(p.events||[]).map(presetEvRow).join('')}</div>
+      <button class="addrow" type="button" data-addpev>＋ Add event to this package</button>
     </div>`;
   const testiRow = (t={}) => `
     <div class="row" data-testi>
@@ -2363,7 +2461,49 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   $('#addDstep').addEventListener('click', ()=>$('#dstepList').insertAdjacentHTML('beforeend', dstepRow('')));
 
-  $('#addPkg').addEventListener('click', ()=>$('#pkgListRM').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'Nikah', services:{traditionalPhoto:1}}]})));
+  $('#addPkg').addEventListener('click', ()=>{
+    $('#pkgListRM').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'NIKAH', services:{traditionalPhoto:1}}]}));
+    refreshAllPresetChips();
+  });
+  /* everything inside a preset card: add/remove an event, add/remove a service,
+     step a quantity, pick an event name */
+  $('#pkgListRM').addEventListener('click', e=>{
+    const addEv = e.target.closest('[data-addpev]');
+    if(addEv){
+      const box = addEv.closest('[data-pkg]').querySelector('.pevs');
+      box.insertAdjacentHTML('beforeend', presetEvRow({}));
+      refreshPresetChips(box.lastElementChild);
+      return;
+    }
+    const rmEv = e.target.closest('[data-rmpev]');
+    if(rmEv){ rmEv.closest('[data-pev]').remove(); return; }
+    const nm = e.target.closest('[data-pevname]');
+    if(nm){
+      const card = nm.closest('[data-pev]');
+      card.querySelector('[data-k="type"]').value = nm.dataset.pevname;
+      return;
+    }
+    const addSvc = e.target.closest('[data-addpsvc]');
+    if(addSvc){
+      const card = addSvc.closest('[data-pev]');
+      card.querySelector('.psvcs').insertAdjacentHTML('beforeend', presetSvcRow(addSvc.dataset.addpsvc, 1));
+      refreshPresetChips(card);
+      return;
+    }
+    const rmSvc = e.target.closest('[data-rmpsvc]');
+    if(rmSvc){
+      const card = rmSvc.closest('[data-pev]');
+      rmSvc.closest('[data-psvc]').remove();
+      refreshPresetChips(card);
+      return;
+    }
+    const step = e.target.closest('[data-pqm]') || e.target.closest('[data-pqp]');
+    if(step){
+      const q = step.closest('[data-psvc]').querySelector('[data-pq]');
+      const up = !!e.target.closest('[data-pqp]');
+      q.value = Math.min(PRESET_QTY_MAX, Math.max(1, (Number(q.value)||1) + (up ? 1 : -1)));
+    }
+  });
   $('#addTesti').addEventListener('click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
   $('#addFaq').addEventListener('click', ()=>$('#faqList').insertAdjacentHTML('beforeend', faqRow()));
   document.addEventListener('click', e=>{ if(e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
@@ -2385,9 +2525,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const get = k => row.querySelector(`[data-k="${k}"]`).value;
         const key = get('key').trim().replace(/\s+/g,'');
         if(!key) continue;
-        let events;
-        try{ events = JSON.parse(get('events')); if(!Array.isArray(events)) throw 0; }
-        catch(_){ toast(`Package "${key}": events JSON is invalid`); return; }
+        /* read the rows instead of parsing a textarea — there is no longer an
+           invalid state to reject, only empty events to drop */
+        const events = [...row.querySelectorAll('[data-pev]')].map(ec=>{
+          const services = {};
+          ec.querySelectorAll('[data-psvc]').forEach(sr=>{
+            const k = sr.dataset.psvc;
+            if(!k) return;
+            services[k] = Math.min(PRESET_QTY_MAX, Math.max(1, Number(sr.querySelector('[data-pq]').value)||1));
+          });
+          return { type: ec.querySelector('[data-k="type"]').value.trim().slice(0, PRESET_TYPE_MAX), services };
+        }).filter(ev=>ev.type || Object.keys(ev.services).length);
+        /* the site drops a preset with nothing priceable rather than advertise
+           "Package ₹0" — say so here instead of letting it vanish silently */
+        if(!events.length || !events.some(ev=>Object.keys(ev.services).length) && !(Number(get('album'))||0)){
+          toast(`Package "${get('name').trim() || key}" has no services and no album — give it something to price, or remove it with ✕`);
+          return;
+        }
         presets[key] = { name:get('name').trim(), tag:get('tag').trim(), desc:get('desc').trim(),
           album:Number(get('album'))||0, events };
       }
@@ -4109,6 +4263,32 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return n;
   }
 
+  /* What a shooter actually needs the night before: which function, when to be
+     there, where, and what they are doing. The crew page has all of it, but
+     nothing pushed it to them — the studio's WhatsApp habit was the gap.
+     Deliberately no fee: this gets forwarded around crew groups. */
+  function callSheetText(a){
+    const when = /^\d{4}-\d{2}-\d{2}$/.test(a.date||'')
+      ? new Date(a.date+'T00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
+    return [
+      `*Fantasy Studio* — call sheet`,
+      '',
+      `*${a.eventTitle || 'Event'}*${slotSuffix(a.slot)}${a.clientName ? ' — ' + a.clientName : ''}`,
+      when ? `📅 ${when}` : '',
+      a.callTime ? `⏰ Call time ${a.callTime}` : '⏰ Call time to be confirmed',
+      a.venue ? `📍 ${a.venue}` : '',
+      `🎬 You are on ${roleLabel(a.role)}`,
+      a.notes ? `📝 ${a.notes}` : '',
+      '',
+      'Please open your crew page and confirm.'
+    ].filter(v=>v !== '').join('\n');
+  }
+  const crewWaNumber = a => {
+    const m = memberById(a.memberId);
+    const p = (m && m.phone) || a.memberPhone10 || '';
+    return p ? String(normPhoneFull(p)).replace(/\D/g,'') : '';
+  };
+
   function crewRowHTML(a, extra){
     const seen = a.status === 'acknowledged';
     /* the member's own "completed" is the later, stronger signal — once it is
@@ -4116,11 +4296,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pill = a.workDone
       ? '<span class="ackpill seen" title="Marked completed by the member">✓ done</span>'
       : `<span class="ackpill ${seen?'seen':'wait'}">${seen?'✓ seen':'⏳ not seen'}</span>`;
+    const wa = a.kind === 'edit' ? '' : crewWaNumber(a);
     return `
       <div class="tm-crew" data-asedit="${a.id}">
         <span class="nm2">${esc(a.memberName||'—')}</span>
         <span class="rl">${esc(roleLabel(a.role))}${a.callTime ? ' · call ' + esc(a.callTime) : ''}${(a.pay||{}).amount ? ' · ' + inr(a.pay.amount) : ''}</span>
         ${extra || pill}
+        ${(!extra && wa) ? `<button class="csbtn" type="button" data-callsheet="${esc(a.id)}" title="WhatsApp ${esc(a.memberName||'them')} the call sheet" aria-label="Send call sheet to ${esc(a.memberName||'this member')}">📤</button>` : ''}
       </div>`;
   }
 
@@ -4597,7 +4779,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const due = list.reduce((s,a)=>s + payDue(a), 0);
       const got = list.reduce((s,a)=>s + payGot(a), 0);
       const open = _payOpen.has(mid);
-      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : (got > 0 ? 'all paid ✓' : 'nothing due')}</b></div>`;
+      /* one handover, one entry point — the shoots it covers are worked out
+         for you rather than opened one at a time */
+      const nDue = list.filter(a=>payDue(a) > 0).length;
+      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : (got > 0 ? 'all paid ✓' : 'nothing due')}</b>${
+        due > 0 ? `<button class="act pmall" type="button" data-pmall="${esc(mid)}" title="Settle ${inr(due)} across ${nDue} shoot${nDue===1?'':'s'}">Settle all</button>` : ''}</div>`;
       if(!open) return head;
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
@@ -5115,6 +5301,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   $('#teamEvents').addEventListener('click', e=>{
+    /* the whole crew row opens the assign sheet — this has to be caught first
+       or tapping 📤 would edit the assignment instead of messaging them */
+    const cs = e.target.closest('[data-callsheet]');
+    if(cs){
+      const a = ASGS.find(v=>v.id===cs.dataset.callsheet); if(!a) return;
+      const wa = crewWaNumber(a);
+      if(!wa){ toast('No phone number for this member — add one in the Crew list'); return; }
+      openWa('https://wa.me/' + wa + '?text=' + encodeURIComponent(callSheetText(a)));
+      return;
+    }
     const add = e.target.closest('[data-asadd]');
     const sync = e.target.closest('[data-assync]');
     const edit = e.target.closest('[data-asedit]');
@@ -5173,8 +5369,84 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- pay tracker: pay crew in instalments against one assignment ---------- */
   let _cpId = null, _cpMode = 'online';
+  /* set instead of _cpId when the sheet is settling a member's whole ledger */
+  let _cpAllMember = null;
+  /* everything still owed to one member, oldest shoot first — the order money
+     is actually handed over in, and the order Settle all allocates it */
+  const dueRowsFor = mid => ASGS.filter(a=>a.memberId === mid && payDue(a) > 0)
+    .sort((a,b)=>String(a.date||'') < String(b.date||'') ? -1 : 1);
+
+  /* Settling a season meant opening one sheet per shoot: six sheets, six
+     amounts, six saves, for one handover of cash. This is the same sheet with
+     the member's whole outstanding ledger in it — whatever is entered is
+     allocated oldest shoot first, so a part payment lands where a studio would
+     put it, and each shoot still gets its own entry that can be corrected. */
+  function openCrewPayAll(mid){
+    const rows = dueRowsFor(mid);
+    if(!rows.length){ toast('Nothing due for this member'); return; }
+    const m = memberById(mid);
+    const name = (m && m.name) || rows[0].memberName || 'this member';
+    const total = rows.reduce((s,a)=>s + payDue(a), 0);
+    _cpId = null; _cpAllMember = mid; _cpMode = 'online';
+    $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on');
+    $('#cpWho').textContent = `${name} — ${inr(total)} owed across ${rows.length} shoot${rows.length===1?'':'s'}`;
+    $('#cpAmt').value = '';
+    const quick = [['Everything owed', total]];
+    const half = Math.round(total/2);
+    if(half > 0 && half < total) quick.push(['Half', half]);
+    $('#cpQuick').innerHTML = quick.map(([l,v])=>`<button type="button" data-cqa="${v}">${l} · ${inr(v)}</button>`).join('');
+    $('#cpDate').value = todayISO();
+    $('#cpHist').innerHTML = '<b style="color:var(--gold-b)">Outstanding — paid off in this order</b>'
+      + rows.map(a=>`<div><span>${esc(stepDate(a.date)||a.date||'no date')} · ${esc(a.eventTitle||'Event')}</span><span>${inr(payDue(a))}</span></div>`).join('');
+    const wasOpen = $('#cpModal').classList.contains('open');
+    $('#cpModal').classList.add('open'); $('#cpBackdrop').classList.add('open');
+    setTimeout(()=>$('#cpAmt').focus(), 80);
+    if(!wasOpen) pushView('crewpay', '#team/pay');
+  }
+
+  async function settleAllPayment(){
+    const mid = _cpAllMember;
+    const rows = dueRowsFor(mid);
+    if(!rows.length){ toast('Nothing due any more'); closeCrewPay(); return; }
+    const amount = Math.round(Number($('#cpAmt').value)||0);
+    if(amount <= 0){ toast('Enter the amount you paid'); $('#cpAmt').focus(); return; }
+    const total = rows.reduce((s,a)=>s + payDue(a), 0);
+    if(amount > total && !confirm(`That is ${inr(amount - total)} more than the ${inr(total)} owed across these shoots.\n\nOnly ${inr(total)} can be allocated — the rest would not be recorded anywhere. Continue with ${inr(total)}?`)){
+      $('#cpAmt').focus(); return;
+    }
+    const date = $('#cpDate').value || todayISO(), mode = _cpMode;
+    const btn = $('#cpSave'); btn.disabled = true;
+    let left = Math.min(amount, total), paid = 0, n = 0, failed = 0, queued = false;
+    try{
+      for(const a of rows){
+        if(left <= 0) break;
+        const take = Math.min(left, payDue(a));
+        if(take <= 0) continue;
+        try{
+          const res = await recordCrewPayment(a, { id: newPayId(), amount: take, date, mode });
+          a.pay = res.pay; queued = queued || res.queued;
+          left -= take; paid += take; n++;
+        }catch(err){ failed++; }
+      }
+      /* Say exactly what landed. A partial run is the one case where a cheerful
+         summary would be a lie — the owner has handed over cash and needs to
+         know which shoots it was recorded against. */
+      if(!n){ toast('Nothing was recorded — ' + (failed ? 'the server refused the writes' : 'no shoot had a balance')); return; }
+      renderTeam(); renderPkgStats(); buzz();
+      const stillOwed = dueRowsFor(mid).reduce((s,a)=>s + payDue(a), 0);
+      toast(failed
+        ? `${inr(paid)} recorded across ${n} shoot${n===1?'':'s'} — ${failed} could not be saved, ${inr(stillOwed)} still shows as owed`
+        : queued
+          ? `${inr(paid)} across ${n} shoot${n===1?'':'s'} saved offline — will sync`
+          : `${inr(paid)} to ${(memberById(mid)||{}).name || 'crew'} across ${n} shoot${n===1?'':'s'} — ${stillOwed > 0 ? inr(stillOwed) + ' still owed' : 'fully settled ✓'}`);
+      if(!failed) closeCrewPay();
+      else openCrewPayAll(mid);   /* leave the sheet on what is still outstanding */
+    }catch(err){ toast('Could not settle: ' + (err.message||err.code||'no signal')); }
+    finally{ btn.disabled = false; }
+  }
+
   function openCrewPay(a){
-    _cpId = a.id; _cpMode = 'online';
+    _cpId = a.id; _cpAllMember = null; _cpMode = 'online';
     $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on');
     const fee = payFee(a), got = payGot(a), due = payDue(a);
     $('#cpWho').textContent = `${a.memberName||'—'} · ${a.eventTitle||'Event'} ${stepDate(a.date)||a.date||''} — `
@@ -5203,7 +5475,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           `<div><span>${esc(dmy(pm.date) || 'date not recorded')}${pm.mode ? ' · ' + esc(pm.mode) : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-cprm data-pid="${esc(pm.id||'')}" title="Remove this payment">✕</button></span></div>`).join('')
       : '';
   }
-  function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; }
+  function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; _cpAllMember = null; }
   function closeCrewPay(){ backFrom('crewpay', closeCrewPayUI); }
   $('#cpClose').addEventListener('click', closeCrewPay);
   $('#cpBackdrop').addEventListener('click', closeCrewPay);
@@ -5238,7 +5510,47 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : (p.paid ? Math.max(0, Number(p.amount)||0) : 0);
     return got > 0 ? [{ id:'legacy', amount: got, date: String(p.paidDate||''), mode: String(p.mode||'') }] : [];
   }
+  /* Every instalment id is unique within a session: settling a member's whole
+     ledger writes several in the same millisecond, and Date.now() alone would
+     hand two of them the same id — which is what removing one payment matches
+     on. */
+  let _payIdN = 0;
+  const newPayId = () => Date.now().toString(36) + (_payIdN++).toString(36) + Math.random().toString(36).slice(2,5);
+
+  /* One write, used by both the single-assignment sheet and Settle all.
+     Returns the new pay map and whether it is still queued. */
+  async function recordCrewPayment(a, entry){
+    const id = a.id;
+    if(navigator.onLine){
+      /* read-modify-write against the server copy: an instalment recorded on
+         another device (or a fee edited meanwhile) can never be overwritten */
+      const pay = await runTransaction(db, async t=>{
+        const ref = doc(db,'assignments',id);
+        const snap = await t.get(ref);
+        if(!snap.exists()) throw new Error('assignment not found');
+        const server = snap.data().pay || {};
+        const next = payMapFrom(server, [...priorPayments(server), entry]);
+        t.update(ref, { pay: next, updatedAt: serverTimestamp() });
+        return next;
+      });
+      return { pay, queued: false };
+    }
+    /* offline: queue it. A row that already has history appends without
+       touching the others; the first instalment has to seed the map whole,
+       and with no signal this device is the only writer anyway. */
+    const cur = a.pay || {};
+    const hasHistory = Array.isArray(cur.payments) && cur.payments.length > 0;
+    const pay = payMapFrom(cur, [...priorPayments(cur), entry]);
+    const patch = hasHistory
+      ? { 'pay.payments': arrayUnion(entry), 'pay.paidAmount': increment(entry.amount),
+          'pay.paidDate': pay.paidDate, 'pay.paid': pay.paid, updatedAt: serverTimestamp() }
+      : { pay, updatedAt: serverTimestamp() };
+    updateDoc(doc(db,'assignments',id), patch).catch(()=>{});
+    return { pay, queued: true };
+  }
+
   async function saveCrewPayment(){
+    if(_cpAllMember) return settleAllPayment();
     const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
     const id = a.id;
     const amount = Math.round(Number($('#cpAmt').value)||0);
@@ -5250,37 +5562,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!confirm(`That is ${inr(amount - due)} more than the ${inr(due)} still owed for this event. Record it anyway?`)){ $('#cpAmt').focus(); return; }
     }
     const mode = _cpMode;
-    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-                    amount, date: $('#cpDate').value || todayISO(), mode };
-    const cur = a.pay || {};
+    const entry = { id: newPayId(), amount, date: $('#cpDate').value || todayISO(), mode };
     const btn = $('#cpSave'); btn.disabled = true;
     try{
-      let pay, queued = false;
-      if(navigator.onLine){
-        /* read-modify-write against the server copy: an instalment recorded on
-           another device (or a fee edited meanwhile) can never be overwritten */
-        pay = await runTransaction(db, async t=>{
-          const ref = doc(db,'assignments',id);
-          const snap = await t.get(ref);
-          if(!snap.exists()) throw new Error('assignment not found');
-          const server = snap.data().pay || {};
-          const next = payMapFrom(server, [...priorPayments(server), entry]);
-          t.update(ref, { pay: next, updatedAt: serverTimestamp() });
-          return next;
-        });
-      }else{
-        /* offline: queue it. A row that already has history appends without
-           touching the others; the first instalment has to seed the map whole,
-           and with no signal this device is the only writer anyway. */
-        const hasHistory = Array.isArray(cur.payments) && cur.payments.length > 0;
-        pay = payMapFrom(cur, [...priorPayments(cur), entry]);
-        const patch = hasHistory
-          ? { 'pay.payments': arrayUnion(entry), 'pay.paidAmount': increment(amount),
-              'pay.paidDate': pay.paidDate, 'pay.paid': pay.paid, updatedAt: serverTimestamp() }
-          : { pay, updatedAt: serverTimestamp() };
-        updateDoc(doc(db,'assignments',id), patch).catch(()=>{});
-        queued = true;
-      }
+      const { pay, queued } = await recordCrewPayment(a, entry);
       const left = Math.max(0, payFee({ pay }) - pay.paidAmount);
       toast(queued
         ? `${inr(amount)} (${mode}) saved — will sync when you're back online`
@@ -5324,6 +5609,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   $('#teamPay').addEventListener('click', e=>{
+    /* checked BEFORE the group header it sits inside, or tapping it would just
+       collapse the member instead */
+    const all = e.target.closest('[data-pmall]');
+    if(all){ openCrewPayAll(all.dataset.pmall); return; }
     const g = e.target.closest('[data-pmgrp]');
     if(g){
       const id = g.dataset.pmgrp;
