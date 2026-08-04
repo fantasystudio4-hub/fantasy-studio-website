@@ -502,6 +502,14 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pm-row:last-child{border-bottom:0}
 .pm-row .ev2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .pm-row .ev2 span{color:var(--mut)}
+/* Team tab: one section on screen at a time */
+/* sticks BELOW the app header (which is sticky at top:0, z-index 50) — at
+   top:0 it slid underneath and vanished */
+.tsegs{display:flex;gap:.4rem;position:sticky;top:var(--hdr-h,56px);z-index:40;background:var(--ink);padding:.5rem 0 .55rem;margin:-.2rem 0 .2rem}
+.tsegs button{flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:24px;padding:.62em .3em;font-size:.82rem;cursor:pointer;min-height:44px;white-space:nowrap}
+.tsegs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#1a1408;font-weight:600}
+.tsegs .segb{background:var(--err);color:#fff;border-radius:20px;font-size:.6rem;padding:.05em .4em;font-weight:700}
+.tsegs button.on .segb{background:#1a1408;color:var(--gold-b)}
 .pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
 .pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:.62rem;color:var(--ok);letter-spacing:.02em}
 .pm-row .part2{color:#ffb054;border-color:rgba(255,176,84,.5)}
@@ -575,7 +583,10 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .tm-fill em.ok{color:var(--ok);opacity:.8}
 
 /* the crew picker — availability at a glance, and more than one at a time */
-.crewpick{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;max-height:230px;overflow-y:auto;overscroll-behavior:contain}
+/* one scrolling surface, not two: this list used to be a 230px window inside a
+   sheet that also scrolls, so picking someone meant scrolling within a scroll */
+.crewpick{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+.crewpick.tall{max-height:46vh;overflow-y:auto;overscroll-behavior:contain}
 @media(max-width:400px){ .crewpick{grid-template-columns:1fr} }
 .cpick{display:flex;align-items:center;gap:.5rem;text-align:left;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.5rem .6rem;cursor:pointer;font-family:var(--sans);min-height:46px}
 .cpick .dot{flex:0 0 auto}
@@ -621,16 +632,17 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .sq-av i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--serif);font-size:1rem;color:var(--gold-b)}
 .sq-t{flex:1;min-width:0}
 .sq-t b{display:block;font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sq-t span{font-size:.72rem;color:var(--mut)}
-.sq-lv{flex:0 0 auto;text-align:right;line-height:1.2}
-.sq-lv b{display:block;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
-.sq-lv span{font-size:.6rem;color:var(--mut)}
+.sq-t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-m .lvchip{color:var(--gold-b);border:1px solid var(--line);border-radius:20px;padding:.05em .5em}
 .sq-m{display:flex;flex-wrap:wrap;gap:.3rem .55rem;margin-top:.6rem;font-size:.7rem;color:var(--mut)}
 .sq-m b{color:var(--text);font-weight:500}
 .sq-m .due{color:#ffb054}
 .sq-m .ok{color:var(--ok)}
-.sq-acts{display:flex;gap:.4rem;margin-top:.65rem}
-.sq-acts button,.sq-acts a{flex:1;text-align:center;text-decoration:none;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.4em .5em;font-size:.74rem;cursor:pointer;min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+/* the whole card opens the editor, so the actions here are just the two ways
+   to reach the person — kept as thumb-sized icons instead of a second row */
+.sq-acts{display:flex;gap:.35rem;flex:0 0 auto}
+.sq-acts a{text-decoration:none;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:50%;font-size:.9rem;cursor:pointer;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center}
+.sq-acts a:active{background:rgba(184,144,43,.16)}
 .sq-acts .warn{border-color:rgba(224,122,106,.5);color:var(--err)}
 @media(hover:hover){ .sq-acts button:hover,.sq-acts a:hover{border-color:var(--gold)} }
 
@@ -642,6 +654,10 @@ header{border-bottom:0}
 header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
 .sec,.lead,.login,.stat,.tm-ev{box-shadow:0 10px 26px rgba(0,0,0,.22)}
 .pay-modal{box-shadow:0 18px 48px rgba(0,0,0,.5)}
+/* Save rides the sheet's scroll — picking a member fills the role and rate, so
+   the whole assignment is now two taps without hunting for the button */
+#asModal #asSave, #cpModal #cpSave{position:sticky;bottom:-1.4rem;z-index:3;
+  box-shadow:0 -14px 18px -8px var(--panel), 0 0 0 6px var(--panel)}
 .fld input:focus,.fld select:focus,.fld textarea:focus,.bar input[type=search]:focus,.lead-det textarea:focus,.prow input:focus,.itemrow select:focus,.itemrow input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18);outline:none}
 .gbtn,.goldbar{box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active,.goldbar:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
@@ -1190,16 +1206,24 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
   <div id="teamView" hidden>
     <div class="stats" id="teamStats"></div>
+    <!-- one job per section: rostering, people, money. Everything used to sit
+         on one four-screen scroll, so paying someone meant scrolling past the
+         whole season first. -->
+    <div class="tsegs" id="teamSegs" role="tablist">
+      <button type="button" data-tseg="work" class="on" role="tab">📅 Work</button>
+      <button type="button" data-tseg="crew" role="tab">👥 Crew<b class="segb" id="segCrewB" hidden></b></button>
+      <button type="button" data-tseg="pay" role="tab">💰 Pay<b class="segb" id="segPayB" hidden></b></button>
+    </div>
     <div class="sec" id="teamReqSec" hidden>
       <h3>🙋 Join requests</h3>
-      <p class="sub">People who signed in on the crew page and asked to join. Approving opens a member card with their details filled in.</p>
+      <p class="sub">Signed in on the crew page and asked to join. Approve opens a member card, already filled in.</p>
       <div id="teamReqs"></div>
     </div>
     <div class="sec" id="workSec">
       <div class="fchips" id="workTabs"></div>
       <div id="workBody">
         <div id="workUp">
-          <p class="sub">Booked packages only. Tap <b style="color:var(--gold-b)">＋ Assign</b> to put a crew member on an event; tap an assigned name to edit or remove them.</p>
+          <p class="sub">Tap <b style="color:var(--gold-b)">＋ Assign</b> to put someone on an event; tap a name to edit or remove.</p>
           <div id="teamEvents"></div>
         </div>
         <div id="workEd" hidden>
@@ -1208,6 +1232,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
           <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
         </div>
       </div>
+    </div>
+    <div class="sec" id="squadSec">
+      <h3>👥 Squad</h3>
+      <p class="sub">Tap anyone to edit. Their phone number is their crew-page login.</p>
+      <div id="teamMembers"></div>
+      <button class="addrow" id="tmAdd">＋ Add team member</button>
     </div>
     <div class="sec" id="lbSec" hidden>
       <h3>🏆 Crew leaderboard
@@ -1219,15 +1249,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       </h3>
       <div id="lbList"></div>
     </div>
-    <div class="sec">
-      <h3>👥 Squad</h3>
-      <p class="sub">Rank comes from work done — a shoot is 10 XP, a finished edit 5, a confirmed assignment 2. Their phone number is their crew-page login.</p>
-      <div id="teamMembers"></div>
-      <button class="addrow" id="tmAdd">＋ Add team member</button>
-    </div>
-    <div class="sec">
+    <div class="sec" id="paySec">
       <h3>💰 Pay tracker</h3>
-      <p class="sub">Every assignment with its pay, per member. Tap a name to open it, then mark events paid as you settle up.</p>
+      <p class="sub">Every assignment with its pay, per member. Tap a name to open it, then record what you pay as you settle up.</p>
       <div id="teamPay"></div>
     </div>
   </div>
@@ -1709,6 +1733,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
+    syncHdrH();   /* the header has no height until it is on screen */
     if(user){
       if(!ADMIN_EMAILS.length){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
@@ -1743,6 +1768,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   window.addEventListener('bip-ready', refreshInstallBtn);
   window.addEventListener('appinstalled', ()=>{ installBtn.hidden = true; toast('FS Admin installed \u2713'); });
   refreshInstallBtn();
+
+  /* the Team section bar parks directly under the header \u2014 measure it instead
+     of guessing, so a notch or a wrapped title can never hide it */
+  function syncHdrH(){
+    const h = $('#hdr'); if(!h) return;
+    const px = Math.round(h.getBoundingClientRect().height);
+    if(px > 0) document.documentElement.style.setProperty('--hdr-h', px + 'px');
+  }
+  addEventListener('resize', syncHdrH);
+  addEventListener('orientationchange', syncHdrH);
+  syncHdrH();
 
   /* ---------- tabs ---------- */
   const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView' };
@@ -2728,7 +2764,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#pkgStats').addEventListener('click', e=>{
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
-    if(e.target.closest('[data-goteam]')){ $('#tabTeam').click(); return; }
+    /* the tile is a money figure, so land on the money section — not whichever
+       part of Team was open last */
+    if(e.target.closest('[data-goteam]')){ $('#tabTeam').click(); setTeamSeg('pay'); return; }
     const t = e.target.closest('[data-goto]'); if(!t) return;
     /* only block while the editor is genuinely ON SCREEN — it used to stay
        flagged open behind another tab and silently kill these taps */
@@ -3824,6 +3862,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   let TEAM = [], ASGS = [], REQS = [];
   let _teamUnsub = null, _asgsUnsub = null, _reqsUnsub = null, _teamLoaded = false, _asgsLoaded = false;
+  let LB_HAS = false;   /* the leaderboard has something to show (set by its renderer) */
   let _asgsFresh = false;   /* true once a server (non-cache) assignments snapshot has arrived */
   /* a listener error used to be painted into the list and then wiped by the
      next render's skeleton — the owner was left staring at a shimmer forever
@@ -3887,7 +3926,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{
         _reqsUnsub = onSnapshot(query(collection(db,'teamRequests'), orderBy('createdAt','desc'), limit(REQS_CAP)), snap=>{
           REQS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-          renderTeamReqs();
+          /* the section's visibility and the Crew badge are decided in
+             renderTeam — rendering the rows alone would leave an approved
+             request on screen with a stale badge beside it */
+          renderTeam();
         }, err=>{
           try{ if(_reqsUnsub) _reqsUnsub(); }catch(e){} _reqsUnsub = null;
         });
@@ -4281,7 +4323,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const today = todayISO();
     const from = _lbPeriod === 'm' ? today.slice(0,7) : _lbPeriod === 'y' ? today.slice(0,4) : '';
     const done = ASGS.filter(a=>(a.date||'') < today && (!from || (a.date||'').startsWith(from)));
-    sec.hidden = !ASGS.length;
+    /* visibility belongs to applyTeamSeg — this section lives under Crew */
+    LB_HAS = !!ASGS.length;
     if(!ASGS.length) return;
     const by = {};
     done.forEach(a=>{
@@ -4329,12 +4372,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .map(m=>({ m, s: memberStats(m.id) }))
       .sort((a,b)=>b.s.xp - a.s.xp);
     const inact = TEAM.filter(m=>m.active === false).map(m=>({ m, s: memberStats(m.id) }));
-    const peak = Math.max(1, ...act.map(x=>x.s.up.length));
     const C = 113.1;   /* 2πr for r=18 */
     const row = ({m, s}) => {
       const wa = m.phone ? String(normPhoneFull(m.phone)).replace(/\D/g,'') : '';
       return `
-      <div class="sq ${m.active === false ? 'off' : ''}" data-tmedit="${m.id}">
+      <div class="sq ${m.active === false ? 'off' : ''}" data-tmedit="${m.id}" role="button" tabindex="0" aria-label="Edit ${esc(m.name||'member')}">
         <div class="sq-h">
           <span class="sq-av">
             <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -4347,22 +4389,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <b>${esc(m.name||'—')}</b>
             <span>${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone'}</span>
           </span>
-          <span class="sq-lv"><b>Lv ${s.rank.lvl}</b><span>${esc(s.rank.title)}</span></span>
+          <span class="sq-acts">
+            ${m.phone ? `<a href="tel:${esc(m.phone)}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
+            ${wa ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp" aria-label="WhatsApp ${esc(m.name||'')}">💬</a>` : ''}
+          </span>
         </div>
         <div class="sq-m">
+          <span class="lvchip">Lv ${s.rank.lvl} · ${esc(s.rank.title)}</span>
           <span>🎬 <b>${s.done.length}</b> done</span>
-          <span>📆 <b>${s.month}</b> this month</span>
           <span>⏭ <b>${s.up.length}</b> ahead</span>
-          ${s.rate == null ? '' : `<span class="${s.rate >= 80 ? 'ok' : ''}">⚡ <b>${s.rate}%</b> confirmed</span>`}
           ${s.pending ? `<span class="due">⏳ <b>${s.pending}</b> unconfirmed</span>` : ''}
           ${s.due ? `<span class="due">💰 <b>${inr(s.due)}</b> due</span>` : ''}
           ${s.next ? `<span>next <b>${esc(stepDate(s.next))}</b></span>` : '<span>free</span>'}
-        </div>
-        <div class="lb-bar" title="Upcoming workload"><i style="width:${Math.round(100*s.up.length/peak)}%"></i></div>
-        <div class="sq-acts">
-          <button type="button" data-tmedit2>Edit</button>
-          ${m.phone ? `<a href="tel:${esc(m.phone)}" onclick="event.stopPropagation()">📞 Call</a>` : ''}
-          ${wa ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()">WhatsApp</a>` : ''}
         </div>
       </div>`;
     };
@@ -4373,7 +4411,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderTeamReqs(){
     const sec = $('#teamReqSec'), el = $('#teamReqs'); if(!sec || !el) return;
     const pending = REQS.filter(r=>(r.status||'pending') === 'pending');
-    sec.hidden = !pending.length;
+    /* visibility belongs to applyTeamSeg — this section lives under Crew */
     const badge = $('#teamBadge');
     if(badge){ badge.hidden = !pending.length; badge.textContent = pending.length; }
     if(!pending.length) return;
@@ -4472,17 +4510,56 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderTeamStats(){
     const el = $('#teamStats'); if(!el) return;
     const today = todayISO();
-    const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
     const up = teamUpcoming();
     const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length).length;
     const unconf = ASGS.filter(a=>(a.date||'') >= today && a.status !== 'acknowledged').length;
+    /* the crew-pay-due figure rides the Pay section's own badge now, so this
+       strip stays one compact row and the work starts near the top */
     el.innerHTML = `
-      <div class="stat month"><b>${inr(due)}</b><span>crew pay due</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
       <div class="stat ${unfilled?'warn':''}"><b>${unfilled}</b><span>with no crew</span></div>
       <div class="stat ${unconf?'warn':''}"><b>${unconf}</b><span>unconfirmed</span></div>
       <div class="stat"><b>${activeTeam().length}</b><span>active crew</span></div>`;
   }
+
+  /* Work = rostering, Crew = the people, Pay = the money. Only one is on
+     screen, so no job is ever four screens below another. */
+  let _tSeg = 'work';
+  try{ const s = localStorage.getItem('fs_team_seg'); if(['work','crew','pay'].includes(s)) _tSeg = s; }catch(e){}
+  function applyTeamSeg(){
+    $$('#teamSegs button').forEach(b=>{
+      const on = b.dataset.tseg === _tSeg;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $('#workSec').hidden     = _tSeg !== 'work';
+    $('#squadSec').hidden    = _tSeg !== 'crew';
+    $('#lbSec').hidden       = _tSeg !== 'crew' || !LB_HAS;
+    $('#teamReqSec').hidden  = _tSeg !== 'crew' || !reqCount();
+    $('#paySec').hidden      = _tSeg !== 'pay';
+  }
+  const reqCount = () => REQS.filter(r=>(r.status||'pending') === 'pending').length;
+  function setTeamSeg(seg){
+    if(!['work','crew','pay'].includes(seg)) return;
+    _tSeg = seg;
+    try{ localStorage.setItem('fs_team_seg', seg); }catch(e){}
+    applyTeamSeg();
+    /* Switching section should show that section from its start. The bar is
+       sticky, so its own top never goes negative — measure against where it
+       parks (just under the header) and scroll only when the page has moved
+       past it. */
+    const t = $('#teamSegs'), hdr = $('#hdr');
+    if(!t) return;
+    const parked = hdr ? hdr.getBoundingClientRect().height : 56;
+    if(t.getBoundingClientRect().top <= parked + 1){
+      const y = t.getBoundingClientRect().top + window.scrollY - parked;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+    }
+  }
+  $('#teamSegs').addEventListener('click', e=>{
+    const b = e.target.closest('[data-tseg]'); if(!b) return;
+    setTeamSeg(b.dataset.tseg);
+  });
 
   function renderTeam(){
     if(!$('#teamView')) return;
@@ -4494,6 +4571,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderLeaderboard();
     renderTeamMembers();
     renderTeamPay();
+    /* badges so an unseen request or an unpaid crew member is never hidden
+       behind a section the owner is not looking at */
+    const rq = reqCount();
+    $('#segCrewB').hidden = !rq;
+    $('#segCrewB').textContent = rq || '';
+    const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
+    $('#segPayB').hidden = !(due > 0);
+    $('#segPayB').textContent = due > 0 ? inrShort(due) : '';
+    applyTeamSeg();
   }
 
   /* ---------- member add / edit sheet ---------- */
@@ -4698,6 +4784,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="cp-t"><b>${esc(m.name||'—')}${wanted?' ★':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
       </button>`;
     }).join('') || '<div class="empty" style="padding:.6rem 0">No active team members — add one in the Squad list.</div>';
+    /* A normal crew fits without any inner scrolling, which is what made this
+       sheet quick. Only a long roster gets a bounded window, so Role, Pay and
+       Notes don't end up a thousand pixels below the list. */
+    el.classList.toggle('tall', list.length > 8);
     syncAsUI();
     /* the same crew as another day of this booking, in one tap */
     const btn = $('#asCopy');
