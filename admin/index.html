@@ -4414,7 +4414,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* visibility belongs to applyTeamSeg — this section lives under Crew */
     const badge = $('#teamBadge');
     if(badge){ badge.hidden = !pending.length; badge.textContent = pending.length; }
-    if(!pending.length) return;
+    /* no early return on empty: mapping an empty list clears the rows, so an
+       approved or dismissed request cannot linger in the DOM behind a hidden
+       section and reappear the next time Crew is opened */
     el.innerHTML = pending.map(r=>`
       <div class="up-ev" style="cursor:default">
         <span class="what"><b>${esc(r.name||'—')}</b> <span>· ${esc(r.phoneFull||r.phone10||'')}${r.note ? ' · “' + esc(r.note) + '”' : ''}</span></span>
