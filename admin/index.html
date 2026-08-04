@@ -363,6 +363,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
   max-height:86vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
 }
 .pay-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .3s, transform .3s, visibility 0s}
+/* The page behind a sheet stayed live: overscroll-behavior stops the chain
+   only once the sheet itself scrolls, so a drag that started on the backdrop —
+   or anywhere beside a short sheet — moved the list underneath, and closing
+   the sheet dropped the owner somewhere else entirely. position:fixed on the
+   body is what iOS actually honours; the script parks scrollY in top: and
+   puts it back on close. */
+html.modal-open, html.modal-open body{overflow:hidden}
+html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pay-modal h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.2rem}
 .pay-modal .who{font-size:.8rem;color:var(--mut);margin-bottom:.9rem}
 .mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
@@ -1118,7 +1126,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         <div class="grid2">
           <div class="fld" data-direct-only><label>Client name</label><input id="pcName" /></div>
           <div class="fld" data-direct-only><label>C/o (optional)</label><input id="pcCareOf" /></div>
-          <div class="fld" data-direct-only><label>Client phone (optional)</label><input id="pcPhone" inputmode="numeric" /></div>
+          <div class="fld" data-direct-only><label>Client phone (optional) <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(10-digit mobile · +country code for NRI)</span></label><input id="pcPhone" inputmode="tel" /></div>
           <div class="fld"><label>Quote date</label><input id="pcDate" type="date" /></div>
         </div>
       </div>
@@ -1503,7 +1511,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div class="st-opts" id="jtOpts"></div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- role=status: this is the panel's only channel for "NOT saved — the server
+     refused this write", and a screen reader was never told about any of it -->
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
@@ -1825,6 +1835,53 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       history.back();
     }else if(typeof closeUI === 'function') closeUI();
   }
+
+  /* ---------- sheet chrome: scroll lock, focus trap, focus return ----------
+     Eleven sheets declare role="dialog" aria-modal="true" and none of them
+     behaved like one: the page scrolled behind them, Tab walked straight out
+     into the list underneath, and closing one left focus on <body> so the next
+     Tab started from the top of the page.
+     Driven by an observer on the sheets' own class instead of ~25 open/close
+     call sites, so a sheet added later gets this for free. */
+  let _lockY = 0, _focusReturn = null;
+  const anySheetOpen = () => !!document.querySelector('.pay-modal.open');
+  function syncSheetChrome(){
+    const open = anySheetOpen();
+    const locked = document.documentElement.classList.contains('modal-open');
+    if(open === locked) return;
+    if(open){
+      _focusReturn = document.activeElement;
+      _lockY = window.scrollY;
+      document.body.style.top = (-_lockY) + 'px';
+      document.documentElement.classList.add('modal-open');
+    }else{
+      document.documentElement.classList.remove('modal-open');
+      document.body.style.top = '';
+      window.scrollTo(0, _lockY);
+      /* the list that opened the sheet is rebuilt by live snapshots, so the
+         element that had focus may not exist any more */
+      if(_focusReturn && _focusReturn.isConnected){
+        try{ _focusReturn.focus({ preventScroll: true }); }catch(e){}
+      }
+      _focusReturn = null;
+    }
+  }
+  const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Tab') return;
+    const m = document.querySelector('.pay-modal.open'); if(!m) return;
+    const f = [...m.querySelectorAll(FOCUSABLE)].filter(el=>!el.hidden && el.offsetParent !== null);
+    if(!f.length) return;
+    const first = f[0], last = f[f.length-1], inside = m.contains(document.activeElement);
+    if(e.shiftKey ? (!inside || document.activeElement === first) : (!inside || document.activeElement === last)){
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    }
+  });
+  (function(){
+    const obs = new MutationObserver(syncSheetChrome);
+    $$('.pay-modal').forEach(m=>obs.observe(m, { attributes:true, attributeFilter:['class'] }));
+  })();
   /* Switching tabs kept the previous tab's scroll offset, so arriving at a tab
      part-way down the page was routine. Remember each tab's own position. */
   let _tabScroll = {}, _curTab = null;
@@ -2158,18 +2215,30 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-savenotes]')){
       const notes = card.querySelector('[data-notes]').value;
-      try{ await updateDoc(doc(db,'leads',card.dataset.id), { notes }); toast('Notes saved'); }
-      catch(err){ toast('Save failed'); }
+      /* settle() like every other write: a raw updateDoc never resolves while
+         offline, so this button hung with no toast at all, and a refused write
+         reported nothing */
+      try{
+        const sm = settleMsg(await settle(updateDoc(doc(db,'leads',card.dataset.id), { notes })), 'Notes saved');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        const l = LEADS.find(x=>x.id===card.dataset.id); if(l) l.notes = notes;
+      }catch(err){ toast('Save failed'); }
     }
   });
   $('#leadList').addEventListener('change', async e=>{
     if(!e.target.matches('[data-status]')) return;
     const card = e.target.closest('.lead');
+    const prev = (LEADS.find(x=>x.id===card.dataset.id)||{}).status || 'new';
     try{
-      await updateDoc(doc(db,'leads',card.dataset.id), { status: e.target.value });
+      const sm = settleMsg(await settle(updateDoc(doc(db,'leads',card.dataset.id), { status: e.target.value })), 'Status updated');
+      toast(sm.msg);
+      /* a refused write must put the dropdown back — leaving it showing the
+         status the server rejected is the panel lying about its own data */
+      if(!sm.ok){ e.target.value = prev; return; }
       const l = LEADS.find(x=>x.id===card.dataset.id); if(l) l.status = e.target.value;
-      renderStats(); toast('Status updated');
-    }catch(err){ toast('Update failed'); }
+      renderStats();
+    }catch(err){ toast('Update failed'); e.target.value = prev; }
   });
 
   /* ---------- config editor ---------- */
@@ -2582,13 +2651,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   /* normPhoneFull() assumes +91 for a 10-digit input, which is right for a
      freshly typed Indian number but wrong for an NRI package being re-saved:
-     the editor's phone box only holds the last 10 digits. Keep the number the
-     record already had whenever the last 10 digits still match. */
+     for an Indian client the editor's phone box only holds the last 10 digits.
+     Keep the number the record already had whenever the last 10 digits still
+     match — UNLESS the box itself carries a dialling code, which is the case
+     for NRI clients (openPkgEdit shows those in full so the code is visible
+     and correctable). A typed code always wins, or a wrong one could never be
+     fixed: the last 10 digits are unchanged, so the old number came back. */
   function keepPhoneFull(typed){
-    const t = normPhone(typed);
+    const raw = String(typed||'').trim();
+    const digits = raw.replace(/\D/g,'');
+    if(raw.startsWith('+') || digits.length > 10) return normPhoneFull(raw);
+    const t = normPhone(raw);
     const had = String(_phoneFullAtOpen||'').replace(/\D/g,'');
     if(t && had && had.slice(-10) === t) return had;
-    return normPhoneFull(typed);
+    return normPhoneFull(raw);
   }
   const waNumberFor = x => (x && x.clientPhoneFull)
     ? String(x.clientPhoneFull).replace(/\D/g,'')
@@ -3417,7 +3493,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <datalist id="qeNames">${names.slice(0,200).map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
         </div>
         <div class="fld"><label>Phone (optional)</label>
-          <input id="qePhone" type="tel" inputmode="numeric" placeholder="10-digit mobile — this is the client's portal login" />
+          <input id="qePhone" type="tel" inputmode="tel" placeholder="10-digit mobile — this is the client's portal login" />
         </div>`;
     }else if(_qeMode === 'studio'){
       /* a studio deactivated later must still be offered while its own page is open */
@@ -3867,7 +3943,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* a listener error used to be painted into the list and then wiped by the
      next render's skeleton — the owner was left staring at a shimmer forever
      with no way to retry. Remember the failure and offer a retry button. */
-  let _teamErr = '', _asgsErr = '';
+  let _teamErr = '', _asgsErr = '', _reqsErr = '';
   const errBox = (msg, retry) => `<div class="empty2"><span class="ic">⚠️</span>${esc(msg)}<br><button class="mini" data-retry="${retry}" style="margin-top:.8rem">↻ Try again</button></div>`;
   const TEAM_CAP = 500, ASGS_CAP = 2000, REQS_CAP = 100;
   const memberById = id => TEAM.find(m=>m.id===id);
@@ -3926,14 +4002,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{
         _reqsUnsub = onSnapshot(query(collection(db,'teamRequests'), orderBy('createdAt','desc'), limit(REQS_CAP)), snap=>{
           REQS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+          _reqsErr = '';
           /* the section's visibility and the Crew badge are decided in
              renderTeam — rendering the rows alone would leave an approved
              request on screen with a stale badge beside it */
           renderTeam();
         }, err=>{
           try{ if(_reqsUnsub) _reqsUnsub(); }catch(e){} _reqsUnsub = null;
+          /* This used to fail in total silence: a rules problem meant join
+             requests simply never appeared, with nothing on screen saying so
+             and no way to retry. Every other listener says what broke. */
+          _reqsErr = 'Could not load join requests (' + (err.code||err.message) + ')';
+          renderTeam();
         });
-      }catch(err){}
+      }catch(err){
+        _reqsErr = 'Could not load join requests (' + (err.code||err.message) + ')';
+        renderTeam();
+      }
     }
   }
 
@@ -4414,6 +4499,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* visibility belongs to applyTeamSeg — this section lives under Crew */
     const badge = $('#teamBadge');
     if(badge){ badge.hidden = !pending.length; badge.textContent = pending.length; }
+    if(_reqsErr){ el.innerHTML = errBox(_reqsErr, 'team'); return; }
     /* no early return on empty: mapping an empty list clears the rows, so an
        approved or dismissed request cannot linger in the DOM behind a hidden
        section and reappear the next time Crew is opened */
@@ -4447,7 +4533,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       if(existing){
         if(confirm(`${existing.name||'A member'} already has this number — this request is a duplicate. Remove it?`)){
-          try{ await deleteDoc(doc(db,'teamRequests',r.id)); }catch(err){ toast('Could not remove the request'); }
+          try{ toast(settleMsg(await settle(deleteDoc(doc(db,'teamRequests',r.id))), 'Duplicate request removed').msg); }
+          catch(err){ toast('Could not remove the request'); }
         }
         return;
       }
@@ -4461,7 +4548,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(no){
       const r = REQS.find(v=>v.id===no.dataset.reqno); if(!r) return;
       if(!confirm(`Dismiss the join request from ${r.name||'this person'}? They can request again from the crew page.`)) return;
-      try{ await deleteDoc(doc(db,'teamRequests',r.id)); toast('Request dismissed'); }
+      try{ toast(settleMsg(await settle(deleteDoc(doc(db,'teamRequests',r.id))), 'Request dismissed').msg); }
       catch(err){ toast('Could not dismiss'); }
     }
   });
@@ -4537,7 +4624,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#workSec').hidden     = _tSeg !== 'work';
     $('#squadSec').hidden    = _tSeg !== 'crew';
     $('#lbSec').hidden       = _tSeg !== 'crew' || !LB_HAS;
-    $('#teamReqSec').hidden  = _tSeg !== 'crew' || !reqCount();
+    /* an error has to be visible too, or the one thing that explains the empty
+       inbox is hidden by the same rule that hides an empty inbox */
+    $('#teamReqSec').hidden  = _tSeg !== 'crew' || !(reqCount() || _reqsErr);
     $('#paySec').hidden      = _tSeg !== 'pay';
   }
   const reqCount = () => REQS.filter(r=>(r.status||'pending') === 'pending').length;
@@ -4659,8 +4748,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* saving a member from a join request = approving it — clear the
          request so it leaves the inbox; their crew page unlocks live */
       if(fromReq){
-        try{ await deleteDoc(doc(db,'teamRequests',fromReq)); }catch(err){}
-        toast('Approved ✓ — their crew page is now unlocked');
+        /* settle(), so an offline approval reports honestly instead of leaving
+           the request sitting in the inbox with a success toast over it */
+        try{
+          const rq = await settle(deleteDoc(doc(db,'teamRequests',fromReq)));
+          toast(rq === 'denied'
+            ? 'Member saved — but the join request could not be cleared. Dismiss it by hand.'
+            : rq === 'queued' ? 'Member saved — the request clears when you are back online'
+            : 'Approved ✓ — their crew page is now unlocked');
+        }catch(err){ toast('Member saved — but the join request could not be cleared'); }
       }
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
@@ -5379,10 +5475,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : '';
       if(!confirm('Delete forever? This really cannot be undone.' + paid)) return;
       try{
-        await deleteDoc(doc(db,col,id));
+        /* the one delete in the panel with no undo — it must never report
+           success for a write the server refused, or one still queued offline
+           that could still be refused when it replays */
+        const res = await settle(deleteDoc(doc(db,col,id)));
+        if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         if(kind==='pkg') PKGS = PKGS.filter(v=>v.id!==id); else LEADS = LEADS.filter(v=>v.id!==id);
         renderTrash();
-        toast('Deleted forever');
+        toast(res === 'queued' ? 'Queued for permanent deletion — it clears when you are back online' : 'Deleted forever');
       }catch(err){ toast('Delete failed'); }
     }
   });
@@ -6884,12 +6984,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : (stu ? `New Studio Job — ${stu.name||''}` : 'New Package');
     $('#pcName').value = stu ? (stu.name||'') : (x ? (x.clientName||'') : '');
     $('#pcCareOf').value = (!stu && x) ? (x.careOf||'') : '';
-    $('#pcPhone').value = (!stu && x) ? (x.clientPhone||'') : '';
-    /* The phone box only ever holds the LAST 10 DIGITS, so rebuilding the
+    /* The phone box only ever held the LAST 10 DIGITS, so rebuilding the
        dialling number from it stamped '91' on every NRI client — every later
        WhatsApp/Call went to a wrong Indian number. Remember the full number
        this package (or lead) arrived with and keep it while the last 10
-       digits are unchanged. */
+       digits are unchanged (see keepPhoneFull).
+       An NRI client's box now shows that full number instead: a country code
+       the owner cannot SEE is a country code they cannot correct, and the
+       10-digit box left a wrong one permanently stuck. Indian numbers keep
+       the familiar bare 10 digits. */
+    const _pFull = (!stu && x) ? String(x.clientPhoneFull || '').replace(/\D/g,'') : '';
+    const _nri = _pFull.length > 10 && _pFull.slice(0, -10) !== '91';
+    $('#pcPhone').value = _nri ? '+' + _pFull : ((!stu && x) ? (x.clientPhone||'') : '');
     _phoneFullAtOpen = (!stu && x) ? String(x.clientPhoneFull || '') : '';
     $('#pcDate').value = x && x.quoteDate ? x.quoteDate : todayISO();
     $('#pkgEvents').innerHTML = ((x && x.events && x.events.length) ? x.events : [{title:'',date:'',venue:'',items:[]}]).map(evCardHTML).join('');
