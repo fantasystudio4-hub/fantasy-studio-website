@@ -2542,10 +2542,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fs:' + String(p||'').replace(/\D/g,'').slice(-10)));
     return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
   }
+  /* resolves true only once the SERVER has the key. Callers that just want it
+     written can ignore the result; the partner-login check on a studio's page
+     needs to tell a landed key from a lost one — a silently dropped write
+     leaves that partner stuck at "this number is not registered". */
   async function ensurePhoneIndex(phone){
     const p = String(phone||'').replace(/\D/g,'').slice(-10);
-    if(p.length !== 10) return;
-    try{ setDoc(doc(db,'phoneIndex', await phoneKey(p)), { t: true }, { merge: true }).catch(()=>{}); }catch(e){}
+    if(p.length !== 10) return false;
+    try{ await setDoc(doc(db,'phoneIndex', await phoneKey(p)), { t: true }, { merge: true }); return true; }
+    catch(e){ return false; }
+  }
+  /* does this number actually have a login key on the server right now? */
+  async function hasPhoneIndex(phone){
+    const p = String(phone||'').replace(/\D/g,'').slice(-10);
+    if(p.length !== 10) return false;
+    return (await getDoc(doc(db,'phoneIndex', await phoneKey(p)))).exists();
   }
   let _phoneIdxDone = false;
   function backfillPhoneIndex(){
@@ -5080,6 +5091,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let STUDIOS = [];
   let _studiosUnsub = null, _studiosLoaded = false, _stuEditId = null, _stuDetailId = null, _studiosErr = '';
   let _stuKeyFixed = false;
+  const _loginKeyOk = new Map();   /* studioId -> the phone10 whose login key we confirmed on the server */
   const STUDIOS_CAP = 300;
   function studioById(id){ return STUDIOS.find(s=>s.id===id) || null; }
   const isStudioJob = x => !!x && (x.clientType||'direct') === 'studio';
@@ -5429,10 +5441,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
         ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
         ${s.notes ? `<div class="ln2"><span>Notes</span><span>${esc(s.notes)}</span></div>` : ''}
-        <div class="ln2"><span>Partner portal</span><span>${
+        <div class="ln2"><span>Partner portal</span><span id="stuPortalStat">${
           s.active === false ? 'off — studio is inactive'
-          : (s.phone10 && String(s.phone10).length === 10) ? `✓ signs in at /studio/ with …${esc(String(s.phone10).slice(-4))}`
-          : 'no login yet — add a 10-digit mobile via Edit'}</span></div>
+          : !(s.phone10 && String(s.phone10).length === 10) ? 'no login yet — add a 10-digit mobile via Edit'
+          : _loginKeyOk.get(s.id) === s.phone10 ? `✓ signs in at /studio/ with …${esc(String(s.phone10).slice(-4))}`
+          : 'checking the login key…'}</span></div>
         <div class="ev-acts">
           ${s.phone ? `<a class="mini stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
           <a class="mini stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
@@ -5478,6 +5491,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(inp){ inp.focus(); try{ inp.setSelectionRange(_focus.caret, _focus.caret); }catch(e){} }
       }
     }
+    checkStudioLogin(s);
+  }
+
+  /* The green tick used to be inferred from phone10 alone — but the login key
+     write is a separate doc that can quietly fail, and once phone10 exists the
+     backfill skips that studio for good. So ask the server whether the key is
+     really there, and offer a one-tap retry when it isn't. */
+  async function checkStudioLogin(s){
+    const p10 = String((s && s.phone10) || '');
+    if(!s || s.active === false || p10.length !== 10) return;
+    /* this page re-renders on every packages/studios/assignments snapshot —
+       confirm the key once per number, not once per render */
+    if(_loginKeyOk.get(s.id) === p10) return;
+    const live = () => (_stuDetailId === s.id) ? $('#stuPortalStat') : null;
+    try{
+      const ok = await hasPhoneIndex(p10);
+      if(ok) _loginKeyOk.set(s.id, p10);
+      const el = live(); if(!el) return;
+      el.innerHTML = ok
+        ? `✓ signs in at /studio/ with …${esc(p10.slice(-4))}`
+        : `⚠ login key missing — this partner cannot sign in <button class="mini" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`;
+    }catch(err){
+      const el = live(); if(!el) return;
+      el.textContent = navigator.onLine
+        ? `login key set for …${p10.slice(-4)} (couldn't verify just now)`
+        : `login key set for …${p10.slice(-4)} (offline — not verified)`;
+    }
   }
   $('#studioDetailView').addEventListener('click', async e=>{
     if(e.target.closest('#stuBack')){
@@ -5485,6 +5525,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     if(e.target.closest('[data-stuedit]')){ const s = studioById(_stuDetailId); if(s) openStu(s); return; }
+    const fixLogin = e.target.closest('[data-stufixlogin]');
+    if(fixLogin){
+      const s = studioById(_stuDetailId); if(!s) return;
+      fixLogin.disabled = true; fixLogin.textContent = 'Fixing…';
+      const ok = await ensurePhoneIndex(s.phone10);
+      toast(ok ? 'Login key written — the partner can sign in now'
+               : navigator.onLine ? 'Could not write the login key — try again'
+                                  : 'Offline — reconnect and tap Fix now again');
+      if(ok) checkStudioLogin(s); else { fixLogin.disabled = false; fixLogin.textContent = 'Fix now'; }
+      return;
+    }
     if(e.target.closest('[data-stunewjob]')){
       const s = studioById(_stuDetailId); if(!s) return;
       if(!canLeaveEditor()) return;
