@@ -75,6 +75,8 @@ const DEFAULTS = {
   },
   contact: { phone: '+91 86868 68803', website: 'www.fantasystudio.in' },
   deliverySteps: ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'],
+  /* partner-studio jobs: they collect the footage and do their own post */
+  b2bDeliverySteps: ['All events shot','Data ready to collect from office','Data delivered — job closed'],
   quoteTerms: [
     '50% advance to confirm the booking, 40% on the event day and 10% at the time of delivery.',
     'Booking is confirmed and dates are blocked only once the advance is received.',
@@ -809,6 +811,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#termList').innerHTML = terms.map(termRow).join('');
     const dsteps = (CFG.deliverySteps && CFG.deliverySteps.length) ? CFG.deliverySteps : DEFAULTS.deliverySteps;
     $('#dstepList').innerHTML = dsteps.map(dstepRow).join('');
+    const bsteps = (CFG.b2bDeliverySteps && CFG.b2bDeliverySteps.length) ? CFG.b2bDeliverySteps : DEFAULTS.b2bDeliverySteps;
+    $('#bstepList').innerHTML = bsteps.map(bstepRow).join('');
     $('#pkgListRM').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
     refreshAllPresetChips();
     $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
@@ -909,6 +913,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="fld"><label>Step</label><input data-k="t" value="${esc(t)}" /></div>
     </div>`;
   $('#addDstep').addEventListener('click', ()=>$('#dstepList').insertAdjacentHTML('beforeend', dstepRow('')));
+  const bstepRow = (t='') => `
+    <div class="row" data-bstep>
+      <button class="del" data-del title="Remove">✕</button>
+      <div class="fld"><label>Step</label><input data-k="t" value="${esc(t)}" /></div>
+    </div>`;
+  $('#addBstep').addEventListener('click', ()=>$('#bstepList').insertAdjacentHTML('beforeend', bstepRow('')));
 
   $('#addPkg').addEventListener('click', ()=>{
     $('#pkgListRM').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'NIKAH', services:{traditionalPhoto:1}}]}));
@@ -1015,6 +1025,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                         upi: $('#cfgUpi').value.trim(), upiAlt: $('#cfgUpiAlt').value.trim() };
       const quoteTerms = $$('[data-term]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       const deliverySteps = $$('[data-dstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
+      /* the write below is a full overwrite, so this has to be in the payload
+         or saving any other setting would silently wipe the B2B checklist */
+      const b2bDeliverySteps = $$('[data-bstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
       /* Remembered rates used to shadow this form forever: raise a rate here
          and every new quote still prefilled the old learned one, and a service
          deleted here kept showing in the builder chips. Saving the config is
@@ -1046,7 +1059,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const stamp = new Date().toISOString();
       const editDueDays = Math.min(365, Math.max(1, Number($('#cfgEditDue').value)||21));
       const payload = { prices, presets, testimonials, faqs, serviceRates, contact,
-                        quoteTerms, deliverySteps, learnedRates, editDueDays, updatedAt: stamp };
+                        quoteTerms, deliverySteps, b2bDeliverySteps, learnedRates, editDueDays, updatedAt: stamp };
       /* settle() so an offline save answers instead of hanging forever, and a
          refused write is reported instead of pretending it published */
       const res = await settle(setDoc(doc(db,'config','site'), payload));
@@ -1054,7 +1067,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('NOT saved — the server refused the config write. Check your sign-in and try again.');
         return;
       }
-      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, learnedRates, editDueDays, updatedAt: stamp };
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, b2bDeliverySteps, learnedRates, editDueDays, updatedAt: stamp };
       _cfgLoadedAt = stamp;
       $('#saveMsg').style.color = '';
       $('#saveMsg').textContent = res === 'queued'
@@ -1172,7 +1185,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
   const hasPhoto  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/photo/i.test(it.service||''))));
   const hasVideo  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/video|cinema/i.test(it.service||''))));
+  /* A partner studio's job ends when the footage changes hands. The album
+     selection, the client pendrive, the teasers — that whole retail flow is
+     the studio's own business with their client, not ours, so a B2B job ran a
+     checklist most of which could never be ticked. Its own short list instead,
+     editable in Site Config like the retail one. */
+  const b2bSteps = () => (CFG && Array.isArray(CFG.b2bDeliverySteps) && CFG.b2bDeliverySteps.length
+    ? CFG.b2bDeliverySteps : DEFAULTS.b2bDeliverySteps);
   function stepsFor(x){
+    /* the keyword filter below decides which RETAIL steps apply to a package;
+       a studio job does not run that flow at all, so it never reaches it */
+    if(isStudioJob(x)) return b2bSteps().slice();
     return dSteps().filter(s =>
       (!/album/i.test(s)            || hasAlbum(x)) &&
       (!/cinematic|teaser/i.test(s) || hasCinema(x)) &&
