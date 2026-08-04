@@ -155,6 +155,20 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .paybar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-b))}
 .payleg{display:flex;justify-content:space-between;font-size:.72rem;color:var(--mut);margin-top:.3rem}
 .payleg .rest{color:#e5b57f}
+/* delivery progress — read-only; the admin panel is what ticks these */
+.dl-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem}
+.dl-bar{flex:1;height:5px;border-radius:4px;background:var(--ink);overflow:hidden}
+.dl-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-b))}
+.dl-head b{flex:0 0 auto;font-size:.74rem;color:var(--gold-b);font-variant-numeric:tabular-nums}
+.dl-step{display:flex;align-items:center;gap:.6rem;padding:.3rem 0;font-size:.84rem;color:var(--mut)}
+.dl-step i{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:.7rem;color:transparent}
+.dl-step.done i{background:var(--ok,#4caf7d);border-color:transparent;color:#0f1a13}
+.dl-step.done span{color:var(--text)}
+.dl-step span{flex:1;min-width:0;overflow-wrap:anywhere}
+.dl-step em{flex:0 0 auto;font-style:normal;font-size:.7rem;color:var(--mut)}
+.dl-next{font-size:.76rem;color:#e5b57f;margin-top:.5rem}
+.dl-next b{color:var(--gold-b);font-weight:600}
+.dl-next.done{color:var(--ok,#4caf7d)}
 .payrow{display:flex;justify-content:space-between;gap:1rem;padding:.28rem 0;font-size:.84rem;color:var(--mut)}
 .payrow b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
 .paynow{display:block;width:100%;margin-top:.7rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#191307;font-weight:600;border-radius:10px;padding:.7rem;cursor:pointer;min-height:44px}
@@ -383,6 +397,10 @@ document.addEventListener('keydown', e=>{
 /* ---------- contact: hardcoded fallback, upgraded from config/site ---------- */
 const DEFAULT_PHONE = '+91 86868 68803';
 let CONTACT = { phone: DEFAULT_PHONE, upi: '', upiAlt: '' };
+/* The same checklist the admin panel ticks against a studio job, so the two
+   can never show different progress. Kept in sync through config/site (which
+   is world-readable); these are the built-in defaults it falls back to. */
+let B2B_STEPS = ['All events shot','Data ready to collect from office','Data delivered — job closed'];
 const contactDigits = () => CONTACT.phone.replace(/\D/g,'');
 function applyContact(){
   const tel = 'tel:+' + contactDigits();
@@ -399,6 +417,18 @@ function applyContact(){
       const okVpa = v => /^[\w.\-]+@[\w.\-]+$/.test(String(v||''));
       if(okVpa(c.upi)) CONTACT.upi = String(c.upi);
       if(okVpa(c.upiAlt)) CONTACT.upiAlt = String(c.upiAlt);
+      const bs = (s.data()||{}).b2bDeliverySteps;
+      if(Array.isArray(bs) && bs.length){
+        const clean = bs.map(v=>String(v||'').trim()).filter(Boolean).slice(0,12);
+        if(clean.length){
+          const changed = clean.join('|') !== B2B_STEPS.join('|');
+          B2B_STEPS = clean;
+          /* this load races the login: if the jobs are already on screen when
+             a customised list arrives, redraw them rather than leave the
+             partner reading the built-in wording */
+          if(changed && typeof render === 'function' && $('#appView') && !$('#appView').hidden) render();
+        }
+      }
     }
   }catch(e){}
   applyContact();
@@ -774,6 +804,30 @@ function crewChips(list){
     `<span class="crewchip">${esc(c.name||'Crew')}${c.role ? ` <i>· ${esc(c.role)}</i>` : ''}</span>`).join('')}</div>`;
 }
 
+/* Where the job has got to, read-only. The partner used to have to ring the
+   office to find out whether the footage was ready to collect — which is the
+   whole point of the middle step. Ticked in the admin panel; this only ever
+   reflects it, so there is nothing here a partner can change. */
+function deliverySection(x, st){
+  if(!CONFIRMED_ST.includes(st)) return '';
+  const done = {};
+  (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date || ''; });
+  const steps = B2B_STEPS;
+  const n = steps.filter(s=>s in done).length;
+  const pct = steps.length ? Math.round(100*n/steps.length) : 0;
+  const next = steps.find(s=>!(s in done)) || '';
+  return `
+    <div class="sec"><h4>Delivery</h4>
+      <div class="dl-head"><span class="dl-bar"><i style="width:${pct}%"></i></span><b>${n}/${steps.length}</b></div>
+      ${steps.map(s=>{
+        const d = s in done;
+        return `<div class="dl-step ${d?'done':''}"><i>${d?'✓':''}</i><span>${esc(s)}</span><em>${d && done[s] ? esc(dmy(done[s])) : ''}</em></div>`;
+      }).join('')}
+      ${next ? `<div class="dl-next">Next up: <b>${esc(next)}</b></div>`
+             : '<div class="dl-next done">Everything handed over — thank you 🤝</div>'}
+    </div>`;
+}
+
 function jobHTML(x, canToggle, collapsed){
   const st = x.status||'draft';
   const tt = x.totals||{};
@@ -821,6 +875,7 @@ function jobHTML(x, canToggle, collapsed){
       ${editors.length ? `<div class="crewnote">🎬 Post-production: ${editors.map(c=>esc(c.name||'Editor')).join(', ')}</div>` : ''}
       ${strays.length ? `<div class="crewnote">Also on this job: ${strays.map(c=>esc(c.name) + (isDate(c.date) ? ' ('+dmy(c.date)+')' : '')).join(', ')}</div>` : ''}
     </div>
+    ${deliverySection(x, st)}
     <div class="sec"><h4>Money</h4>
       ${Number(tt.gross) && Number(tt.discount) ? `<div class="ln"><span>Job total</span><span>${inr(tt.gross)}</span></div>
       <div class="ln"><span>Partner discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}

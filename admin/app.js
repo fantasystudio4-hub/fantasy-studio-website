@@ -1855,6 +1855,36 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pkgList').innerHTML = list.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
   }
 
+  /* Ticking a delivery step, from wherever the tracker is on screen — the
+     package card, and now a partner studio's job history. It lived inline in
+     the package-card handler, which is why the studio page could only ever
+     show progress and not move it. */
+  async function toggleDeliveryStep(x, name){
+    if(!x || !name) return;
+    const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
+    const had = list.some(d=>d.step === name);
+    const delivery = had ? list.filter(d=>d.step !== name) : [...list, { step: name, date: todayISO() }];
+    const steps = stepsFor(x);
+    const allDone = steps.length > 0 && steps.every(s=>delivery.some(d=>d.step === s));
+    const patch = { delivery, updatedAt: serverTimestamp() };
+    let becameDelivered = false;
+    if(!had && allDone && (x.status||'draft') === 'booked'
+       && confirm(`All delivery steps done — mark "${x.clientName||'this package'}" as Delivered?`)){
+      patch.status = 'delivered'; patch.deliveredAt = todayISO(); becameDelivered = true;
+    }
+    try{
+      const res = await settle(updateDoc(doc(db,'packages',x.id), patch));
+      /* this used to update the local mirror whatever the server said, so a
+         refused write still painted the step ticked */
+      if(res === 'denied'){ toast('NOT saved — the server refused this write. Check your sign-in and try again.'); return; }
+      x.delivery = delivery;
+      if(becameDelivered){ x.status = 'delivered'; x.deliveredAt = patch.deliveredAt; toast('🎉 Package delivered'); }
+      buzz();
+      renderPkgList();
+      if(typeof renderB2B === 'function') renderB2B();   /* the studio page shows this too */
+    }catch(err){ toast('Update failed'); }
+  }
+
   async function pkgCardAction(e){
     if(e.target.closest('#pkgEmptyNew')){ openJobType(); return; }
     const gh = e.target.closest('[data-grp]');
@@ -1870,24 +1900,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const x = PKGS.find(p=>p.id===id); if(!x) return;
     if(e.target.closest('[data-cycle]')){ openStatus(x); return; }
     if(e.target.closest('[data-tstep]')){
-      const name = e.target.closest('[data-tstep]').dataset.name;
-      const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
-      const had = list.some(d=>d.step === name);
-      const delivery = had ? list.filter(d=>d.step !== name) : [...list, { step: name, date: todayISO() }];
-      const steps = stepsFor(x);
-      const allDone = steps.length > 0 && steps.every(s=>delivery.some(d=>d.step === s));
-      const patch = { delivery, updatedAt: serverTimestamp() };
-      let becameDelivered = false;
-      if(!had && allDone && (x.status||'draft') === 'booked'
-         && confirm(`All delivery steps done — mark "${x.clientName||'this package'}" as Delivered?`)){
-        patch.status = 'delivered'; patch.deliveredAt = todayISO(); becameDelivered = true;
-      }
-      try{
-        await settle(updateDoc(doc(db,'packages',id), patch));
-        x.delivery = delivery;
-        if(becameDelivered){ x.status = 'delivered'; x.deliveredAt = patch.deliveredAt; toast('🎉 Package delivered'); }
-        buzz(); renderPkgList();
-      }catch(err){ toast('Update failed'); }
+      await toggleDeliveryStep(x, e.target.closest('[data-tstep]').dataset.name);
       return;
     }
     if(e.target.closest('[data-edit]')){
@@ -4351,6 +4364,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      ============================================================ */
   let STUDIOS = [];
   let _studiosUnsub = null, _studiosLoaded = false, _stuEditId = null, _stuDetailId = null, _studiosErr = '';
+  /* which job in a studio's history has its delivery tracker open. Module
+     scope, because this page is rebuilt on every packages/studios/assignments
+     snapshot and an expanded row must survive that. */
+  let _stuJobOpen = null;
   let _stuKeyFixed = false;
   const _loginKeyOk = new Map();   /* studioId -> the phone10 whose login key we confirmed on the server */
   const STUDIOS_CAP = 300;
@@ -4636,6 +4653,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- studio detail: profile, rate card, ledger, jobs ---------- */
   function openStudioDetail(id){
+    /* a job expanded on one studio's page must not reopen on the next one */
+    if(_stuDetailId !== id) _stuJobOpen = null;
     _stuDetailId = id;
     closeCalAdd();   /* a form opened from the LIST doesn't belong on a studio page */
     renderStudioDetail();
@@ -4646,7 +4665,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
-    _stuDetailId = null;
+    _stuDetailId = null; _stuJobOpen = null;
     closeCalAdd();   /* the quick-add form belongs to the studio page above it */
     syncFabs();
   }
@@ -4732,12 +4751,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <div class="sec">
         <h3>📦 Job history <span style="font-size:.7rem;color:var(--mut)">(${jobs.length})</span></h3>
-        ${jobs.length ? jobs.map(x=>`
-          <div class="up-ev" data-stujob="${x.id}" role="button" tabindex="0">
-            <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
-            <span class="what">${esc(x.quoteNo||'—')} <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span></span>
-            <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
-          </div>`).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
+        ${jobs.length ? jobs.map(x=>{
+          const st = x.status||'draft';
+          /* delivery only means anything once the job is confirmed */
+          const di = CONFIRMED_ST.includes(st) ? deliveryInfo(x) : null;
+          const next = di ? di.steps.find(s=>!(s in di.done)) : '';
+          const open = _stuJobOpen === x.id;
+          return `
+          <div class="stujob ${open?'open':''}">
+            <div class="up-ev" data-stujob="${x.id}" role="button" tabindex="0" aria-expanded="${open}">
+              <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
+              <span class="what">${esc(x.quoteNo||'—')} <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span>
+                ${di && di.total ? `<em class="sjd"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b><span class="sjn">${
+                  next ? esc(next) : 'handed over ✓'}</span></em>` : ''}
+              </span>
+              <span class="stpill ${st}">${STATUS_LABEL(st)}</span>
+            </div>
+            ${open ? `<div class="sj-det">${di && di.total
+              ? trackerHTML(x)
+              : '<div class="empty" style="padding:.4rem 0">Delivery tracking starts once this job is booked.</div>'}
+              <button class="mini" type="button" data-stuopen="${x.id}">Open package</button></div>` : ''}
+          </div>`;
+        }).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
       </div>`;
     /* put unsaved rate-card typing back after the rebuild */
     if(_dirty){
@@ -4827,10 +4862,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
       return;
     }
+    /* Ticking a step and opening the package both live in the expanded panel,
+       which is a SIBLING of the row — so neither can be swallowed by the row's
+       own expand handler below. */
+    const ts = e.target.closest('[data-tstep]');
+    if(ts){
+      const x = PKGS.find(p=>p.id===_stuJobOpen);
+      if(x) await toggleDeliveryStep(x, ts.dataset.name);
+      return;
+    }
+    const so = e.target.closest('[data-stuopen]');
+    if(so){
+      const x = PKGS.find(p=>p.id===so.dataset.stuopen);
+      if(x){ if(!canLeaveEditor()) return; $('#tabPkgs').click(); openPkgEdit(x); }
+      return;
+    }
     const j = e.target.closest('[data-stujob]');
     if(j){
-      const x = PKGS.find(p=>p.id===j.dataset.stujob);
-      if(x){ if(!canLeaveEditor()) return; $('#tabPkgs').click(); openPkgEdit(x); }
+      /* the row opens its delivery tracker in place now; the package editor is
+         one more tap inside, so a glance at progress no longer costs a trip
+         through the builder and back */
+      _stuJobOpen = (_stuJobOpen === j.dataset.stujob) ? null : j.dataset.stujob;
+      renderStudioDetail();
     }
   });
 

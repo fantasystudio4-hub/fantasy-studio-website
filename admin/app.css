@@ -537,6 +537,21 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .grp .pmall{background:rgba(184,144,43,.16);border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
 .grp .pmall:active{background:rgba(184,144,43,.32)}
 .pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
+/* a partner studio's job history: progress on the row, the tickable checklist
+   one tap inside it */
+.stujob{border-radius:10px;transition:background .2s}
+.stujob.open{background:rgba(184,144,43,.07)}
+.stujob .up-ev{cursor:pointer}
+/* .what is nowrap+ellipsis for its first line (quote no · price · end client),
+   which was also clipping the step name here — "Data delivered — j". This line
+   opts out and wraps instead. */
+.up-ev .what .sjd{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;font-style:normal;font-size:.66rem;color:var(--mut);margin-top:.25rem;white-space:normal}
+.up-ev .what .sjd .dprog{flex:0 0 46px;height:3px}
+.up-ev .what .sjd b{color:var(--gold-b);font-weight:600;flex:0 0 auto}
+.up-ev .what .sjd .sjn{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.sj-det{padding:0 .2rem .6rem}
+.sj-det .dtrack{margin-top:.2rem}
+.sj-det .mini{width:100%;margin-top:.5rem}
 .as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
 
 /* ==== Team console: attention list, leaderboard, squad cards ====
