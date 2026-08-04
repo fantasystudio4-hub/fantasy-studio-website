@@ -2623,7 +2623,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_pkgsUnsub){ renderPkgList(); renderCalendar(); return; }
     _pkgsErr = '';
     try{
-      _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(PKGS_CAP)), async snap=>{
+      /* includeMetadataChanges — see the studios listener: without it an
+         unchanged collection never raises a server snapshot, so _pkgsFresh
+         stays false and the crew mirror the partner portal reads never syncs */
+      _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(PKGS_CAP)),
+        { includeMetadataChanges: true }, async snap=>{
         PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         warnIfCapped('packages', snap.size, PKGS_CAP);
         _pkgsLoaded = true;
@@ -3797,7 +3801,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(!_asgsUnsub){
       try{
-        _asgsUnsub = onSnapshot(query(collection(db,'assignments'), orderBy('date','desc'), limit(ASGS_CAP)), snap=>{
+        _asgsUnsub = onSnapshot(query(collection(db,'assignments'), orderBy('date','desc'), limit(ASGS_CAP)),
+          { includeMetadataChanges: true }, snap=>{
           ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
           warnIfCapped('assignments', snap.size, ASGS_CAP);
           _asgsLoaded = true;
@@ -5127,7 +5132,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_studiosUnsub){ renderB2B(); return; }
     _studiosErr = '';
     try{
-      _studiosUnsub = onSnapshot(query(collection(db,'studios'), orderBy('createdAt','desc'), limit(STUDIOS_CAP)), snap=>{
+      /* includeMetadataChanges: with the persistent cache on, an unchanged
+         collection raises ONLY the cached snapshot — Firestore suppresses the
+         server confirmation because just the metadata changed. The phone10
+         backfill below waits for a server snapshot, so without this it would
+         never run on a return visit and partner logins would stay unset. */
+      _studiosUnsub = onSnapshot(query(collection(db,'studios'), orderBy('createdAt','desc'), limit(STUDIOS_CAP)),
+        { includeMetadataChanges: true }, snap=>{
         STUDIOS = snap.docs.map(d=>({ id:d.id, ...d.data() }))
           .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
         warnIfCapped('studios', snap.size, STUDIOS_CAP);
