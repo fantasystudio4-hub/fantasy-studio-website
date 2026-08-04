@@ -479,9 +479,13 @@
   <div class="fld" id="asBookEvWrap" hidden><label>Which function</label><select id="asBookEv"></select></div>
   <button class="copycrew" id="asCopy" type="button" hidden></button>
   <div class="fld"><label>Team member <em id="asPickHint">tap one, or several</em></label>
+    <input id="asFilter" class="crewfilter" type="search" placeholder="Filter by name or role…" hidden autocomplete="off" />
     <div class="crewpick" id="asPick"></div>
   </div>
   <div class="as-warn" id="asConflict" hidden></div>
+  <!-- picking several hides Role and Pay, because each member keeps their own.
+       This is what that actually works out to, before it is saved. -->
+  <div class="as-multi" id="asMulti" hidden></div>
   <div class="fld" data-solo><label>Role for this event</label><select id="asRole"></select></div>
   <div class="fld" data-shootonly><label>Call time</label><input id="asCall" type="time" /></div>
   <div class="fld" data-editonly hidden><label>Editing due</label><input id="asDue" type="date" /></div>

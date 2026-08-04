@@ -487,14 +487,23 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 
 /* ---- team tab ---- */
 .tm-ev{border:1px solid var(--line);border-radius:12px;padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:rgba(255,255,255,.02)}
-.tm-ev-h{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+/* Two columns, not one wrapping row: the title, the date pills and the client
+   line all vary in length, and ＋ Assign used to get pushed onto a line of its
+   own the moment a title ran long (VALIMA RECEPTION did it every time). The
+   text column takes whatever room it needs; the button never moves. */
+.tm-ev-h{display:flex;align-items:flex-start;gap:.55rem}
+.tm-ev-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.22rem}
+.tm-ev-t .l1{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-width:0}
 .tm-ev-h .when{font-family:var(--serif);color:var(--gold-b);font-size:.85rem;white-space:nowrap}
 .tm-ev-h b{font-family:var(--serif);color:#fff;font-size:.92rem}
-.tm-ev-h .cl{color:var(--mut);font-size:.78rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-ev-h .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .85em;font-size:.75rem;cursor:pointer;white-space:nowrap}
+.tm-ev-h .cl{color:var(--mut);font-size:.78rem;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-ev-h .act{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .85em;font-size:.75rem;cursor:pointer;white-space:nowrap}
+/* the cards that still need work are the ones to act on — say so */
+.tm-ev.none .tm-ev-h .act,.tm-ev.part .tm-ev-h .act{border-color:var(--gold);background:rgba(184,144,43,.16)}
 .tm-need{font-size:.7rem;color:var(--mut);margin:.25rem 0 .1rem}
 .tm-need b{color:var(--gold-b);font-weight:500}
 .tm-need b.miss{color:#ffb054}
+.tm-need b.ok2{color:var(--ok)}
 .tm-crew{display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px dashed var(--line);font-size:.8rem;cursor:pointer}
 .tm-crew:first-of-type{margin-top:.35rem}
 .tm-crew .nm2{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -611,6 +620,23 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .cpick.here{opacity:.45;cursor:default}
 .cpick:active{transform:scale(.98)}
 @media(hover:hover){ .cpick:hover:not(.here){border-color:var(--gold)} }
+/* "this event's services call for their craft" — a bare ★ read as a rating */
+/* outlined, not filled: a picked member already carries a gold border and gold
+   name, and a solid badge on top of that made the list read as all highlight */
+.cp-t b .wantt{font-style:normal;font-size:.54rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);border:1px solid rgba(226,194,117,.5);border-radius:12px;padding:.1em .45em;margin-left:.4em;vertical-align:.12em;font-weight:600}
+.crewfilter{width:100%;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .7em;margin-bottom:.45rem;font-size:.8rem}
+.crewfilter:focus{outline:none;border-color:var(--gold)}
+/* what "Assign 3 crew" is actually about to write */
+.as-multi{border:1px dashed var(--line);border-radius:10px;padding:.55rem .65rem;margin:0 0 .85rem;background:rgba(184,144,43,.06)}
+.as-multi .amh{font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.4rem}
+.as-multi .amr{display:flex;align-items:baseline;gap:.5rem;font-size:.78rem;padding:.2rem 0}
+.as-multi .amr span{color:var(--text);flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-multi .amr em{font-style:normal;font-size:.66rem;color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-multi .amr b{flex:0 0 auto;color:var(--gold-b);font-weight:600}
+.as-multi .amr b.zero{color:#ffb054;font-weight:500;font-size:.72rem}
+.as-multi .amr.tot{border-top:1px solid var(--line);margin-top:.3rem;padding-top:.4rem}
+.as-multi .amr.tot span{color:var(--mut);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}
+.as-multi .amn{font-size:.68rem;color:#ffb054;margin-top:.45rem;line-height:1.45}
 #asPickHint{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut);font-size:.68rem;margin-left:.4em}
 .copycrew{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin:0 0 .8rem;font-family:var(--sans)}
 .copycrew:active{background:rgba(184,144,43,.14)}
@@ -916,8 +942,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
      A long function name squeezed the client line to 35px of the 262 it
      needed, and the assigned crew member's name collapsed to nothing at all
      because the role text beside it never gave way. Each gets its own line. */
-  .tm-ev-h .cl{flex:1 1 100%;order:1;white-space:normal}
-  .tm-ev-h b{flex:1 1 auto;min-width:0}
+  /* .cl is its own row inside .tm-ev-t now, so it only needs permission to
+     wrap — the flex reordering that used to put it there is gone */
+  .tm-ev-h .cl{white-space:normal}
+  .tm-ev-t .l1 b{min-width:0}
   .tm-crew{flex-wrap:wrap}
   .tm-crew .nm2{flex:1 1 auto;min-width:7em}
   .tm-crew .rl{flex:1 1 100%;white-space:normal;order:1}

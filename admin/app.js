@@ -2777,6 +2777,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const need = neededRoles(ev);
       const needTotal = Object.values(need).reduce((a,b)=>a+b, 0);
       const needTxt = Object.entries(need).map(([r,q])=>`${q}× ${roleLabel(r)}`).join(' · ');
+      /* The card used to print the requirement — "Needs 2× Photography · 1×
+         Cinematography" — and leave the owner to subtract the crew listed
+         below it in their head. Count the roles already on the event off
+         against it and say what is actually still missing. */
+      const have = {};
+      crew.forEach(a=>{ const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0) + 1; });
+      const gap = Object.entries(need).map(([r,q])=>[r, q - (have[r]||0)]).filter(([,q])=>q > 0);
+      const gapTxt = gap.map(([r,q])=>`${q}× ${roleLabel(r)}`).join(' · ');
       /* stale crew (event date was edited after assigning) surfaces once per
          package, on its first upcoming row, with a one-tap re-sync */
       let stale = [];
@@ -2787,22 +2795,35 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const days = Math.round((new Date(ev.date+'T00:00') - new Date(today+'T00:00'))/864e5);
       const away = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
       const fill = needTotal ? Math.min(100, Math.round(100*crew.length/needTotal)) : (crew.length ? 100 : 0);
-      const state = !crew.length ? 'none' : (needTotal && crew.length < needTotal) ? 'part' : 'full';
+      /* Role-aware, not headcount: three photographers on a job that wants two
+         photographers and a cinematographer used to read as fully crewed. */
+      const state = !crew.length ? 'none' : (needTotal && gap.length) ? 'part' : 'full';
       return `
       <div class="tm-ev ${state}">
         <div class="tm-ev-h">
-          <span class="when">${stepDate(ev.date)}</span>
-          <span class="away ${days<=2?'soon':''}">${away}</span>
-          <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}</b>
-          <span class="cl">· ${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · ' + esc(ev.venue) : ''}</span>
+          <div class="tm-ev-t">
+            <div class="l1">
+              <span class="when">${stepDate(ev.date)}</span>
+              <span class="away ${days<=2?'soon':''}">${away}</span>
+              <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}</b>
+            </div>
+            <span class="cl">${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · 📍 ' + esc(ev.venue) : ''}</span>
+          </div>
           <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
         </div>
         <div class="tm-fill">
           <span class="fbar"><i style="width:${fill}%"></i></span>
           <b class="${state}">${crew.length}${needTotal ? '/' + needTotal : ''} crew</b>
-          ${unconf ? `<em>${unconf} not confirmed</em>` : (crew.length ? '<em class="ok">all confirmed</em>' : '')}
+          ${unconf ? `<em>${unconf} not confirmed</em>`
+            /* "all confirmed" in green beside a half-staffed shoot two days out
+               read as reassurance. It is only good news once the event is
+               actually crewed. */
+            : (crew.length && state === 'full' ? '<em class="ok">all confirmed</em>' : '')}
         </div>
-        ${needTxt ? `<div class="tm-need">Needs <b>${esc(needTxt)}</b></div>` : ''}
+        ${needTotal ? (gapTxt
+            ? `<div class="tm-need" title="This event needs ${esc(needTxt)}">Still needs <b class="miss">${esc(gapTxt)}</b></div>`
+            : `<div class="tm-need" title="This event needs ${esc(needTxt)}">Fully crewed <b class="ok2">✓</b></div>`)
+          : ''}
         ${crew.map(a=>crewRowHTML(a)).join('')}
         ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="act" data-assync="${a.id}" data-aspk="${pk.id}" data-asev="${idx}">Sync</button>`)).join('')}
       </div>`;
@@ -3483,12 +3504,37 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const t = new Date(d + 'T00:00'); t.setDate(t.getDate() + editDueDays());
     return t.toLocaleDateString('en-CA');
   };
+  /* Picking several hides Role and Pay — each member keeps their own — which
+     left "Assign 3 crew" as a leap of faith: three roles and three rates the
+     owner could not see until after the write. Spell them out, and name the
+     one that silently becomes ₹0. */
+  function renderAsMulti(){
+    const box = $('#asMulti'); if(!box) return;
+    const picked = [..._asPicked].map(memberById).filter(Boolean);
+    const multi = !_asEditId && picked.length > 1;
+    box.hidden = !multi;
+    if(!multi) return;
+    const rows = picked.map(x=>({
+      name: x.name || '—',
+      role: x.role || $('#asRole').value || '',
+      rate: Math.max(0, Math.round(Number(x.defaultRate)||0))
+    }));
+    const total = rows.reduce((s,r)=>s + r.rate, 0);
+    const noRate = rows.filter(r=>!r.rate).length;
+    box.innerHTML = `<div class="amh">Saving ${rows.length} assignments — each at their own role and rate</div>`
+      + rows.map(r=>`<div class="amr"><span>${esc(r.name)}</span><em>${esc(roleLabel(r.role))}</em>`
+          + `<b class="${r.rate?'':'zero'}">${r.rate ? inr(r.rate) : 'no rate'}</b></div>`).join('')
+      + `<div class="amr tot"><span>Total</span><em></em><b>${inr(total)}</b></div>`
+      + (noRate ? `<div class="amn">${noRate === 1 ? 'One member has' : noRate + ' members have'} no pay per event set, so ${noRate === 1 ? 'they' : 'they'} will be saved at ₹0 — set it on their card in Crew, or assign them on their own to type a one-off amount.</div>` : '');
+  }
+
   function syncAsUI(){
     const n = _asPicked.size;
     const multi = !_asEditId && n > 1;
     $('#asPickHint').textContent = _asEditId ? 'tap to swap the member'
       : n > 1 ? `${n} picked — each gets their own role & rate`
       : 'tap one, or several';
+    renderAsMulti();
     $$('#asModal [data-solo]').forEach(f=>f.hidden = multi);
     /* editing is a desk job on a deadline — a call time means nothing for it,
        and a due date means nothing for a shoot */
@@ -3522,11 +3568,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const ev = asEventOf(_asCtx);
     const need = ev ? neededRoles(ev) : {};
     const onEvent = new Set(_asCtx ? evCrew(_asCtx.pkgId, _asCtx.date, _asCtx.eventTitle).map(a=>a.memberId) : []);
-    const list = activeTeam().slice();
+    let list = activeTeam().slice();
     /* someone deactivated since being assigned must still show while editing,
        or saving would quietly move their job to whoever sorts first */
     const sel = _asEditId ? [..._asPicked][0] : null;
     if(sel && !list.some(m=>m.id===sel)){ const g = memberById(sel); if(g) list.unshift(g); }
+    /* A real roster does not fit on a phone — the picker was a bounded scroll
+       box you hunted through. Offered once there is enough to hunt through.
+       A picked member filtered out of view stays picked; the summary below
+       still accounts for them. */
+    const filterBox = $('#asFilter');
+    if(filterBox) filterBox.hidden = list.length <= 6;
+    const fq = (filterBox && !filterBox.hidden ? _asFilter : '').trim().toLowerCase();
+    if(fq) list = list.filter(m=>String(m.name||'').toLowerCase().includes(fq)
+      || String(m.role||'').toLowerCase().includes(fq));
     const busyOf = m => _asCtx ? asgConflicts(m.id, _asCtx.date, _asEditId) : [];
     /* wanted for this event and free → first; busy → last */
     const rank = m => _asForceEdit
@@ -3539,11 +3594,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const on = _asPicked.has(m.id);
       const wanted = !!need[String(m.role||'').toLowerCase()];
       const note = here ? 'already on this event' : busy.length ? 'busy · ' + esc(busy[0].eventTitle||'another event') : 'free';
+      /* a bare ★ read as a favourite or a rating — it means this event's
+         services actually call for their craft */
       return `<button type="button" class="cpick ${on?'on':''} ${here?'here':''}" data-pick="${m.id}" ${here?'disabled':''}>
         <i class="dot ${here ? 'delivered' : busy.length ? 'unconfirmed' : 'booked'}"></i>
-        <span class="cp-t"><b>${esc(m.name||'—')}${wanted?' ★':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
+        <span class="cp-t"><b>${esc(m.name||'—')}${wanted?'<i class="wantt">needed</i>':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
       </button>`;
-    }).join('') || '<div class="empty" style="padding:.6rem 0">No active team members — add one in the Squad list.</div>';
+    }).join('') || `<div class="empty" style="padding:.6rem 0">${fq
+      ? 'Nobody matches “' + esc(fq) + '”.'
+      : 'No active team members — add one in the Squad list.'}</div>`;
     /* A normal crew fits without any inner scrolling, which is what made this
        sheet quick. Only a long roster gets a bounded window, so Role, Pay and
        Notes don't end up a thousand pixels below the list. */
@@ -3593,8 +3652,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     toast(`${ids.length} member${ids.length===1?'':'s'} picked — check the details, then Save`);
   });
   let _asForceEdit = false, _bookRows = [];
+  /* what is typed in the crew filter, for the length of one sheet */
+  let _asFilter = '';
+  $('#asFilter').addEventListener('input', e=>{ _asFilter = e.target.value; renderAsPick(); });
+  $('#asFilter').addEventListener('keydown', e=>{
+    if(e.key !== 'Escape') return;
+    e.stopPropagation();          /* clear the filter first; Escape again closes the sheet */
+    _asFilter = ''; e.target.value = ''; renderAsPick();
+  });
   function openAs(ctx, a, opts){
     _asEditId = a ? a.id : null;
+    _asFilter = ''; $('#asFilter').value = '';
     _asCtx = ctx;
     _asForceEdit = !!(opts && opts.forceEdit);
     $('#asBookWrap').hidden = !(opts && opts.pickBooking);
