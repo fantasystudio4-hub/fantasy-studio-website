@@ -1,0 +1,953 @@
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --ink-2:#1f1a10; --panel:#241e12; --line:rgba(226,194,117,.22);
+  --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
+h1,h2,h3{font-family:var(--serif)}
+button,input,select,textarea{font-family:var(--sans);font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding:0 14px 90px}
+
+/* header */
+header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hd{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.7rem 14px}
+.hd svg{width:34px;height:34px;flex:0 0 auto}
+.hd .ttl{flex:1;min-width:0}
+.hd .ttl b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.hd b{font-family:var(--serif);font-size:1.05rem}
+.hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
+.hd .out{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;min-height:36px}
+.hd .out:active{border-color:var(--gold)}
+.hd .inst{border-color:var(--gold);color:var(--gold-b)}
+/* Config lives in the header beside Logout — the bottom nav keeps 5 tabs */
+.hd .cfg{padding:.35em .8em;display:inline-flex;align-items:center;gap:.3em}
+.hd .cfg i{font-style:normal;font-size:.95rem;line-height:1}
+.hd .cfg.on{border-color:var(--gold);color:var(--gold-b);background:rgba(184,144,43,.16)}
+@media(max-width:389px){ .hd .cfg em{display:none} }
+.hd .cfg em{font-style:normal}
+
+/* login */
+.login{max-width:360px;margin:16vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.8rem 1.5rem;text-align:center}
+.login h1{font-size:1.4rem;margin:.6rem 0 .2rem}
+.login p{color:var(--mut);font-size:.85rem;margin-bottom:1.2rem}
+.fld{margin-bottom:.8rem;text-align:left}
+.fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.fld input,.fld select,.fld textarea{width:100%;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.7em .8em}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
+.pwrap{position:relative}
+/* ---- dd-mm-yyyy date fields ----
+   A native <input type="date"> prints the VIEWER's locale: the same 2 August
+   2026 reads 02-08-2026 on an Indian device and 8-2-2026 on a US-set phone or
+   laptop, and CSS cannot reorder the day/month boxes. Hide the browser's own
+   text and paint dd-mm-yyyy over it (script at the end of the page). The input
+   underneath is untouched: native calendar, native picker, value still
+   yyyy-mm-dd for Firestore and the CSVs. */
+.dwrap{position:relative;display:block}
+.dwrap>input[type=date]{color:transparent;-webkit-text-fill-color:transparent}
+.dwrap>.dtxt{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
+.dwrap>.dtxt.ph{opacity:.45}
+.pwrap input{padding-right:2.9em}
+.pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:8px}
+.pwrap button svg{width:20px;height:20px;display:block}
+.pwrap button:active{color:var(--gold-b)}
+@media(hover:hover){ .pwrap button:hover{color:var(--gold-b)} }
+.gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn:active{transform:scale(.98)}
+.err{color:var(--err);font-size:.8rem;margin-top:.7rem}
+.note{background:rgba(184,144,43,.1);border:1px solid var(--line);border-radius:10px;padding:1rem;font-size:.85rem;color:var(--mut);margin-top:1rem;text-align:left}
+.note code{color:var(--gold-b)}
+
+/* tabs */
+.tabs{display:flex;gap:.5rem;margin:1rem 0}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em .15em;font-size:.72rem;letter-spacing:.02em;cursor:pointer}
+.tabs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .5rem;text-align:center}
+.stat b{font-family:var(--serif);font-size:1.25rem;color:var(--gold-b);display:block}
+.stat span{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.stat.month{grid-column:1 / -1;background:linear-gradient(135deg,rgba(201,163,71,.2),rgba(142,110,30,.15))}
+.stat.month b{font-size:1.5rem}
+
+/* toolbar */
+.bar{display:flex;gap:.5rem;margin-bottom:.8rem}
+.bar select{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em}
+.bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:8px;padding:.55em .9em;cursor:pointer}
+
+/* lead cards */
+.lead{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:.6rem;overflow:hidden;transition:border-color .25s,background .25s}
+.lead.open{border-color:rgba(226,194,117,.45);background:#28211285}
+.lead-top{padding:.85rem 1rem;display:flex;flex-wrap:wrap;gap:.35rem .6rem;align-items:center;cursor:pointer}
+.lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
+.lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
+.lead-top .newb{font-size:.58rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
+/* "this number has enquired before" — a warning tone, not the gold NEW badge:
+   the two mean opposite things and must not read as the same chip */
+.lead-top .dupb{font-size:.58rem;letter-spacing:.08em;color:#ffb054;border:1px solid rgba(255,176,84,.45);background:rgba(255,176,84,.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
+.lead-top .qno{color:var(--gold-b);letter-spacing:.05em;font-size:.72rem}
+.lt-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}
+.lt-lines .l1{display:flex;align-items:center;gap:.5rem;min-width:0}
+.lt-lines .l1 .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lt-lines .l2{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
+.lt-lines .l2 .amt{margin-left:auto}
+.lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
+.lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
+.lead-top .dot{flex:0 0 auto;width:8px;height:8px;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+.lead-top .chev{color:var(--mut);font-size:.8rem;transition:.25s;margin-left:.1rem}
+.lead.open .chev{transform:rotate(180deg);color:var(--gold-b)}
+/* search + upcoming */
+.bar input[type=search]{flex:1.2;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em .7em;min-width:0}
+.bar input[type=search]:focus{outline:none;border-color:var(--gold)}
+.upco{padding:.8rem 1rem}
+.upco h3{font-size:.92rem;margin-bottom:.4rem}
+.up-ev{display:flex;align-items:center;gap:.6rem;padding:.45rem 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.up-ev:last-child{border-bottom:0}
+.up-ev .when{font-family:var(--serif);color:var(--gold-b);font-size:.85rem;min-width:64px}
+.up-ev .what{flex:1;min-width:0;font-size:.85rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-ev .what span{color:var(--mut)}
+
+/* professional hover / focus states */
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+@media(hover:hover){
+  .tabs button:hover:not(.on){color:var(--gold-b);border-color:var(--gold)}
+  .pkg-acts .act:hover,.bar button:hover,.cal-nav button:hover,.lead-sub a:hover,.mini:hover{border-color:var(--gold);color:#fff}
+  .pkg-acts .lead-x:hover,.lead-sub .lead-x:hover{background:var(--err);border-color:var(--err);color:#fff}
+  .gbtn:hover,.goldbar:hover{filter:brightness(1.1)}
+  .addrow:hover{border-color:var(--gold)}
+  .cal-cell:not(.off):hover{border-color:var(--line)}
+  .up-ev:hover .what{color:var(--gold-b)}
+  .hd .out:hover{border-color:var(--gold);color:var(--gold-b)}
+}
+
+/* calendar */
+.cal-nav{display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem}
+.cal-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.4em .9em;font-size:.95rem}
+.cal-nav #calToday{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+.cal-title{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.08rem}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem}
+.cal-dow{text-align:center;font-size:.6rem;letter-spacing:.08em;color:var(--mut);padding:.15rem 0}
+.cal-dow.we{color:var(--gold-b);opacity:.75}
+.cal-cell{min-height:56px;display:flex;flex-direction:column;border:1px solid transparent;border-radius:10px;padding:.28rem .3rem;cursor:pointer;background:#171309}
+.cal-cell.we{background:#1c1710}                       /* weekends read at a glance — most functions land there */
+.cal-cell.off{background:none;cursor:default}
+.cal-cell .d{font-size:.78rem;color:var(--text);line-height:1.35}
+.cal-cell.today .d{background:var(--gold);color:#14110a;font-weight:700;border-radius:50%;width:1.35rem;height:1.35rem;display:inline-grid;place-items:center;line-height:1}
+.cal-cell.sel{background:rgba(184,144,43,.22);border-color:var(--gold-b)}
+.cal-cell.has .d{color:var(--gold-b);font-weight:600}
+.cal-cell.today.has .d{color:#14110a}
+.dots{display:flex;gap:2.5px;flex-wrap:wrap;margin-top:auto;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.booked{background:var(--ok)} .dot.sent{background:#7fb2e5} .dot.draft{background:var(--mut)} .dot.lead{background:var(--gold-b)} .dot.delivered{background:#9adbb2} .dot.unconfirmed{background:#cf7f76}
+.dots b{font-size:.55rem;color:var(--mut);font-weight:600}
+/* one line, always: six statuses wrapped onto two rows and ate the space
+   under the grid — they now sit in a single row that scrolls if it must */
+.cal-legend{display:flex;gap:.7rem;justify-content:space-between;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-top:.75rem;font-size:.62rem;color:var(--mut)}
+.cal-legend::-webkit-scrollbar{display:none}
+.cal-legend span{white-space:nowrap;flex:0 0 auto}
+.cal-legend .dot{width:6px;height:6px;margin-right:.28em;vertical-align:middle}
+@media(min-width:700px){ .cal-legend{justify-content:center;gap:1.1rem;font-size:.66rem} }
+.cal-ev{display:flex;align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px dashed var(--line)}
+.cal-ev:last-child{border-bottom:0}
+.cal-ev .dot{flex:0 0 auto}
+.cal-ev-t{flex:1;min-width:0}
+.cal-ev-t b{display:block;font-family:var(--serif);color:#fff;font-size:.95rem}
+.cal-ev-t span{font-size:.74rem;color:var(--mut)}
+.cal-ev .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.75rem;cursor:pointer}
+
+/* packages page — status accents, pills, money badges, group headers */
+.lead.st-draft{border-left:3px solid #6f6650}
+.lead.st-sent{border-left:3px solid #7fb2e5}
+.lead.st-unconfirmed{border-left:3px solid #cf7f76}
+.lead.st-booked{border-left:3px solid var(--ok)}
+.lead.st-delivered{border-left:3px solid #9adbb2}
+.stpill{margin-left:auto;flex:0 0 auto;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;border-radius:20px;padding:.24em .72em;font-weight:600}
+.stpill.draft{color:#c9c0a8;background:rgba(255,255,255,.07)}
+.stpill.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
+.stpill.unconfirmed{color:#cf8d85;background:rgba(207,127,118,.13)}
+.stpill.booked{color:var(--ok);background:rgba(76,175,125,.13)}
+.stpill.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
+.duelbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:#ffb054;background:rgba(255,176,84,.13);border-radius:14px;padding:.2em .6em;margin-right:.45em;vertical-align:2px;font-weight:600}
+.paidlbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--ok);background:rgba(76,175,125,.13);border-radius:14px;padding:.2em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
+.grp{display:flex;align-items:center;gap:.6rem;margin:1.05rem 0 .5rem;color:var(--mut);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase}
+.grp::after{content:"";flex:1;height:1px;background:var(--line)}
+.grp b{color:var(--gold-b);font-weight:600}
+#pkgList .grp:first-child{margin-top:.15rem}
+.grp.tog{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;padding:.3rem 0}
+.grp.tog .car{display:inline-block;transition:transform .15s;color:var(--gold-b);font-size:.62rem}
+.grp.tog.closed .car{transform:rotate(-90deg)}
+.grp.tog:active{opacity:.65}
+
+/* package row actions — even grid, no crowding */
+.pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:0 1rem;padding:.75rem 0 .9rem;border-top:1px dashed var(--line)}
+.pkg-acts button{
+  width:100%;text-align:center;padding:.55em .3em;font-size:.78rem;border-radius:10px;
+  letter-spacing:.02em;cursor:pointer;white-space:nowrap;
+}
+.pkg-acts .chip{border:1px solid transparent;text-transform:uppercase;font-size:.7rem;letter-spacing:.06em;font-weight:500}
+.pkg-acts .act{background:rgba(255,255,255,.045);border:1px solid transparent;color:var(--gold-b)}
+.pkg-acts .act:active{background:rgba(184,144,43,.18)}
+.pkg-acts .lead-x{background:rgba(224,122,106,.08);border:1px solid transparent;color:var(--err)}
+.pkg-acts .lead-x:active{background:var(--err);color:#fff}
+@media(min-width:700px){.pkg-acts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
+
+/* delivery tracker */
+.dprog{height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
+.dprog i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#9adbb2);border-radius:4px;transition:width .3s}
+.dl3{display:flex;align-items:center;gap:.5rem;margin-top:.1rem}
+.dl3 .dprog{flex:1}
+.dl3 b{font-size:.6rem;color:var(--mut);font-weight:600;letter-spacing:.04em;white-space:nowrap;margin-left:auto}
+.dl3 b.dv{color:#9adbb2}
+.dtrack{margin:0 1rem;padding:.6rem 0 .85rem;border-top:1px dashed var(--line)}
+.dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
+.dt-head .dprog{flex:1}
+.dt-head b{color:var(--mut);font-weight:600}
+.dstep{display:flex;align-items:center;gap:.55rem;padding:.36rem .15rem;cursor:pointer;border-radius:8px;font-size:.85rem;color:var(--mut)}
+.dstep i{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:.6rem;color:transparent;font-style:normal;transition:.2s}
+.dstep em{margin-left:auto;font-style:normal;font-size:.68rem;color:var(--mut);opacity:.85;white-space:nowrap}
+.dstep.done{color:var(--text)}
+.dstep.done i{background:var(--ok);border-color:var(--ok);color:#fff}
+@media(hover:hover){ .dstep:hover{background:rgba(255,255,255,.04)} .dstep:hover i{border-color:var(--gold)} }
+
+/* offline chip + forgot password + undo toast */
+.net{flex:0 0 auto;background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
+.linky{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;display:block;margin:-.2rem 0 .8rem;padding:0}
+.linky:active{color:var(--gold-b)}
+.toast button{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.15em .85em;margin-left:.6em;cursor:pointer;font-size:.8rem}
+
+/* date-clash warning in the builder */
+.dwarn{color:var(--err);font-size:.76rem;background:rgba(224,122,106,.08);border:1px dashed rgba(224,122,106,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .6rem}
+
+/* Home: the search box only appears when it's wanted — the calendar owns the top */
+#homeSearchBar button{flex:0 0 auto}
+
+/* calendar quick jump — the ▾ rides the month name, so the event count can
+   sit under it as its own line */
+.cal-title{cursor:pointer;line-height:1.2}
+.cal-title b{font-weight:inherit}
+.cal-title b::after{content:" ▾";font-size:.7em;color:var(--mut);vertical-align:2px}
+.cal-title .calcount{display:block;font-family:var(--sans);font-size:.56rem;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);margin-top:.12rem}
+.cal-jump{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .8rem}
+.cal-jump .yr{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:1.1rem}
+.cal-jump .yr b{font-family:var(--serif);color:var(--gold-b);font-size:1.02rem}
+.cal-jump .yr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.3em .8em}
+.cal-jump .mo{background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.5em .2em;font-size:.76rem;cursor:pointer}
+.cal-jump .mo.on{border-color:var(--gold);color:var(--gold-b)}
+@media(hover:hover){ .cal-jump .mo:hover{border-color:var(--gold);color:var(--gold-b)} }
+
+/* calendar day box: quick "add event" */
+.cd-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
+.cd-head h3{flex:1;min-width:0;margin:0}
+.cd-head .mini{margin-top:0;flex:0 0 auto;white-space:nowrap}
+.todaypill{font-family:var(--sans);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:#14110a;background:var(--gold-b);border-radius:14px;padding:.2em .7em;font-weight:600;vertical-align:3px}
+#calAdd{border-color:rgba(226,194,117,.45)}
+#qeMode button{font-size:.78rem;padding:.55em .2em}
+#qeStatus button{font-size:.78rem;padding:.5em .2em}
+#calAdd .evchips{margin-top:-.55rem}
+.qe-acts{display:flex;gap:.6rem;align-items:center}
+.qe-acts .gbtn{flex:1;width:auto;padding:.85em 1.2em}
+.qe-acts .mini{margin-top:0;flex:0 0 auto}
+.qe-note{font-size:.74rem;color:var(--mut);margin-top:.8rem}
+/* the service picker on the quick sheet. NOT a .fld: that would drag the
+   full-width .fld input styling onto the qty / rate boxes inside .itemrow */
+#qeQueue:not(:empty){margin:0 0 .8rem;border:1px dashed var(--line);border-radius:10px;padding:.1rem .7rem}
+#qeQueue .qeq-h{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);padding:.5rem 0 .1rem}
+/* the sheet is narrower inside the B2B section than on Home — let a banked
+   date wrap rather than clipping its time of day and venue */
+#qeQueue .what{white-space:normal;overflow:visible;text-overflow:clip}
+#qeQueue .up-ev{align-items:flex-start;padding:.5rem 0}
+#qeQueue .when{padding-top:.15rem}
+#qeMore{margin-bottom:.9rem}
+#qeSvc{margin-bottom:.8rem;text-align:left}
+#qeSvc > label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.qe-tot{text-align:right;font-family:var(--serif);font-weight:700;color:var(--gold-b);margin:.45rem 0 .1rem;min-height:1em}
+.qe-warn{color:var(--gold-b);font-size:.78rem;background:rgba(184,144,43,.1);border:1px dashed var(--line);border-radius:8px;padding:.6rem .7rem;margin-bottom:.8rem}
+/* time of day, wherever an event is listed */
+.slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
+.slotpill.morning{color:#e3c67a;background:rgba(227,198,122,.14)}
+.slotpill.evening{color:#a9a6e0;background:rgba(169,166,224,.16)}
+.slotpill.full{color:#9adbb2;background:rgba(154,219,178,.14)}
+.slotpills{margin-bottom:0}
+.slotpills button{font-size:.8rem;padding:.5em .4em}
+
+/* balance-due pill on upcoming shoots */
+.up-ev .due,.uh-row .due{color:var(--gold-b);border:1px solid rgba(184,144,43,.55);background:rgba(184,144,43,.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500;border-radius:20px}
+.up-ev .due:active{background:rgba(184,144,43,.28)}
+
+/* filter chips with counts */
+.fchips{display:flex;gap:.4rem;overflow-x:auto;margin:0 0 .8rem;padding-bottom:2px;scrollbar-width:none}
+.fchips::-webkit-scrollbar{display:none}
+.fchips button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em .95em;font-size:.74rem;cursor:pointer;white-space:nowrap}
+.fchips button b{font-weight:600;margin-left:.3em;opacity:.75}
+.fchips button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+@media(hover:hover){ .fchips button:hover:not(.on){border-color:var(--gold);color:var(--gold-b)} }
+
+/* skeleton loading */
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;height:64px;margin-bottom:.6rem;position:relative;overflow:hidden}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.08),transparent);animation:shim 1.2s infinite}
+@keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* empty states */
+.empty2{text-align:center;padding:2.2rem .8rem;color:var(--mut);font-size:.9rem}
+.empty2 .ic{font-size:2.1rem;display:block;margin-bottom:.45rem}
+
+/* tappable stat tiles */
+.stat[data-fs],.stat[data-goto]{cursor:pointer;transition:border-color .2s}
+.stat.sel{border-color:var(--gold);background:rgba(184,144,43,.16)}
+@media(hover:hover){ .stat[data-fs]:hover,.stat[data-goto]:hover{border-color:var(--gold)} }
+
+/* status picker sheet */
+.st-opts{display:grid;gap:.5rem}
+.st-opts button{display:flex;align-items:center;gap:.65rem;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.85em 1em;color:var(--text);cursor:pointer;font-size:.92rem;text-transform:capitalize;text-align:left}
+.st-opts button em{margin-left:auto;font-style:normal;font-size:.66rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
+.st-opts button.on{border-color:var(--gold)}
+.st-opts .dot{width:9px;height:9px;flex:0 0 auto}
+@media(hover:hover){ .st-opts button:hover{border-color:var(--gold)} }
+
+/* payment quick amounts */
+.qamt{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.2rem 0 .8rem}
+.qamt:empty{display:none}
+.qamt button{background:rgba(184,144,43,.12);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.32em .85em;font-size:.72rem;cursor:pointer}
+@media(hover:hover){ .qamt button:hover{border-color:var(--gold)} }
+
+/* tab icons + new-leads badge */
+.tabs button{position:relative}
+.tabs button i{display:none;font-style:normal}
+.tabs .badge{background:var(--err);color:#fff;font-size:.55rem;font-weight:600;border-radius:10px;padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
+
+/* app-style bottom navigation on phones */
+@media(max-width:699px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:70;margin:0;gap:0;padding:.3rem .3rem calc(.3rem + env(safe-area-inset-bottom));background:rgba(20,17,10,.97);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+  .tabs button{background:none;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:.28em 0;font-size:.58rem;letter-spacing:.02em}
+  .tabs button i{display:block;font-size:1.14rem;line-height:1.25;filter:grayscale(1);opacity:.66;transition:.2s}
+  .tabs button.on{background:none;color:var(--gold-b)}
+  .tabs button.on i{filter:none;opacity:1}
+  .tabs .badge{position:absolute;top:-2px;right:14%;margin:0}
+  .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  /* NOTE: the .savebar / .pkg-actions / .toast bottom offsets for phones are
+     NOT here — the later base rules for those three would override them at
+     equal specificity. They live in the phone block at the END of this
+     stylesheet instead. */
+}
+
+/* payment popup */
+.pay-backdrop{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;visibility:hidden;transition:opacity .25s, visibility 0s linear .25s}
+.pay-backdrop.open{opacity:1;pointer-events:auto;visibility:visible;transition:opacity .25s, visibility 0s}
+.pay-modal{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:130;
+  width:min(92vw,360px);background:var(--panel);border:1px solid var(--gold);border-radius:14px;
+  /* opacity:0 alone leaves every control inside a CLOSED sheet in the tab
+     order and the accessibility tree — the payment amount field and the
+     status buttons were reachable while invisible */
+  padding:1.4rem 1.2rem;opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .3s, transform .3s, visibility 0s linear .3s;
+  /* A sheet taller than the screen was a dead end: fixed position, no internal
+     scroll, so Save sat below the fold with no way to reach it and nothing
+     moved. The assign sheet hits 1249px on a 812px phone. */
+  max-height:86vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+}
+.pay-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .3s, transform .3s, visibility 0s}
+/* The page behind a sheet stayed live: overscroll-behavior stops the chain
+   only once the sheet itself scrolls, so a drag that started on the backdrop —
+   or anywhere beside a short sheet — moved the list underneath, and closing
+   the sheet dropped the owner somewhere else entirely. position:fixed on the
+   body is what iOS actually honours; the script parks scrollY in top: and
+   puts it back on close. */
+html.modal-open, html.modal-open body{overflow:hidden}
+html.modal-open body{position:fixed;left:0;right:0;width:100%}
+.pay-modal h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.2rem}
+.pay-modal .who{font-size:.8rem;color:var(--mut);margin-bottom:.9rem}
+.mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
+.mode-pills button{flex:1;background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.6em;cursor:pointer;font-size:.85rem}
+.mode-pills button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.pay-hist{font-size:.75rem;color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
+.pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
+.pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:.85rem;padding:.5em .6em;min-width:40px;min-height:40px;vertical-align:middle}
+.pay-close{position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:1.5rem;cursor:pointer}
+@media(max-width:560px){
+  .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:88vh}
+  .pay-modal.open{transform:translateY(0)}
+}
+.lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
+.lead-sub a{color:var(--gold-b);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.25em .8em}
+.lead-sub .lead-x{background:none;border:1px solid rgba(224,122,106,.5);color:var(--err);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
+.lead-sub .lead-x:active{background:var(--err);color:#fff}
+.lead-sub select{background:#171309;border:1px solid var(--line);color:var(--text);border-radius:20px;padding:.25em .5em;font-size:.78rem;margin-left:auto}
+.st-new{color:var(--gold-b)} .st-contacted{color:#7fb2e5} .st-booked{color:var(--ok)}
+.st-shot{color:#c99ae0} .st-delivered{color:#9adbb2} .st-lost{color:var(--err)}
+.st-converted{color:#6fc8c0}
+.lead-det{border-top:1px dashed var(--line);padding:.85rem .95rem;font-size:.85rem}
+.lead-det h4{font-family:var(--serif);color:var(--gold-b);font-size:.92rem;margin:.5rem 0 .3rem}
+.lead-det .ln{display:flex;justify-content:space-between;padding:.12rem 0;color:var(--text)}
+.lead-det .ln span:last-child{color:var(--mut)}
+.lead-det textarea{width:100%;min-height:70px;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.6em;margin-top:.3rem}
+.mini{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.4em 1.1em;font-size:.78rem;cursor:pointer;margin-top:.5rem}
+.mini:active{background:var(--gold);color:#fff}
+.empty{color:var(--mut);text-align:center;padding:2rem 0;font-style:italic}
+
+/* config editor */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:.9rem}
+.sec h3{color:var(--gold-b);font-size:1.05rem;margin-bottom:.7rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.row{border:1px dashed var(--line);border-radius:10px;padding:.7rem;margin-bottom:.6rem}
+.row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
+/* ready-made packages: one nested card per event inside the preset's .row.
+   Replaced a raw-JSON textarea, so this is the first time these are editable
+   without writing code. */
+.pevs{margin:.35rem 0 .6rem}
+.pev{border:1px dashed var(--line);border-radius:10px;padding:.65rem;margin-bottom:.55rem;background:rgba(255,255,255,.02)}
+.pev .del{float:right;background:none;border:0;color:var(--err);font-size:1.05rem;cursor:pointer;padding:0 .3em}
+.pev .fld{margin-bottom:.55rem}
+.pev .evchips,.pev .svcchips{margin:.1rem 0 .5rem}
+.pev .qchip{padding:.35em .8em;font-size:.74rem}
+.psvc{margin-bottom:.4rem}
+.psvc .pslab{flex:1;min-width:0;color:var(--text);font-size:.82rem;align-self:center}
+.psvc .pslab em{font-style:normal;color:var(--err);font-size:.72em;display:block}
+.addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.6em;cursor:pointer;font-size:.82rem}
+.evchips,.svcchips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.1rem 0 .85rem}
+.qchip{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:30px;padding:.45em 1em;font-size:.8rem;cursor:pointer;transition:.15s;font-family:var(--sans)}
+.qchip:active{transform:scale(.95);background:rgba(184,144,43,.22)}
+.qchip small{color:var(--mut);font-size:.85em;margin-left:.35em}
+.copyprev{background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:30px;padding:.5em 1.1em;font-size:.78rem;cursor:pointer;margin:0 0 .75rem;font-family:var(--sans)}
+.copyprev:active{background:rgba(184,144,43,.14)}
+#pkgEvents .pkg-ev:first-child [data-copyprev]{display:none}
+.pkg-total{margin-left:auto;text-align:right;line-height:1.15;align-self:center}
+.pkg-total span{display:block;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.pkg-total b{font-family:var(--serif);font-size:1.3rem;color:var(--gold-b)}
+.termrow{display:flex;gap:.6rem;align-items:flex-start;padding:.42rem .2rem;font-size:.85rem;color:var(--text);cursor:pointer;border-bottom:1px dashed var(--line)}
+.termrow:last-child{border-bottom:0}
+.termrow input{width:17px;height:17px;flex:0 0 auto;margin-top:.15rem;accent-color:var(--gold)}
+.termrow span{flex:1;min-width:0}
+.termrow input:not(:checked) + span{color:var(--mut);text-decoration:line-through;text-decoration-color:rgba(226,194,117,.4)}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:rgba(20,17,10,.97);border-top:1px solid var(--line);padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+.savebar .in{max-width:860px;margin:0 auto;display:flex;gap:.6rem;align-items:center}
+.savebar .msg{font-size:.78rem;color:var(--mut);flex:1}
+.savebar .gbtn{width:auto;padding:.75em 1.8em}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+@media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
+
+/* packages */
+.goldbar{background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:8px;padding:.55em .9em;cursor:pointer}
+.chip{border:1px solid var(--line);border-radius:20px;padding:.2em .8em;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:none}
+.chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
+.chip.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
+.chip.unconfirmed{color:#cf8d85;background:rgba(207,127,118,.12)}
+.chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
+.chip.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
+.itemrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
+.itemrow .l1{display:flex;gap:.45rem}
+.itemrow .l1 select{flex:1;min-width:0}
+.itemrow .l2{display:flex;gap:.45rem;align-items:center;grid-column:1 / -1;flex-wrap:wrap}
+.itemrow select,.itemrow input{background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .6em}
+.itemrow .qwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.itemrow .qwrap button{width:34px;height:38px;background:rgba(184,144,43,.18);border:0;color:var(--gold-b);font-size:1.1rem;cursor:pointer}
+.itemrow .qwrap input{width:46px;text-align:center;border:0;background:transparent}
+.itemrow input[data-f="rate"]{width:92px}
+.itemrow .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
+.itemrow .rm{background:none;border:0;color:var(--err);font-size:1.05rem;cursor:pointer}
+.pkg-ev{position:relative}
+.pkg-ev > .del{position:absolute;top:.5rem;right:.6rem;float:none}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.3rem 0}
+.prow b{font-family:var(--serif);color:var(--gold-b)}
+.prow input{width:130px;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.45em .6em;text-align:right}
+.prow.big{border-top:1px solid var(--line);margin-top:.3rem;padding-top:.6rem}
+.prow.big b{font-size:1.35rem}
+.pkg-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:.4rem 0 1rem}
+.pkg-actions .gbtn{width:auto;flex:1;min-width:130px}
+.pkg-actions .mini{margin-top:0}
+.lead-sub .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.78rem;cursor:pointer}
+/* instructions that only matter the first few times: one line by default */
+.howto{margin:0 0 .8rem}
+.howto summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-b);font-size:.74rem;letter-spacing:.04em;border:1px dashed var(--line);border-radius:20px;padding:.35em .95em}
+.howto summary::-webkit-details-marker{display:none}
+.howto summary::before{content:"?";display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:rgba(184,144,43,.25);font-size:.62rem}
+.howto[open] summary{margin-bottom:.5rem}
+.howto p{font-size:.75rem;color:var(--mut);line-height:1.55}
+@media(hover:hover){ .howto summary:hover{border-color:var(--gold)} }
+.hint{background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--mut);margin-bottom:.9rem}
+.hint b{color:var(--gold-b);font-weight:500}
+.sec .sub{font-size:.75rem;color:var(--mut);margin:-.5rem 0 .8rem}
+.stepnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;font-size:.75rem;font-family:var(--sans);margin-right:.45rem;vertical-align:-3px}
+.mini-f{display:flex;flex-direction:column;gap:.25rem}
+.mini-f > label{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.mini-f.amtf{margin-left:auto;text-align:right}
+.pkg-actions{position:sticky;bottom:0;z-index:40;background:rgba(20,17,10,.97);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 -14px;padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+/* ---- tap targets & minimum readable size (audit) ----
+   Destructive x controls measured 11-21px wide with no padding, and several
+   labels rendered below 10px on a phone the owner uses one-handed. */
+.lead-x,[data-del],[data-purge],[data-restore],.rm{min-width:40px;min-height:40px}
+.lead-x,[data-del]{padding:.45em .6em}
+.tabs button{min-height:52px}
+.tabs button span,.tabs button em{font-size:.68rem}
+.pkg-meta,.pkg-sub,.muted-xs{font-size:.72rem}
+
+/* ---- team tab ---- */
+.tm-ev{border:1px solid var(--line);border-radius:12px;padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:rgba(255,255,255,.02)}
+.tm-ev-h{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.tm-ev-h .when{font-family:var(--serif);color:var(--gold-b);font-size:.85rem;white-space:nowrap}
+.tm-ev-h b{font-family:var(--serif);color:#fff;font-size:.92rem}
+.tm-ev-h .cl{color:var(--mut);font-size:.78rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-ev-h .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .85em;font-size:.75rem;cursor:pointer;white-space:nowrap}
+.tm-need{font-size:.7rem;color:var(--mut);margin:.25rem 0 .1rem}
+.tm-need b{color:var(--gold-b);font-weight:500}
+.tm-need b.miss{color:#ffb054}
+.tm-crew{display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px dashed var(--line);font-size:.8rem;cursor:pointer}
+.tm-crew:first-of-type{margin-top:.35rem}
+.tm-crew .nm2{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-crew .rl{color:var(--mut);font-size:.7rem;white-space:nowrap}
+.tm-crew .ackpill{margin-left:auto;flex:0 0 auto;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border-radius:14px;padding:.22em .65em;font-weight:600}
+/* sits after the pill, which is what margin-left:auto has already pushed right */
+.tm-crew .csbtn{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.2em .55em;font-size:.8rem;line-height:1.2;cursor:pointer}
+.tm-crew .csbtn:active{background:rgba(184,144,43,.2);border-color:var(--gold)}
+.ackpill.seen{color:var(--ok);background:rgba(76,175,125,.13)}
+.ackpill.wait{color:#c9c0a8;background:rgba(255,255,255,.07)}
+.ackpill.stale{color:#ffb054;background:rgba(255,176,84,.13)}
+.tm-inactive .what{opacity:.55}
+.pm-row{display:flex;align-items:center;gap:.55rem;padding:.42rem 0;border-bottom:1px dashed var(--line);font-size:.8rem}
+.pm-row:last-child{border-bottom:0}
+.pm-row .ev2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.pm-row .ev2 span{color:var(--mut)}
+/* Team tab: one section on screen at a time */
+/* sticks BELOW the app header (which is sticky at top:0, z-index 50) — at
+   top:0 it slid underneath and vanished */
+.tsegs{display:flex;gap:.4rem;position:sticky;top:var(--hdr-h,56px);z-index:40;background:var(--ink);padding:.5rem 0 .55rem;margin:-.2rem 0 .2rem}
+.tsegs button{flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:24px;padding:.62em .3em;font-size:.82rem;cursor:pointer;min-height:44px;white-space:nowrap}
+.tsegs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#1a1408;font-weight:600}
+.tsegs .segb{background:var(--err);color:#fff;border-radius:20px;font-size:.6rem;padding:.05em .4em;font-weight:700}
+.tsegs button.on .segb{background:#1a1408;color:var(--gold-b)}
+.pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
+.pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:.62rem;color:var(--ok);letter-spacing:.02em}
+.pm-row .part2{color:#ffb054;border-color:rgba(255,176,84,.5)}
+.pm-row .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.72rem;cursor:pointer;white-space:nowrap}
+/* .grp sets uppercase + wide letter-spacing for its heading text — the button
+   inside it has to opt out or it reads as more heading, not an action */
+.grp .pmall{background:rgba(184,144,43,.16);border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
+.grp .pmall:active{background:rgba(184,144,43,.32)}
+.pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
+.as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
+
+/* ==== Team console: attention list, leaderboard, squad cards ====
+   All of it is derived from the assignment docs the tab already holds. */
+/* swipe between the booking tabs, the way every other app on the phone does */
+#bookingsSec{touch-action:pan-y}
+.listbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem}
+.listbar .howto{margin:0 0 .2rem}
+.swipehint{font-family:var(--sans);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:12px;padding:.18em .6em;vertical-align:3px;margin-left:.4em}
+.swipehint::before{content:"↔ "}
+@media(min-width:700px){ .swipehint{display:none} }
+@keyframes slideL{from{opacity:.2;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:.2;transform:translateX(-26px)}to{opacity:1;transform:none}}
+#homeBooked.sl-l,#pkgList.sl-l,#workBody.sl-l{animation:slideL .22s ease-out}
+#homeBooked.sl-r,#pkgList.sl-r,#workBody.sl-r{animation:slideR .22s ease-out}
+@media (prefers-reduced-motion: reduce){ #homeBooked.sl-l,#homeBooked.sl-r,#pkgList.sl-l,#pkgList.sl-r,#workBody.sl-l,#workBody.sl-r{animation:none} }
+#workTabs{margin-bottom:.7rem}
+#workTabs b.late{color:#ffb054}
+
+/* the four counts read as one row on every width, like the B2B tiles */
+#teamStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
+#teamStats .stat.month{grid-column:1 / -1}
+#teamStats .stat{padding:.5rem .2rem}
+#teamStats .stat b{font-size:1rem}
+#teamStats .stat span{font-size:.5rem;letter-spacing:.03em;line-height:1.3}
+#teamStats .stat.month b{font-size:1.5rem}
+#teamStats .stat.month span{font-size:.62rem;letter-spacing:.08em}
+@media(min-width:700px){
+  #teamStats .stat{padding:.6rem .5rem}
+  #teamStats .stat b{font-size:1.25rem}
+  #teamStats .stat span{font-size:.62rem;letter-spacing:.08em}
+}
+.stat.warn{border-color:rgba(255,176,84,.5)}
+.stat.warn b{color:#ffb054}
+
+/* editing desk — a deadline list, not a schedule */
+.ed-row{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.ed-row:last-child{border-bottom:0}
+.ed-row.ok{opacity:.6}
+.ed-row .w{flex:0 0 auto;min-width:54px;font-family:var(--serif);color:var(--gold-b);font-size:.82rem}
+.ed-row .t{flex:1;min-width:0}
+.ed-row .t b{display:block;font-size:.88rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-row .t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qtag{flex:0 0 auto;font-family:var(--sans);font-size:.58rem;letter-spacing:.07em;color:var(--gold-b);background:rgba(184,144,43,.14);border-radius:12px;padding:.18em .6em;font-weight:600;white-space:nowrap}
+.duetag{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(255,255,255,.06);white-space:nowrap}
+.duetag.soon{color:#ffb054;background:rgba(255,176,84,.14)}
+.duetag.late{color:var(--err);background:rgba(224,122,106,.14)}
+.duetag.ok{color:var(--ok);background:rgba(76,175,125,.13)}
+.edact{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .7em;font-size:.7rem;cursor:pointer;min-height:34px;white-space:nowrap}
+.edact.tick{border-color:rgba(76,175,125,.5);color:var(--ok)}
+.edact:active{background:rgba(184,144,43,.18)}
+@media(hover:hover){ .ed-row:hover .t b{color:var(--gold-b)} }
+
+/* upcoming events: how close, how full, who hasn't confirmed */
+.tm-ev.none{border-left:3px solid rgba(224,122,106,.6)}
+.tm-ev.part{border-left:3px solid rgba(255,176,84,.6)}
+.tm-ev.full{border-left:3px solid rgba(76,175,125,.5)}
+.tm-ev-h .away{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);background:rgba(255,255,255,.06);border-radius:14px;padding:.2em .6em;font-weight:600}
+.tm-ev-h .away.soon{color:#ffb054;background:rgba(255,176,84,.14)}
+.tm-fill{display:flex;align-items:center;gap:.55rem;margin:.5rem 0 .1rem}
+.tm-fill .fbar{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
+.tm-fill .fbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#C9A347,#E2C275)}
+.tm-fill b{flex:0 0 auto;font-size:.66rem;letter-spacing:.04em;font-weight:600}
+.tm-fill b.none{color:var(--err)} .tm-fill b.part{color:#ffb054} .tm-fill b.full{color:var(--ok)}
+.tm-fill em{flex:0 0 auto;font-style:normal;font-size:.62rem;color:#ffb054}
+.tm-fill em.ok{color:var(--ok);opacity:.8}
+
+/* the crew picker — availability at a glance, and more than one at a time */
+/* one scrolling surface, not two: this list used to be a 230px window inside a
+   sheet that also scrolls, so picking someone meant scrolling within a scroll */
+.crewpick{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+.crewpick.tall{max-height:46vh;overflow-y:auto;overscroll-behavior:contain}
+@media(max-width:400px){ .crewpick{grid-template-columns:1fr} }
+.cpick{display:flex;align-items:center;gap:.5rem;text-align:left;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.5rem .6rem;cursor:pointer;font-family:var(--sans);min-height:46px}
+.cpick .dot{flex:0 0 auto}
+.cp-t{flex:1;min-width:0}
+.cp-t b{display:block;color:var(--text);font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-t em{display:block;font-style:normal;font-size:.62rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cpick.on{border-color:var(--gold);background:rgba(184,144,43,.18)}
+.cpick.on .cp-t b{color:var(--gold-b)}
+.cpick.here{opacity:.45;cursor:default}
+.cpick:active{transform:scale(.98)}
+@media(hover:hover){ .cpick:hover:not(.here){border-color:var(--gold)} }
+#asPickHint{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut);font-size:.68rem;margin-left:.4em}
+.copycrew{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin:0 0 .8rem;font-family:var(--sans)}
+.copycrew:active{background:rgba(184,144,43,.14)}
+@media(hover:hover){ .copycrew:hover{border-color:var(--gold)} }
+
+.lbtog{margin-left:auto;display:inline-flex;gap:.3rem}
+.lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
+.lbtog button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.lb-row{display:flex;align-items:center;gap:.65rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
+.lb-row:last-child{border-bottom:0}
+.lb-row .pos{flex:0 0 auto;width:26px;text-align:center;font-family:var(--serif);font-size:.95rem;color:var(--mut)}
+.lb-row.top .pos{font-size:1.1rem}
+.av{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;font-weight:600;letter-spacing:.02em;background:rgba(184,144,43,.16);border:1px solid var(--line);color:var(--gold-b)}
+.lb-row.g1 .av{background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;border-color:transparent}
+.lb-row.g2 .av{background:rgba(200,200,205,.2);color:#dcdce2;border-color:rgba(200,200,205,.35)}
+.lb-row.g3 .av{background:rgba(190,124,74,.22);color:#e0a877;border-color:rgba(190,124,74,.4)}
+.lb-mid{flex:1;min-width:0}
+.lb-mid b{display:block;font-size:.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:.28rem;overflow:hidden}
+.lb-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#C9A347,#E2C275)}
+.lb-n{flex:0 0 auto;text-align:right;line-height:1.15}
+.lb-n b{display:block;font-family:var(--serif);color:var(--gold-b);font-size:1rem}
+.lb-n span{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+
+.sq{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.8rem .9rem;margin-bottom:.6rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.sq.off{opacity:.6}
+.sq-h{display:flex;align-items:center;gap:.7rem}
+.sq-av{position:relative;flex:0 0 auto;width:46px;height:46px}
+.sq-av svg{width:46px;height:46px;transform:rotate(-90deg)}
+.sq-av .rbg{fill:none;stroke:rgba(226,194,117,.16);stroke-width:6}
+.sq-av .rfg{fill:none;stroke:#C9A347;stroke-width:6;stroke-linecap:round;stroke-dasharray:113.1}
+.sq-av i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--serif);font-size:1rem;color:var(--gold-b)}
+.sq-t{flex:1;min-width:0}
+.sq-t b{display:block;font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-m .lvchip{color:var(--gold-b);border:1px solid var(--line);border-radius:20px;padding:.05em .5em}
+.sq-m{display:flex;flex-wrap:wrap;gap:.3rem .55rem;margin-top:.6rem;font-size:.7rem;color:var(--mut)}
+.sq-m b{color:var(--text);font-weight:500}
+.sq-m .due{color:#ffb054}
+.sq-m .ok{color:var(--ok)}
+/* the whole card opens the editor, so the actions here are just the two ways
+   to reach the person — kept as thumb-sized icons instead of a second row */
+.sq-acts{display:flex;gap:.35rem;flex:0 0 auto}
+.sq-acts a{text-decoration:none;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:50%;font-size:.9rem;cursor:pointer;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center}
+.sq-acts a:active{background:rgba(184,144,43,.16)}
+.sq-acts .warn{border-color:rgba(224,122,106,.5);color:var(--err)}
+@media(hover:hover){ .sq-acts button:hover,.sq-acts a:hover{border-color:var(--gold)} }
+
+/* ==== polish pass: one visual system across admin / crew / client ====
+   Depth on surfaces, a signature gold hairline under the header, unified
+   focus rings and button shadows. Keep these values in step with the same
+   block in /team/ and /client/. */
+header{border-bottom:0}
+header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
+.sec,.lead,.login,.stat,.tm-ev{box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.pay-modal{box-shadow:0 18px 48px rgba(0,0,0,.5)}
+/* Save rides the sheet's scroll — picking a member fills the role and rate, so
+   the whole assignment is now two taps without hunting for the button */
+#asModal #asSave, #cpModal #cpSave{position:sticky;bottom:-1.4rem;z-index:3;
+  box-shadow:0 -14px 18px -8px var(--panel), 0 0 0 6px var(--panel)}
+.fld input:focus,.fld select:focus,.fld textarea:focus,.bar input[type=search]:focus,.lead-det textarea:focus,.prow input:focus,.itemrow select:focus,.itemrow input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18);outline:none}
+.gbtn,.goldbar{box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active,.goldbar:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
+.stat{transition:border-color .2s, transform .15s}
+.stat[data-fs]:active,.stat[data-goto]:active{transform:scale(.97)}
+/* phones: active bottom-nav tab gets a soft gold pill, not just a tint */
+@media(max-width:699px){
+  .tabs button.on{background:rgba(184,144,43,.14)}
+}
+/* phones: the payment/status/member/assign sheets get a grab handle */
+@media(max-width:560px){
+  .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:rgba(226,194,117,.35);margin:-.4rem auto .85rem}
+}
+
+/* ==== Home stats: all four tiles on ONE line ==== */
+/* six tracks so the row splits 3 money tiles + 2 count tiles cleanly */
+#pkgStats{grid-template-columns:repeat(6,1fr);gap:.4rem}
+#pkgStats .stat{grid-column:span 2}
+#pkgStats .stat.wide{grid-column:span 3}
+#pkgStats .stat{padding:.55rem .2rem}
+#pkgStats .stat b{font-size:clamp(.72rem,3.3vw,1.2rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pkgStats .stat span{font-size:.5rem;letter-spacing:.05em}
+@media(min-width:700px){ #pkgStats .stat span{font-size:.62rem} }
+.stat.money{position:relative;background:linear-gradient(135deg,rgba(201,163,71,.2),rgba(142,110,30,.15));cursor:pointer}
+.stat.money::after{content:"📊";position:absolute;top:3px;right:5px;font-size:.52rem;opacity:.75}
+
+/* ==== next-shoot card (Home) ==== */
+.upco h3{display:flex;align-items:baseline;gap:.5rem}
+.upmore{margin-left:auto;background:none;border:0;cursor:pointer;color:var(--mut);font-size:.68rem;font-weight:400;font-family:var(--sans);letter-spacing:.04em;padding:.2em 0}
+.upmore:active{color:var(--gold-b)}
+@media(hover:hover){ .upmore:hover{color:var(--gold-b)} }
+.up-hero + .up-ev{margin-top:.5rem}
+.up-ev[data-open-ev],#upBody .up-ev{cursor:pointer}
+.upall{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin-top:.6rem;font-family:var(--sans)}
+.upall:active{background:rgba(184,144,43,.14)}
+@media(hover:hover){ .upall:hover{border-color:var(--gold)} }
+/* next shoot: the whole DAY is the hero — every event on that date sits
+   inside the highlight, not just the first one */
+.up-hero{background:rgba(184,144,43,.08);border:1px solid rgba(226,194,117,.4);border-radius:14px;padding:.7rem .75rem;margin-top:.3rem}
+.uh-head{display:flex;align-items:center;gap:.7rem;margin-bottom:.55rem}
+.uh-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
+.uh-t b{font-family:var(--serif);color:var(--gold-b);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uh-t span{font-size:.68rem;color:var(--mut);letter-spacing:.05em;text-transform:uppercase}
+.uh-rows{display:flex;flex-direction:column;gap:.4rem}
+.uh-row{display:flex;align-items:center;gap:.55rem;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.55rem .65rem;cursor:pointer;transition:border-color .2s,transform .12s}
+.uh-row:active{transform:scale(.985)}
+@media(hover:hover){ .uh-row:hover{border-color:var(--gold)} }
+.uh-row .dot{flex:0 0 auto}
+.uh-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:.05rem}
+.uh-mid b{font-family:var(--serif);color:#fff;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uh-mid span{font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uh-row .chev2{color:var(--mut);font-size:1.1rem;flex:0 0 auto}
+.un-when{flex:0 0 auto;text-align:center;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.3rem .55rem;min-width:52px}
+.un-when b{display:block;font-family:var(--serif);font-size:1.35rem;color:var(--gold-b);line-height:1.1}
+.un-when span{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+
+/* ==== analytics + event sheets (reuse the payment modal shell) ==== */
+.pay-modal.fin{width:min(94vw,420px);max-height:86vh;overflow:auto;overscroll-behavior:contain}
+@media(max-width:560px){ .pay-modal.fin{width:100%;max-height:88vh} }
+/* the money that leaves: same tappable money tile, but it opens the Team tab
+   where crew pay is actually settled — so it must not wear the 📊 badge that
+   promises the analytics sheet */
+.stat.money.out b{color:#e8a598}
+.stat.money.out::after{content:"🎬"}
+.fintiles{display:grid;grid-template-columns:repeat(2,1fr);gap:.45rem;margin:.2rem 0 .9rem}
+@media(min-width:700px){ .fintiles{grid-template-columns:repeat(4,1fr)} }
+.fintiles .stat{padding:.55rem .3rem}
+.fintiles .stat b{font-size:.95rem}
+.finyr{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .55rem}
+.finyr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.3em .85em;font-size:1rem}
+.finyr b{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.05rem}
+.finsplit{display:flex;gap:.7rem;flex-wrap:wrap;margin:0 0 .55rem;font-size:.72rem;color:var(--mut)}
+.finsplit b{color:var(--gold-b);font-weight:500}
+/* the money that leaves reads in a different colour from the money that arrives */
+.finsplit.out b{color:#e8a598}
+.finsplit.out span:last-child b{color:var(--ok)}
+.finrow{display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
+.finrow:last-child{border-bottom:0}
+.finrow .mo{flex:0 0 34px;color:var(--mut)}
+.finrow .fbar{flex:1;height:13px;border-radius:7px;background:rgba(255,255,255,.06);overflow:hidden}
+.finrow .fbar i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#E2C275);border-radius:7px}
+.finrow .amt3{flex:0 0 auto;font-family:var(--serif);color:var(--gold-b);white-space:nowrap;min-width:62px;text-align:right}
+.finrow .n3{flex:0 0 20px;color:var(--mut);font-size:.64rem;text-align:right}
+.finrow.yr{cursor:pointer}
+.finrow.yr .mo{flex-basis:58px;color:var(--text)}
+.finrow.yr.on{background:rgba(184,144,43,.09)}
+/* expense categories wrap onto as many rows as they need */
+.mode-pills.expcats{flex-wrap:wrap;margin-bottom:0}
+.mode-pills.expcats button{flex:0 1 auto;font-size:.78rem;padding:.5em .9em}
+/* a ✕ in a list row had no rule of its own and fell back to the browser's
+   default white button — this fixes the one in Trash ("✕ Forever") too */
+.up-ev .lead-x{flex:0 0 auto;background:rgba(224,122,106,.08);border:1px solid transparent;color:var(--err);border-radius:20px;padding:.3em .75em;font-size:.8rem;cursor:pointer}
+.up-ev .lead-x:active{background:var(--err);color:#fff}
+.exprow b{color:#e8a598;white-space:nowrap}
+.exprow .when{min-width:76px;font-size:.72rem}
+.exprow .what span{color:var(--mut);font-size:.68rem}
+#expAdd{margin-top:.2rem}
+/* billed / collected / balance table rows in Money Analytics */
+.ledrow.finled b{flex-basis:76px;font-size:.72rem}
+.ledrow.finled .l-ev{font-size:.76rem}
+.ledrow.finled .l-ev span{color:var(--mut);font-size:.62rem}
+.ledrow.finled.hd b{font-size:.56rem}
+.ledrow.finled.annual{background:rgba(184,144,43,.1);border-radius:8px;border-bottom:0;padding:.4rem .3rem;margin:.15rem 0 .1rem}
+.ledrow.finled.annual .l-ev{color:var(--gold-b);font-weight:600}
+.ledrow.finled.on{background:rgba(184,144,43,.09)}
+.ledrow.finled[data-fyr]{cursor:pointer}
+@media(hover:hover){ .ledrow.finled[data-fyr]:hover .l-ev{color:var(--gold-b)} }
+
+/* ==== phone fixes that MUST outrank the base rules above ====
+   .savebar / .pkg-actions / .toast all declare `bottom` later in this file
+   than the earlier phone block, so their mobile offsets were being
+   overridden: Config's Save All bar sat ON TOP of the bottom nav and the
+   builder's action bar slid underneath it. Same-property overrides have to
+   come last. */
+@media(max-width:699px){
+  /* the bottom nav measures ~63px tall (52px tap target + padding), so 64px
+     is the real clearance — 52px still left an 11px overlap */
+  .savebar{bottom:calc(64px + env(safe-area-inset-bottom))}
+  .pkg-actions{bottom:calc(64px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(132px + env(safe-area-inset-bottom))}
+  /* the ⚡ FAB is fixed bottom-right and was covering the last stat tile
+     once Home is scrolled to the end — give the tile row room to clear it */
+  #homeView > .stats:last-child{margin-bottom:72px}
+  /* offline chip + Install + Config + Logout together squeezed the studio
+     name to nothing; drop the tagline first, then the install label */
+  .hd .ttl{min-width:52px}
+  .hd .ttl span{display:none}
+}
+@media(max-width:420px){
+  #installBtn{font-size:0;padding:.35em .7em}
+  #installBtn::first-letter{font-size:.85rem}
+}
+@media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
+.finh{color:var(--gold-b);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
+.ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
+.ev-nav b{flex:1;text-align:center;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600}
+.ev-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.32em .95em;font-size:1rem;min-width:44px}
+.ev-nav button:disabled{opacity:.3;cursor:default}
+.ln2{display:flex;justify-content:space-between;gap:.7rem;padding:.24rem 0;font-size:.84rem;border-bottom:1px dashed var(--line)}
+.ln2 span:first-child{color:var(--mut);flex:0 0 auto}
+.ln2 span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
+.ev-e{border:1px solid var(--line);border-radius:10px;padding:.5rem .7rem;margin-bottom:.45rem;background:#171309}
+.ev-e.cur{border-color:rgba(226,194,117,.55);background:rgba(184,144,43,.1)}
+.ev-e b{font-family:var(--serif);color:#fff;display:block;font-size:.92rem}
+.ev-e span{display:block;color:var(--gold-b);font-size:.74rem}
+.ev-e em{display:block;font-style:normal;color:var(--mut);font-size:.74rem;margin-top:.1rem}
+.ev-acts{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.95rem}
+.ev-acts .mini{flex:1;margin-top:0;min-width:104px}
+
+/* ==== ease-of-use pass: quick-actions FAB, Home search, Config jump chips ==== */
+.fab{position:fixed;right:16px;bottom:calc(64px + env(safe-area-inset-bottom) + 12px);z-index:60;width:54px;height:54px;border-radius:50%;border:0;background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:0 8px 22px rgba(142,110,30,.5);transition:transform .12s}
+.fab:active{transform:scale(.92)}
+@media(hover:hover){ .fab:hover{filter:brightness(1.1)} }
+@media(min-width:700px){ .fab{bottom:24px} }
+/* search sits directly above the ⚡ button — smaller and outlined, so the
+   gold one stays the primary action */
+.fab.fab-2{width:46px;height:46px;right:20px;font-size:1.15rem;background:var(--panel);border:1px solid var(--gold);color:var(--gold-b);box-shadow:0 6px 16px rgba(0,0,0,.45);bottom:calc(64px + env(safe-area-inset-bottom) + 12px + 64px)}
+.fab.fab-2:active{background:rgba(184,144,43,.2)}
+@media(min-width:700px){ .fab.fab-2{bottom:88px} }
+#homeResults{padding:.8rem 1rem}
+#homeResults .up-ev .when{min-width:30px;font-size:1rem}
+#homeResults .stpill{margin-left:0}
+#cfgJump{position:sticky;top:62px;z-index:30;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
+#configView .sec{scroll-margin-top:118px}
+
+/* ==== B2B partner studios ==== */
+/* all four B2B tiles on ONE line, phone included — the money figures use the
+   short lakh/crore form there (the exact rupee value is in the tooltip) */
+#b2bStats{grid-template-columns:repeat(4,1fr);margin-top:1rem}
+#b2bStats .stat{padding:.5rem .2rem}
+#b2bStats .stat b{font-size:1rem}
+#b2bStats .stat span{font-size:.5rem;letter-spacing:.03em;line-height:1.3}
+@media(min-width:700px){
+  #b2bStats .stat{padding:.6rem .5rem}
+  #b2bStats .stat b{font-size:1.25rem}
+  #b2bStats .stat span{font-size:.62rem;letter-spacing:.08em}
+}
+/* the two ways to start something on the B2B list, side by side */
+/* both actions sit above the list: a season's worth of studios used to bury
+   them below the fold */
+.b2b-adds{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:0 0 .9rem}
+.b2b-adds .addrow{margin:0}
+/* the 🔍 / ＋ pair is fixed bottom-right and sat on top of that add row once
+   the studio list was long enough to scroll (Home clears its own the same way) */
+#studioListView > .sec:last-child{margin-bottom:78px}
+.stu-top{display:flex;align-items:center;gap:.55rem;padding:.85rem 1rem .5rem;cursor:pointer;flex-wrap:wrap}
+.stu-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
+.stu-top .src{font-size:.72rem;color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stu-top .chev2{color:var(--mut);font-size:1.1rem}
+.stu-call{text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.28em .7em;font-size:.75rem;color:var(--gold-b)}
+.stu-chips{display:flex;gap:.4rem;flex-wrap:wrap;padding:0 1rem .85rem;cursor:pointer}
+.stu-chips b{border-radius:14px;padding:.24em .75em;font-weight:600;font-size:.66rem;letter-spacing:.04em}
+.stu-chips .c1{color:var(--gold-b);background:rgba(184,144,43,.13)}
+.stu-chips .c2{color:#ffb054;background:rgba(255,176,84,.13)}
+.stu-chips .c3{color:var(--ok);background:rgba(76,175,125,.13)}
+.b2bpill{flex:0 0 auto;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:#8fb8d8;background:rgba(127,178,229,.13);border-radius:14px;padding:.2em .6em;font-weight:600}
+.stu-a{text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.ledrow{display:flex;align-items:center;gap:.5rem;padding:.32rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
+.ledrow:last-child{border-bottom:0}
+.ledrow .l-ev{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.ledrow .l-ev span{color:var(--mut)}
+.ledrow b{flex:0 0 72px;text-align:right;font-family:var(--serif);font-weight:600;white-space:nowrap;font-size:.8rem}
+.ledrow .neg{color:#ffb054}
+.ledrow.hd{color:var(--mut);border-bottom:1px solid var(--line)}
+.ledrow.hd b,.ledrow.hd .l-ev{font-family:var(--sans);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+/* ==== phone pass: everything you actually hit with a thumb ====
+   Measured at 375px across every view and sheet. Desktop is untouched —
+   these only widen targets where a finger, not a cursor, is doing the work.
+   This block is LAST on purpose: several of these override earlier
+   same-property rules and would lose the cascade anywhere else. */
+@media(max-width:699px){
+  /* the ✕ on every sheet was a 14px-wide target */
+  .pay-close{top:4px;right:6px;width:44px;height:44px;display:grid;place-items:center;line-height:1;border-radius:50%}
+  .pay-close:active{background:rgba(255,255,255,.07)}
+
+  /* filter and tab strips — Home tabs, Packages, Leads, Config jump: 27px */
+  .fchips button{min-height:40px;padding:.5em 1.05em;font-size:.78rem}
+
+  /* month nav: ‹ › were 35×36, TODAY 28 tall */
+  .cal-nav button{min-height:42px}
+  .cal-nav #calPrev,.cal-nav #calNext{min-width:44px}
+  .cal-nav #calToday{min-height:42px;padding:.5em .95em}
+
+  /* every dashed "＋ Add …" row */
+  .addrow{min-height:44px}
+
+  /* pill groups: payment mode, save-as status, the add-event modes */
+  .mode-pills button{min-height:44px}
+
+  /* discount / advance in the builder */
+  .prow input{min-height:44px}
+
+  /* inline row actions — Open, Assign, Edit, Sync, ✓ step */
+  .act,.edact{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+  .mini,.upall,.copycrew,.linky{min-height:42px}
+  .howto summary{min-height:40px}
+  .qchip{min-height:40px;display:inline-flex;align-items:center}
+
+  /* 8.8px is not a readable label */
+  .swipehint{font-size:.64rem}
+
+  /* ---- team event card ----
+     A long function name squeezed the client line to 35px of the 262 it
+     needed, and the assigned crew member's name collapsed to nothing at all
+     because the role text beside it never gave way. Each gets its own line. */
+  .tm-ev-h .cl{flex:1 1 100%;order:1;white-space:normal}
+  .tm-ev-h b{flex:1 1 auto;min-width:0}
+  .tm-crew{flex-wrap:wrap}
+  .tm-crew .nm2{flex:1 1 auto;min-width:7em}
+  .tm-crew .rl{flex:1 1 100%;white-space:normal;order:1}
+
+  /* the builder's service row: give the number fields room to wrap cleanly */
+  .itemrow .l2{row-gap:.55rem}
+  .itemrow input[data-f="rate"]{width:84px}
+
+  /* ---- booking cards ----
+     Six pieces of metadata were competing in ONE flex row, and the loser was
+     the client name — "Priy…" while "3 / events" and "14 / Aug" each wrapped
+     onto two lines. Three honest rows instead: who it is, what it is, where
+     the money and the work are. */
+  .lead-top{align-items:flex-start;padding:.8rem .9rem}
+  .lt-lines{gap:.3rem}
+  .lt-lines .l1{flex-wrap:wrap;gap:.3rem .45rem}
+  /* row 1 — the name takes the space it needs, the status pill holds the end */
+  .lt-lines .l1 .nm{flex:1 1 auto;min-width:0;font-size:1.06rem}
+  .lt-lines .l1 .stpill{order:0;flex:0 0 auto}
+  /* a hard break after the pill, or a short name lets metadata creep onto the
+     name's line and the status pill stops sitting at the right edge */
+  .lt-lines .l1::after{content:"";order:0;flex:0 0 100%;height:0}
+  /* row 2 — everything else, on one line of its own, never broken mid-phrase */
+  .lt-lines .l1 .src,.lt-lines .l1 .b2bpill,.lt-lines .l1 .newb,.lt-lines .l1 .qno{order:1;white-space:nowrap}
+  .lt-lines .l1 .src{font-size:.72rem}
+  /* row 3 — quote number and money, each unbreakable */
+  .lt-lines .l2{gap:.5rem}
+  .lead-top .qno{white-space:nowrap;flex:0 0 auto}
+  .lead-top .amt{white-space:nowrap}
+  .lead-top .amt em{font-size:.72em}
+  .lead .chev{align-self:center;padding-left:.15rem}
+  .dl3{margin-top:.15rem}
+}

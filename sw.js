@@ -1,7 +1,8 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
-   cache is the offline fallback), stale-while-revalidate for assets. */
-const CACHE = 'fs-cache-v10';
+   cache is the offline fallback), stale-while-revalidate for assets, and
+   network-first-with-timeout for app code (see APP_CODE below). */
+const CACHE = 'fs-cache-v11';
 const PREFIX = 'fs-cache-';
 // Only the public shell. The admin and client apps used to be precached here,
 // which cost every first-time visitor ~133 KB for two pages they will never
@@ -39,6 +40,33 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Network-first, but bounded: whichever of "the network answered" or "the
+// timeout expired and we have a cached copy" comes first wins. The request is
+// never abandoned — it still populates the cache, so a slow load now means a
+// fresh one next time.
+function freshOrCached(req, ms) {
+  return new Promise(resolve => {
+    let settled = false;
+    const done = r => { if (!settled && r) { settled = true; resolve(r); } };
+    const timer = setTimeout(() => { caches.match(req).then(done); }, ms);
+    fetch(req)
+      .then(res => {
+        clearTimeout(timer);
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+        }
+        done(res);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        // offline: the cached copy is all there is. Resolving with undefined
+        // would hang the request forever, so fall through to a real failure.
+        caches.match(req).then(m => { done(m); done(Response.error()); });
+      });
+  });
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -65,6 +93,21 @@ self.addEventListener('fetch', e => {
         })
         .catch(() => caches.match(req).then(m => m || caches.match('./')))
     );
+    return;
+  }
+
+  // App code, now that the admin panel is index.html + app.css + app.js.
+  // The page is network-first and its assets are cache-first, so a deploy
+  // could hand a browser new HTML running yesterday's app.js — on a panel that
+  // records payments, that is not a class of bug worth accepting, and no
+  // version-query scheme survives being forgotten at deploy time.
+  //
+  // So: ask the network, but never wait on it. Past the timeout the cached
+  // copy is served and the panel boots — which is the venue-on-one-bar case
+  // the app is built around — while the fetch carries on and refreshes the
+  // cache for next time.
+  if (url.origin === location.origin && /\/app\.(js|css)$/.test(url.pathname)) {
+    e.respondWith(freshOrCached(req, 2500));
     return;
   }
 
