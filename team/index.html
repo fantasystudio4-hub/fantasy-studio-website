@@ -83,7 +83,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .asg-h{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
 .asg-h .when{font-family:var(--serif);color:var(--gold-b);font-size:1rem;white-space:nowrap}
 .asg-h b{font-family:var(--serif);color:#fff;font-size:1.05rem}
-.asg-h .slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
+/* the shape of the pill is global — it also sits in the payments list, where
+   scoping it to .asg-h left it with colour but no padding or spacing */
+.slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
 .slotpill.morning{color:#e3c67a;background:rgba(227,198,122,.14)}
 .slotpill.evening{color:#a9a6e0;background:rgba(169,166,224,.16)}
 .slotpill.full{color:#9adbb2;background:rgba(154,219,178,.14)}
@@ -105,7 +107,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 
 .paycard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;margin-bottom:.9rem}
 .paycard h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
-.payrow{display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:var(--mut);padding:.32rem 0;border-bottom:1px dashed var(--line)}
+.payrow{display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:var(--mut);padding:.32rem 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
 .payrow:last-of-type{border-bottom:0}
 .payrow .ev2{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .payrow .ev2 span{color:var(--mut)}
@@ -113,6 +115,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .paypill{flex:0 0 auto;border-radius:14px;padding:.2em .7em;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
 .paypill.yes{color:var(--ok);background:rgba(76,175,125,.13)}
 .paypill.no{color:#ffb054;background:rgba(255,176,84,.13)}
+.paypill.part{color:#e8c77f;background:rgba(232,199,127,.13)}
+.payhist{flex-basis:100%;margin:.1rem 0 .15rem;font-size:.68rem;color:var(--ok)}
+.payhist span{display:block;white-space:normal}
 .paytotal{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:.5rem;padding-top:.55rem;font-size:.95rem}
 .paytotal b{color:var(--gold-b);font-family:var(--serif)}
 
@@ -436,6 +441,35 @@ window.addEventListener('beforeinstallprompt', e=>{
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+
+/* ---------- pay: agreed fee, what has actually come in, what is left ----------
+   The studio can settle a shoot in instalments, so pay.payments[] is the record
+   and pay.paidAmount its running sum. Assignments written before instalments
+   existed carry only pay.paid, so these helpers read both shapes and the old
+   rows stay correct. Same helpers, same names, as the admin panel. */
+const payFee = a => Math.max(0, Number(((a||{}).pay||{}).amount)||0);
+function payGot(a){
+  const p = (a||{}).pay || {};
+  if(p.paidAmount !== undefined && p.paidAmount !== null) return Math.max(0, Number(p.paidAmount)||0);
+  return p.paid ? Math.max(0, Number(p.amount)||0) : 0;
+}
+const payDue = a => Math.max(0, payFee(a) - payGot(a));
+function payState(a){
+  const fee = payFee(a), got = payGot(a);
+  if(got > 0 && fee <= 0) return 'paid';   /* money paid against no fee is settled, not part-paid */
+  if(fee > 0 && got >= fee) return 'paid';
+  return got > 0 ? 'part' : 'due';
+}
+/* every instalment as {amount, date, mode}, newest last */
+function payEvents(a){
+  const p = (a||{}).pay || {};
+  if(Array.isArray(p.payments) && p.payments.length){
+    return p.payments.map(x=>({ amount: Math.max(0, Number(x.amount)||0),
+                                date: String(x.date||''), mode: String(x.mode||'') }));
+  }
+  if(p.paid) return [{ amount: Math.max(0, Number(p.amount)||0), date: String(p.paidDate||''), mode: '' }];
+  return [];
+}
 /* time of day on an event, denormalised onto the assignment by the panel */
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
 const slotName = s => SLOT_LABEL[String(s||'')] || '';
@@ -1026,9 +1060,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     renderRank(done, up);
     renderBadges(done);
-    const received = ASGS.filter(a=>(a.pay||{}).paid).reduce((s,a)=>s+(Number(a.pay.amount)||0), 0);
-    const due = ASGS.filter(a=>Number((a.pay||{}).amount) > 0 && !(a.pay||{}).paid)
-                    .reduce((s,a)=>s+(Number(a.pay.amount)||0), 0);
+    const received = ASGS.reduce((s,a)=>s + payGot(a), 0);
+    const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
     $('#crewStats').innerHTML = `
       <div class="stat"><b>${done.length}</b><span>events done</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
@@ -1091,19 +1124,32 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pastList').hidden = !_pastOpen;
     $('#pastTog').classList.toggle('closed', !_pastOpen);
     if(past.length && _pastOpen) $('#pastList').innerHTML = past.map(a=>asgCard(a, true)).join('');
-    const withPay = ASGS.filter(a=>Number((a.pay||{}).amount) > 0).sort((a,b)=>a.date<b.date?1:-1);
+    /* a row keeps its place here once money is against it, even if the fee was
+       later cleared — otherwise the tile counts it and this list denies it */
+    const withPay = ASGS.filter(a=>payFee(a) > 0 || payGot(a) > 0).sort((a,b)=>a.date<b.date?1:-1);
     $('#payCard').hidden = !withPay.length;
     if(withPay.length){
       $('#payRows').innerHTML = withPay.map(a=>{
         const p = a.pay||{};
+        const st = payState(a);
+        const evs = payEvents(a);
+        /* what actually arrived, and when — a shoot can be settled in parts */
+        const hist = evs.length
+          ? `<div class="payhist">${evs.map(x=>
+              `<span>${inr(x.amount)} on ${esc(fmtShort(x.date))}${x.mode ? ' · ' + esc(x.mode) : ''}</span>`).join('')}</div>`
+          : '';
+        const pill = st === 'paid' ? `paid${p.paidDate ? ' ' + fmtShort(p.paidDate) : ''}`
+                   : st === 'part' ? `${inr(payDue(a))} left`
+                   : 'due';
         return `<div class="payrow">
           <span class="ev2">${esc(fmtShort(a.date))} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)}${a.clientName ? ` <span>· ${esc(a.clientName)}</span>` : ''}</span>
-          <span class="amt">${inr(p.amount)}</span>
-          <span class="paypill ${p.paid?'yes':'no'}">${p.paid ? 'paid' + (p.paidDate ? ' ' + fmtShort(p.paidDate) : '') : 'due'}</span>
+          <span class="amt">${inr(payFee(a))}</span>
+          <span class="paypill ${st === 'paid' ? 'yes' : st === 'part' ? 'part' : 'no'}">${esc(pill)}</span>
+          ${hist}
         </div>`;
       }).join('');
-      const due = withPay.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
-      const got = withPay.filter(a=>(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+      const due = withPay.reduce((s,a)=>s + payDue(a), 0);
+      const got = withPay.reduce((s,a)=>s + payGot(a), 0);
       $('#payGot').textContent = inr(got);
       $('#payDue').textContent = inr(due);
     }

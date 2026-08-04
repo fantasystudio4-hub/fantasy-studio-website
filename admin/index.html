@@ -503,6 +503,8 @@ textarea.json{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height
 .pm-row .ev2{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .pm-row .ev2 span{color:var(--mut)}
 .pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
+.pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:.62rem;color:var(--ok);letter-spacing:.02em}
+.pm-row .part2{color:#ffb054;border-color:rgba(255,176,84,.5)}
 .pm-row .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.72rem;cursor:pointer;white-space:nowrap}
 .pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
 .as-warn{color:#ffb054;font-size:.76rem;background:rgba(255,176,84,.08);border:1px dashed rgba(255,176,84,.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
@@ -1328,6 +1330,24 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <button class="gbtn" id="paySave" type="button">Save Payment</button>
 </div>
 
+<div class="pay-backdrop" id="cpBackdrop"></div>
+<div class="pay-modal" id="cpModal" role="dialog" aria-modal="true" aria-label="Pay crew member">
+  <button class="pay-close" id="cpClose" type="button" aria-label="Close">&times;</button>
+  <h3>Pay Crew</h3>
+  <div class="who" id="cpWho"></div>
+  <div class="fld"><label>Amount paid (₹)</label><input id="cpAmt" type="number" min="1" inputmode="numeric" placeholder="e.g. 3000" /></div>
+  <div class="qamt" id="cpQuick"></div>
+  <div class="fld"><label>Date</label><input id="cpDate" type="date" /></div>
+  <div class="fld"><label>Payment mode</label>
+    <div class="mode-pills">
+      <button type="button" id="cpModeOnline" class="on">Online</button>
+      <button type="button" id="cpModeCash">Cash</button>
+    </div>
+  </div>
+  <div class="pay-hist" id="cpHist"></div>
+  <button class="gbtn" id="cpSave" type="button">Save Payment</button>
+</div>
+
 <div class="pay-backdrop" id="stBackdrop"></div>
 <div class="pay-modal" id="stModal" role="dialog" aria-modal="true" aria-label="Change package status">
   <button class="pay-close" id="stClose" type="button" aria-label="Close">&times;</button>
@@ -1733,7 +1753,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa','stusheet','jt'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa','stusheet','jt','crewpay'];
   function pushView(view, hash, replace){
     if(_navFromPop) return;
     try{
@@ -1833,6 +1853,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeQaUI === 'function') closeQaUI();
       if(typeof closeStuUI === 'function') closeStuUI();
       if(typeof closeJtUI === 'function') closeJtUI();
+      if(typeof closeCrewPayUI === 'function') closeCrewPayUI();
       /* Close the editor honestly: prompt ONLY when the form is genuinely
          dirty AND actually on screen. Closing a Home sheet must never raise
          "Discard unsaved changes?" for an editor parked on another tab —
@@ -2728,7 +2749,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the two money tiles share one line — tapping either opens the money analytics sheet */
     /* what the crew are owed — the money that leaves. Same basis as the Team
        tab's "crew pay due" tile, so the two screens can never disagree. */
-    const crewDue = ASGS.reduce((s,a)=>s + ((a.pay||{}).paid ? 0 : (Number((a.pay||{}).amount)||0)), 0);
+    const crewDue = ASGS.reduce((s,a)=>s + payDue(a), 0);
     /* Compact on these tiles by necessity: they are a quarter of a phone wide
        and the full figure was being cut off mid-number. The exact rupees stay
        one long-press away in the title. */
@@ -3769,6 +3790,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const TEAM_ROLES = ['photography','candid photography','cinematography','videography','iphone shoot','editor','assistant'];
   /* title-case, except the one word that is never spelled with a capital I */
   const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase()).replace(/\bIphone\b/g, 'iPhone');
+
+  /* ---------- crew pay: agreed fee, part-payments, what is still owed ----------
+     A shoot can be settled in instalments, so pay.payments[] is the record and
+     pay.paidAmount its running sum. Rows written before instalments existed
+     carry only pay.paid + pay.paidDate, so every reader goes through these
+     helpers and old rows keep reading correctly with nothing to migrate. */
+  const payFee = a => Math.max(0, Number(((a||{}).pay||{}).amount)||0);
+  function payGot(a){
+    const p = (a||{}).pay || {};
+    if(p.paidAmount !== undefined && p.paidAmount !== null) return Math.max(0, Number(p.paidAmount)||0);
+    return p.paid ? Math.max(0, Number(p.amount)||0) : 0;   /* legacy: paid meant paid in full */
+  }
+  const payDue = a => Math.max(0, payFee(a) - payGot(a));
+  /* 'paid' only when a real fee has been fully settled; 'part' once money has
+     moved but not all of it; 'due' otherwise */
+  function payState(a){
+    const fee = payFee(a), got = payGot(a);
+    if(got > 0 && fee <= 0) return 'paid';   /* money paid against no fee is settled, not part-paid */
+    if(fee > 0 && got >= fee) return 'paid';
+    return got > 0 ? 'part' : 'due';
+  }
+  /* every instalment as {amount, date, mode} — used wherever crew pay has to be
+     bucketed by WHEN it left, which the single legacy paidDate cannot express */
+  function payEvents(a){
+    const p = (a||{}).pay || {};
+    if(Array.isArray(p.payments) && p.payments.length){
+      return p.payments.map(x=>({ amount: Math.max(0, Number(x.amount)||0),
+                                  date: String(x.date||''), mode: String(x.mode||'') }));
+    }
+    if(p.paid) return [{ amount: Math.max(0, Number(p.amount)||0), date: String(p.paidDate||''), mode: String(p.mode||'') }];
+    return [];
+  }
   let TEAM = [], ASGS = [], REQS = [];
   let _teamUnsub = null, _asgsUnsub = null, _reqsUnsub = null, _teamLoaded = false, _asgsLoaded = false;
   let _asgsFresh = false;   /* true once a server (non-cache) assignments snapshot has arrived */
@@ -4006,7 +4059,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const up   = list.filter(a=>(a.date||'') >= today);
     const acks = list.filter(a=>a.status === 'acknowledged').length;
     const edits = list.filter(a=>a.workDone).length;
-    const due = list.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+    const due = list.reduce((s,a)=>s + payDue(a), 0);
     const xp = done.length*XP_EVENT + acks*XP_ACK + edits*XP_EDIT;
     return { list, done, up, acks, edits, due, xp, rank: tmRank(xp),
              month: done.filter(a=>(a.date||'').slice(0,7) === mon).length,
@@ -4387,13 +4440,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = Object.entries(byMember).map(([mid, list])=>{
       const m = memberById(mid);
       const name = (m && m.name) || list[0].memberName || '—';
-      const unpaid = list.filter(a=>!(a.pay||{}).paid);
-      const due = unpaid.reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+      const due = list.reduce((s,a)=>s + payDue(a), 0);
+      const got = list.reduce((s,a)=>s + payGot(a), 0);
       const open = _payOpen.has(mid);
-      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : 'all paid ✓'}</b></div>`;
+      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : (got > 0 ? 'all paid ✓' : 'nothing due')}</b></div>`;
       if(!open) return head;
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
+        const st = payState(a);
         const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
         /* members sign their own work off from the crew page */
         const scissors = a.workDone
@@ -4403,10 +4457,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         return `
         <div class="pm-row">
           <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)} <span>· ${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'')}</span></span>
-          <span class="amt2">${inr((p.amount)||0)}</span>
-          ${p.paid
-            ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to mark unpaid">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
-            : `<button class="act" data-mkpaid="${a.id}">Mark paid</button>`}
+          <span class="amt2">${inr(payFee(a))}${st === 'part' ? `<i class="got2">${inr(payGot(a))} paid</i>` : ''}</span>
+          ${st === 'paid'
+            ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to see or correct this payment">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
+            : st === 'part'
+              ? `<button class="act part2" data-cpay="${a.id}">${inr(payDue(a))} left</button>`
+              : `<button class="act" data-cpay="${a.id}">Pay</button>`}
         </div>`;
       }).join('');
       return head + rows;
@@ -4416,7 +4472,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderTeamStats(){
     const el = $('#teamStats'); if(!el) return;
     const today = todayISO();
-    const due = ASGS.filter(a=>!(a.pay||{}).paid).reduce((s,a)=>s+(Number((a.pay||{}).amount)||0), 0);
+    const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
     const up = teamUpcoming();
     const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length).length;
     const unconf = ASGS.filter(a=>(a.date||'') >= today && a.status !== 'acknowledged').length;
@@ -4780,6 +4836,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }else if(_asEditId){
         const old = ASGS.find(v=>v.id===_asEditId);
         const patch = { ...base, 'pay.amount': amt };
+        /* The fee can change; what was already handed over cannot. On a row
+           marked paid before instalments existed there is no separate figure —
+           its payment IS pay.amount — so editing the fee would silently rewrite
+           history and hand the member a receipt for money never paid. Freeze
+           the old figure into payments[]/paidAmount before the fee moves. */
+        const _curPay = (old||{}).pay || {}, _frozen = payGot(old);
+        if(_frozen > 0 && !(Array.isArray(_curPay.payments) && _curPay.payments.length)){
+          patch['pay.payments']   = priorPayments(_curPay);
+          patch['pay.paidAmount'] = _frozen;
+        }
+        if(_frozen > 0 || _curPay.paid) patch['pay.paid'] = amt > 0 && _frozen >= amt;
         /* details the member already acknowledged have changed — they must
            confirm again, so the ✓ never silently means an outdated plan */
         const reset = old && old.status === 'acknowledged'
@@ -4791,7 +4858,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const sm = settleMsg(res, reset ? 'Saved — the member will be asked to confirm again' : 'Assignment saved ✓');
         toast(sm.msg);
         if(!sm.ok) return;
-        if(old){ Object.assign(old, base, { updatedAt: null }); old.pay = { ...(old.pay||{}), amount: amt }; if(reset){ old.status='assigned'; delete old.ackAt; } }
+        if(old){
+          Object.assign(old, base, { updatedAt: null });
+          old.pay = { ...(old.pay||{}), amount: amt,
+            ...(patch['pay.payments'] ? { payments: patch['pay.payments'], paidAmount: _frozen } : {}),
+            ...(patch['pay.paid'] !== undefined ? { paid: patch['pay.paid'] } : {}) };
+          if(reset){ old.status='assigned'; delete old.ackAt; }
+        }
       }else{
         const ref = doc(collection(db,'assignments'));
         const res = await settle(setDoc(ref, { ...base, pay: { amount: amt, paid: false, paidDate: '', mode: '' },
@@ -4883,21 +4956,158 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   });
 
-  /* ---------- pay tracker ---------- */
-  async function setAsgPaid(id, paid){
-    const a = ASGS.find(v=>v.id===id); if(!a) return;
-    const patch = paid
-      ? { 'pay.paid': true, 'pay.paidDate': todayISO(), updatedAt: serverTimestamp() }
-      : { 'pay.paid': false, 'pay.paidDate': '', updatedAt: serverTimestamp() };
-    try{
-      const res = await settle(updateDoc(doc(db,'assignments',id), patch));
-      const sm = settleMsg(res, paid ? `${inr((a.pay||{}).amount||0)} to ${a.memberName||'—'} marked paid` : 'Marked unpaid');
-      toast(sm.msg);
-      if(!sm.ok) return;
-      a.pay = { ...(a.pay||{}), paid, paidDate: paid ? todayISO() : '' };
-      renderTeam();
-    }catch(err){ toast('Update failed'); }
+  /* ---------- pay tracker: pay crew in instalments against one assignment ---------- */
+  let _cpId = null, _cpMode = 'online';
+  function openCrewPay(a){
+    _cpId = a.id; _cpMode = 'online';
+    $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on');
+    const fee = payFee(a), got = payGot(a), due = payDue(a);
+    $('#cpWho').textContent = `${a.memberName||'—'} · ${a.eventTitle||'Event'} ${stepDate(a.date)||a.date||''} — `
+      + (fee > 0 ? `${inr(due)} left of ${inr(fee)}` : 'no fee set on this assignment');
+    $('#cpAmt').value = '';
+    const quick = [];
+    if(due > 0) quick.push(['Full balance', due]);
+    const half = Math.round(due/2);
+    if(half > 0 && half < due) quick.push(['Half', half]);
+    $('#cpQuick').innerHTML = quick.map(([l,v])=>`<button type="button" data-cqa="${v}">${l} · ${inr(v)}</button>`).join('');
+    $('#cpDate').value = todayISO();
+    renderCrewPayHist(a);
+    const wasOpen = $('#cpModal').classList.contains('open');
+    $('#cpModal').classList.add('open'); $('#cpBackdrop').classList.add('open');
+    setTimeout(()=>$('#cpAmt').focus(), 80);
+    if(!wasOpen) pushView('crewpay', '#team/pay');
   }
+  function renderCrewPayHist(a){
+    /* rendered through priorPayments so a row marked paid before instalments
+       existed shows as one removable entry — otherwise a mistaken "paid" tick
+       could never be taken back once the old toggle was retired */
+    const list = priorPayments((a||{}).pay);
+    const el = $('#cpHist'); if(!el) return;
+    el.innerHTML = list.length
+      ? '<b style="color:var(--gold-b)">Payments so far</b>' + list.map(pm=>
+          `<div><span>${esc(dmy(pm.date) || 'date not recorded')}${pm.mode ? ' · ' + esc(pm.mode) : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-cprm data-pid="${esc(pm.id||'')}" title="Remove this payment">✕</button></span></div>`).join('')
+      : '';
+  }
+  function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; }
+  function closeCrewPay(){ backFrom('crewpay', closeCrewPayUI); }
+  $('#cpClose').addEventListener('click', closeCrewPay);
+  $('#cpBackdrop').addEventListener('click', closeCrewPay);
+  $('#cpModeOnline').addEventListener('click', ()=>{ _cpMode='online'; $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on'); });
+  $('#cpModeCash').addEventListener('click', ()=>{ _cpMode='cash'; $('#cpModeCash').classList.add('on'); $('#cpModeOnline').classList.remove('on'); });
+  $('#cpQuick').addEventListener('click', e=>{
+    const b = e.target.closest('[data-cqa]'); if(!b) return;
+    $('#cpAmt').value = b.dataset.cqa; $('#cpAmt').focus();
+  });
+
+  /* rebuild the whole pay map: payments[], its running sum, and the paid flag
+     kept accurate for the JSON backup and any reader that still consults it */
+  function payMapFrom(curPay, payments){
+    const got = payments.reduce((s,p)=>s + (Math.max(0, Number(p.amount)||0)), 0);
+    const fee = Math.max(0, Number((curPay||{}).amount)||0);
+    /* the settlement date is the LATEST instalment, not the last one typed —
+       a back-dated correction must not rewind it (yyyy-mm-dd sorts as text) */
+    const last = payments.reduce((m,p)=>{ const d = String((p||{}).date||''); return d > m ? d : m; }, '');
+    return { ...(curPay||{}), amount: fee, payments,
+             paidAmount: got,
+             paid: fee > 0 && got >= fee,
+             paidDate: got > 0 ? String(last||'') : '' };
+  }
+  /* instalments already on the record. A row marked paid before history
+     existed has none, so it is seeded with one entry for what was settled —
+     without this its money would vanish the moment a second payment landed. */
+  function priorPayments(curPay){
+    const p = curPay || {};
+    if(Array.isArray(p.payments) && p.payments.length) return [...p.payments];
+    const got = (p.paidAmount !== undefined && p.paidAmount !== null)
+      ? Math.max(0, Number(p.paidAmount)||0)
+      : (p.paid ? Math.max(0, Number(p.amount)||0) : 0);
+    return got > 0 ? [{ id:'legacy', amount: got, date: String(p.paidDate||''), mode: String(p.mode||'') }] : [];
+  }
+  async function saveCrewPayment(){
+    const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
+    const id = a.id;
+    const amount = Math.round(Number($('#cpAmt').value)||0);
+    if(amount <= 0){ toast('Enter the amount you paid'); $('#cpAmt').focus(); return; }
+    const fee = payFee(a), due = payDue(a);
+    if(due <= 0 && fee > 0){
+      if(!confirm(`${a.memberName||'This member'} is already fully paid for this event. Record another ${inr(amount)} anyway?`)){ $('#cpAmt').focus(); return; }
+    }else if(amount > due){
+      if(!confirm(`That is ${inr(amount - due)} more than the ${inr(due)} still owed for this event. Record it anyway?`)){ $('#cpAmt').focus(); return; }
+    }
+    const mode = _cpMode;
+    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+                    amount, date: $('#cpDate').value || todayISO(), mode };
+    const cur = a.pay || {};
+    const btn = $('#cpSave'); btn.disabled = true;
+    try{
+      let pay, queued = false;
+      if(navigator.onLine){
+        /* read-modify-write against the server copy: an instalment recorded on
+           another device (or a fee edited meanwhile) can never be overwritten */
+        pay = await runTransaction(db, async t=>{
+          const ref = doc(db,'assignments',id);
+          const snap = await t.get(ref);
+          if(!snap.exists()) throw new Error('assignment not found');
+          const server = snap.data().pay || {};
+          const next = payMapFrom(server, [...priorPayments(server), entry]);
+          t.update(ref, { pay: next, updatedAt: serverTimestamp() });
+          return next;
+        });
+      }else{
+        /* offline: queue it. A row that already has history appends without
+           touching the others; the first instalment has to seed the map whole,
+           and with no signal this device is the only writer anyway. */
+        const hasHistory = Array.isArray(cur.payments) && cur.payments.length > 0;
+        pay = payMapFrom(cur, [...priorPayments(cur), entry]);
+        const patch = hasHistory
+          ? { 'pay.payments': arrayUnion(entry), 'pay.paidAmount': increment(amount),
+              'pay.paidDate': pay.paidDate, 'pay.paid': pay.paid, updatedAt: serverTimestamp() }
+          : { pay, updatedAt: serverTimestamp() };
+        updateDoc(doc(db,'assignments',id), patch).catch(()=>{});
+        queued = true;
+      }
+      const left = Math.max(0, payFee({ pay }) - pay.paidAmount);
+      toast(queued
+        ? `${inr(amount)} (${mode}) saved — will sync when you're back online`
+        : `${inr(amount)} (${mode}) to ${a.memberName||'crew'} recorded — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`);
+      a.pay = pay;
+      buzz();
+      renderTeam(); renderPkgStats();
+      if(_cpId === id) closeCrewPay();   /* only close the sheet this write belongs to */
+    }catch(err){ toast('Could not save that payment: ' + (err.message||err.code||'no signal')); }
+    finally{ btn.disabled = false; }
+  }
+  $('#cpSave').addEventListener('click', saveCrewPayment);
+  $('#cpHist').addEventListener('click', async e=>{
+    const rm = e.target.closest('[data-cprm]'); if(!rm) return;
+    const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
+    const pid = rm.dataset.pid;
+    if(!confirm('Remove this payment? The balance goes back up.')) return;
+    /* read-modify-write, so removing one instalment can never carry a stale
+       copy of the others back over the server's (same as client payments) */
+    try{
+      const pay = await runTransaction(db, async t=>{
+        const ref = doc(db,'assignments',a.id);
+        const snap = await t.get(ref);
+        if(!snap.exists()) throw new Error('assignment not found');
+        const cur = snap.data().pay || {};
+        const list = priorPayments(cur);
+        const i = list.findIndex(p=>String((p||{}).id||'') === pid);
+        if(i < 0) throw new Error('payment not found — reopen and retry');
+        list.splice(i, 1);
+        const next = payMapFrom(cur, list);
+        t.update(ref, { pay: next, updatedAt: serverTimestamp() });
+        return next;
+      });
+      a.pay = pay;
+      /* only refresh the sheet if it is still this assignment's — the snapshot
+         may have re-rendered and the owner moved on while the write was away */
+      if(_cpId === a.id) openCrewPay(a);
+      renderTeam(); renderPkgStats();
+      toast('Payment removed — balance updated');
+    }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
+  });
+
   $('#teamPay').addEventListener('click', e=>{
     const g = e.target.closest('[data-pmgrp]');
     if(g){
@@ -4905,15 +5115,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _payOpen.has(id) ? _payOpen.delete(id) : _payOpen.add(id);
       renderTeamPay(); return;
     }
-    const mk = e.target.closest('[data-mkpaid]');
-    if(mk){
-      const a = ASGS.find(v=>v.id===mk.dataset.mkpaid); if(!a) return;
-      if(confirm(`Mark ${inr((a.pay||{}).amount||0)} to ${a.memberName||'—'} as PAID today (${a.eventTitle||'event'}, ${stepDate(a.date)||a.date})?`))
-        setAsgPaid(a.id, true);
+    const pay = e.target.closest('[data-cpay]');
+    if(pay){
+      const a = ASGS.find(v=>v.id===pay.dataset.cpay); if(!a) return;
+      if(payFee(a) <= 0){ toast('Set a fee for this event first — tap the crew row on the event card'); return; }
+      openCrewPay(a);
       return;
     }
     const un = e.target.closest('[data-unpaid]');
-    if(un && confirm('Mark this back as UNPAID?')) setAsgPaid(un.dataset.unpaid, false);
+    if(un){
+      const a = ASGS.find(v=>v.id===un.dataset.unpaid); if(!a) return;
+      openCrewPay(a);   /* the sheet is where a payment gets corrected or removed */
+    }
   });
 
   /* ---------- export / backup ---------- */
@@ -5935,19 +6148,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        "in hand" below compares like with like: money that came in this FY less
        money that went out this FY. Same basis as the Team tab's "crew pay due"
        tile, so the two screens can never disagree. */
-    const payOf = a => Number((a.pay||{}).amount)||0;
-    const crewDue     = ASGS.reduce((s,a)=>s + ((a.pay||{}).paid ? 0 : payOf(a)), 0);
-    const crewPaidAll = ASGS.reduce((s,a)=>s + ((a.pay||{}).paid ? payOf(a) : 0), 0);
-    const crewPaidFy  = ASGS.reduce((s,a)=>{
-      const pd = (a.pay||{}).paidDate || '';
-      return s + (((a.pay||{}).paid && /^\d{4}-\d{2}-\d{2}$/.test(pd) && fyStartOf(pd) === y) ? payOf(a) : 0);
-    }, 0);
-    /* a crew payment marked paid before paidDate was stored has no date to
-       bucket by — say so rather than quietly dropping it out of the FY line */
-    const crewPaidUndated = crewPaidAll - ASGS.reduce((s,a)=>{
-      const pd = (a.pay||{}).paidDate || '';
-      return s + (((a.pay||{}).paid && /^\d{4}-\d{2}-\d{2}$/.test(pd)) ? payOf(a) : 0);
-    }, 0);
+    /* crew pay is settled in instalments, so the money that left is summed
+       from the instalments themselves — each carries its own date, which is
+       the only thing a financial year can be cut on */
+    const crewDue     = ASGS.reduce((s,a)=>s + payDue(a), 0);
+    const crewPaidAll = ASGS.reduce((s,a)=>s + payGot(a), 0);
+    const crewPaidFy  = ASGS.reduce((s,a)=>s + payEvents(a).reduce((n,p)=>
+      n + ((/^\d{4}-\d{2}-\d{2}$/.test(p.date) && fyStartOf(p.date) === y) ? p.amount : 0), 0), 0);
+    /* a crew payment marked paid before payment dates were stored has no date
+       to bucket by — say so rather than quietly dropping it out of the FY line */
+    const crewPaidUndated = crewPaidAll - ASGS.reduce((s,a)=>s + payEvents(a).reduce((n,p)=>
+      n + (/^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.amount : 0), 0), 0);
     const money = v => `<b title="${inr(v)}">${inrShort(v)}</b>`;
     /* ---- everything else the studio spends ---- */
     const exps = liveExps().filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.date||''));
@@ -6034,10 +6245,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const sp = FMN.map(()=>({ crew:0, other:0 }));
         const mIdx = ds => (Number(ds.slice(5,7))+8)%12;
         expInFy.forEach(x=>{ sp[mIdx(x.date)].other += expAmt(x); });
-        ASGS.forEach(a=>{
-          const pd = (a.pay||{}).paidDate || '';
-          if((a.pay||{}).paid && /^\d{4}-\d{2}-\d{2}$/.test(pd) && fyStartOf(pd) === y) sp[mIdx(pd)].crew += payOf(a);
-        });
+        ASGS.forEach(a=>payEvents(a).forEach(p=>{
+          if(/^\d{4}-\d{2}-\d{2}$/.test(p.date) && fyStartOf(p.date) === y) sp[mIdx(p.date)].crew += p.amount;
+        }));
         const tot = sp.reduce((o,m)=>({ crew:o.crew+m.crew, other:o.other+m.other }), {crew:0,other:0});
         const line = (label, m, cls='') => `
           <div class="ledrow finled ${cls}"><span class="l-ev">${label}</span><b>${amt(m.crew)}</b><b>${amt(m.other)}</b><b class="${(m.crew+m.other)>0?'neg':''}">${amt(m.crew+m.other)}</b></div>`;
