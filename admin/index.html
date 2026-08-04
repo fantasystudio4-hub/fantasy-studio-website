@@ -1552,6 +1552,10 @@ function toastUndo(m, fn){
   clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove('show'); t.style.pointerEvents='none'; }, 8000);
 }
 const buzz = () => { try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} };
+/* Search boxes re-rendered on every keystroke. At the 1000-record caps that is
+   a lot of DOM per character on a phone, and the owner is still mid-word —
+   wait for the typing to settle. Short enough that it still reads as live. */
+const debounce = (fn, ms=140) => { let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this, a), ms); }; };
 
 const SERVICE_LABELS = {
   cinematography:'Cinematography', candidPhotography:'Candid Photography',
@@ -2803,8 +2807,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ _pkgsErr = 'Could not load packages (' + (err.code||err.message) + ')'; renderPkgList(); }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
-  $('#pkgSearch').addEventListener('input', renderPkgList);
-  $('#leadSearch').addEventListener('input', renderLeads);
+  $('#pkgSearch').addEventListener('input', debounce(renderPkgListOnly));
+  $('#leadSearch').addEventListener('input', debounce(renderLeads));
 
   let pkgFilterVal = '';
   /* 'unconfirmed' = quote sent but the event is NOT confirmed / on hold — it
@@ -2824,7 +2828,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#pkgChips').addEventListener('click', e=>{
     const b = e.target.closest('button[data-f]'); if(!b) return;
-    pkgFilterVal = b.dataset.f; renderPkgList();
+    pkgFilterVal = b.dataset.f; renderPkgListOnly();
   });
   /* The filter order is whatever renderPkgChips just drew — 🏢 Studio only
      appears when there are studio jobs — so it is read off the chips instead
@@ -2833,7 +2837,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   wireSwipe($('#pkgListView'), {
     keys: ()=>$$('#pkgChips button[data-f]').map(b=>b.dataset.f),
     cur:  ()=>pkgFilterVal,
-    go:   k=>{ pkgFilterVal = k; renderPkgList(); },
+    go:   k=>{ pkgFilterVal = k; renderPkgListOnly(); },
     skip: t=>!!(t && t.closest && t.closest('#pkgChips')),
     box:  ()=>$('#pkgList'),
   });
@@ -3170,17 +3174,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function togglePkgGrp(s){
     const o = pkgGrpsOpen(); o[s] = !o[s];
     try{ localStorage.setItem('fs_pkg_grps', JSON.stringify(o)); }catch(err){}
-    renderPkgList();
+    renderPkgListOnly();
   }
 
+  /* The full cascade — for anything that actually CHANGED data. Typing in the
+     search box, tapping a filter chip or expanding a card changes none of it,
+     and each keystroke was redrawing Home's stats, Next shoot, the follow-up
+     list, the bookings list, Trash, Team, B2B and the money sheet. Those go
+     through renderPkgListOnly() instead. */
   function renderPkgList(){
     renderHome();
-    renderPkgChips();
     renderTrash();
     if(typeof renderTeam === 'function' && !$('#teamView').hidden) renderTeam();
     if(typeof renderB2B === 'function') renderB2B();   /* self-skips when the B2B tab is hidden */
     if($('#finModal').classList.contains('open')) renderFin();
     if(!$('#homeResults').hidden) renderHomeSearch();
+    renderPkgListOnly();
+  }
+  function renderPkgListOnly(){
+    renderPkgChips();
     const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
     let list = livePkgs().filter(x=>(!f || (f === 'b2b' ? isStudioJob(x) : (x.status||'draft')===f))
@@ -3226,7 +3238,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const inHome = !!card.closest('#homeBooked');
     if(e.target.closest('[data-expand]')){
       if(inHome){ expandedHome = (expandedHome === id) ? null : id; renderHomeBooked(); }
-      else{ expandedPkg = (expandedPkg === id) ? null : id; renderPkgList(); }
+      else{ expandedPkg = (expandedPkg === id) ? null : id; renderPkgListOnly(); }
       return;
     }
     const x = PKGS.find(p=>p.id===id); if(!x) return;
@@ -3331,7 +3343,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* today is selected from the start: Home opens showing today's events
      instead of "Tap a date to see its events" */
   (function(){ const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); calSel = n.toLocaleDateString('en-CA'); })();
+  /* Rebuilt from scratch on every call, and called many times over — the grid,
+     the day box, Next shoot, and once per date inside dateConflicts(), which
+     itself runs in a .map() over a package's dates on save. Hold the build for
+     the current task only: every caller inside one synchronous render shares
+     it, and the next turn of the event loop rebuilds, so a local mutation (a
+     status flipped, an event edited, a lead trashed) can never be served a
+     stale list. No invalidation to remember, and none to forget. */
+  let _calCache = null;
   function calEvents(){
+    if(_calCache) return _calCache;
     const evs = [];
     livePkgs().forEach(pk=>{
       (pk.events||[]).forEach(ev=>{
@@ -3339,11 +3360,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           evs.push({ date: ev.date, title: ev.title||'Event', slot: ev.slot||'', client: pk.clientName||'', quoteNo: pk.quoteNo||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
       });
     });
+    /* the membership test below used to be PKGS.some() per lead — O(leads ×
+       packages), which at the 1000/1000 caps is a million comparisons every
+       time this ran */
+    const livePkgIds = new Set(PKGS.filter(p=>!p.deleted).map(p=>p.id));
     liveLeads().forEach(l=>{
       /* converted: its package owns these dates now and drew them above.
          Checked by id, not by status, so a lead converted back when it was
          already marked 'booked' stops doubling up too. */
-      if(l.pkgId && PKGS.some(p=>p.id===l.pkgId && !p.deleted)) return;
+      if(l.pkgId && livePkgIds.has(l.pkgId)) return;
       if(l.status !== 'booked') return;
       /* a booked lead's quote can hold several dated events (e.g. 1, 3 & 5 Aug) —
          show them ALL, not just the single weddingDate */
@@ -3355,6 +3380,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         evs.push({ date: l.weddingDate, title: l.eventType||'Wedding', client: l.name||'', status:'lead', kind:'lead', id: l.id, venue:'' });
       }
     });
+    _calCache = evs;
+    queueMicrotask(()=>{ _calCache = null; });
     return evs;
   }
   function renderCalendar(){
@@ -5671,7 +5698,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#stuSearchBar').hidden = true;
     if(had) renderStudioList();
   }
-  $('#stuSearch').addEventListener('input', renderStudioList);
+  $('#stuSearch').addEventListener('input', debounce(renderStudioList));
   $('#stuSearch').addEventListener('keydown', e=>{ if(e.key === 'Escape') closeStuSearch(); });
   $('#stuSearchBtn').addEventListener('click', openStuSearch);
   $('#stuSearchX').addEventListener('click', closeStuSearch);
@@ -6807,7 +6834,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : '<div class="empty" style="padding:.6rem 0">No match. New enquiries land in the Leads tab.</div>')
       + (hidden > 0 ? `<div class="qe-note" style="margin:.6rem 0 0">＋ ${hidden} more match${hidden===1?'':'es'} not shown — type a bit more to narrow it down.</div>` : '');
   }
-  $('#homeSearch').addEventListener('input', renderHomeSearch);
+  $('#homeSearch').addEventListener('input', debounce(renderHomeSearch));
   /* the box only appears when it's wanted — the calendar owns the top of Home.
      The trigger is the 🔍 button above ⚡, so the page comes back to the top
      with it: the box and its results both live above the calendar. */
