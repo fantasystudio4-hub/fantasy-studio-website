@@ -570,6 +570,15 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .grp .pmall{background:rgba(184,144,43,.16);border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
 .grp .pmall:active{background:rgba(184,144,43,.32)}
 .pm-row .paid2{color:var(--ok);background:rgba(76,175,125,.13);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
+/* the rate card's collapsible header — set up once per studio, then rarely
+   touched, so it folds away instead of parking a form mid-page */
+.sec h3.rc-tog{display:flex;align-items:center;gap:.55rem;cursor:pointer;user-select:none;-webkit-user-select:none;margin-bottom:.7rem;min-height:40px}
+.sec h3.rc-tog.closed{margin-bottom:0}
+.rc-tog .rc-sum{font-size:.7rem;color:var(--mut);font-family:var(--sans);font-weight:400;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc-tog .car{flex:0 0 auto;color:var(--gold-b);font-size:.72rem;transition:transform .15s}
+.rc-tog.closed .car{transform:rotate(-90deg)}
+.rc-tog:active{opacity:.7}
+
 /* a partner studio's job history: progress on the row, the tickable checklist
    one tap inside it */
 .stujob{border-radius:10px;transition:background .2s}

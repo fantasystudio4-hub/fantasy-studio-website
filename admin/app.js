@@ -4401,6 +4401,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      scope, because this page is rebuilt on every packages/studios/assignments
      snapshot and an expanded row must survive that. */
   let _stuJobOpen = null;
+  /* the rate card starts collapsed — it is set up once per studio and then
+     rarely touched, but its open form is one input row per service and was
+     parked between the profile and the money the owner actually came for */
+  let _stuRateOpen = false;
   let _stuKeyFixed = false;
   const _loginKeyOk = new Map();   /* studioId -> the phone10 whose login key we confirmed on the server */
   const STUDIOS_CAP = 300;
@@ -4687,8 +4691,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- studio detail: profile, rate card, ledger, jobs ---------- */
   let _stuListScrollY = 0;
   function openStudioDetail(id){
-    /* a job expanded on one studio's page must not reopen on the next one */
-    if(_stuDetailId !== id) _stuJobOpen = null;
+    /* a job expanded on one studio's page must not reopen on the next one —
+       nor an open rate card. The draft-capture in renderStudioDetail reads
+       whatever rows are in the DOM, so the previous studio's must go before
+       the new page renders, or its half-typed rates would be "restored" onto
+       the wrong studio (a leak that predates the collapse). */
+    if(_stuDetailId !== id){
+      _stuJobOpen = null; _stuRateOpen = false;
+      const rl = $('#stuRateList'); if(rl) rl.innerHTML = '';
+    }
     _stuListScrollY = (!$('#calView').hidden && !$('#studioListView').hidden) ? window.scrollY : 0;
     _stuDetailId = id;
     closeCalAdd();   /* a form opened from the LIST doesn't belong on a studio page */
@@ -4700,7 +4711,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
-    _stuDetailId = null; _stuJobOpen = null;
+    _stuDetailId = null; _stuJobOpen = null; _stuRateOpen = false;
     closeCalAdd();   /* the quick-add form belongs to the studio page above it */
     syncFabs();
     const y = _stuListScrollY, token = ++_scrollToken;
@@ -4751,6 +4762,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return { x, billed, got, out, run };
     });
     const rates = s.rateCard || {};
+    /* unsaved typing keeps the card open through any snapshot re-render —
+       collapsing is only ever something the owner did on purpose */
+    const rateOpen = !!(_stuRateOpen || _dirty);   /* _dirty is a count — 0 would render aria-expanded="0" */
+    _stuRateOpen = rateOpen;   /* keep the toggle's own state in step when a draft forces it open */
+    const rateN = Object.keys(rates).length;
     el.innerHTML = `
       <button class="mini" id="stuBack" style="margin:1rem 0 .6rem">← All studios</button>
       <div class="sec">
@@ -4770,12 +4786,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button class="mini" type="button" data-stunewjob>＋ New job</button>
           <button class="mini" type="button" data-stuaddev>＋ Add event</button>
         </div>
-      </div>
-      <div class="sec">
-        <h3>💱 Rate card <span style="font-size:.7rem;color:var(--mut)">(negotiated — auto-fills new jobs for this studio; leave empty to quote at retail rates)</span></h3>
-        <div id="stuRateList">${Object.keys(rates).map(n=>stuRateRow(n, rates[n])).join('')}</div>
-        <button class="addrow" type="button" id="stuRateAdd">＋ Add service rate</button>
-        <button class="gbtn" type="button" id="stuRateSave" style="margin-top:.7rem">Save Rate Card</button>
       </div>
       <div class="sec">
         <h3>📒 Ledger <span style="font-size:.7rem;color:var(--mut)">(booked &amp; delivered jobs)</span></h3>
@@ -4810,6 +4820,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <button class="mini" type="button" data-stuopen="${x.id}">Open package</button></div>` : ''}
           </div>`;
         }).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
+      </div>
+      <div class="sec">
+        <h3 class="rc-tog ${rateOpen?'':'closed'}" data-ratetog role="button" tabindex="0" aria-expanded="${rateOpen}">💱 Rate card
+          <span class="rc-sum">${rateN ? rateN + ' negotiated rate' + (rateN===1?'':'s') : 'none — jobs quote at retail rates'}</span>
+          <span class="car">▾</span></h3>
+        ${rateOpen ? `
+        <p class="sub">Negotiated — auto-fills new jobs for this studio; leave empty to quote at retail rates.</p>
+        <div id="stuRateList">${Object.keys(rates).map(n=>stuRateRow(n, rates[n])).join('')}</div>
+        <button class="addrow" type="button" id="stuRateAdd">＋ Add service rate</button>
+        <button class="gbtn" type="button" id="stuRateSave" style="margin-top:.7rem">Save Rate Card</button>` : ''}
       </div>`;
     /* put unsaved rate-card typing back after the rebuild */
     if(_dirty){
@@ -4880,6 +4900,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-stuaddev]')){
       const s = studioById(_stuDetailId); if(!s) return;
       openCalAdd({ studio: s });
+      return;
+    }
+    if(e.target.closest('[data-ratetog]')){
+      const s = studioById(_stuDetailId); if(!s) return;
+      if(_stuRateOpen){
+        /* collapsing throws the DOM rows away — typed-but-unsaved rates must
+           not vanish on a mis-tap of the header */
+        const draft = $$('#stuRateList [data-srate]').map(r=>({
+          name: r.querySelector('[data-k="name"]').value,
+          rate: r.querySelector('[data-k="rate"]').value
+        }));
+        const saved = Object.entries(s.rateCard || {}).map(([n,v])=>({ name:n, rate:String(Number(v)||0) }));
+        if(JSON.stringify(draft) !== JSON.stringify(saved)
+           && !confirm('Close the rate card? The unsaved rate changes on it will be discarded.')) return;
+        /* the render's own draft-capture would otherwise read these rows and
+           faithfully restore the draft that was just discarded */
+        $('#stuRateList').innerHTML = '';
+      }
+      _stuRateOpen = !_stuRateOpen;
+      renderStudioDetail();
       return;
     }
     if(e.target.closest('#stuRateAdd')){ $('#stuRateList').insertAdjacentHTML('beforeend', stuRateRow('', 0)); return; }
