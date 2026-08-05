@@ -178,7 +178,9 @@ section{position:relative}
    ============================================================ */
 header.nav{
   position:fixed;top:0;left:0;right:0;z-index:1000;
-  padding:18px 0;
+  /* env() is 0 in a normal browser tab; it only pushes the bar down where the
+     status bar sits over the page — installed PWA and the store app's webview */
+  padding:calc(18px + env(safe-area-inset-top)) 0 18px;
   transition:.4s ease;
   background:transparent;
 }
@@ -186,7 +188,7 @@ header.nav.scrolled{
   background:rgba(251,248,241,.86);
   backdrop-filter:blur(14px);
   box-shadow:0 1px 0 var(--line);
-  padding:11px 0;
+  padding:calc(11px + env(safe-area-inset-top)) 0 11px;
 }
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .nav .logo-text b{color:#fff;transition:.4s}
@@ -3077,7 +3079,9 @@ flushLeadQueue();
 (function(){
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  if(!isIOS || standalone) return;
+  /* the store app is already installed — never teach the PWA gesture there */
+  const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || !!window.Capacitor;
+  if(!isIOS || standalone || inApp) return;
   try{
     if(localStorage.getItem('fs_ios_hint')) return;
     setTimeout(()=>{
