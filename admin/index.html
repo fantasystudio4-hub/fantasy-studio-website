@@ -311,8 +311,11 @@
     <div class="sec" id="squadSec">
       <h3>👥 Squad</h3>
       <p class="sub">Tap anyone to edit. Their phone number is their crew-page login.</p>
-      <div id="teamMembers"></div>
+      <!-- adding someone is the reason this section gets opened, so the button
+           sits above the roster instead of below a season's worth of it -->
       <button class="addrow" id="tmAdd">＋ Add team member</button>
+      <div class="fchips" id="squadCats"></div>
+      <div id="teamMembers"></div>
     </div>
     <div class="sec" id="lbSec" hidden>
       <h3>🏆 Crew leaderboard
@@ -466,6 +469,12 @@
   <button class="pay-close" id="tmClose" type="button" aria-label="Close">&times;</button>
   <h3 id="tmTitle">Team Member</h3>
   <div class="fld"><label>Name</label><input id="tmName" autocomplete="off" /></div>
+  <div class="fld"><label>Type</label>
+    <div class="mode-pills">
+      <button type="button" id="tmCatOut" class="on">🎥 Outdoor</button>
+      <button type="button" id="tmCatOff">🏢 Office</button>
+    </div>
+  </div>
   <div class="fld"><label>Usual role</label>
     <select id="tmRole"></select>
   </div>

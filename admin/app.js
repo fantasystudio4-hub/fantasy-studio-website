@@ -3188,20 +3188,42 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   let _tmShowInactive = false;
+  function renderSquadCats(){
+    const el = $('#squadCats'); if(!el) return;
+    /* only worth showing once both kinds actually exist */
+    const have = new Set(TEAM.map(catOf));
+    if(TEAM.length < 2 || have.size < 2){ el.innerHTML = ''; return; }
+    const counts = { all: TEAM.length, outdoor: 0, office: 0 };
+    TEAM.forEach(m=>counts[catOf(m)]++);
+    el.innerHTML = [['all','Everyone'], ['outdoor', CAT_LABEL.outdoor], ['office', CAT_LABEL.office]]
+      .map(([k,label])=>`<button type="button" data-squadcat="${k}" class="${_squadCat===k?'on':''}">${label} <b>${counts[k]}</b></button>`).join('');
+  }
+  let _squadCat = 'all';
+  $('#squadCats').addEventListener('click', e=>{
+    const b = e.target.closest('[data-squadcat]'); if(!b) return;
+    _squadCat = b.dataset.squadcat;
+    renderSquadCats(); renderTeamMembers();
+  });
+
   function renderTeamMembers(){
     const el = $('#teamMembers'); if(!el) return;
     if(_teamErr){ el.innerHTML = errBox(_teamErr, 'team'); return; }
     if(!TEAM.length){
       el.innerHTML = _teamLoaded
-        ? '<div class="empty" style="padding:.4rem 0">No team members yet — add your shooters, editors and assistants below.</div>'
+        ? '<div class="empty" style="padding:.4rem 0">No team members yet — add your shooters, editors and assistants above.</div>'
         : '<div class="skel"></div>';
       return;
     }
+    const inCat = m => _squadCat === 'all' || catOf(m) === _squadCat;
     /* busiest first, so the roster reads as a squad sheet rather than a list */
-    const act = TEAM.filter(m=>m.active !== false)
+    const act = TEAM.filter(m=>m.active !== false && inCat(m))
       .map(m=>({ m, s: memberStats(m.id) }))
       .sort((a,b)=>b.s.xp - a.s.xp);
-    const inact = TEAM.filter(m=>m.active === false).map(m=>({ m, s: memberStats(m.id) }));
+    const inact = TEAM.filter(m=>m.active === false && inCat(m)).map(m=>({ m, s: memberStats(m.id) }));
+    if(!act.length && !inact.length){
+      el.innerHTML = `<div class="empty" style="padding:.4rem 0">No ${_squadCat === 'office' ? 'office' : 'outdoor'} members yet.</div>`;
+      return;
+    }
     const C = 113.1;   /* 2πr for r=18 */
     const row = ({m, s}) => {
       const wa = m.phone ? String(normPhoneFull(m.phone)).replace(/\D/g,'') : '';
@@ -3217,7 +3239,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           </span>
           <span class="sq-t">
             <b>${esc(m.name||'—')}</b>
-            <span>${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone'}</span>
+            <span>${esc(CAT_LABEL[catOf(m)])} · ${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone'}</span>
           </span>
           <span class="sq-acts">
             ${m.phone ? `<a href="tel:${esc(m.phone)}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
@@ -3412,6 +3434,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderEditDesk();
     renderWorkTabs();
     renderLeaderboard();
+    renderSquadCats();
     renderTeamMembers();
     renderTeamPay();
     /* badges so an unseen request or an unpaid crew member is never hidden
@@ -3427,11 +3450,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- member add / edit sheet ---------- */
   let _tmEditId = null, _tmFromReq = null;
+  /* Two kinds of people on the payroll: the ones who go out to shoots and the
+     ones who work from the studio. Members saved before this existed have no
+     `cat`, and they were all shoot crew, so 'outdoor' is the read default. */
+  const TM_CATS = ['outdoor','office'];
+  const catOf = m => TM_CATS.includes((m||{}).cat) ? m.cat : 'outdoor';
+  const CAT_LABEL = { outdoor:'🎥 Outdoor', office:'🏢 Office' };
+  let _tmCat = 'outdoor';
+  function setTmCat(c){
+    _tmCat = TM_CATS.includes(c) ? c : 'outdoor';
+    $('#tmCatOut').classList.toggle('on', _tmCat === 'outdoor');
+    $('#tmCatOff').classList.toggle('on', _tmCat === 'office');
+  }
+  $('#tmCatOut').addEventListener('click', ()=>setTmCat('outdoor'));
+  $('#tmCatOff').addEventListener('click', ()=>setTmCat('office'));
+
   function openTm(m){
     _tmEditId = m ? m.id : null;
     _tmFromReq = null;
     $('#tmTitle').textContent = m ? 'Edit Team Member' : 'Add Team Member';
     $('#tmName').value = m ? (m.name||'') : '';
+    setTmCat(m ? catOf(m) : 'outdoor');
     $('#tmRole').value = m && TEAM_ROLES.includes(m.role) ? m.role : TEAM_ROLES[0];
     $('#tmPhone').value = m ? (m.phone||'') : '';
     $('#tmRate').value = m && m.defaultRate ? m.defaultRate : '';
@@ -3463,7 +3502,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!phone && !confirm('No phone number — they will NOT be able to open the crew page (it signs in by phone OTP). Save anyway?')) return;
     if(p10 && TEAM.some(m=>m.id !== _tmEditId && memberPhone10(m) === p10)
        && !confirm('Another member already uses this number — both would share one crew login. Save anyway?')) return;
-    const data = { name, role: $('#tmRole').value, phone, phone10: p10,
+    const data = { name, cat: _tmCat, role: $('#tmRole').value, phone, phone10: p10,
                    defaultRate: Math.max(0, Math.round(Number($('#tmRate').value)||0)), updatedAt: serverTimestamp() };
     btn.disabled = true;
     try{
