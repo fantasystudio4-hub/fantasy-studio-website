@@ -4,6 +4,9 @@
 # macOS
 .DS_Store
 
+# Native app wrapper (own git repo; must never deploy to the public site)
+app/
+
 # Internal docs — the whole repo is deployed to the public domain, so anything
 # tracked here is served at https://www.fantasystudio.in/<filename>.
 # Security notes and draft rules must never be committed.

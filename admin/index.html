@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Fantasy Studio — Admin</title>
 <meta name="robots" content="noindex, nofollow" />
+<script>
+// Admin is browser/PWA only. The store app's webview appends this marker to
+// its user agent; anything carrying it gets bounced before the page loads.
+if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) location.replace('/');
+</script>
 <link rel="icon" href="../icons/admin-192.png" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="../icons/admin-apple.png" />
