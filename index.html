@@ -1973,6 +1973,10 @@ function shareQuote(){
   track('quote_link_shared', { total: calc().grand });
   if(navigator.share){
     navigator.share({ title:'Fantasy Studio — My Wedding Package', text:'Check out the wedding package I built:', url }).catch(()=>{});
+  }else if(window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Share')){
+    /* Android's webview has no navigator.share; the store app's Share plugin
+       opens the same native sheet */
+    window.Capacitor.Plugins.Share.share({ title:'Fantasy Studio — My Wedding Package', text:'Check out the wedding package I built:', url }).catch(()=>{});
   }else if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(
       ()=>showToast('Quote link copied — share it with your family!'),

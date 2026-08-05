@@ -186,6 +186,24 @@ service cloud.firestore {
       allow list, update, delete: if isAdmin();
     }
 
+    // push-notification tokens from the store app. The doc id IS the FCM
+    // token; a signed-in client (or crew/partner — anyone with a verified
+    // phone) may save or remove a token pinned to their own last-10, with
+    // the fields locked down so nothing else can ride along. Only the
+    // admin (and the Cloud Function, which uses the admin SDK and bypasses
+    // rules) can read them — tokens are capability handles, never public.
+    match /pushTokens/{token} {
+      allow create, update: if request.auth != null
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(['phone10','platform','updatedAt'])
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.platform in ['ios','android','app']
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin()
+        || (request.auth != null && resource.data.phone10 == clientPhone10());
+      allow read: if isAdmin();
+    }
+
     // everything else (incl. legacy lenscal_* data): admin only — default deny
     match /{document=**} {
       allow read, write: if isAdmin();

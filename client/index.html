@@ -412,13 +412,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
    vanished" panic the portal exists to prevent. */
 let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
     getRedirectResult, linkWithPhoneNumber,
-    getFirestore, collection, doc, getDoc, getDocs, query, where;
+    getFirestore, collection, doc, getDoc, getDocs, query, where, setDoc, deleteDoc, serverTimestamp;
 try{
   ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
   ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
      getRedirectResult, linkWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ getFirestore, collection, doc, getDoc, getDocs, query, where } =
+  ({ getFirestore, collection, doc, getDoc, getDocs, query, where, setDoc, deleteDoc, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   const ph = (DEFAULT_CONTACT.phone||'').replace(/\D/g,'');
@@ -669,7 +669,7 @@ $('#linkVerify').addEventListener('click', async ()=>{
 });
 $('#linkBack').addEventListener('click', ()=>{ $('#linkOtpStep').hidden = true; $('#linkPhoneStep').hidden = false; hideErr('#linkErr'); });
 $('#linkLogout').addEventListener('click', ()=>signOut(auth));
-$('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+$('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
 
 /* ---------- routing ---------- */
 onAuthStateChanged(auth, user=>{ route(user); });
@@ -724,6 +724,40 @@ async function loadPackages(user){
      the page is not three weddings deep before the current one is read */
   $('#pkgList').innerHTML = pkgs.map((x,i)=>pkgHTML(x, pkgs.length > 1, i > 0)).join('');
   show('dashView');
+  registerPush(user);
+}
+
+/* ---------- push notifications (store app only) ----------
+   In the store app the Capacitor bridge exposes FirebaseMessaging; in Safari,
+   Chrome and the installed PWA the plugin is absent and this is a no-op. The
+   token doc's id IS the token; rules pin its fields to the caller's verified
+   phone, and the packages trigger in Cloud Functions looks tokens up by the
+   same last-10 key the portal queries with. Never allowed to break the page. */
+async function registerPush(user){
+  try{
+    const C = window.Capacitor;
+    if(!C || !C.isPluginAvailable || !C.isPluginAvailable('FirebaseMessaging')) return;
+    const FM = C.Plugins.FirebaseMessaging;
+    const perm = await FM.requestPermissions();
+    if(!perm || perm.receive !== 'granted') return;
+    const { token } = await FM.getToken();
+    if(!token) return;
+    await setDoc(doc(db,'pushTokens', token), {
+      phone10: String(user.phoneNumber||'').replace(/\D/g,'').slice(-10),
+      platform: C.getPlatform ? C.getPlatform() : 'app',
+      updatedAt: serverTimestamp()
+    });
+    try{ localStorage.setItem('fs_push_token', token); }catch(e){}
+  }catch(e){ /* push is a bonus — the portal must work without it */ }
+}
+/* a shared family phone must stop getting alerts once this account logs out */
+async function unregisterPush(){
+  try{
+    const t = localStorage.getItem('fs_push_token');
+    if(!t) return;
+    await deleteDoc(doc(db,'pushTokens', t));
+    localStorage.removeItem('fs_push_token');
+  }catch(e){}
 }
 /* "when is my next event?" — the reason most clients open this page at all.
    A live countdown, and the day itself saved to their phone's calendar. */
