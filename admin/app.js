@@ -3695,8 +3695,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rank = m => _asForceEdit
       ? (roleIsEdit(m.role) ? 0 : 1)                                  /* editors first */
       : (busyOf(m).length ? 2 : 0) - (need[String(m.role||'').toLowerCase()] ? 1 : 0);
-    list.sort((a,b)=>rank(a) - rank(b));
+    /* everyone in one list, office first then outdoor, each group still
+       ordered by who this event actually wants and who is free */
+    const catRank = m => catOf(m) === 'office' ? 0 : 1;
+    list.sort((a,b)=>catRank(a) - catRank(b) || rank(a) - rank(b));
+    let _lastCat = null;
+    const showHeads = new Set(list.map(catOf)).size > 1;
     el.innerHTML = list.map(m=>{
+      let head = '';
+      if(showHeads && catOf(m) !== _lastCat){
+        _lastCat = catOf(m);
+        head = `<span class="pickhead">${esc(CAT_LABEL[_lastCat])}</span>`;
+      }
+      return head + pickBtn(m);
+    }).join('') || `<div class="empty" style="padding:.6rem 0">${fq
+      ? 'Nobody matches “' + esc(fq) + '”.'
+      : 'No active team members — add one in the Squad list.'}</div>`;
+
+    function pickBtn(m){
       const busy = busyOf(m);
       const here = onEvent.has(m.id) && m.id !== sel;
       const on = _asPicked.has(m.id);
@@ -3708,9 +3724,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <i class="dot ${here ? 'delivered' : busy.length ? 'unconfirmed' : 'booked'}"></i>
         <span class="cp-t"><b>${esc(m.name||'—')}${wanted?'<i class="wantt">needed</i>':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
       </button>`;
-    }).join('') || `<div class="empty" style="padding:.6rem 0">${fq
-      ? 'Nobody matches “' + esc(fq) + '”.'
-      : 'No active team members — add one in the Squad list.'}</div>`;
+    }
     /* A normal crew fits without any inner scrolling, which is what made this
        sheet quick. Only a long roster gets a bounded window, so Role, Pay and
        Notes don't end up a thousand pixels below the list. */

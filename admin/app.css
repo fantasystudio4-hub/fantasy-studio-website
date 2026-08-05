@@ -666,6 +666,9 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    sheet that also scrolls, so picking someone meant scrolling within a scroll */
 .crewpick{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
 .crewpick.tall{max-height:46vh;overflow-y:auto;overscroll-behavior:contain}
+/* one list, but you can see where office ends and outdoor begins */
+.crewpick .pickhead{grid-column:1/-1;font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);padding:.35rem .1rem .05rem}
+.crewpick .pickhead:first-child{padding-top:0}
 @media(max-width:400px){ .crewpick{grid-template-columns:1fr} }
 .cpick{display:flex;align-items:center;gap:.5rem;text-align:left;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.5rem .6rem;cursor:pointer;font-family:var(--sans);min-height:46px}
 .cpick .dot{flex:0 0 auto}
