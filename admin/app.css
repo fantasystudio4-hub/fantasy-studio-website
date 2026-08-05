@@ -6,9 +6,24 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
+/* Android pull-to-refresh — browser tab and installed PWA alike — fired on any
+   downward drag at scroll top, exactly where the swipeable filter strips live,
+   and reloaded the panel mid-edit. The sheets keep their own contain rule. */
+html,body{overscroll-behavior-y:none}
 body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
 h1,h2,h3{font-family:var(--serif)}
 button,input,select,textarea{font-family:var(--sans);font-size:16px}
+/* rapid repeat-taps (the qty steppers, the calendar arrows) were eaten by
+   iOS double-tap-zoom detection; this kills the 350ms wait on controls only —
+   pinch zoom and page zoom stay */
+button,[role="button"],select,.qchip,a{touch-action:manipulation}
+/* a hesitant press on an action row started text selection instead of the
+   action — rows that ACT should not be copy targets (detail text stays selectable) */
+.lead-top,.cal-cell,.up-ev,.uh-row,.tm-crew,.ed-row,.dstep,.cpick,.grp.tog,.stat,.pm-row,.sq,.stu-top{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* selects are restyled flat but kept no affordance — on iOS nothing said
+   "this opens a picker". One gold chevron, drawn inline. */
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23E2C275' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65em center;padding-right:2em}
+textarea{resize:vertical}
 .wrap{max-width:860px;margin:0 auto;padding:0 14px 90px}
 
 /* header */
@@ -63,7 +78,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* tabs */
 .tabs{display:flex;gap:.5rem;margin:1rem 0}
 .tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em .15em;font-size:.72rem;letter-spacing:.02em;cursor:pointer}
-.tabs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.tabs button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#1a150c;font-weight:600}
 
 /* stats */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
@@ -84,10 +99,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .lead-top{padding:.85rem 1rem;display:flex;flex-wrap:wrap;gap:.35rem .6rem;align-items:center;cursor:pointer}
 .lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:#fff}
 .lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
-.lead-top .newb{font-size:.58rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
+.lead-top .newb{font-size:.62rem;letter-spacing:.12em;color:#14110a;background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
 /* "this number has enquired before" — a warning tone, not the gold NEW badge:
    the two mean opposite things and must not read as the same chip */
-.lead-top .dupb{font-size:.58rem;letter-spacing:.08em;color:#ffb054;border:1px solid rgba(255,176,84,.45);background:rgba(255,176,84,.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
+.lead-top .dupb{font-size:.62rem;letter-spacing:.08em;color:#ffb054;border:1px solid rgba(255,176,84,.45);background:rgba(255,176,84,.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
 .lead-top .qno{color:var(--gold-b);letter-spacing:.05em;font-size:.72rem}
 .lt-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}
 .lt-lines .l1{display:flex;align-items:center;gap:.5rem;min-width:0}
@@ -141,8 +156,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .cal-cell.today.has .d{color:#14110a}
 .dots{display:flex;gap:2.5px;flex-wrap:wrap;margin-top:auto;align-items:center}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
-.dot.booked{background:var(--ok)} .dot.sent{background:#7fb2e5} .dot.draft{background:var(--mut)} .dot.lead{background:var(--gold-b)} .dot.delivered{background:#9adbb2} .dot.unconfirmed{background:#cf7f76}
-.dots b{font-size:.55rem;color:var(--mut);font-weight:600}
+.dot.booked{background:var(--ok)} .dot.sent{background:#7fb2e5} .dot.draft{background:var(--mut)} .dot.lead{background:var(--gold-b)} .dot.delivered{background:transparent;box-shadow:inset 0 0 0 2px #9adbb2} .dot.unconfirmed{background:#cf7f76}
+.dots b{font-size:.62rem;color:var(--gold-b);font-weight:600}
 /* one line, always: six statuses wrapped onto two rows and ate the space
    under the grid — they now sit in a single row that scrolls if it must */
 .cal-legend{display:flex;gap:.7rem;justify-content:space-between;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-top:.75rem;font-size:.62rem;color:var(--mut)}
@@ -282,7 +297,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .fchips::-webkit-scrollbar{display:none}
 .fchips button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em .95em;font-size:.74rem;cursor:pointer;white-space:nowrap}
 .fchips button b{font-weight:600;margin-left:.3em;opacity:.75}
-.fchips button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.fchips button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#1a150c;font-weight:600}
 @media(hover:hover){ .fchips button:hover:not(.on){border-color:var(--gold);color:var(--gold-b)} }
 
 /* skeleton loading */
@@ -316,7 +331,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* tab icons + new-leads badge */
 .tabs button{position:relative}
 .tabs button i{display:none;font-style:normal}
-.tabs .badge{background:var(--err);color:#fff;font-size:.55rem;font-weight:600;border-radius:10px;padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
+.tabs .badge{background:var(--err);color:#fff;font-size:.62rem;font-weight:600;border-radius:10px;padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
 
 /* app-style bottom navigation on phones */
 @media(max-width:699px){
@@ -362,14 +377,29 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pay-modal .who{font-size:.8rem;color:var(--mut);margin-bottom:.9rem}
 .mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
 .mode-pills button{flex:1;background:#171309;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.6em;cursor:pointer;font-size:.85rem}
-.mode-pills button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.mode-pills button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#1a150c;font-weight:600}
 .pay-hist{font-size:.75rem;color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
 .pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
 .pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:.85rem;padding:.5em .6em;min-width:40px;min-height:40px;vertical-align:middle}
-.pay-close{position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:1.5rem;cursor:pointer}
-@media(max-width:560px){
+/* Sticky, not absolute: the sheet is its own scroll container, so an absolute
+   ✕ scrolled away with the content — half-way down the assign sheet there was
+   no close in reach. It rides the top edge now, on every sheet. The negative
+   bottom margin gives back the row it would otherwise occupy. */
+.pay-close{position:sticky;top:-1.15rem;z-index:6;display:grid;place-items:center;width:44px;height:44px;margin:-.9rem -.6rem -44px auto;background:rgba(36,30,18,.88);border:0;border-radius:50%;color:var(--mut);font-size:1.5rem;cursor:pointer}
+.pay-close:active{background:rgba(255,255,255,.07)}
+/* 699px, matching every other phone rule in this file — the bottom-sheet
+   conversion, the grab handle and the .fin width used to switch at 560px, so
+   a 600px phone got a phone tab bar but desktop-style floating dialogs */
+@media(max-width:699px){
   .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:88vh}
   .pay-modal.open{transform:translateY(0)}
+}
+/* dvh where it exists: 88vh of a phone browser is taller than the VISIBLE
+   viewport while the URL bar is up, so the sheet's bottom edge — the Save
+   button — could sit under the browser chrome */
+@supports (height: 1dvh){
+  .pay-modal{max-height:86dvh}
+  @media(max-width:699px){ .pay-modal{max-height:90dvh} }
 }
 .lead-sub{padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;font-size:.78rem;color:var(--mut)}
 .lead-sub a{color:var(--gold-b);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.25em .8em}
@@ -426,7 +456,10 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .savebar .in{max-width:860px;margin:0 auto;display:flex;gap:.6rem;align-items:center}
 .savebar .msg{font-size:.78rem;color:var(--mut);flex:1}
 .savebar .gbtn{width:auto;padding:.75em 1.8em}
-.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99}
+/* z-index 140: the backdrop is 120 and the sheets 130, so every "NOT saved —
+   the server refused this write" fired while a sheet was open was painted
+   BEHIND the sheet the owner was looking at */
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:140;max-width:min(92vw,480px)}
 .toast.show{opacity:1}
 @media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
 
@@ -473,7 +506,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .sec .sub{font-size:.75rem;color:var(--mut);margin:-.5rem 0 .8rem}
 .stepnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;font-size:.75rem;font-family:var(--sans);margin-right:.45rem;vertical-align:-3px}
 .mini-f{display:flex;flex-direction:column;gap:.25rem}
-.mini-f > label{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.mini-f > label{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
 .mini-f.amtf{margin-left:auto;text-align:right}
 .pkg-actions{position:sticky;bottom:0;z-index:40;background:rgba(20,17,10,.97);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 -14px;padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
 /* ---- tap targets & minimum readable size (audit) ----
@@ -596,7 +629,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .ed-row .t b{display:block;font-size:.88rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ed-row .t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qtag{flex:0 0 auto;font-family:var(--sans);font-size:.58rem;letter-spacing:.07em;color:var(--gold-b);background:rgba(184,144,43,.14);border-radius:12px;padding:.18em .6em;font-weight:600;white-space:nowrap}
-.duetag{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(255,255,255,.06);white-space:nowrap}
+.duetag{flex:0 0 auto;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(255,255,255,.06);white-space:nowrap}
 .duetag.soon{color:#ffb054;background:rgba(255,176,84,.14)}
 .duetag.late{color:var(--err);background:rgba(224,122,106,.14)}
 .duetag.ok{color:var(--ok);background:rgba(76,175,125,.13)}
@@ -609,7 +642,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tm-ev.none{border-left:3px solid rgba(224,122,106,.6)}
 .tm-ev.part{border-left:3px solid rgba(255,176,84,.6)}
 .tm-ev.full{border-left:3px solid rgba(76,175,125,.5)}
-.tm-ev-h .away{flex:0 0 auto;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);background:rgba(255,255,255,.06);border-radius:14px;padding:.2em .6em;font-weight:600}
+.tm-ev-h .away{flex:0 0 auto;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);background:rgba(255,255,255,.06);border-radius:14px;padding:.2em .6em;font-weight:600}
 .tm-ev-h .away.soon{color:#ffb054;background:rgba(255,176,84,.14)}
 .tm-fill{display:flex;align-items:center;gap:.55rem;margin:.5rem 0 .1rem}
 .tm-fill .fbar{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden}
@@ -638,8 +671,9 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 /* "this event's services call for their craft" — a bare ★ read as a rating */
 /* outlined, not filled: a picked member already carries a gold border and gold
    name, and a solid badge on top of that made the list read as all highlight */
-.cp-t b .wantt{font-style:normal;font-size:.54rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);border:1px solid rgba(226,194,117,.5);border-radius:12px;padding:.1em .45em;margin-left:.4em;vertical-align:.12em;font-weight:600}
-.crewfilter{width:100%;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .7em;margin-bottom:.45rem;font-size:.8rem}
+.cp-t b .wantt{font-style:normal;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);border:1px solid rgba(226,194,117,.5);border-radius:12px;padding:.1em .45em;margin-left:.4em;vertical-align:.12em;font-weight:600}
+/* 16px like every other input — 12.8px made iOS zoom the whole sheet on focus */
+.crewfilter{width:100%;background:#171309;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .7em;margin-bottom:.45rem;font-size:16px}
 .crewfilter:focus{outline:none;border-color:var(--gold)}
 /* what "Assign 3 crew" is actually about to write */
 .as-multi{border:1px dashed var(--line);border-radius:10px;padding:.55rem .65rem;margin:0 0 .85rem;background:rgba(184,144,43,.06)}
@@ -659,7 +693,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 
 .lbtog{margin-left:auto;display:inline-flex;gap:.3rem}
 .lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
-.lbtog button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.lbtog button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#1a150c;font-weight:600}
 .lb-row{display:flex;align-items:center;gap:.65rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
 .lb-row:last-child{border-bottom:0}
 .lb-row .pos{flex:0 0 auto;width:26px;text-align:center;font-family:var(--serif);font-size:.95rem;color:var(--mut)}
@@ -710,8 +744,15 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .pay-modal{box-shadow:0 18px 48px rgba(0,0,0,.5)}
 /* Save rides the sheet's scroll — picking a member fills the role and rate, so
    the whole assignment is now two taps without hunting for the button */
-#asModal #asSave, #cpModal #cpSave{position:sticky;bottom:-1.4rem;z-index:3;
+/* EVERY sheet's primary button rides the bottom edge, not just assign and
+   crew-pay — Record Payment, Save Studio and Save Member all scrolled their
+   own Save out of view on tall content. Direct child only, so the expense
+   form's nested Save inside the money sheet stays in flow with its form. */
+.pay-modal > .gbtn{position:sticky;bottom:-1.4rem;z-index:3;
   box-shadow:0 -14px 18px -8px var(--panel), 0 0 0 6px var(--panel)}
+@media(max-width:699px){
+  .pay-modal > .gbtn{bottom:calc(-1.4rem - env(safe-area-inset-bottom))}
+}
 .fld input:focus,.fld select:focus,.fld textarea:focus,.bar input[type=search]:focus,.lead-det textarea:focus,.prow input:focus,.itemrow select:focus,.itemrow input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18);outline:none}
 .gbtn,.goldbar{box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active,.goldbar:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
@@ -722,7 +763,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .tabs button.on{background:rgba(184,144,43,.14)}
 }
 /* phones: the payment/status/member/assign sheets get a grab handle */
-@media(max-width:560px){
+@media(max-width:699px){
   .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:rgba(226,194,117,.35);margin:-.4rem auto .85rem}
 }
 
@@ -733,7 +774,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 #pkgStats .stat.wide{grid-column:span 3}
 #pkgStats .stat{padding:.55rem .2rem}
 #pkgStats .stat b{font-size:clamp(.72rem,3.3vw,1.2rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#pkgStats .stat span{font-size:.5rem;letter-spacing:.05em}
+#pkgStats .stat span{font-size:.6rem;letter-spacing:.03em}
 @media(min-width:700px){ #pkgStats .stat span{font-size:.62rem} }
 .stat.money{position:relative;background:linear-gradient(135deg,rgba(201,163,71,.2),rgba(142,110,30,.15));cursor:pointer}
 .stat.money::after{content:"📊";position:absolute;top:3px;right:5px;font-size:.52rem;opacity:.75}
@@ -770,7 +811,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
 /* ==== analytics + event sheets (reuse the payment modal shell) ==== */
 .pay-modal.fin{width:min(94vw,420px);max-height:86vh;overflow:auto;overscroll-behavior:contain}
-@media(max-width:560px){ .pay-modal.fin{width:100%;max-height:88vh} }
+@media(max-width:699px){ .pay-modal.fin{width:100%;max-height:88vh} }
 /* the money that leaves: same tappable money tile, but it opens the Team tab
    where crew pay is actually settled — so it must not wear the 📊 badge that
    promises the analytics sheet */
@@ -862,20 +903,20 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ev-acts .mini{flex:1;margin-top:0;min-width:104px}
 
 /* ==== ease-of-use pass: quick-actions FAB, Home search, Config jump chips ==== */
-.fab{position:fixed;right:16px;bottom:calc(64px + env(safe-area-inset-bottom) + 12px);z-index:60;width:54px;height:54px;border-radius:50%;border:0;background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:0 8px 22px rgba(142,110,30,.5);transition:transform .12s}
+.fab{position:fixed;right:max(16px, env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom) + 12px);z-index:60;width:54px;height:54px;border-radius:50%;border:0;background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:0 8px 22px rgba(142,110,30,.5);transition:transform .12s}
 .fab:active{transform:scale(.92)}
 @media(hover:hover){ .fab:hover{filter:brightness(1.1)} }
 @media(min-width:700px){ .fab{bottom:24px} }
 /* search sits directly above the ⚡ button — smaller and outlined, so the
    gold one stays the primary action */
-.fab.fab-2{width:46px;height:46px;right:20px;font-size:1.15rem;background:var(--panel);border:1px solid var(--gold);color:var(--gold-b);box-shadow:0 6px 16px rgba(0,0,0,.45);bottom:calc(64px + env(safe-area-inset-bottom) + 12px + 64px)}
+.fab.fab-2{width:46px;height:46px;right:max(20px, env(safe-area-inset-right));font-size:1.15rem;background:var(--panel);border:1px solid var(--gold);color:var(--gold-b);box-shadow:0 6px 16px rgba(0,0,0,.45);bottom:calc(64px + env(safe-area-inset-bottom) + 12px + 64px)}
 .fab.fab-2:active{background:rgba(184,144,43,.2)}
 @media(min-width:700px){ .fab.fab-2{bottom:88px} }
 #homeResults{padding:.8rem 1rem}
 #homeResults .up-ev .when{min-width:30px;font-size:1rem}
 #homeResults .stpill{margin-left:0}
-#cfgJump{position:sticky;top:62px;z-index:30;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
-#configView .sec{scroll-margin-top:118px}
+#cfgJump{position:sticky;top:var(--hdr-h,56px);z-index:30;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
+#configView .sec{scroll-margin-top:calc(var(--hdr-h,56px) + 62px)}
 
 /* ==== B2B partner studios ==== */
 /* all four B2B tiles on ONE line, phone included — the money figures use the
@@ -923,9 +964,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    This block is LAST on purpose: several of these override earlier
    same-property rules and would lose the cascade anywhere else. */
 @media(max-width:699px){
-  /* the ✕ on every sheet was a 14px-wide target */
-  .pay-close{top:4px;right:6px;width:44px;height:44px;display:grid;place-items:center;line-height:1;border-radius:50%}
-  .pay-close:active{background:rgba(255,255,255,.07)}
 
   /* filter and tab strips — Home tabs, Packages, Leads, Config jump: 27px */
   .fchips button{min-height:40px;padding:.5em 1.05em;font-size:.78rem}
@@ -994,3 +1032,53 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .lead .chev{align-self:center;padding-left:.15rem}
   .dl3{margin-top:.15rem}
 }
+
+/* ==== mobile pass (Aug 2026): touch floors, legibility, reach ====
+   Additions from the six-dimension phone audit. At the END of the file on
+   purpose — same-specificity overrides must come last. */
+@media(max-width:699px){
+  /* --- every tappable that was still under the 40px floor --- */
+  .act,.edact{min-height:40px}
+  .qamt button{min-height:40px;font-size:.78rem}
+  .lead-sub a,.lead-sub .lead-x{min-height:38px;display:inline-flex;align-items:center}
+  .lead-sub select{min-height:38px;font-size:16px}
+  .grp.tog{min-height:44px;align-items:center}
+  .grp .pmall{min-height:36px}
+  .pm-row .paid2{min-height:38px}
+  .lbtog button{min-height:36px;padding:.22em .8em}
+  .upmore,.dl3 ~ * .upmore{min-height:38px;display:inline-flex;align-items:center}
+  .tm-crew{min-height:44px}
+  .tm-crew .csbtn{min-height:36px;min-width:42px}
+  .dstep{min-height:42px}
+  .row .del,.pev .del,.pkg-ev > .del{width:40px;height:40px;display:grid;place-items:center;padding:0;font-size:1.2rem}
+  .itemrow .rm{min-width:40px;min-height:40px}
+  .itemrow .qwrap button{width:40px;height:42px}
+  .termrow{padding:.55rem .2rem}
+  .toast button{min-height:38px;padding:.3em 1em}
+  .hd .out{min-height:40px}
+  .cal-jump .mo,.cal-jump .yr button{min-height:40px}
+
+  /* --- legibility --- */
+  /* the legend clipped invisibly (hidden scrollbar): two tidy rows instead */
+  .cal-legend{flex-wrap:wrap;justify-content:flex-start;gap:.4rem .85rem}
+  /* the offline chip squeezed the studio name to "Fant…" — it becomes a red
+     dot beside the logo; the state is still visible, the name survives */
+  @media(max-width:429px){
+    /* .hd .net beats the .hd span typography rule that was re-spacing the
+       "hidden" text back out of its 11px box */
+    .hd .net{font-size:0;letter-spacing:0;width:11px;height:11px;padding:0;border-radius:50%;background:var(--err);border-color:transparent;overflow:hidden}
+  }
+
+  /* --- reach --- */
+  /* clearance under lists that end behind the stacked FAB pair (⚡ 54px + 🔍
+     46px + gaps ≈ 176px of pinned UI above the tab bar) */
+  #homeView > .stats:last-child{margin-bottom:132px}
+  #studioListView{padding-bottom:132px}
+}
+
+/* The chevron again, at component specificity: .fld/.bar/.itemrow/.lead-sub
+   all paint their select with the background SHORTHAND, which silently resets
+   the base rule's background-image to none. */
+.fld select,.bar select,.itemrow select,.lead-sub select{
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23E2C275' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right .65em center;padding-right:2em}

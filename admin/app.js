@@ -10,7 +10,14 @@ const inrShort = n => {
 };
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.style.pointerEvents='none'; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+/* Duration follows length: 2.6s fit "Saved ✓" but "NOT saved — the server
+   refused this write…" is 20+ words, gone before a phone user has read half.
+   ~45ms per character past the first 40, capped at 7s. */
+function toast(m){
+  const t=$('#toast'); t.textContent=m; t.style.pointerEvents='none'; t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'), Math.min(7000, 2600 + Math.max(0, String(m).length - 40) * 45));
+}
 function toastUndo(m, fn){
   const t=$('#toast');
   t.textContent = m + ' ';
@@ -163,7 +170,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   window.addEventListener('online',  ()=>{ updNet(); toast('Back online — syncing'); });
   window.addEventListener('offline', ()=>{ updNet(); toast('Offline — changes will sync when signal returns'); });
   updNet();
-  $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+  /* a 40px button 8px from the Config toggle, in the corner the thumb crosses
+     to reach it — one mis-tap signed the owner out mid-task */
+  $('#logoutBtn').addEventListener('click', ()=>{ if(confirm('Log out of the admin panel?')) signOut(auth); });
 
   /* ============================================================
      WHO CAN OPEN THIS PANEL
@@ -295,9 +304,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     closeEditorSilently();
     return true;
   }
+  /* Opening the editor jumps to the top of the page; closing it used to LEAVE
+     you at the top — card 40 of the season list, edit, back, and you were at
+     card 1 scrolling down again. Both closers put the list back where it was. */
+  let _pkgListScrollY = 0;
   function closeEditorSilently(){
     _pkgBaseline = '';
     $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
+    const y = _pkgListScrollY, token = ++_scrollToken;
+    requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
   }
   /* history.back() is asynchronous, so a double tap on a ✕ (or an impatient
      tap on ✕ then the backdrop) fired it twice and jumped back two entries.
@@ -394,9 +409,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          on now means "take me to the list". */
       const leavingEditor = !$('#pkgEditView').hidden;
       if(leavingEditor && !canLeaveEditor()) return;
+      /* a tab switch closes the quick-add form — with dates BANKED on it that
+         silently threw away a whole wedding's queue. Ask first, like the
+         editor does. (The popstate path stays silent, same as the editor.) */
+      if(_qeQueue.length && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')
+         && !confirm(`Leave this page? The ${_qeQueue.length} date${_qeQueue.length>1?'s':''} banked on the add-event form will be discarded.`)) return;
       /* tapping B2B while a studio detail is open = back to the studio list */
       const leavingStudio = !$('#studioDetailView').hidden;
       if(id === 'tabCal' && leavingStudio && typeof closeStudioDetail === 'function') closeStudioDetail();
+      /* re-tapping the tab you are on = back to its top — the pattern every
+         phone app uses; there was no other way up a long list one-handed */
+      if(id === _curTab && !leavingEditor && !leavingStudio){
+        _tabScroll[id] = 0;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       showTab(id);
       /* the editor / studio detail we just closed owns the current history
          entry — REPLACE it, or the back button resurrects a closed page */
@@ -1088,6 +1115,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       if(typeof pkgDirty === 'function' && pkgDirty()) return true;
       if(_cfgTouched) return true;
+      /* banked multi-date events are typed work too — a reload used to throw
+         away a whole wedding's queued dates without a word */
+      if(typeof _qeQueue !== 'undefined' && _qeQueue.length) return true;
       const add = $('#calAdd');
       if(add && !add.hidden && ($('#qeTitle').value.trim() || $('#qeVenue').value.trim())) return true;
     }catch(e){}
@@ -3279,7 +3309,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const byMember = {};
     ASGS.forEach(a=>{ (byMember[a.memberId] = byMember[a.memberId]||[]).push(a); });
-    el.innerHTML = Object.entries(byMember).map(([mid, list])=>{
+    /* the ✓/○ prefixes only explained themselves in title tooltips, which a
+       touch screen never shows — one visible line instead */
+    el.innerHTML = '<p class="sub" style="margin:0 0 .5rem">✓ marked completed by the member · ○ shot done, not marked yet</p>'
+      + Object.entries(byMember).map(([mid, list])=>{
       const m = memberById(mid);
       const name = (m && m.name) || list[0].memberName || '—';
       const due = list.reduce((s,a)=>s + payDue(a), 0);
@@ -4652,9 +4685,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---------- studio detail: profile, rate card, ledger, jobs ---------- */
+  let _stuListScrollY = 0;
   function openStudioDetail(id){
     /* a job expanded on one studio's page must not reopen on the next one */
     if(_stuDetailId !== id) _stuJobOpen = null;
+    _stuListScrollY = (!$('#calView').hidden && !$('#studioListView').hidden) ? window.scrollY : 0;
     _stuDetailId = id;
     closeCalAdd();   /* a form opened from the LIST doesn't belong on a studio page */
     renderStudioDetail();
@@ -4668,6 +4703,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _stuDetailId = null; _stuJobOpen = null;
     closeCalAdd();   /* the quick-add form belongs to the studio page above it */
     syncFabs();
+    const y = _stuListScrollY, token = ++_scrollToken;
+    requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
   }
   const stuRateRow = (name, rate) => `
     <div class="row" data-srate>
@@ -4745,7 +4782,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${led.length ? `
           <div class="ledrow hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
           ${led.map(r=>`
-          <div class="ledrow"><span class="l-ev">${esc(r.x.quoteNo||'—')} <span>· ${esc(((r.x.events||[])[0]||{}).title||'Job')}${r.x.endClientName ? ' · ' + esc(r.x.endClientName) : ''}</span></span><b>${inr(r.billed)}</b><b style="color:var(--ok)">${inr(r.got)}</b><b class="${r.out>0?'neg':''}">${inr(r.out)}</b></div>`).join('')}
+          <div class="ledrow"><span class="l-ev">${esc(r.x.quoteNo||'—')} <span>· ${esc(((r.x.events||[])[0]||{}).title||'Job')}${r.x.endClientName ? ' · ' + esc(r.x.endClientName) : ''}</span></span><b title="${inr(r.billed)}">${inrShort(r.billed)}</b><b style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>`
         : '<div class="empty" style="padding:.5rem 0">No confirmed jobs yet — the ledger fills in as jobs are booked.</div>'}
       </div>
@@ -5802,12 +5839,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="mini-f"><label>Qty</label>
           <div class="qwrap">
             <button type="button" data-qm>−</button>
-            <input data-f="qty" type="number" min="1" value="${Number(it.qty)||1}" />
+            <input data-f="qty" type="number" min="1" inputmode="numeric" value="${Number(it.qty)||1}" />
             <button type="button" data-qp>+</button>
           </div>
         </div>
         <div class="mini-f"><label>Rate (₹)</label>
-          <input data-f="rate" type="number" min="0" value="${Number(it.rate)||0}" placeholder="Rate" />
+          <input data-f="rate" type="number" min="0" inputmode="numeric" value="${Number(it.rate)||0}" placeholder="Rate" />
         </div>
         <div class="mini-f amtf"><label>Amount</label>
           <span class="amt" data-amt>${inr((Number(it.qty)||1)*(Number(it.rate)||0))}</span>
@@ -5930,6 +5967,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const _stOpts2 = _stBase.includes(_bStatus) ? _stBase : [..._stBase, _bStatus];
     $('#bStatusPills').innerHTML = _stOpts2.map(s=>
       `<button type="button" data-bst="${s}" class="${_bStatus===s?'on':''}"><i class="dot ${s}" style="margin-right:.3em"></i>${STATUS_LABEL(s)}</button>`).join('');
+    /* remember where the list was — but only when it is genuinely on screen;
+       arriving from Home or a lead card starts the list at its top */
+    _pkgListScrollY = (!$('#pkgView').hidden && !$('#pkgListView').hidden) ? window.scrollY : 0;
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     computePkg();
     scrollTopNow();

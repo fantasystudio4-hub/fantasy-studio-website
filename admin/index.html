@@ -218,8 +218,8 @@
         <h3><span class="stepnum">3</span>Album</h3>
         <p class="sub">Sheets × price per sheet — the album total is added straight into the gross.</p>
         <div class="grid2">
-          <div class="fld"><label>Album sheets</label><input id="paSheets" type="number" min="0" value="0" /></div>
-          <div class="fld"><label>Price per sheet (₹)</label><input id="paPerSheet" type="number" min="0" value="0" /></div>
+          <div class="fld"><label>Album sheets</label><input id="paSheets" type="number" min="0" inputmode="numeric" value="0" /></div>
+          <div class="fld"><label>Price per sheet (₹)</label><input id="paPerSheet" type="number" min="0" inputmode="numeric" value="0" /></div>
         </div>
         <div class="prow"><span>Album total</span><b id="paTotal">₹0</b></div>
       </div>
@@ -233,9 +233,9 @@
         <h3><span class="stepnum">5</span>Pricing</h3>
         <p class="sub">Gross = all events + album. Updates live; the final price becomes the gold band on the PDF.</p>
         <div class="prow"><span>Gross total</span><b id="ppGross">₹0</b></div>
-        <div class="prow"><label>Discount (₹)</label><input id="ppDiscount" type="number" min="0" value="0" /></div>
+        <div class="prow"><label>Discount (₹)</label><input id="ppDiscount" type="number" min="0" inputmode="numeric" value="0" /></div>
         <div class="prow big"><span>Final price</span><b id="ppFinal">₹0</b></div>
-        <div class="prow"><label>Advance received (₹)</label><input id="ppAdvance" type="number" min="0" value="0" /></div>
+        <div class="prow"><label>Advance received (₹)</label><input id="ppAdvance" type="number" min="0" inputmode="numeric" value="0" /></div>
         <div class="prow"><span>Balance</span><b id="ppBalance">₹0</b></div>
       </div>
       <div class="sec" data-retail-only>
@@ -355,9 +355,9 @@
     <div class="sec">
       <h3>Album</h3>
       <div class="grid2">
-        <div class="fld"><label>Price per sheet</label><input type="number" id="albumPerSheet" min="0" /></div>
-        <div class="fld"><label>Minimum sheets</label><input type="number" id="albumMinSheets" min="0" /></div>
-        <div class="fld"><label>Maximum sheets</label><input type="number" id="albumMaxSheets" min="1" /></div>
+        <div class="fld"><label>Price per sheet</label><input type="number" id="albumPerSheet" min="0" inputmode="numeric" /></div>
+        <div class="fld"><label>Minimum sheets</label><input type="number" id="albumMinSheets" min="0" inputmode="numeric" /></div>
+        <div class="fld"><label>Maximum sheets</label><input type="number" id="albumMaxSheets" min="1" inputmode="numeric" /></div>
       </div>
     </div>
     <div class="sec">
@@ -375,7 +375,7 @@
       <h3>Contact &amp; Payment</h3>
       <p class="sub">Phone and website print on every quotation PDF. The UPI IDs are what the client portal's <b style="color:var(--gold-b)">Pay now</b> button sends to — leave them blank to hide that button.</p>
       <div class="grid2">
-        <div class="fld"><label>Phone</label><input id="cfgPhone" /></div>
+        <div class="fld"><label>Phone</label><input id="cfgPhone" inputmode="tel" /></div>
         <div class="fld"><label>Website</label><input id="cfgWebsite" /></div>
         <div class="fld"><label>UPI ID — PhonePe</label><input id="cfgUpi" placeholder="8686868803-3@ybl" /></div>
         <div class="fld"><label>UPI ID — Google Pay</label><input id="cfgUpiAlt" placeholder="name-3@oksbi" /></div>
@@ -422,7 +422,7 @@
   <button class="pay-close" id="payClose" type="button" aria-label="Close">&times;</button>
   <h3>Record Payment</h3>
   <div class="who" id="payWho"></div>
-  <div class="fld"><label>Amount received (₹)</label><input id="payAmt" type="number" min="1" inputmode="numeric" placeholder="e.g. 10000" /></div>
+  <div class="fld"><label>Amount received (₹)</label><input id="payAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" placeholder="e.g. 10000" /></div>
   <div class="qamt" id="payQuick"></div>
   <div class="fld"><label>Date</label><input id="payDate" type="date" /></div>
   <div class="fld"><label>Payment mode</label>
@@ -440,7 +440,7 @@
   <button class="pay-close" id="cpClose" type="button" aria-label="Close">&times;</button>
   <h3>Pay Crew</h3>
   <div class="who" id="cpWho"></div>
-  <div class="fld"><label>Amount paid (₹)</label><input id="cpAmt" type="number" min="1" inputmode="numeric" placeholder="e.g. 3000" /></div>
+  <div class="fld"><label>Amount paid (₹)</label><input id="cpAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" placeholder="e.g. 3000" /></div>
   <div class="qamt" id="cpQuick"></div>
   <div class="fld"><label>Date</label><input id="cpDate" type="date" /></div>
   <div class="fld"><label>Payment mode</label>
@@ -505,7 +505,7 @@
       Covers the whole booking</label>
     <p class="sub" style="margin:.35rem 0 0">One editing job for every function, instead of one per day.</p>
   </div>
-  <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" /></div>
+  <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
   <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
@@ -522,7 +522,7 @@
   <div id="expForm" hidden>
     <h4 class="finh" id="exTitle" style="margin-top:0">＋ New expense</h4>
     <div class="fld"><label>Date</label><input id="exDate" type="date" /></div>
-    <div class="fld"><label>Amount (₹)</label><input id="exAmt" type="number" min="1" inputmode="numeric" placeholder="e.g. 25000" /></div>
+    <div class="fld"><label>Amount (₹)</label><input id="exAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" placeholder="e.g. 25000" /></div>
     <div class="fld"><label>Category</label><div class="mode-pills expcats" id="exCat"></div></div>
     <div class="fld"><label>Paid by</label>
       <div class="mode-pills" id="exMode">
