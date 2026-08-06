@@ -2597,9 +2597,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                          status→acknowledged (enforced in Firestore rules).
      ============================================================ */
   /* the shooting crafts, then post, then support */
-  const TEAM_ROLES = ['photography','candid photography','cinematography','videography','iphone shoot','editor','assistant'];
+  const TEAM_ROLES = ['photography','candid photography','cinematography','videography','iphone shoot','drone','led','editor','assistant'];
   /* title-case, except the one word that is never spelled with a capital I */
-  const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase()).replace(/\bIphone\b/g, 'iPhone');
+  const roleLabel = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase())
+    .replace(/\bIphone\b/g, 'iPhone').replace(/\bLed\b/g, 'LED');
 
   /* ---------- crew pay: agreed fee, part-payments, what is still owed ----------
      A shoot can be settled in instalments, so pay.payments[] is the record and
@@ -2767,7 +2768,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const n = {};
     (ev.items||[]).forEach(it=>{
       const s = String(it.service||'').toLowerCase(), q = Number(it.qty)||1;
-      const r = /candid/.test(s) ? 'candid photography'
+      /* drone and LED are matched before the generic photo/video tests —
+         "drone video" is a drone job, not a videography one */
+      const r = /drone|aerial/.test(s) ? 'drone'
+              : /\bled\b|led wall|led screen/.test(s) ? 'led'
+              : /candid/.test(s) ? 'candid photography'
               : /cinema/.test(s) ? 'cinematography'
               : /iphone|mobile/.test(s) ? 'iphone shoot'
               : /photo/.test(s) ? 'photography'
