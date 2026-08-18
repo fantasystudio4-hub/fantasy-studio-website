@@ -374,48 +374,6 @@ button.chip-status:active{transform:scale(.97)}
 }
 .toast button:active{background:var(--gold);color:var(--ink)}
 
-/* ================================================================ DASHBOARD
-   Four counts at the top of Home. Two columns on a phone, four across on a
-   wide screen. Every tile is a button — the number always lands on the list
-   it counted, already filtered.
-
-   The left edge carries the state colour rather than the whole tile: four
-   saturated blocks side by side turn the top of the screen into a traffic
-   light and nothing reads as more urgent than anything else.
-   ========================================================================= */
-.dash{
-  display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-2);
-  margin:var(--sp-4) 0 var(--sp-3);
-}
-.dash-t{
-  display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;
-  min-height:76px;padding:.7rem .8rem;
-  background:var(--panel);border:1px solid var(--line);
-  border-left:3px solid var(--state-neutral-d);border-radius:var(--r-md);
-  color:var(--text);font-family:var(--sans);text-align:left;cursor:pointer;
-  -webkit-user-select:none;user-select:none;touch-action:manipulation;
-  transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast);
-}
-.dash-t:active{transform:scale(.98);background:var(--ink-2)}
-.dash-t:focus-visible{outline:2px solid var(--gold-b);outline-offset:2px}
-@media(hover:hover){ .dash-t:hover{border-color:var(--gold)} }
-
-.dash-n{font-family:var(--serif);font-size:1.45rem;font-weight:700;line-height:1.1;color:var(--gold-b)}
-.dash-l{font-size:var(--fs-md);color:var(--text);line-height:1.25}
-.dash-s{font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-top:.1rem}
-
-.dash-t[data-state="pending"]  {border-left-color:var(--state-pending)}
-.dash-t[data-state="pending"] .dash-n{color:var(--state-pending)}
-.dash-t[data-state="confirmed"]{border-left-color:var(--state-confirmed)}
-.dash-t[data-state="confirmed"] .dash-n{color:var(--state-confirmed)}
-.dash-t[data-state="info"]     {border-left-color:var(--state-info)}
-.dash-t[data-state="info"] .dash-n{color:var(--state-info)}
-.dash-t[data-state="new"]      {border-left-color:var(--state-new)}
-.dash-t[data-state="new"] .dash-n{color:var(--state-new)}
-.dash-t[data-state="neutral"]  {border-left-color:var(--state-neutral-d)}
-.dash-t[data-state="neutral"] .dash-n{color:var(--mut)}
-
-@media(min-width:700px){ .dash{grid-template-columns:repeat(4,1fr)} }
 
 /* ============================================================ SEARCH PALETTE
    The one search box. It is a .modal, so it is already a bottom sheet on a

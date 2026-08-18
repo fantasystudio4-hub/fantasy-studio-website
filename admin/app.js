@@ -1966,40 +1966,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   function renderHome(){
-    renderDashboard();
     renderPkgStats();
     renderUpcoming();
     renderFollowups();
     renderHomeBooked();
   }
 
-  /* ---------------------------------------------------------------- dashboard
-     Four counts, at the top of Home, each one a button that lands on the list
-     it counted with the filter already applied. A number you cannot act on is
-     just decoration — every tile here goes somewhere.
-
-     Colour is the state vocabulary from tokens.css, so the tiles read the same
-     way as every chip in the panel: amber means it is waiting on you, green
-     means it is clear, neutral means there is simply nothing there. */
-  function weekAheadISO(){
-    const d = new Date(); d.setDate(d.getDate() + 6);
-    return d.toLocaleDateString('en-CA');
-  }
-  /* upcoming booked events still short of a role — the same evCrew/neededRoles
-     arithmetic the Team tab uses, so the two screens can never disagree */
-  function eventsNeedingCrew(){
-    return teamUpcoming().filter(({pk, ev})=>{
-      const need = neededRoles(ev);
-      if(!Object.keys(need).length) return false;
-      const have = {};
-      evCrew(pk.id, ev.date, ev.title).forEach(a=>{
-        const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0) + 1;
-      });
-      return Object.entries(need).some(([r,q])=>q - (have[r]||0) > 0);
-    });
-  }
-  const duePkgs = () => livePkgs().filter(x=>(x.status||'draft') !== 'draft'
-    && Math.max(0, (x.totals||{}).balance||0) > 0);
   function leadsThisWeek(){
     const cut = Date.now() - 7*864e5;
     return liveLeads().filter(l=>{
@@ -2007,57 +1979,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return t >= cut;
     });
   }
-  function renderDashboard(){
-    const el = $('#dash'); if(!el) return;
-    const today = todayISO(), wk = weekAheadISO();
-    const evs = calEvents().filter(e=>e.status === 'booked' || e.status === 'lead');
-    const nToday = evs.filter(e=>e.date === today).length;
-    const nWeek  = evs.filter(e=>e.date >= today && e.date <= wk).length;
-    const gaps   = eventsNeedingCrew().length;
-    const due    = duePkgs();
-    const dueSum = due.reduce((n,x)=>n + Math.max(0,(x.totals||{}).balance||0), 0);
-    const fresh  = leadsThisWeek().length;
 
-    const tile = (o) => `
-      <button type="button" class="dash-t" data-dash="${o.go}" data-state="${o.state}"
-              aria-label="${esc(o.aria)}"${o.title ? ` title="${esc(o.title)}"` : ''}>
-        <span class="dash-n">${o.n}</span>
-        <span class="dash-l">${o.label}</span>
-        ${o.sub ? `<span class="dash-s">${o.sub}</span>` : ''}
-      </button>`;
-
-    el.innerHTML = [
-      tile({ go:'week', n: nToday || nWeek, state: nToday ? 'confirmed' : nWeek ? 'info' : 'neutral',
-             label: nToday ? (nToday===1?'shoot today':'shoots today') : 'this week',
-             sub: nToday ? `${nWeek} this week` : (nWeek ? 'next 7 days' : 'nothing booked'),
-             aria:`${nToday} today, ${nWeek} in the next 7 days — open the shoot list` }),
-      tile({ go:'crew', n: gaps, state: gaps ? 'pending' : 'confirmed',
-             label: gaps ? 'need crew' : 'all crewed',
-             sub: gaps ? 'upcoming shoots' : 'nothing short',
-             aria: gaps ? `${gaps} upcoming events still need crew — open the Team work list`
-                        : 'Every upcoming event is fully crewed' }),
-      tile({ go:'due', n: inrShort(dueSum), state: dueSum ? 'pending' : 'confirmed',
-             label: 'to collect', sub: due.length ? `${due.length} client${due.length===1?'':'s'}` : 'all clear',
-             title: inr(dueSum),
-             aria:`${inr(dueSum)} outstanding across ${due.length} clients — open the list` }),
-      tile({ go:'leads', n: fresh, state: fresh ? 'new' : 'neutral',
-             label: fresh===1 ? 'new lead' : 'new leads', sub: 'last 7 days',
-             aria:`${fresh} leads in the last 7 days — open the Leads list` }),
-    ].join('');
-  }
-  $('#dash').addEventListener('click', e=>{
-    const b = e.target.closest('[data-dash]'); if(!b) return;
-    buzz();
-    switch(b.dataset.dash){
-      case 'week':  openUpList(); break;
-      case 'crew':  $('#tabTeam').click(); setTeamSeg('work'); break;
-      /* 'due' and 'week' are filters in their own right, not statuses — see
-         the pseudo-filter note on the chip renderers */
-      case 'due':   if(!$('#pkgView').hidden && !$('#pkgEditView').hidden) return;
-                    pkgFilterVal = 'due'; viewSet('pkgF','due'); $('#tabPkgs').click(); renderPkgList(); break;
-      case 'leads': leadFilterVal = 'week'; viewSet('leadF','week'); $('#tabLeads').click(); renderStats(); renderLeads(); break;
-    }
-  });
   const HOME_BOOKED_N = 10;
   let _homeBookedAll = false, _homeTab = 'next';
   /* A booking has three lives: still to shoot, shot and being worked on, and
@@ -6565,6 +6487,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('[data-gs]'); if(!b) return;
     gsOpen(_gsRows[Number(b.dataset.gs)]);
   });
+  /* The 🔍 button is the ONLY way in on a phone — there is no Ctrl+K there.
+     It lost its listener when the Home-only search it used to open was
+     removed, which left the button on screen doing nothing. */
+  $('#homeSearchBtn').addEventListener('click', openGs);
   $('#gsClose').addEventListener('click', closeGs);
   $('#gsBackdrop').addEventListener('click', closeGs);
   /* ⌘K on a Mac, Ctrl+K everywhere else. Ignored while a text field already
