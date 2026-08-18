@@ -80,6 +80,11 @@
 /* the ✕ that removes a row — a banked date, a join request, an expense, a
    trashed record. Destructive, so it wears the overdue colour, and it keeps
    the full 44px box even though the glyph inside is 16px. */
+/* the outlined form — a standalone call/WhatsApp target that needs to advertise
+   itself as tappable rather than sitting inside a row that already does */
+.icon-btn--ring{border:1px solid var(--line);color:var(--gold-b)}
+.icon-btn--ring:active{background:var(--gold-t3)}
+@media(hover:hover){ .icon-btn--ring:hover{border-color:var(--gold);background:none} }
 .icon-btn--danger{color:var(--state-overdue)}
 .icon-btn--danger:active{background:var(--state-overdue);color:var(--white)}
 @media(hover:hover){
@@ -470,3 +475,32 @@ button.chip-status:active{transform:scale(.97)}
 .gs-hint b{color:var(--gold-b);font-weight:600}
 /* a phone has no arrow keys and no Esc — the hint is desktop-only advice */
 @media(max-width:699px){ .gs-hint{display:none} }
+
+/* =============================================================== QUICK ADD
+   The ⚡ sheet doubles as a form. .st-opts styles its children as a button
+   list, so the form variant has to win on specificity — hence .st-opts.qa-form
+   rather than a bare .qa-form.
+   ========================================================================= */
+.st-opts.qa-form{display:block}
+.st-opts.qa-form .field{margin-bottom:var(--sp-3)}
+.st-opts.qa-form .input{background:var(--field);border:1px solid var(--line)}
+.st-opts.qa-form .input[aria-invalid="true"]{border-color:var(--state-overdue);background:var(--state-overdue-bg)}
+.st-opts.qa-form .qa-acts{display:flex;gap:var(--sp-2);margin-top:var(--sp-4)}
+.st-opts.qa-form .qa-acts .btn{flex:1;min-height:var(--tap)}
+.field__opt{text-transform:none;letter-spacing:0;color:var(--mut);font-weight:400}
+/* the two quick-adds carry a second line saying how little they need — the
+   whole promise of the button is that it is not the full builder */
+.st-opts button em{
+  display:block;width:100%;font-style:normal;font-size:var(--fs-xs);
+  letter-spacing:.04em;color:var(--mut);margin-top:.15rem;text-transform:none;
+}
+
+/* a phone number in a detail row: the number itself dials, the icon beside it
+   opens WhatsApp. Reading a number off the screen and retyping it into the
+   dialler is the thing this panel exists to stop. */
+.telrow{display:inline-flex;align-items:center;gap:.4rem}
+.telrow a:first-child{
+  color:var(--gold-b);text-decoration:none;border-bottom:1px dotted var(--line-3);
+  padding:.35em 0;min-height:var(--tap);display:inline-flex;align-items:center;
+}
+.telrow .icon-btn{width:36px;height:36px;font-size:.95rem}

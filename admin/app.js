@@ -99,6 +99,23 @@ const stateOf = s => STATE_OF[s] || 'neutral';
    wait for the typing to settle. Short enough that it still reads as live. */
 const debounce = (fn, ms=140) => { let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this, a), ms); }; };
 
+/* ------------------------------------------------------------ sticky view
+   Filters and searches used to live only in module variables. That survived a
+   tab switch but not a reload — and this is an installed PWA on a phone, which
+   the OS kills whenever it wants memory. Coming back to a list you had
+   narrowed and finding it wide open again is the same lost place either way.
+
+   Deliberately NOT stored: which record is expanded, and any half-typed note.
+   Those belong to the moment, not to the view. */
+const VIEW_KEY = 'fs_view';
+let _view = {};
+try{ _view = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}') || {}; }catch(e){ _view = {}; }
+const viewGet = (k, dflt='') => (k in _view ? _view[k] : dflt);
+const viewSet = debounce((k, v) => {
+  _view[k] = v;
+  try{ localStorage.setItem(VIEW_KEY, JSON.stringify(_view)); }catch(e){}
+}, 250);
+
 const SERVICE_LABELS = {
   cinematography:'Cinematography', candidPhotography:'Candid Photography',
   traditionalVideo:'Traditional Video', traditionalPhoto:'Traditional Photo',
@@ -594,7 +611,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
   $('#refreshBtn').addEventListener('click', loadLeads);
-  let leadFilterVal = '';
+  let leadFilterVal = viewGet('leadF');
   function renderLeadChips(){
     const live = LEADS.filter(l=>!l.deleted);
     const counts = {}; STATUSES.forEach(s=>counts[s]=0);
@@ -607,11 +624,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#leadChips').addEventListener('click', e=>{
     const b = e.target.closest('button[data-f]'); if(!b) return;
-    leadFilterVal = b.dataset.f; renderStats(); renderLeads();
+    leadFilterVal = b.dataset.f; viewSet('leadF', leadFilterVal); renderStats(); renderLeads();
   });
   $('#stats').addEventListener('click', e=>{
     const t = e.target.closest('[data-fs]'); if(!t) return;
     leadFilterVal = (leadFilterVal === t.dataset.fs) ? '' : t.dataset.fs;
+    viewSet('leadF', leadFilterVal);
     renderStats(); renderLeads();
   });
 
@@ -781,7 +799,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         + `<p class="sub" style="margin:.2rem 0 .6rem">Quote the one they are actually waiting on — a second package splits the same client's events and payments across two records.</p>`;
     }
     if(l.eventType) h += `<div class="ln"><span>Events</span><span>${esc(l.eventType)}</span></div>`;
-    if(l.phone) h += `<div class="ln"><span>Phone</span><span>${esc(l.phone)}</span></div>`;
+    if(l.phone) h += `<div class="ln"><span>Phone</span><span class="telrow">
+      <a href="tel:+91${esc(l.phone)}" aria-label="Call ${esc(l.name||'this lead')}">${esc(l.phone)}</a>
+      <a class="icon-btn icon-btn--ring" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬</a>
+    </span></div>`;
     if(l.message) h += `<h4>Message</h4><div>${esc(l.message)}</div>`;
     if(l.quote && Array.isArray(l.quote.events)){
       h += '<h4>Quote breakdown</h4>';
@@ -827,6 +848,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-clear-filter]')){
       leadFilterVal = ''; $('#leadSearch').value = '';
+      viewSet('leadF',''); viewSet('leadQ','');
       renderStats(); renderLeads(); return;
     }
     if(e.target.closest('[data-refresh-leads]')){ loadLeads(); toast('Checking for new leads…'); return; }
@@ -1600,10 +1622,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ _pkgsErr = 'Could not load packages (' + (err.code||err.message) + ')'; renderPkgList(); }
   }
   $('#pkgRefresh').addEventListener('click', loadPkgs);
-  $('#pkgSearch').addEventListener('input', debounce(renderPkgListOnly));
-  $('#leadSearch').addEventListener('input', debounce(renderLeads));
+  $('#pkgSearch').addEventListener('input', debounce(()=>{ viewSet('pkgQ', $('#pkgSearch').value||''); renderPkgListOnly(); }));
+  /* The filter variables restore themselves where they are declared; the two
+     search boxes are DOM and have to be put back by hand. Done once, before
+     the first render, so the very first paint is already the narrowed list the
+     owner left behind rather than a wide one that jumps a frame later. */
+  (function restoreSearches(){
+    const lq = viewGet('leadQ',''), pq = viewGet('pkgQ','');
+    if(lq) $('#leadSearch').value = lq;
+    if(pq) $('#pkgSearch').value = pq;
+  })();
+  $('#leadSearch').addEventListener('input', debounce(()=>{ viewSet('leadQ', $('#leadSearch').value||''); renderLeads(); }));
 
-  let pkgFilterVal = '';
+  let pkgFilterVal = viewGet('pkgF');
   /* 'unconfirmed' = quote sent but the event is NOT confirmed / on hold — it
      leaves the follow-up nag list (which only chases 'sent' quotes) without
      pretending the enquiry is booked or dead */
@@ -1623,7 +1654,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#pkgChips').addEventListener('click', e=>{
     const b = e.target.closest('button[data-f]'); if(!b) return;
-    pkgFilterVal = b.dataset.f; renderPkgListOnly();
+    pkgFilterVal = b.dataset.f; viewSet('pkgF', pkgFilterVal); renderPkgListOnly();
   });
   /* The filter order is whatever renderPkgChips just drew — 🏢 Studio only
      appears when there are studio jobs — so it is read off the chips instead
@@ -1632,7 +1663,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   wireSwipe($('#pkgListView'), {
     keys: ()=>$$('#pkgChips button[data-f]').map(b=>b.dataset.f),
     cur:  ()=>pkgFilterVal,
-    go:   k=>{ pkgFilterVal = k; renderPkgListOnly(); },
+    go:   k=>{ pkgFilterVal = k; viewSet('pkgF', k); renderPkgListOnly(); },
     skip: t=>!!(t && t.closest && t.closest('#pkgChips')),
     box:  ()=>$('#pkgList'),
   });
@@ -1879,8 +1910,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* 'due' and 'week' are filters in their own right, not statuses — see
          the pseudo-filter note on the chip renderers */
       case 'due':   if(!$('#pkgView').hidden && !$('#pkgEditView').hidden) return;
-                    pkgFilterVal = 'due'; $('#tabPkgs').click(); renderPkgList(); break;
-      case 'leads': leadFilterVal = 'week'; $('#tabLeads').click(); renderStats(); renderLeads(); break;
+                    pkgFilterVal = 'due'; viewSet('pkgF','due'); $('#tabPkgs').click(); renderPkgList(); break;
+      case 'leads': leadFilterVal = 'week'; viewSet('leadF','week'); $('#tabLeads').click(); renderStats(); renderLeads(); break;
     }
   });
   const HOME_BOOKED_N = 10;
@@ -2086,7 +2117,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#pkgList').addEventListener('click', e=>{
     if(!e.target.closest('[data-pkg-clear]')) return;
-    pkgFilterVal = ''; $('#pkgSearch').value = ''; renderPkgListOnly();
+    pkgFilterVal = ''; $('#pkgSearch').value = '';
+    viewSet('pkgF',''); viewSet('pkgQ','');
+    renderPkgListOnly();
   });
   function renderPkgListOnly(){
     renderPkgChips();
@@ -3482,10 +3515,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = [['all','Everyone'], ['outdoor', CAT_LABEL.outdoor], ['office', CAT_LABEL.office]]
       .map(([k,label])=>`<button type="button" data-squadcat="${k}" class="${_squadCat===k?'on':''}">${label} <b>${counts[k]}</b></button>`).join('');
   }
-  let _squadCat = 'all';
+  let _squadCat = viewGet('squad','all');
   $('#squadCats').addEventListener('click', e=>{
     const b = e.target.closest('[data-squadcat]'); if(!b) return;
-    _squadCat = b.dataset.squadcat;
+    _squadCat = b.dataset.squadcat; viewSet('squad', _squadCat);
     renderSquadCats(); renderTeamMembers();
   });
 
@@ -3531,8 +3564,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <span>${esc(CAT_LABEL[catOf(m)])} · ${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone'}</span>
           </span>
           <span class="sq-acts">
-            ${m.phone ? `<a href="tel:${esc(m.phone)}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
-            ${wa ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp" aria-label="WhatsApp ${esc(m.name||'')}">💬</a>` : ''}
+            ${m.phone ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(m.phone)}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
+            ${wa ? `<a class="icon-btn icon-btn--ring" href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp" aria-label="WhatsApp ${esc(m.name||'')}">💬</a>` : ''}
           </span>
         </div>
         <div class="sq-m">
@@ -3561,7 +3594,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        section and reappear the next time Crew is opened */
     el.innerHTML = pending.map(r=>`
       <div class="up-ev" style="cursor:default">
-        <span class="what"><b>${esc(r.name||'—')}</b> <span>· ${esc(r.phoneFull||r.phone10||'')}${r.note ? ' · “' + esc(r.note) + '”' : ''}</span></span>
+        <span class="what"><b>${esc(r.name||'—')}</b> <span>${r.note ? '· “' + esc(r.note) + '”' : ''}</span></span>
+        ${(r.phoneFull||r.phone10) ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(String(r.phoneFull||r.phone10).replace(/[^\d+]/g,''))}" title="${esc(r.phoneFull||r.phone10)}" aria-label="Call ${esc(r.name||'this person')}">📞</a>` : ''}
         <button class="btn btn--sm btn--ghost" data-reqok="${esc(r.id)}">Approve</button>
         <button class="icon-btn icon-btn--danger" data-reqno="${esc(r.id)}" title="Dismiss">✕</button>
       </div>`).join('');
@@ -6113,12 +6147,99 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     backFrom('qa', closeQaUI);
   }
   function renderQaMain(){
+    $('#qaOpts').classList.remove('qa-form');
     $('#qaWho').textContent = 'The things you do most — one tap away';
     $('#qaOpts').innerHTML = `
+      <button type="button" data-qa-lead>👤 New lead <em>name + number, that is all</em></button>
+      <button type="button" data-qa-book>📅 New booking <em>a date on the calendar</em></button>
       <button type="button" data-qa-new>📦 New package / quotation</button>
       <button type="button" data-qa-pay>💰 Record a payment</button>
       <button type="button" data-qa-today>📅 Today's calendar</button>
       <button type="button" data-qa-member>🎬 Add a team member</button>`;
+  }
+
+  /* ---------------------------------------------------------- quick add lead
+     Someone rings while the owner is standing at a venue. The full package
+     builder is the wrong tool for that: this takes a name and a number and
+     gets out of the way — everything else can be filled in later from the
+     Leads tab.
+
+     The shape below is not free. leads/{id} has no isAdmin() create branch —
+     the rule was written for the public website form and constrains the doc
+     itself: only those twelve keys, status 'new', notes '', a non-empty name,
+     and a source of 'package_builder' or 'contact_form'. So the write matches
+     the website's own shape exactly. It is filed as 'contact_form' because
+     that is what the two permitted values mean here — an enquiry that came to
+     us, as opposed to one built in the quote builder. */
+  function renderQaLead(){
+    $('#qaWho').textContent = 'Name and number is enough — the rest can wait';
+    $('#qaOpts').classList.add('qa-form');
+    $('#qaOpts').innerHTML = `
+      <div class="field">
+        <label class="field__label" for="qlName">Name <span class="req">*</span></label>
+        <input class="input" id="qlName" autocomplete="off" placeholder="e.g. Priya &amp; Arjun" />
+        <p class="field__error" id="qlNameErr" hidden></p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="qlPhone">Mobile <span class="req">*</span></label>
+        <input class="input" id="qlPhone" inputmode="tel" autocomplete="off" placeholder="98765 43210" />
+        <p class="field__error" id="qlPhoneErr" hidden></p>
+        <span class="field__hint">10 digits — this is how the client signs in to their own page later.</span>
+      </div>
+      <div class="field">
+        <label class="field__label" for="qlType">Event <span class="field__opt">(optional)</span></label>
+        <input class="input" id="qlType" autocomplete="off" placeholder="e.g. Wedding, Reception" />
+      </div>
+      <div class="qa-acts">
+        <button type="button" class="btn btn--ghost" data-qa-back>← Back</button>
+        <button type="button" class="btn btn--primary" id="qlSave">Save lead</button>
+      </div>`;
+    setTimeout(()=>{ const n = $('#qlName'); if(n) n.focus({ preventScroll:true }); }, 40);
+  }
+  /* inline, under the field, never an alert(): an alert covers the very box it
+     is complaining about and loses the owner's place */
+  function qlErr(id, msg){
+    const f = $('#' + id), e = $('#' + id + 'Err');
+    if(!f || !e) return;
+    e.textContent = msg || ''; e.hidden = !msg;
+    f.setAttribute('aria-invalid', msg ? 'true' : 'false');
+    if(msg) f.focus({ preventScroll:true });
+  }
+  async function saveQaLead(){
+    const name  = ($('#qlName').value||'').trim();
+    const raw   = ($('#qlPhone').value||'').trim();
+    const type  = ($('#qlType').value||'').trim();
+    qlErr('qlName',''); qlErr('qlPhone','');
+    if(!name){ qlErr('qlName','Who is it? A name is the one thing this needs.'); return; }
+    if(name.length > 120){ qlErr('qlName','That is longer than 120 characters — shorten it.'); return; }
+    const ten = normPhone(raw);
+    if(!raw){ qlErr('qlPhone','A number, so you can call them back.'); return; }
+    if(ten.length !== 10){
+      qlErr('qlPhone', `That is ${ten.length} digit${ten.length===1?'':'s'} — an Indian mobile is 10. The client portal finds bookings by the last 10.`);
+      return;
+    }
+    const btn = $('#qlSave'); btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      const ref = doc(collection(db,'leads'));
+      const res = await settle(setDoc(ref, {
+        name, phone: ten, phoneFull: normPhoneFull(raw),
+        eventType: type, message: '', notes: '',
+        status: 'new', source: 'contact_form', createdAt: serverTimestamp()
+      }));
+      if(res === 'denied'){
+        btn.disabled = false; btn.textContent = 'Save lead';
+        toast('NOT saved — the server refused this write. Check your sign-in and try again.');
+        return;
+      }
+      closeQaUI();
+      toast(`Lead saved — ${name}`);
+      buzz();
+      leadFilterVal = ''; $('#leadSearch').value = '';
+      $('#tabLeads').click(); renderStats(); renderLeads();
+    }catch(err){
+      btn.disabled = false; btn.textContent = 'Save lead';
+      toast('Save failed');
+    }
   }
   function renderQaPay(){
     const list = livePkgs()
@@ -6132,6 +6253,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + '<button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>';
   }
   $('#qaOpts').addEventListener('click', e=>{
+    if(e.target.closest('[data-qa-lead]')){ renderQaLead(); return; }
+    if(e.target.closest('#qlSave')){ saveQaLead(); return; }
+    if(e.target.closest('[data-qa-book]')){
+      /* the add-event form is the minimal booking path and already exists —
+         it just needs a date chosen, so quick-add starts it on today */
+      closeQaUI(); gotoCalendar(todayISO()); setTimeout(()=>openCalAdd(), 180); return;
+    }
     if(e.target.closest('[data-qa-new]')){ closeQaUI(); openJobType(); return; }
     if(e.target.closest('[data-qa-pay]')){ renderQaPay(); return; }
     if(e.target.closest('[data-qa-back]')){ renderQaMain(); return; }
@@ -6143,6 +6271,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     if(e.target.closest('[data-qa-member]')){ closeQaUI(); $('#tabTeam').click(); openTm(null); return; }
+  });
+  $('#qaOpts').addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && e.target.matches('#qlName,#qlPhone,#qlType')){ e.preventDefault(); saveQaLead(); }
   });
   $('#fabBtn').addEventListener('click', openQa);
   $('#qaClose').addEventListener('click', closeQa);

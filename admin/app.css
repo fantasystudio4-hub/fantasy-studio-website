@@ -283,7 +283,9 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 
 /* status picker sheet */
 .st-opts{display:grid;gap:.5rem}
-.st-opts button{display:flex;align-items:center;gap:.65rem;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:.85em 1em;color:var(--text);cursor:pointer;font-size:.92rem;text-transform:capitalize;text-align:left}
+/* flex-wrap so a quick-add's second line ("name + number, that is all") drops
+   below the label instead of squeezing it */
+.st-opts button{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:.85em 1em;color:var(--text);cursor:pointer;font-size:.92rem;text-transform:capitalize;text-align:left;min-height:var(--tap)}
 .st-opts button em{margin-left:auto;font-style:normal;font-size:.66rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
 .st-opts button.on{border-color:var(--gold)}
 .st-opts .dot{width:9px;height:9px;flex:0 0 auto}
@@ -688,10 +690,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 /* the whole card opens the editor, so the actions here are just the two ways
    to reach the person — kept as thumb-sized icons instead of a second row */
 .sq-acts{display:flex;gap:.35rem;flex:0 0 auto}
-.sq-acts a{text-decoration:none;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:50%;font-size:.9rem;cursor:pointer;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center}
-.sq-acts a:active{background:var(--gold-t3)}
 .sq-acts .warn{border-color:var(--state-overdue-ln);color:var(--err)}
-@media(hover:hover){ .sq-acts button:hover,.sq-acts a:hover{border-color:var(--gold)} }
 
 /* ==== polish pass: one visual system across admin / crew / client ====
    Depth on surfaces, a signature gold hairline under the header, unified
