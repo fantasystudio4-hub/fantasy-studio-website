@@ -101,11 +101,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   </div>
 
   <div id="homeView">
-    <div class="bar" id="homeSearchBar" hidden style="margin:1rem 0 .8rem">
-      <input id="homeSearch" type="search" placeholder="Name, phone or quote #…" />
-      <button id="homeSearchX" type="button" aria-label="Close search">✕</button>
-    </div>
-    <div class="sec upco" id="homeResults" hidden></div>
+    <!-- Dashboard: the four things that decide what the day looks like. Each
+         tile is a button that lands on the list it is counting, already
+         filtered — the number is never a dead end. -->
+    <div class="dash" id="dash" role="group" aria-label="Today at a glance"></div>
     <div class="sec">
       <div class="cal-nav">
         <button id="calPrev" aria-label="Previous month">‹</button>
@@ -618,6 +617,22 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      on Android it is dismissed by the same back-swipe used to go back a
      screen. role=alertdialog so a screen reader announces it, not just the
      button that opened it. -->
+<!-- Global search — Ctrl/⌘+K anywhere, or the 🔍 button on any tab. One box
+     over clients, leads, crew, partner studios and events. Arrow keys move,
+     Enter opens the record, Esc closes. -->
+<div class="modal-backdrop" id="gsBackdrop"></div>
+<div class="modal modal--palette" id="gsModal" role="dialog" aria-modal="true" aria-label="Search everything">
+  <div class="gs-bar">
+    <span class="gs-ic" aria-hidden="true">🔍</span>
+    <input id="gsInput" type="search" autocomplete="off" autocapitalize="off" spellcheck="false"
+           placeholder="Name, phone, quote # or venue…" aria-controls="gsResults" aria-expanded="true"
+           role="combobox" aria-autocomplete="list" />
+    <button type="button" class="icon-btn" id="gsClose" aria-label="Close search">&times;</button>
+  </div>
+  <div class="gs-results" id="gsResults" role="listbox" aria-label="Search results"></div>
+  <p class="gs-hint"><b>↑↓</b> move · <b>Enter</b> open · <b>Esc</b> close</p>
+</div>
+
 <div class="modal-backdrop is-confirm" id="confirmBackdrop"></div>
 <div class="modal is-confirm" id="confirmModal" role="alertdialog" aria-modal="true"
      aria-labelledby="confirmTitle" aria-describedby="confirmText">

@@ -447,7 +447,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function showTab(id){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
     Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
-    if(id !== 'tabHome' && typeof closeHomeSearch === 'function') closeHomeSearch();
     /* the quick add-event form is MOVED between Home and the B2B page —
        leaving the page it is sitting on closes it rather than stranding it */
     if(typeof closeCalAdd === 'function' && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')) closeCalAdd();
@@ -600,7 +599,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const live = LEADS.filter(l=>!l.deleted);
     const counts = {}; STATUSES.forEach(s=>counts[s]=0);
     live.forEach(l=>{ const s=l.status||'new'; counts[s]=(counts[s]||0)+1; });
-    $('#leadChips').innerHTML = [['','All',live.length], ...STATUSES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
+    const wkN = leadsThisWeek().length;
+    $('#leadChips').innerHTML = [['','All',live.length],
+        ...(wkN ? [['week','🆕 This week',wkN]] : []),
+        ...STATUSES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${leadFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
   }
   $('#leadChips').addEventListener('click', e=>{
@@ -659,7 +661,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
     const f = leadFilterVal;
     const q = ($('#leadSearch').value||'').trim().toLowerCase();
-    const list = LEADS.filter(l=>!l.deleted && (!f || (l.status||'new')===f)
+    /* 'week' is a pseudo-filter — when the enquiry landed, not what state it
+       is in. The Dashboard's "new leads" tile lands here. */
+    const _wkCut = Date.now() - 7*864e5;
+    const list = LEADS.filter(l=>!l.deleted
+      && (!f || (f === 'week'
+            ? (l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() >= _wkCut)
+            : (l.status||'new')===f))
       && (!q || String(l.name||'').toLowerCase().includes(q) || String(l.phone||'').includes(q)
           || String(l.eventType||'').toLowerCase().includes(q)));
     /* The same person enquiring twice arrived as two unrelated cards — the
@@ -685,7 +693,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? `<div class="empty-state">
              <span class="empty-state__icon">🔍</span>
              <p class="empty-state__title">No leads match</p>
-             <p class="empty-state__text">${q ? `Nothing for “${esc(q)}”` : 'Nothing'}${f ? ` under <b>${esc(f)}</b>` : ''}. There ${liveLeads().length===1?'is':'are'} ${liveLeads().length} lead${liveLeads().length===1?'':'s'} in total.</p>
+             <p class="empty-state__text">${q ? `Nothing for “${esc(q)}”` : 'Nothing'}${f ? ` under <b>${esc(f === 'week' ? 'this week' : f)}</b>` : ''}. There ${liveLeads().length===1?'is':'are'} ${liveLeads().length} lead${liveLeads().length===1?'':'s'} in total.</p>
              <button type="button" class="btn btn--ghost" data-clear-filter>Clear filter &amp; search</button>
            </div>`
         : `<div class="empty-state">
@@ -1606,7 +1614,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const counts = {draft:0,sent:0,unconfirmed:0,booked:0,delivered:0};
     live.forEach(x=>{ const s=x.status||'draft'; counts[s]=(counts[s]||0)+1; });
     const b2bN = live.filter(isStudioJob).length;
+    const dueN = live.filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0).length;
     $('#pkgChips').innerHTML = [['','All',live.length],
+        ...(dueN ? [['due','₹ Due',dueN]] : []),
         ...(b2bN ? [['b2b','🏢 Studio',b2bN]] : []),
         ...PKG_STATES.map(s=>{ const l=STATUS_LABEL(s); return [s, l[0].toUpperCase()+l.slice(1), counts[s]||0]; })]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${pkgFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
@@ -1781,11 +1791,98 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   function renderHome(){
+    renderDashboard();
     renderPkgStats();
     renderUpcoming();
     renderFollowups();
     renderHomeBooked();
   }
+
+  /* ---------------------------------------------------------------- dashboard
+     Four counts, at the top of Home, each one a button that lands on the list
+     it counted with the filter already applied. A number you cannot act on is
+     just decoration — every tile here goes somewhere.
+
+     Colour is the state vocabulary from tokens.css, so the tiles read the same
+     way as every chip in the panel: amber means it is waiting on you, green
+     means it is clear, neutral means there is simply nothing there. */
+  function weekAheadISO(){
+    const d = new Date(); d.setDate(d.getDate() + 6);
+    return d.toLocaleDateString('en-CA');
+  }
+  /* upcoming booked events still short of a role — the same evCrew/neededRoles
+     arithmetic the Team tab uses, so the two screens can never disagree */
+  function eventsNeedingCrew(){
+    return teamUpcoming().filter(({pk, ev})=>{
+      const need = neededRoles(ev);
+      if(!Object.keys(need).length) return false;
+      const have = {};
+      evCrew(pk.id, ev.date, ev.title).forEach(a=>{
+        const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0) + 1;
+      });
+      return Object.entries(need).some(([r,q])=>q - (have[r]||0) > 0);
+    });
+  }
+  const duePkgs = () => livePkgs().filter(x=>(x.status||'draft') !== 'draft'
+    && Math.max(0, (x.totals||{}).balance||0) > 0);
+  function leadsThisWeek(){
+    const cut = Date.now() - 7*864e5;
+    return liveLeads().filter(l=>{
+      const t = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate().getTime() : 0;
+      return t >= cut;
+    });
+  }
+  function renderDashboard(){
+    const el = $('#dash'); if(!el) return;
+    const today = todayISO(), wk = weekAheadISO();
+    const evs = calEvents().filter(e=>e.status === 'booked' || e.status === 'lead');
+    const nToday = evs.filter(e=>e.date === today).length;
+    const nWeek  = evs.filter(e=>e.date >= today && e.date <= wk).length;
+    const gaps   = eventsNeedingCrew().length;
+    const due    = duePkgs();
+    const dueSum = due.reduce((n,x)=>n + Math.max(0,(x.totals||{}).balance||0), 0);
+    const fresh  = leadsThisWeek().length;
+
+    const tile = (o) => `
+      <button type="button" class="dash-t" data-dash="${o.go}" data-state="${o.state}"
+              aria-label="${esc(o.aria)}"${o.title ? ` title="${esc(o.title)}"` : ''}>
+        <span class="dash-n">${o.n}</span>
+        <span class="dash-l">${o.label}</span>
+        ${o.sub ? `<span class="dash-s">${o.sub}</span>` : ''}
+      </button>`;
+
+    el.innerHTML = [
+      tile({ go:'week', n: nToday || nWeek, state: nToday ? 'confirmed' : nWeek ? 'info' : 'neutral',
+             label: nToday ? (nToday===1?'shoot today':'shoots today') : 'this week',
+             sub: nToday ? `${nWeek} this week` : (nWeek ? 'next 7 days' : 'nothing booked'),
+             aria:`${nToday} today, ${nWeek} in the next 7 days — open the shoot list` }),
+      tile({ go:'crew', n: gaps, state: gaps ? 'pending' : 'confirmed',
+             label: gaps ? 'need crew' : 'all crewed',
+             sub: gaps ? 'upcoming shoots' : 'nothing short',
+             aria: gaps ? `${gaps} upcoming events still need crew — open the Team work list`
+                        : 'Every upcoming event is fully crewed' }),
+      tile({ go:'due', n: inrShort(dueSum), state: dueSum ? 'pending' : 'confirmed',
+             label: 'to collect', sub: due.length ? `${due.length} client${due.length===1?'':'s'}` : 'all clear',
+             title: inr(dueSum),
+             aria:`${inr(dueSum)} outstanding across ${due.length} clients — open the list` }),
+      tile({ go:'leads', n: fresh, state: fresh ? 'new' : 'neutral',
+             label: fresh===1 ? 'new lead' : 'new leads', sub: 'last 7 days',
+             aria:`${fresh} leads in the last 7 days — open the Leads list` }),
+    ].join('');
+  }
+  $('#dash').addEventListener('click', e=>{
+    const b = e.target.closest('[data-dash]'); if(!b) return;
+    buzz();
+    switch(b.dataset.dash){
+      case 'week':  openUpList(); break;
+      case 'crew':  $('#tabTeam').click(); setTeamSeg('work'); break;
+      /* 'due' and 'week' are filters in their own right, not statuses — see
+         the pseudo-filter note on the chip renderers */
+      case 'due':   if(!$('#pkgView').hidden && !$('#pkgEditView').hidden) return;
+                    pkgFilterVal = 'due'; $('#tabPkgs').click(); renderPkgList(); break;
+      case 'leads': leadFilterVal = 'week'; $('#tabLeads').click(); renderStats(); renderLeads(); break;
+    }
+  });
   const HOME_BOOKED_N = 10;
   let _homeBookedAll = false, _homeTab = 'next';
   /* A booking has three lives: still to shoot, shot and being worked on, and
@@ -1985,7 +2082,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(typeof renderTeam === 'function' && !$('#teamView').hidden) renderTeam();
     if(typeof renderB2B === 'function') renderB2B();   /* self-skips when the B2B tab is hidden */
     if($('#finModal').classList.contains('open')) renderFin();
-    if(!$('#homeResults').hidden) renderHomeSearch();
     renderPkgListOnly();
   }
   $('#pkgList').addEventListener('click', e=>{
@@ -1996,10 +2092,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderPkgChips();
     const f = pkgFilterVal;
     const q = ($('#pkgSearch').value||'').trim().toLowerCase();
-    let list = livePkgs().filter(x=>(!f || (f === 'b2b' ? isStudioJob(x) : (x.status||'draft')===f))
+    /* 'b2b' and 'due' are pseudo-filters: they cut across the statuses rather
+       than being one of them. They live in the same chip strip because that is
+       where the owner looks to narrow a list, and the Dashboard lands here. */
+    let list = livePkgs().filter(x=>(!f || (f === 'b2b' ? isStudioJob(x)
+        : f === 'due' ? ((x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0)
+        : (x.status||'draft')===f))
       && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)
           || String(x.quoteNo||'').toLowerCase().includes(q) || String(x.endClientName||'').toLowerCase().includes(q)));
-    if(f === 'booked') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+    if(f === 'booked' || f === 'due') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
     if(!list.length){
       /* never say "no packages yet" for data that simply has not arrived (or
          failed to) — that reads as "everything is gone" */
@@ -2009,7 +2110,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? `<div class="empty-state">
              <span class="empty-state__icon">🔍</span>
              <p class="empty-state__title">Nothing matches</p>
-             <p class="empty-state__text">${q ? `No package for “${esc(q)}”` : 'No package'}${f ? ` under <b>${esc(STATUS_LABEL(f))}</b>` : ''}. There ${livePkgs().length===1?'is':'are'} ${livePkgs().length} in total.</p>
+             <p class="empty-state__text">${q ? `No package for “${esc(q)}”` : 'No package'}${f ? ` under <b>${esc(f === 'due' ? 'due' : f === 'b2b' ? 'studio jobs' : STATUS_LABEL(f))}</b>` : ''}. There ${livePkgs().length===1?'is':'are'} ${livePkgs().length} in total.</p>
              <button type="button" class="btn btn--ghost" data-pkg-clear>Clear filter &amp; search</button>
            </div>`
         : `<div class="empty-state">
@@ -4840,7 +4941,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const onHome = !$('#homeView').hidden;
     const onStudioList = !$('#calView').hidden && $('#studioDetailView').hidden;
     $('#fabBtn').hidden = !onHome || formOpen;
-    $('#homeSearchBtn').hidden = !onHome || formOpen;
+    /* search is global now — the button follows you to every tab. It hides
+       only while the add-event form owns the bottom of the screen. */
+    $('#homeSearchBtn').hidden = formOpen || $('#appView').hidden;
     $('#stuSearchBtn').hidden = !onStudioList || formOpen;
     $('#stuAddFab').hidden = !onStudioList || formOpen;
     if(!onStudioList) closeStuSearch();
@@ -6045,79 +6148,157 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#qaClose').addEventListener('click', closeQa);
   $('#qaBackdrop').addEventListener('click', closeQa);
 
-  /* ---------- Home global search: packages + leads in one box ---------- */
-  function renderHomeSearch(){
-    const box = $('#homeResults'); if(!box) return;
-    const q = ($('#homeSearch').value||'').trim().toLowerCase();
-    if(!q){ box.hidden = true; box.innerHTML = ''; return; }
-    /* the caps below hide matches — count them first, so a client past the cut
-       is reported instead of looking like they don't exist */
-    const pkAll = livePkgs().filter(x=>String(x.clientName||'').toLowerCase().includes(q)
-      || String(x.clientPhone||'').includes(q) || String(x.quoteNo||'').toLowerCase().includes(q));
-    const ldAll = liveLeads().filter(l=>String(l.name||'').toLowerCase().includes(q)
-      || String(l.phone||'').includes(q));
-    const suAll = STUDIOS.filter(s=>String(s.name||'').toLowerCase().includes(q)
-      || String(s.ownerName||'').toLowerCase().includes(q) || String(s.phone||'').includes(q));
-    const pk = pkAll.slice(0,6), ld = ldAll.slice(0,4), su = suAll.slice(0,3);
-    const hidden = (pkAll.length - pk.length) + (ldAll.length - ld.length) + (suAll.length - su.length);
-    box.hidden = false;
-    box.innerHTML = '<h3>🔍 Results</h3>' + ((pk.length || ld.length || su.length)
-      ? pk.map(x=>`
-          <div class="up-ev" data-hspkg="${x.id}" role="button" tabindex="0">
-            <span class="when">📦</span>
-            <span class="what">${esc(x.clientName||'—')} <span>· ${esc(x.quoteNo||'')} · ${inr((x.totals||{}).finalPrice||0)}</span></span>
-            <span class="chip-status no-dot" data-state="${stateOf(x.status||'draft')}">${STATUS_LABEL(x.status||'draft')}</span>
-          </div>`).join('')
-        + ld.map(l=>`
-          <div class="up-ev" data-hslead="${l.id}" role="button" tabindex="0">
-            <span class="when">👤</span>
-            <span class="what">${esc(l.name||'—')} <span>· lead${l.eventType ? ' · ' + esc(l.eventType) : ''}</span></span>
-            <i class="dot lead"></i>
-          </div>`).join('')
-        + su.map(s=>`
-          <div class="up-ev" data-hsstu="${s.id}" role="button" tabindex="0">
-            <span class="when">🏢</span>
-            <span class="what">${esc(s.name||'—')} <span>· studio${s.city ? ' · ' + esc(s.city) : ''}</span></span>
-            <span class="b2bpill">B2B</span>
-          </div>`).join('')
-      : '<div class="empty" style="padding:.6rem 0">No match. New enquiries land in the Leads tab.</div>')
-      + (hidden > 0 ? `<div class="qe-note" style="margin:.6rem 0 0">＋ ${hidden} more match${hidden===1?'':'es'} not shown — type a bit more to narrow it down.</div>` : '');
+  /* ---------- Global search — one box over every record type ----------
+     Was a box that only existed on Home and only knew about packages, leads
+     and studios. Crew and events were unreachable by name, and standing at a
+     venue the owner is rarely on the Home tab. Now: ⌘/Ctrl+K from anywhere,
+     the 🔍 button on any tab, arrow keys to move, Enter to open the record.
+
+     Phone numbers are matched on digits alone, so "9876" finds a number the
+     panel stores as "+91 98765 43210" and one stored as "98765 43210". */
+  let _gsRows = [], _gsSel = 0;
+  const gsDigits = v => String(v||'').replace(/\D/g,'');
+
+  function gsSearch(q){
+    const t = q.toLowerCase(), d = gsDigits(q);
+    const hitTxt = (...vals) => vals.some(v=>String(v||'').toLowerCase().includes(t));
+    const hitTel = v => d.length >= 3 && gsDigits(v).includes(d);
+    const rows = [];
+
+    livePkgs().forEach(x=>{
+      if(hitTxt(x.clientName, x.quoteNo, x.endClientName) || hitTel(x.clientPhone))
+        rows.push({ kind:'pkg', id:x.id, icon:'📦', title:x.clientName||'—',
+          meta:[x.quoteNo, isStudioJob(x)?'B2B':'', inr((x.totals||{}).finalPrice||0)].filter(Boolean).join(' · '),
+          state:stateOf(x.status||'draft'), badge:STATUS_LABEL(x.status||'draft') });
+    });
+    liveLeads().forEach(l=>{
+      if(hitTxt(l.name, l.eventType) || hitTel(l.phone))
+        rows.push({ kind:'lead', id:l.id, icon:'👤', title:l.name||'—',
+          meta:['lead', l.eventType, l.grandTotal?inrShort(l.grandTotal):''].filter(Boolean).join(' · '),
+          state:stateOf(l.status||'new'), badge:l.status||'new' });
+    });
+    TEAM.forEach(m=>{
+      if(hitTxt(m.name, m.role) || hitTel(m.phone))
+        rows.push({ kind:'crew', id:m.id, icon:'🎬', title:m.name||'—',
+          meta:['crew', roleLabel(m.role), m.active===false?'inactive':''].filter(Boolean).join(' · '),
+          state:m.active===false?'neutral':'confirmed', badge:m.active===false?'inactive':'crew' });
+    });
+    STUDIOS.forEach(st=>{
+      if(hitTxt(st.name, st.ownerName, st.city) || hitTel(st.phone))
+        rows.push({ kind:'studio', id:st.id, icon:'🏢', title:st.name||'—',
+          meta:['studio', st.city, st.ownerName].filter(Boolean).join(' · '),
+          state:st.active===false?'neutral':'info', badge:st.active===false?'inactive':'B2B' });
+    });
+    calEvents().forEach(e=>{
+      if(hitTxt(e.title, e.client, e.venue))
+        rows.push({ kind:'event', id:e.date, icon:'📅', title:e.title||'Event',
+          meta:[dmy(e.date), e.client, e.venue].filter(Boolean).join(' · '),
+          state:stateOf(e.status), badge:dmy(e.date) });
+    });
+    /* Soonest shoot first inside events, then the rest by how well the name
+       matches — a prefix hit is almost always the one being looked for. */
+    const rank = r => (String(r.title||'').toLowerCase().startsWith(t) ? 0 : 1);
+    return rows.sort((a,b)=>rank(a)-rank(b)).slice(0, 30);
   }
-  $('#homeSearch').addEventListener('input', debounce(renderHomeSearch));
-  /* the box only appears when it's wanted — the calendar owns the top of Home.
-     The trigger is the 🔍 button above ⚡, so the page comes back to the top
-     with it: the box and its results both live above the calendar. */
-  function openHomeSearch(){
-    $('#homeSearchBar').hidden = false;
-    $('#homeSearch').focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  function closeHomeSearch(){
-    $('#homeSearch').value = '';
-    renderHomeSearch();                    /* clears and hides the results box */
-    $('#homeSearchBar').hidden = true;
-  }
-  $('#homeSearchBtn').addEventListener('click', openHomeSearch);
-  $('#homeSearchX').addEventListener('click', closeHomeSearch);
-  $('#homeSearch').addEventListener('keydown', e=>{ if(e.key === 'Escape') closeHomeSearch(); });
-  $('#homeResults').addEventListener('click', e=>{
-    const p = e.target.closest('[data-hspkg]');
-    if(p){
-      const x = PKGS.find(v=>v.id===p.dataset.hspkg); if(!x) return;
-      expandedPkg = x.id; pkgFilterVal = '';
-      $('#pkgSearch').value = x.quoteNo || x.clientName || '';
-      $('#tabPkgs').click(); renderPkgList();
+
+  function renderGs(){
+    const box = $('#gsResults'), q = ($('#gsInput').value||'').trim();
+    if(!q){
+      _gsRows = [];
+      box.innerHTML = `<p class="gs-empty">Search clients, leads, crew, partner studios and events — by name, phone, quote number or venue.</p>`;
       return;
     }
-    const l = e.target.closest('[data-hslead]');
-    if(l){
-      const ld = LEADS.find(v=>v.id===l.dataset.hslead);
-      if(ld){ $('#leadSearch').value = ld.name || ld.phone || ''; leadFilterVal = ''; }
-      $('#tabLeads').click(); renderLeads();
+    _gsRows = gsSearch(q);
+    if(_gsSel >= _gsRows.length) _gsSel = 0;
+    if(!_gsRows.length){
+      box.innerHTML = `<div class="empty-state">
+          <span class="empty-state__icon">🔍</span>
+          <p class="empty-state__title">Nothing found</p>
+          <p class="empty-state__text">No client, lead, crew member, studio or event matches “${esc(q)}”.</p>
+        </div>`;
       return;
     }
-    const st2 = e.target.closest('[data-hsstu]');
-    if(st2){ $('#tabCal').click(); openStudioDetail(st2.dataset.hsstu); }
+    box.innerHTML = _gsRows.map((r,i)=>`
+      <button type="button" class="gs-row${i===_gsSel?' sel':''}" data-gs="${i}"
+              role="option" aria-selected="${i===_gsSel}" id="gs-${i}">
+        <span class="gs-k" aria-hidden="true">${r.icon}</span>
+        <span class="gs-t">
+          <b>${esc(r.title)}</b>
+          <span>${esc(r.meta)}</span>
+        </span>
+        <span class="chip-status no-dot" data-state="${r.state}">${esc(r.badge)}</span>
+      </button>`).join('');
+    const sel = box.querySelector('.gs-row.sel');
+    if(sel) sel.scrollIntoView({ block:'nearest' });
+    $('#gsInput').setAttribute('aria-activedescendant', 'gs-' + _gsSel);
+  }
+
+  function gsOpen(r){
+    if(!r) return;
+    closeGsUI();
+    switch(r.kind){
+      case 'pkg': {
+        const x = PKGS.find(v=>v.id===r.id); if(!x) return;
+        if(!canLeaveEditor()) return;
+        expandedPkg = x.id; pkgFilterVal = '';
+        $('#pkgSearch').value = x.quoteNo || x.clientName || '';
+        $('#tabPkgs').click(); renderPkgList();
+        break;
+      }
+      case 'lead': {
+        const l = LEADS.find(v=>v.id===r.id);
+        if(l){ $('#leadSearch').value = l.name || l.phone || ''; leadFilterVal = ''; }
+        $('#tabLeads').click(); renderStats(); renderLeads();
+        break;
+      }
+      case 'crew': {
+        const m = TEAM.find(v=>v.id===r.id); if(!m) return;
+        $('#tabTeam').click(); setTeamSeg('crew'); openTm(m);
+        break;
+      }
+      case 'studio': $('#tabCal').click(); openStudioDetail(r.id); break;
+      case 'event':  $('#tabHome').click(); gotoCalendar(r.id); break;
+    }
+  }
+
+  function openGs(){
+    const wasOpen = $('#gsModal').classList.contains('open');
+    $('#gsBackdrop').classList.add('open'); $('#gsModal').classList.add('open');
+    _gsSel = 0; renderGs();
+    if(!wasOpen) pushView('gs', '#search');
+    /* the sheet animates in; focusing mid-flight scrolls the page under it */
+    setTimeout(()=>$('#gsInput').focus({ preventScroll:true }), 60);
+  }
+  function closeGsUI(){
+    $('#gsBackdrop').classList.remove('open'); $('#gsModal').classList.remove('open');
+    $('#gsInput').value = ''; _gsRows = []; _gsSel = 0;
+  }
+  function closeGs(){ backFrom('gs', closeGsUI); }
+
+  $('#gsInput').addEventListener('input', debounce(()=>{ _gsSel = 0; renderGs(); }, 120));
+  $('#gsInput').addEventListener('keydown', e=>{
+    if(e.key === 'Escape'){ e.preventDefault(); closeGs(); return; }
+    if(e.key === 'Enter'){ e.preventDefault(); gsOpen(_gsRows[_gsSel]); return; }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      if(!_gsRows.length) return;
+      e.preventDefault();
+      _gsSel = (_gsSel + (e.key === 'ArrowDown' ? 1 : _gsRows.length - 1)) % _gsRows.length;
+      renderGs();
+    }
+  });
+  $('#gsResults').addEventListener('click', e=>{
+    const b = e.target.closest('[data-gs]'); if(!b) return;
+    gsOpen(_gsRows[Number(b.dataset.gs)]);
+  });
+  $('#gsClose').addEventListener('click', closeGs);
+  $('#gsBackdrop').addEventListener('click', closeGs);
+  /* ⌘K on a Mac, Ctrl+K everywhere else. Ignored while a text field already
+     has focus for a reason — the owner may be mid-word in a note. */
+  document.addEventListener('keydown', e=>{
+    if((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')){
+      e.preventDefault();
+      $('#gsModal').classList.contains('open') ? closeGs() : openGs();
+    }
   });
 
   /* ---------- Config quick-jump chips — that page is LONG ---------- */
