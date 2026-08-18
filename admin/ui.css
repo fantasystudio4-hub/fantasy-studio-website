@@ -74,8 +74,21 @@
   display:grid;place-items:center;width:var(--tap);height:var(--tap);
   flex:0 0 auto;border:0;border-radius:50%;background:none;color:var(--mut);
   font-size:var(--fs-xl);cursor:pointer;touch-action:manipulation;
+  text-decoration:none;   /* it is often an <a href="tel:"> */
 }
 .icon-btn:active{color:var(--gold-b);background:var(--white-t2)}
+/* the ✕ that removes a row — a banked date, a join request, an expense, a
+   trashed record. Destructive, so it wears the overdue colour, and it keeps
+   the full 44px box even though the glyph inside is 16px. */
+.icon-btn--danger{color:var(--state-overdue)}
+.icon-btn--danger:active{background:var(--state-overdue);color:var(--white)}
+@media(hover:hover){
+  .icon-btn:hover{color:var(--gold-b);background:var(--white-t2)}
+  .icon-btn--danger:hover{background:var(--state-overdue);color:var(--white)}
+}
+/* inside dense list rows these sit in a fixed slot, not a 44px circle of
+   whitespace — keep the hit box, tighten the footprint */
+.up-ev .icon-btn,.exprow .icon-btn{width:38px;height:38px;font-size:1rem}
 
 /* ================================================================== INPUT
    One well for input, select and textarea. Font size stays 16px (--fs-input):
@@ -233,7 +246,7 @@ button.chip-status:active{transform:scale(.97)}
    the status control next to it already owns the downward arrow, and two
    down-chevrons on one row read as two pickers */
 .card__toggle .chev{
-  grid-column:2;grid-row:1 / 3;align-self:center;
+  grid-column:2;grid-row:1 / -1;align-self:center;
   color:var(--mut);font-size:1.35rem;line-height:1;
   transition:transform var(--t-med),color var(--t-med);
 }
@@ -308,11 +321,11 @@ button.chip-status:active{transform:scale(.97)}
    row that is coming reads as "loading"; a blank panel reads as "empty", and
    the owner taps Refresh on data that was already on its way.
    ======================================================================== */
-.skeleton,.skel{
+.skeleton{
   background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
   height:64px;margin-bottom:.6rem;position:relative;overflow:hidden;
 }
-.skeleton::after,.skel::after{
+.skeleton::after{
   content:'';position:absolute;inset:0;
   background:linear-gradient(90deg,transparent,rgba(var(--gold-b-rgb),.08),transparent);
   animation:shim 1.2s infinite;
@@ -320,20 +333,30 @@ button.chip-status:active{transform:scale(.97)}
 .skeleton--tall{height:92px}
 .skeleton--line{height:14px;border-radius:var(--r-sm);margin-bottom:var(--sp-2)}
 .skeleton--stat{height:62px;border-radius:var(--r-md);margin:0}
-@media (prefers-reduced-motion: reduce){ .skeleton::after,.skel::after{animation:none} }
+@media (prefers-reduced-motion: reduce){ .skeleton::after{animation:none} }
 
 /* ============================================================= EMPTY STATE
    Never a bare "no results". Say what is missing, why, and give the one
    action that fixes it.
    ======================================================================== */
-.empty-state,.empty2{
+.empty-state{
   text-align:center;padding:2.2rem .9rem;color:var(--mut);
   display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);
 }
-.empty-state__icon,.empty2 .ic{font-size:2.1rem;line-height:1}
+.empty-state__icon{font-size:2.1rem;line-height:1}
 .empty-state__title{font-family:var(--serif);color:var(--text);font-size:var(--fs-xl)}
 .empty-state__text{font-size:var(--fs-base);max-width:34ch;line-height:1.55}
 .empty-state .btn{margin-top:var(--sp-2)}
+/* --- inline variant ---------------------------------------------------------
+   A full empty state is right when a whole panel is blank and there is one
+   action that fixes it. Inside a sub-panel that is one row of a bigger screen
+   — "no payments yet" under a package, "trash is empty" — that block is louder
+   than the thing it sits in. Same component, quieter register. Legacy class
+   name .empty is kept as the alias so the sub-panels need no churn. */
+.empty-state--inline,.empty{
+  display:block;text-align:center;padding:1.1rem .8rem;
+  color:var(--mut);font-size:var(--fs-base);font-style:italic;line-height:1.5;
+}
 
 /* ==================================================================== TOAST
    Undo lives inside the toast: the confirm already asked, so the second

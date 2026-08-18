@@ -20,7 +20,7 @@ button,input,select,textarea{font-family:var(--sans);font-size:16px}
 button,[role="button"],select,.qchip,a{touch-action:manipulation}
 /* a hesitant press on an action row started text selection instead of the
    action — rows that ACT should not be copy targets (detail text stays selectable) */
-.lead-top,.card__toggle,.cal-cell,.up-ev,.uh-row,.tm-crew,.ed-row,.dstep,.cpick,.grp.tog,.stat,.pm-row,.sq,.stu-top{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.card__toggle,.cal-cell,.up-ev,.uh-row,.tm-crew,.ed-row,.dstep,.cpick,.grp.tog,.stat,.pm-row,.sq{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 /* selects are restyled flat but kept no affordance — on iOS nothing said
    "this opens a picker". One gold chevron, drawn inline. */
 select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23E2C275' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65em center;padding-right:2em}
@@ -100,26 +100,11 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:8px;padding:.55em .9em;cursor:pointer}
 
 /* lead cards */
-.lead{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:.6rem;overflow:hidden;transition:border-color .25s,background .25s}
-.lead.open{border-color:var(--line-2);background:var(--panel-open)}
-.lead-top{padding:.85rem 1rem;display:flex;flex-wrap:wrap;gap:.35rem .6rem;align-items:center;cursor:pointer}
-.lead-top .nm{font-family:var(--serif);font-size:1.02rem;color:var(--white)}
-.lead-top .src{font-size:.7rem;color:var(--mut);border:0;padding:0}
-.lead-top .newb,.card__toggle .newb{font-size:.62rem;letter-spacing:.12em;color:var(--ink);background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
+.card__toggle .newb{font-size:.62rem;letter-spacing:.12em;color:var(--ink);background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
 /* "this number has enquired before" — a warning tone, not the gold NEW badge:
    the two mean opposite things and must not read as the same chip */
-.lead-top .dupb,.card__toggle .dupb{font-size:.62rem;letter-spacing:.08em;color:var(--warn);border:1px solid var(--state-pending-ln);background:rgba(var(--state-pending-rgb),.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
-.lead-top .qno{color:var(--gold-b);letter-spacing:.05em;font-size:.72rem}
-.lt-lines{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}
-.lt-lines .l1{display:flex;align-items:center;gap:.5rem;min-width:0}
-.lt-lines .l1 .nm,.lt-lines .l1 .card__title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lt-lines .l2{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
-.lt-lines .l2 .amt,.lt-lines .l2 .card__amt{margin-left:auto}
-.lead-top .amt{margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap}
-.lead-top .amt em{font-style:normal;font-weight:400;color:var(--mut);font-size:.78em;margin-left:.15em}
-.lead-top .dot{flex:0 0 auto;width:8px;height:8px;box-shadow:0 0 0 3px var(--white-t2)}
-.lead-top .chev,.card__head .chev{color:var(--mut);font-size:.8rem;transition:.25s;margin-left:.1rem}
-.lead.open .chev{transform:rotate(180deg);color:var(--gold-b)}
+.card__toggle .dupb{font-size:.62rem;letter-spacing:.08em;color:var(--warn);border:1px solid var(--state-pending-ln);background:rgba(var(--state-pending-rgb),.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
+.card__head .chev{color:var(--mut);font-size:.8rem;transition:.25s;margin-left:.1rem}
 .card.is-open .chev{transform:rotate(90deg);color:var(--gold-b)}
 /* search + upcoming */
 .bar input[type=search]{flex:1.2;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em .7em;min-width:0}
@@ -136,9 +121,8 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
 @media(hover:hover){
   .tabs button:hover:not(.on){color:var(--gold-b);border-color:var(--gold)}
-  .pkg-acts .act:hover,.bar button:hover,.cal-nav button:hover,.mini:hover{border-color:var(--gold);color:var(--white)}
-  .pkg-acts .lead-x:hover{background:var(--err);border-color:var(--err);color:var(--white)}
-  .gbtn:hover,.goldbar:hover{filter:brightness(1.1)}
+  .bar button:hover,.cal-nav button:hover{border-color:var(--gold);color:var(--white)}
+  .gbtn:hover{filter:brightness(1.1)}
   .addrow:hover{border-color:var(--gold)}
   .cal-cell:not(.off):hover{border-color:var(--line)}
   .up-ev:hover .what{color:var(--gold-b)}
@@ -178,20 +162,8 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-ev-t{flex:1;min-width:0}
 .cal-ev-t b{display:block;font-family:var(--serif);color:var(--white);font-size:.95rem}
 .cal-ev-t span{font-size:.74rem;color:var(--mut)}
-.cal-ev .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.75rem;cursor:pointer}
 
 /* packages page — status accents, pills, money badges, group headers */
-.lead.st-draft{border-left:3px solid var(--state-neutral-d)}
-.lead.st-sent{border-left:3px solid var(--state-info)}
-.lead.st-unconfirmed{border-left:3px solid var(--state-risk)}
-.lead.st-booked{border-left:3px solid var(--ok)}
-.lead.st-delivered{border-left:3px solid var(--state-done)}
-.stpill{margin-left:auto;flex:0 0 auto;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;border-radius:20px;padding:.24em .72em;font-weight:600}
-.stpill.draft{color:var(--state-neutral);background:var(--white-t3)}
-.stpill.sent{color:var(--state-info);background:var(--state-info-bg)}
-.stpill.unconfirmed{color:var(--state-risk);background:var(--state-risk-bg)}
-.stpill.booked{color:var(--ok);background:var(--state-confirmed-bg)}
-.stpill.delivered{color:var(--state-done);background:var(--state-done-bg)}
 .duelbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--warn);background:var(--state-pending-bg);border-radius:14px;padding:.2em .6em;margin-right:.45em;vertical-align:2px;font-weight:600}
 .paidlbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--ok);background:var(--state-confirmed-bg);border-radius:14px;padding:.2em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
 .grp{display:flex;align-items:center;gap:.6rem;margin:1.05rem 0 .5rem;color:var(--mut);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase}
@@ -204,16 +176,9 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .grp.tog:active{opacity:.65}
 
 /* package row actions — even grid, no crowding */
+/* layout only — every button inside it is a shared .btn */
 .pkg-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:0 1rem;padding:.75rem 0 .9rem;border-top:1px dashed var(--line)}
-.pkg-acts button{
-  width:100%;text-align:center;padding:.55em .3em;font-size:.78rem;border-radius:10px;
-  letter-spacing:.02em;cursor:pointer;white-space:nowrap;
-}
-.pkg-acts .chip{border:1px solid transparent;text-transform:uppercase;font-size:.7rem;letter-spacing:.06em;font-weight:500}
-.pkg-acts .act{background:rgba(var(--white-rgb),.045);border:1px solid transparent;color:var(--gold-b)}
-.pkg-acts .act:active{background:rgba(var(--gold-rgb),.18)}
-.pkg-acts .lead-x{background:var(--state-overdue-bg);border:1px solid transparent;color:var(--err)}
-.pkg-acts .lead-x:active{background:var(--err);color:var(--white)}
+.pkg-acts .btn{width:100%;padding-inline:.3em;border-radius:var(--r-md);font-size:var(--fs-md)}
 @media(min-width:700px){.pkg-acts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
 
 /* delivery tracker */
@@ -263,7 +228,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 /* calendar day box: quick "add event" */
 .cd-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
 .cd-head h3{flex:1;min-width:0;margin:0}
-.cd-head .mini{margin-top:0;flex:0 0 auto;white-space:nowrap}
+.cd-head .btn{margin-top:0;flex:0 0 auto;white-space:nowrap}
 .todaypill{font-family:var(--sans);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:var(--gold-b);border-radius:14px;padding:.2em .7em;font-weight:600;vertical-align:3px}
 #calAdd{border-color:var(--line-2)}
 #qeMode button{font-size:.78rem;padding:.55em .2em}
@@ -271,7 +236,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 #calAdd .evchips{margin-top:-.55rem}
 .qe-acts{display:flex;gap:.6rem;align-items:center}
 .qe-acts .gbtn{flex:1;width:auto;padding:.85em 1.2em}
-.qe-acts .mini{margin-top:0;flex:0 0 auto}
+.qe-acts .btn{margin-top:0;flex:0 0 auto}
 .qe-note{font-size:.74rem;color:var(--mut);margin-top:.8rem}
 /* the service picker on the quick sheet. NOT a .fld: that would drag the
    full-width .fld input styling onto the qty / rate boxes inside .itemrow */
@@ -409,9 +374,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .lead-det h4{font-family:var(--serif);color:var(--gold-b);font-size:.92rem;margin:.5rem 0 .3rem}
 .lead-det .ln{display:flex;justify-content:space-between;padding:.12rem 0;color:var(--text)}
 .lead-det .ln span:last-child{color:var(--mut)}
-.mini{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.4em 1.1em;font-size:.78rem;cursor:pointer;margin-top:.5rem}
-.mini:active{background:var(--gold);color:var(--white)}
-.empty{color:var(--mut);text-align:center;padding:2rem 0;font-style:italic}
 
 /* config editor */
 .sec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:.9rem}
@@ -459,13 +421,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 @media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
 
 /* packages */
-.goldbar{background:var(--grad-gold);border:0;color:var(--white);border-radius:8px;padding:.55em .9em;cursor:pointer}
-.chip{border:1px solid var(--line);border-radius:20px;padding:.2em .8em;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:none}
-.chip.draft{color:var(--gold-b);background:var(--gold-t2)}
-.chip.sent{color:var(--state-info);background:var(--state-info-bg)}
-.chip.unconfirmed{color:var(--state-risk);background:var(--state-risk-bg)}
-.chip.booked{color:var(--ok);background:var(--state-confirmed-bg)}
-.chip.delivered{color:var(--state-done);background:var(--state-done-bg)}
 .itemrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
 .itemrow .l1{display:flex;gap:.45rem}
 .itemrow .l1 select{flex:1;min-width:0}
@@ -486,7 +441,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .prow.big b{font-size:1.35rem}
 .pkg-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:.4rem 0 1rem}
 .pkg-actions .gbtn{width:auto;flex:1;min-width:130px}
-.pkg-actions .mini{margin-top:0}
+.pkg-actions .btn{margin-top:0}
 /* instructions that only matter the first few times: one line by default */
 .howto{margin:0 0 .8rem}
 .howto summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-b);font-size:.74rem;letter-spacing:.04em;border:1px dashed var(--line);border-radius:20px;padding:.35em .95em}
@@ -506,11 +461,11 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 /* ---- tap targets & minimum readable size (audit) ----
    Destructive x controls measured 11-21px wide with no padding, and several
    labels rendered below 10px on a phone the owner uses one-handed. */
-.lead-x,[data-del],[data-purge],[data-restore],.rm{min-width:40px;min-height:40px}
-.lead-x,[data-del]{padding:.45em .6em}
+[data-del],[data-purge],[data-restore],.rm{min-width:40px;min-height:40px}
+[data-del]{padding:.45em .6em}
 .tabs button{min-height:52px}
 .tabs button span,.tabs button em{font-size:.68rem}
-.pkg-meta,.pkg-sub,.muted-xs{font-size:.72rem}
+.muted-xs{font-size:.72rem}
 
 /* ---- team tab ---- */
 .tm-ev{border:1px solid var(--line);border-radius:12px;padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:var(--white-t1)}
@@ -524,9 +479,8 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tm-ev-h .when{font-family:var(--serif);color:var(--gold-b);font-size:.85rem;white-space:nowrap}
 .tm-ev-h b{font-family:var(--serif);color:var(--white);font-size:.92rem}
 .tm-ev-h .cl{color:var(--mut);font-size:.78rem;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tm-ev-h .act{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .85em;font-size:.75rem;cursor:pointer;white-space:nowrap}
 /* the cards that still need work are the ones to act on — say so */
-.tm-ev.none .tm-ev-h .act,.tm-ev.part .tm-ev-h .act{border-color:var(--gold);background:var(--gold-t3)}
+.tm-ev.none .tm-ev-h .btn,.tm-ev.part .tm-ev-h .btn{border-color:var(--gold);background:var(--gold-t3)}
 .tm-need{font-size:.7rem;color:var(--mut);margin:.25rem 0 .1rem}
 .tm-need b{color:var(--gold-b);font-weight:500}
 .tm-need b.miss{color:var(--warn)}
@@ -558,7 +512,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
 .pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:.62rem;color:var(--ok);letter-spacing:.02em}
 .pm-row .part2{color:var(--warn);border-color:var(--state-pending-ln)}
-.pm-row .act{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.72rem;cursor:pointer;white-space:nowrap}
 /* .grp sets uppercase + wide letter-spacing for its heading text — the button
    inside it has to opt out or it reads as more heading, not an action */
 .grp .pmall{background:var(--gold-t3);border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
@@ -587,7 +540,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .up-ev .what .sjd .sjn{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 .sj-det{padding:0 .2rem .6rem}
 .sj-det .dtrack{margin-top:.2rem}
-.sj-det .mini{width:100%;margin-top:.5rem}
+.sj-det .btn{width:100%;margin-top:.5rem}
 .as-warn{color:var(--warn);font-size:.76rem;background:rgba(var(--state-pending-rgb),.08);border:1px dashed rgba(var(--state-pending-rgb),.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
 
 /* ==== Team console: attention list, leaderboard, squad cards ====
@@ -746,7 +699,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    block in /team/ and /client/. */
 header{border-bottom:0}
 header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,var(--gold-l) 28%,var(--gold-b) 50%,var(--gold-l) 72%,transparent)}
-.sec,.lead,.login,.stat,.tm-ev{box-shadow:0 10px 26px rgba(var(--black-rgb),.22)}
+.sec,.card,.login,.stat,.tm-ev{box-shadow:0 10px 26px rgba(var(--black-rgb),.22)}
 .pay-modal{box-shadow:var(--sh-3)}
 /* Save rides the sheet's scroll — picking a member fills the role and rate, so
    the whole assignment is now two taps without hunting for the button */
@@ -760,8 +713,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .pay-modal > .gbtn{bottom:calc(-1.4rem - env(safe-area-inset-bottom))}
 }
 .fld input:focus,.fld select:focus,.fld textarea:focus,.bar input[type=search]:focus,.card__body .input:focus,.prow input:focus,.itemrow select:focus,.itemrow input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);outline:none}
-.gbtn,.goldbar{box-shadow:0 6px 16px rgba(var(--gold-d-rgb),.35)}
-.gbtn:active,.goldbar:active{box-shadow:0 3px 8px rgba(var(--gold-d-rgb),.3)}
+.gbtn,.btn--primary{box-shadow:0 6px 16px rgba(var(--gold-d-rgb),.35)}
+.gbtn:active,.btn--primary:active{box-shadow:0 3px 8px rgba(var(--gold-d-rgb),.3)}
 .stat{transition:border-color .2s, transform .15s}
 .stat[data-fs]:active,.stat[data-goto]:active{transform:scale(.97)}
 /* phones: active bottom-nav tab gets a soft gold pill, not just a tint */
@@ -850,8 +803,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .mode-pills.expcats button{flex:0 1 auto;font-size:.78rem;padding:.5em .9em}
 /* a ✕ in a list row had no rule of its own and fell back to the browser's
    default white button — this fixes the one in Trash ("✕ Forever") too */
-.up-ev .lead-x{flex:0 0 auto;background:var(--state-overdue-bg);border:1px solid transparent;color:var(--err);border-radius:20px;padding:.3em .75em;font-size:.8rem;cursor:pointer}
-.up-ev .lead-x:active{background:var(--err);color:var(--white)}
 .exprow b{color:var(--money-out);white-space:nowrap}
 .exprow .when{min-width:76px;font-size:.72rem}
 .exprow .what span{color:var(--mut);font-size:.68rem}
@@ -906,7 +857,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ev-e span{display:block;color:var(--gold-b);font-size:.74rem}
 .ev-e em{display:block;font-style:normal;color:var(--mut);font-size:.74rem;margin-top:.1rem}
 .ev-acts{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.95rem}
-.ev-acts .mini{flex:1;margin-top:0;min-width:104px}
+.ev-acts .btn{flex:1;margin-top:0;min-width:104px}
 
 /* ==== ease-of-use pass: quick-actions FAB, Home search, Config jump chips ==== */
 .fab{position:fixed;right:max(16px, env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom) + 12px);z-index:var(--z-fab);width:54px;height:54px;border-radius:50%;border:0;background:var(--grad-gold);color:var(--white);font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:var(--sh-2);transition:transform .12s}
@@ -920,7 +871,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(min-width:700px){ .fab.fab-2{bottom:88px} }
 #homeResults{padding:.8rem 1rem}
 #homeResults .up-ev .when{min-width:30px;font-size:1rem}
-#homeResults .stpill{margin-left:0}
 #cfgJump{position:sticky;top:var(--hdr-h,56px);z-index:var(--z-sticky);background:var(--bar-2);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
 #configView .sec{scroll-margin-top:calc(var(--hdr-h,56px) + 62px)}
 
@@ -944,11 +894,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* the 🔍 / ＋ pair is fixed bottom-right and sat on top of that add row once
    the studio list was long enough to scroll (Home clears its own the same way) */
 #studioListView > .sec:last-child{margin-bottom:78px}
-.stu-top{display:flex;align-items:center;gap:.55rem;padding:.85rem 1rem .5rem;cursor:pointer;flex-wrap:wrap}
-.stu-top .nm{font-family:var(--serif);font-size:1.02rem;color:var(--white)}
-.stu-top .src{font-size:.72rem;color:var(--mut);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stu-top .chev2{color:var(--mut);font-size:1.1rem}
-.stu-call{text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:.28em .7em;font-size:.75rem;color:var(--gold-b)}
 .stu-chips{display:flex;gap:.4rem;flex-wrap:wrap;padding:0 1rem .85rem;cursor:pointer}
 .stu-chips b{border-radius:14px;padding:.24em .75em;font-weight:600;font-size:.66rem;letter-spacing:.04em}
 .stu-chips .c1{color:var(--gold-b);background:rgba(var(--gold-rgb),.13)}
@@ -989,8 +934,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .prow input{min-height:44px}
 
   /* inline row actions — Open, Assign, Edit, Sync, ✓ step */
-  .act,.edact{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
-  .mini,.upall,.copycrew,.linky{min-height:42px}
+  .edact{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+  .upall,.copycrew,.linky{min-height:42px}
   .howto summary{min-height:40px}
   .qchip{min-height:40px;display:inline-flex;align-items:center}
 
@@ -1013,29 +958,19 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .itemrow .l2{row-gap:.55rem}
   .itemrow input[data-f="rate"]{width:84px}
 
-  /* ---- booking cards ----
-     Six pieces of metadata were competing in ONE flex row, and the loser was
+  /* ---- record cards ----
+     Six pieces of metadata used to compete in ONE flex row and the loser was
      the client name — "Priy…" while "3 / events" and "14 / Aug" each wrapped
-     onto two lines. Three honest rows instead: who it is, what it is, where
-     the money and the work are. */
-  .lead-top{align-items:flex-start;padding:.8rem .9rem}
-  .lt-lines{gap:.3rem}
-  .lt-lines .l1{flex-wrap:wrap;gap:.3rem .45rem}
-  /* row 1 — the name takes the space it needs, the status pill holds the end */
-  .lt-lines .l1 .nm,.lt-lines .l1 .card__title{flex:1 1 auto;min-width:0;font-size:1.06rem}
-  .lt-lines .l1 .stpill{order:0;flex:0 0 auto}
-  /* a hard break after the pill, or a short name lets metadata creep onto the
-     name's line and the status pill stops sitting at the right edge */
-  .lt-lines .l1::after{content:"";order:0;flex:0 0 100%;height:0}
-  /* row 2 — everything else, on one line of its own, never broken mid-phrase */
-  .lt-lines .l1 .src,.lt-lines .l1 .b2bpill,.lt-lines .l1 .newb,.lt-lines .l1 .qno{order:1;white-space:nowrap}
-  .lt-lines .l1 .src{font-size:.72rem}
-  /* row 3 — quote number and money, each unbreakable */
-  .lt-lines .l2{gap:.5rem}
-  .lead-top .qno{white-space:nowrap;flex:0 0 auto}
-  .lead-top .amt{white-space:nowrap}
-  .lead-top .amt em{font-size:.72em}
-  .lead .chev{align-self:center;padding-left:.15rem}
+     onto two lines. The card component settles it by rank instead: row 1 is
+     the name and never truncates, row 2 is the meta line and is the only
+     thing allowed to give way, the money hugs its right edge, and the status
+     chip sits outside both in its own rail. Same three rows on Clients,
+     Packages and B2B. */
+  .card__toggle{row-gap:.3rem}
+  .card__toggle .l1{flex-wrap:wrap;gap:.3rem .45rem}
+  .card__title{font-size:1.06rem}
+  .card__toggle .l2{gap:.5rem}
+  .card .chev{align-self:center;padding-left:.15rem}
   .dl3{margin-top:.15rem}
 }
 
@@ -1044,7 +979,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    purpose — same-specificity overrides must come last. */
 @media(max-width:699px){
   /* --- every tappable that was still under the 40px floor --- */
-  .act,.edact{min-height:40px}
+  .edact{min-height:40px}
   .qamt button{min-height:40px;font-size:.78rem}
   .grp.tog{min-height:44px;align-items:center}
   .grp .pmall{min-height:36px}
@@ -1090,13 +1025,21 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    .card__actions / .btn / .chip-select in ui.css. These are the few rules that
    are genuinely about leads and belong to no shared component. */
 #leadList .card__actions{gap:.4rem .45rem;padding-top:.1rem}
+/* ---- Packages: the migrated section ---------------------------------------
+   Same head grammar as Clients — the name owns row 1 and never truncates, the
+   meta row carries everything else and is the only thing allowed to give way,
+   the money hugs the right. Packages adds a third row the lead card has no use
+   for: the delivery progress bar. */
+#pkgList .card__toggle .l2 .card__amt,#homeBooked .card__toggle .l2 .card__amt{margin-left:auto}
+#pkgList .card__meta b.qno,#homeBooked .card__meta b.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em}
+#pkgList .dl3,#homeBooked .dl3{grid-column:1}
 /* the status chip is the widest thing in the right rail — give it a floor so
    "new" and "delivered" do not make two different card widths */
 #leadList .chip-select{min-width:6.6rem}
 /* Call and WhatsApp lead; Delete is pushed away from them so a thumb reaching
    for "Call" on a moving phone cannot land on it. */
 #leadList .card__actions [data-del-lead]{margin-left:.35rem}
-#leadList .lt-lines .l2{align-items:center}
+#leadList .l2{align-items:center}
 #leadList .card__body h4{font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-lg);margin:.5rem 0 .3rem}
 #leadList .card__body .btn{margin-top:var(--sp-2)}
 #leadList .card__body textarea.input{margin-top:.3rem}

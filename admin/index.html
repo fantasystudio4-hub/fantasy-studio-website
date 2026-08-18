@@ -97,7 +97,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button id="refreshBtn">↻ Refresh</button>
     </div>
     <div class="fchips" id="leadChips"></div>
-    <div id="leadList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+    <div id="leadList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
   </div>
 
   <div id="homeView">
@@ -165,7 +165,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <div class="qe-acts">
         <button type="button" class="gbtn" id="qeSave">Save event</button>
-        <button type="button" class="mini" id="qeCancel">Cancel</button>
+        <button type="button" class="btn btn--sm btn--ghost" id="qeCancel">Cancel</button>
       </div>
       <p class="qe-note">Services are optional here — add them now, or any time from <b>Packages</b> along with the album, the discount and the PDF.</p>
     </div>
@@ -174,7 +174,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="sec" id="bookingsSec">
       <h3>📸 Bookings <span class="swipehint">swipe</span></h3>
       <div class="fchips" id="homeTabs"></div>
-      <div id="homeBooked"><div class="skel"></div><div class="skel"></div></div>
+      <div id="homeBooked"><div class="skeleton"></div><div class="skeleton"></div></div>
     </div>
     <div class="stats" id="pkgStats"></div>
   </div>
@@ -184,7 +184,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="bar">
         <input id="pkgSearch" type="search" placeholder="Search name, phone or quote #…" />
         <button id="pkgRefresh" aria-label="Refresh">↻</button>
-        <button class="goldbar" id="pkgNew">＋ New</button>
+        <button class="btn btn--primary" id="pkgNew">＋ New</button>
       </div>
       <div class="fchips" id="pkgChips"></div>
       <div class="listbar">
@@ -194,7 +194,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </details>
       <span class="swipehint">swipe</span>
       </div>
-      <div id="pkgList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+      <div id="pkgList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
     </div>
 
     <div id="pkgEditView" hidden>
@@ -262,8 +262,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <div class="pkg-actions">
         <button class="gbtn" id="pkgSave">Save</button>
-        <button class="mini" id="pkgPdf">Download PDF</button>
-        <button class="mini" id="pkgBack">← Back</button>
+        <button class="btn btn--sm btn--ghost" id="pkgPdf">Download PDF</button>
+        <button class="btn btn--sm btn--ghost" id="pkgBack">← Back</button>
         <div class="pkg-total"><span>Final price</span><b id="stickyTotal">₹0</b></div>
       </div>
     </div>
@@ -285,7 +285,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
           <button class="addrow" id="stuAdd">＋ Add studio</button>
           <button class="addrow" id="b2bAddEv">＋ Add event</button>
         </div>
-        <div id="studioList"><div class="skel"></div></div>
+        <div id="studioList"><div class="skeleton"></div></div>
       </div>
     </div>
     <div id="studioDetailView" hidden></div>
@@ -494,7 +494,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <input id="tmPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
   <div class="fld"><label>Pay per event (₹)</label><input id="tmRate" type="number" min="0" inputmode="numeric" /></div>
   <button class="gbtn" id="tmSave" type="button">Save</button>
-  <button class="mini" id="tmToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
+  <button class="btn btn--sm btn--ghost" id="tmToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
 
 <div class="pay-backdrop" id="asBackdrop"></div>
@@ -530,7 +530,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
-  <button class="mini" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
+  <button class="btn btn--sm btn--ghost" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
 </div>
 
 <div class="pay-backdrop" id="finBackdrop"></div>
@@ -555,7 +555,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <input id="exNote" maxlength="120" placeholder="e.g. studio rent — August" /></div>
     <div class="qe-acts">
       <button type="button" class="gbtn" id="exSave">Save expense</button>
-      <button type="button" class="mini" id="exCancel">Cancel</button>
+      <button type="button" class="btn btn--sm btn--ghost" id="exCancel">Cancel</button>
     </div>
   </div>
   <div id="finBody"></div>
@@ -598,7 +598,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld"><label>Payment terms</label><input id="stuTerms" placeholder="e.g. 50% advance · balance on RAW handover" /></div>
   <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(the studio's portal login can read this — keep private remarks out)</span></label><textarea id="stuNotes" rows="2"></textarea></div>
   <button class="gbtn" id="stuSave" type="button">Save Studio</button>
-  <button class="mini" id="stuToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
+  <button class="btn btn--sm btn--ghost" id="stuToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
 
 <div class="pay-backdrop" id="jtBackdrop"></div>

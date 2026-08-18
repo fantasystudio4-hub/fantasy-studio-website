@@ -237,7 +237,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   updNet();
   /* a 40px button 8px from the Config toggle, in the corner the thumb crosses
      to reach it — one mis-tap signed the owner out mid-task */
-  $('#logoutBtn').addEventListener('click', ()=>{ if(confirm('Log out of the admin panel?')) signOut(auth); });
+  $('#logoutBtn').addEventListener('click', async ()=>{
+    if(await confirmDialog({ title:'Log out?', body:'You will need your email and password to get back in.',
+                             confirmText:'Log out', danger:false })) signOut(auth);
+  });
 
   /* ============================================================
      WHO CAN OPEN THIS PANEL
@@ -698,11 +701,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
       const sib = leadSiblings(l);
       const st = l.status||'new', state = stateOf(st);
-      /* .lead and .lead-det stay on the element: the open-card/draft/caret
-         restore above finds cards by those names, and Packages still styles
-         itself with .lead. Everything visual now comes from the shared
-         components (.card/.btn/.chip-select) instead of the old .lead-top and
-         .lead-sub one-offs. */
       /* Meta is ordered by what matters at a venue, because it truncates from
          the tail on a narrow screen: the shoot date first, then where the
          enquiry came from and when it landed. Losing "· enquiry · 12 Aug" to
@@ -716,11 +714,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         esc(l.source==='contact_form' ? 'enquiry' : 'builder'),
         esc(when)
       ].filter(Boolean).join(' · ');
-      /* .lead and .lead-det stay on the element: the open-card/draft/caret
-         restore above finds cards by those names, and Packages still styles
-         itself with .lead. Everything visual now comes from the shared
-         components (.card/.btn/.chip-select) instead of the old .lead-top and
-         .lead-sub one-offs.
+      /* .lead and .lead-det stay on the element only because the open-card /
+         note-draft / caret restore above finds cards by those names. They
+         carry no styling any more — everything visual is .card, .card__toggle,
+         .btn and .chip-select from ui.css.
          The status <select> is a SIBLING of the toggle button, never a child:
          a control inside a button is invalid, and the button swallows its taps. */
       return `
@@ -1765,8 +1762,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="up-ev" data-fu="${r.x.id}">
         <span class="when">${r.days}d ago</span>
         <span class="what">${esc(r.x.clientName||'—')} <span>· ${esc(r.x.quoteNo||'')} · ${inr((r.x.totals||{}).finalPrice||0)}</span></span>
-        ${r.x.clientPhone ? '<button class="act" data-funudge>WhatsApp</button>' : ''}
-        <button class="act" data-fudone title="Mark followed up">✓</button>
+        ${r.x.clientPhone ? '<button class="btn btn--sm btn--ghost" data-funudge>WhatsApp</button>' : ''}
+        <button class="btn btn--sm btn--ghost" data-fudone title="Mark followed up">✓</button>
       </div>`).join('');
   }
   $('#followups').addEventListener('click', async e=>{
@@ -1831,8 +1828,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!show.length){
       el.innerHTML = _pkgsErr ? errBox(_pkgsErr, 'pkgs')
         : _pkgsLoaded
-        ? `<div class="empty2"><span class="ic">📸</span>${HOME_EMPTY[_homeTab]}</div>`
-        : '<div class="skel"></div><div class="skel"></div>';
+        ? `<div class="empty-state"><span class="empty-state__icon">📸</span><p class="empty-state__text">${HOME_EMPTY[_homeTab]}</p></div>`
+        : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
     /* the season list runs long — the first 10 (soonest shoots first) are the
@@ -1900,11 +1897,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const evn = (x.events||[]).length;
     const tt = x.totals||{};
     const _paid = Number(tt.advance)||0, _bal = Math.max(0, Number(tt.balance)||0), _fin = Number(tt.finalPrice)||0;
+    /* Compact on the card, exact in the title and in the open package — the
+       full "₹1,10,000/₹3,10,000" is 19 characters and at 375px it pushed the
+       quote number off its own line. */
     const amt = _paid > 0
       ? (_bal > 0
-          ? `<span class="amt" title="Balance due / package total"><em class="duelbl">DUE</em>${inr(_bal)}<em>/${inr(_fin)}</em></span>`
-          : `<span class="amt">${inr(_fin)}<em class="paidlbl">PAID</em></span>`)
-      : `<span class="amt">${inr(_fin)}</span>`;
+          ? `<span class="card__amt" title="Balance due ${inr(_bal)} of ${inr(_fin)} total"><em class="duelbl">DUE</em>${inrShort(_bal)}<em>/${inrShort(_fin)}</em></span>`
+          : `<span class="card__amt" title="${inr(_fin)} — paid in full">${inrShort(_fin)}<em class="paidlbl">PAID</em></span>`)
+      : `<span class="card__amt" title="${inr(_fin)}">${inrShort(_fin)}</span>`;
     const nd = st === 'booked' ? nextShootDate(x) : '';
     const sentDays = st === 'sent' ? daysAgo(x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt)) : null;
     const track = (st === 'booked' || st === 'delivered');
@@ -1915,39 +1915,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? `<div class="dl3">${di.doneCount ? `<span class="dprog"><i style="width:${di.pct}%"></i></span>` : ''}<b class="dv">✓ Delivered${x.deliveredAt ? ' ' + stepDate(x.deliveredAt) : ''}</b></div>`
         : `<div class="dl3"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total} steps</b></div>`;
     }
+    /* The status control moved out of .pkg-acts and into the card head, where
+       Clients keeps it too. .pkg-acts is hidden until the card is expanded, so
+       the old placement meant two taps to change a status and a second, static
+       copy of the same pill sitting in the head doing nothing. One control,
+       always reachable, same StatusChip vocabulary as every other tab. */
     return `
-    <div class="lead st-${st} ${open?'open':''}" data-id="${x.id}">
-      <div class="lead-top" data-expand role="button" tabindex="0" aria-label="Expand package">
-        <div class="lt-lines">
-          <div class="l1">
-            <span class="nm">${esc(x.clientName||'—')}</span>
+    <article class="card ${open?'is-open':''}" data-id="${x.id}" data-state="${stateOf(st)}">
+      <div class="card__head">
+        <button type="button" class="card__toggle" data-expand aria-expanded="${open?'true':'false'}">
+          <span class="l1">
+            <span class="card__title">${esc(x.clientName||'—')}</span>
             ${isStudioJob(x) ? `<span class="b2bpill">🏢 B2B${x.whiteLabel ? ' · WL' : ''}</span>` : ''}
-            ${isStudioJob(x) && x.endClientName ? `<span class="src">for ${esc(x.endClientName)}</span>` : ''}
-            <span class="src">${evn} event${evn===1?'':'s'}</span>
-            ${nd ? `<span class="src">📅 ${stepDate(nd)}</span>` : ''}
-            ${sentDays != null && sentDays >= 0 ? `<span class="src">📤 ${sentDays}d</span>` : ''}
-            <span class="stpill ${st}">${STATUS_LABEL(st)}</span>
-          </div>
-          <div class="l2">
-            <span class="qno">${x.quoteNo ? esc(x.quoteNo) : ''}</span>
+          </span>
+          <span class="l2">
+            <span class="card__meta">${[
+              x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
+              isStudioJob(x) && x.endClientName ? `for ${esc(x.endClientName)}` : '',
+              `${evn} event${evn===1?'':'s'}`,
+              nd ? `📅 ${stepDate(nd)}` : '',
+              sentDays != null && sentDays >= 0 ? `📤 ${sentDays}d` : ''
+            ].filter(Boolean).join(' · ')}</span>
             ${amt}
-          </div>
+          </span>
           ${prog}
-        </div>
-        <span class="chev">▾</span>
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+        <span class="card__side">
+          <button type="button" class="chip-status no-dot" data-state="${stateOf(st)}" data-cycle
+                  aria-label="Change status — currently ${STATUS_LABEL(st)}">${STATUS_LABEL(st)}</button>
+        </span>
       </div>
       <div class="pkg-acts" ${open?'':'hidden'}>
-        <button class="chip ${st}" data-cycle>${STATUS_LABEL(st)}</button>
-        <button class="act" data-edit>Edit</button>
-        <button class="act" data-pdfrow>PDF</button>
-        <button class="act" data-wapdf>Send ▷</button>
-        <button class="act" data-pay>＋ Payment</button>
-        ${x.clientPhone ? `<button class="act" data-call>📞 Call</button>
-        <button class="act" data-wachat>WhatsApp</button>` : ''}
-        <button class="lead-x" data-delpkg>Delete</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-wapdf>Send ▷</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-pay>＋ Payment</button>
+        ${x.clientPhone ? `<button type="button" class="btn btn--sm btn--ghost" data-call>📞 Call</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-wachat>💬 WhatsApp</button>` : ''}
+        <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
       </div>
       ${track && open ? trackerHTML(x) : ''}
-    </div>`;
+    </article>`;
   }
 
   /* which pipeline groups are open in the "All" view — remembered per device */
@@ -1979,6 +1988,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!$('#homeResults').hidden) renderHomeSearch();
     renderPkgListOnly();
   }
+  $('#pkgList').addEventListener('click', e=>{
+    if(!e.target.closest('[data-pkg-clear]')) return;
+    pkgFilterVal = ''; $('#pkgSearch').value = ''; renderPkgListOnly();
+  });
   function renderPkgListOnly(){
     renderPkgChips();
     const f = pkgFilterVal;
@@ -1991,10 +2004,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* never say "no packages yet" for data that simply has not arrived (or
          failed to) — that reads as "everything is gone" */
       $('#pkgList').innerHTML = _pkgsErr ? errBox(_pkgsErr, 'pkgs')
-        : !_pkgsLoaded ? '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'
+        : !_pkgsLoaded ? '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>'
         : livePkgs().length
-        ? '<div class="empty2"><span class="ic">📦</span>Nothing matches this filter.</div>'
-        : '<div class="empty2"><span class="ic">📦</span>No packages yet.<br><button class="goldbar" id="pkgEmptyNew" style="margin-top:.9rem">＋ Create your first package</button></div>';
+        ? `<div class="empty-state">
+             <span class="empty-state__icon">🔍</span>
+             <p class="empty-state__title">Nothing matches</p>
+             <p class="empty-state__text">${q ? `No package for “${esc(q)}”` : 'No package'}${f ? ` under <b>${esc(STATUS_LABEL(f))}</b>` : ''}. There ${livePkgs().length===1?'is':'are'} ${livePkgs().length} in total.</p>
+             <button type="button" class="btn btn--ghost" data-pkg-clear>Clear filter &amp; search</button>
+           </div>`
+        : `<div class="empty-state">
+             <span class="empty-state__icon">📦</span>
+             <p class="empty-state__title">No packages yet</p>
+             <p class="empty-state__text">A package holds the events, the crew and the money for one booking.</p>
+             <button type="button" class="btn btn--primary" id="pkgEmptyNew">＋ Create your first package</button>
+           </div>`;
       return;
     }
     /* "All" view: group by status so the list reads like a pipeline —
@@ -2031,7 +2054,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const patch = { delivery, updatedAt: serverTimestamp() };
     let becameDelivered = false;
     if(!had && allDone && (x.status||'draft') === 'booked'
-       && confirm(`All delivery steps done — mark "${x.clientName||'this package'}" as Delivered?`)){
+       && await confirmDialog({
+            title:'All delivery steps are done',
+            body:`Mark <b>${esc(x.clientName||'this package')}</b> as Delivered?`,
+            confirmText:'Mark Delivered', danger:false
+          })){
       patch.status = 'delivered'; patch.deliveredAt = todayISO(); becameDelivered = true;
     }
     try{
@@ -2077,14 +2104,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-call]')){ location.href = 'tel:+' + waNumberFor(x); return; }
     if(e.target.closest('[data-wachat]')){ openWa('https://wa.me/' + waNumberFor(x)); return; }
     if(e.target.closest('[data-delpkg]')){
-      if(!confirm(`Move the package for "${x.clientName||'this client'}" to Trash?`)) return;
+      if(!await confirmDialog({
+        title:'Move this package to Trash?',
+        body:`<b>${esc(x.clientName||'This client')}</b>${x.quoteNo?' · '+esc(x.quoteNo):''} leaves the list. Nothing is erased — you can restore it from Trash.`,
+        confirmText:'Move to Trash'
+      })) return;
       /* Assignments live in their own collection and are NOT trashed with the
          package: the crew kept seeing the job on their phones while it had
          vanished from your Team tab, with no way left to cancel it. */
       const orphans = ASGS.filter(a=>a.pkgId===id);
       let dropCrew = false;
       if(orphans.length){
-        dropCrew = confirm(`${orphans.length} crew assignment${orphans.length===1?' is':'s are'} attached to this package (${orphans.map(a=>a.memberName||'—').join(', ')}).\n\nOK = also remove ${orphans.length===1?'it':'them'} from the crew's schedules.\nCancel = trash the package but leave the crew booked.`);
+        /* This is a two-way CHOICE, not a yes/no gate, and a native confirm
+           could only ever offer "OK" and "Cancel" for it — the old copy had to
+           spell out in prose what each of those two words would do. Both
+           outcomes are named on their own button now. */
+        dropCrew = await confirmDialog({
+          title:`${orphans.length} crew assignment${orphans.length===1?'' : 's'} attached`,
+          body:`${esc(orphans.map(a=>a.memberName||'—').join(', '))} ${orphans.length===1?'is':'are'} booked on this package. Trashing it does not free ${orphans.length===1?'them':'them'} on its own — the crew would keep seeing the job on their phones.`,
+          confirmText:`Also free the crew`,
+          cancelText:'Keep them booked',
+          danger:false
+        });
       }
       try{
         const res = await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
@@ -2227,14 +2268,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     const isToday = calSel === new Date().toLocaleDateString('en-CA');
     box.innerHTML = `<div class="sec">
-      <div class="cd-head"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><button class="mini" type="button" data-addev>＋ Add event</button></div>`
+      <div class="cd-head"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></div>`
       + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
       return `
       <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
         <i class="dot ${e.status}"></i>
         <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
-        <button class="act" data-openev>Open</button>
+        <button class="btn btn--sm btn--ghost" data-openev>Open</button>
       </div>`;
     }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
     syncQeDate();   /* the open quick-add form follows the selected date */
@@ -2515,7 +2556,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="when">${esc(dmy(ev.date))}</span>
           <span class="what">${esc(ev.title)}${slotTag(ev.slot)}${ev.venue ? `<span> · ${esc(ev.venue)}</span>` : ''}</span>
           <b>${itemsGross(ev.items) ? esc(inrShort(itemsGross(ev.items))) : ''}</b>
-          <button class="lead-x" data-qerm="${i}" title="Remove this date">✕</button>
+          <button class="icon-btn icon-btn--danger" data-qerm="${i}" title="Remove this date">✕</button>
         </div>`).join('')
       : '';
     /* "all" rather than a count: the form may or may not hold one more, and a
@@ -2773,7 +2814,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      next render's skeleton — the owner was left staring at a shimmer forever
      with no way to retry. Remember the failure and offer a retry button. */
   let _teamErr = '', _asgsErr = '', _reqsErr = '';
-  const errBox = (msg, retry) => `<div class="empty2"><span class="ic">⚠️</span>${esc(msg)}<br><button class="mini" data-retry="${retry}" style="margin-top:.8rem">↻ Try again</button></div>`;
+  const errBox = (msg, retry) => `<div class="empty-state">
+      <span class="empty-state__icon">⚠️</span>
+      <p class="empty-state__title">Could not load</p>
+      <p class="empty-state__text">${esc(msg)}</p>
+      <button type="button" class="btn btn--ghost" data-retry="${retry}">↻ Try again</button>
+    </div>`;
   const TEAM_CAP = 500, ASGS_CAP = 2000, REQS_CAP = 100;
   const memberById = id => TEAM.find(m=>m.id===id);
   const activeTeam = () => TEAM.filter(m=>m.active !== false);
@@ -2967,7 +3013,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!all.length){
       el.innerHTML = (_pkgsLoaded && _asgsLoaded)
         ? '<div class="empty" style="padding:.4rem 0">No upcoming booked events. Events appear here once a package is <b style="color:var(--ok)">booked</b> and its dates are set.</div>'
-        : '<div class="skel"></div><div class="skel"></div>';
+        : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
     /* a full season runs to dozens of dates — the next ten are the ones being
@@ -3012,7 +3058,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             </div>
             <span class="cl">${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · 📍 ' + esc(ev.venue) : ''}</span>
           </div>
-          <button class="act" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
+          <button class="btn btn--sm btn--ghost" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
         </div>
         <div class="tm-fill">
           <span class="fbar"><i style="width:${fill}%"></i></span>
@@ -3028,7 +3074,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             : `<div class="tm-need" title="This event needs ${esc(needTxt)}">Fully crewed <b class="ok2">✓</b></div>`)
           : ''}
         ${crew.map(a=>crewRowHTML(a)).join('')}
-        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="act" data-assync="${a.id}" data-aspk="${pk.id}" data-asev="${idx}">Sync</button>`)).join('')}
+        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="btn btn--sm btn--ghost" data-assync="${a.id}" data-aspk="${pk.id}" data-asev="${idx}">Sync</button>`)).join('')}
       </div>`;
     }).join('')
     + (all.length > TEAM_EV_N
@@ -3347,8 +3393,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_teamErr){ el.innerHTML = errBox(_teamErr, 'team'); return; }
     if(!TEAM.length){
       el.innerHTML = _teamLoaded
-        ? '<div class="empty" style="padding:.4rem 0">No team members yet — add your shooters, editors and assistants above.</div>'
-        : '<div class="skel"></div>';
+        ? `<div class="empty-state">
+             <span class="empty-state__icon">🎬</span>
+             <p class="empty-state__title">No team members yet</p>
+             <p class="empty-state__text">Add your shooters, editors and assistants — they get their own crew page and show up in the assign picker.</p>
+             <button type="button" class="btn btn--primary" data-tm-add>＋ Add a member</button>
+           </div>`
+        : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
     const inCat = m => _squadCat === 'all' || catOf(m) === _squadCat;
@@ -3410,8 +3461,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = pending.map(r=>`
       <div class="up-ev" style="cursor:default">
         <span class="what"><b>${esc(r.name||'—')}</b> <span>· ${esc(r.phoneFull||r.phone10||'')}${r.note ? ' · “' + esc(r.note) + '”' : ''}</span></span>
-        <button class="act" data-reqok="${esc(r.id)}">Approve</button>
-        <button class="lead-x" data-reqno="${esc(r.id)}" title="Dismiss">✕</button>
+        <button class="btn btn--sm btn--ghost" data-reqok="${esc(r.id)}">Approve</button>
+        <button class="icon-btn icon-btn--danger" data-reqno="${esc(r.id)}" title="Dismiss">✕</button>
       </div>`).join('');
   }
   $('#teamReqs').addEventListener('click', async e=>{
@@ -3451,7 +3502,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(no){
       const r = REQS.find(v=>v.id===no.dataset.reqno); if(!r) return;
-      if(!confirm(`Dismiss the join request from ${r.name||'this person'}? They can request again from the crew page.`)) return;
+      if(!await confirmDialog({
+        title:'Dismiss this join request?',
+        body:`<b>${esc(r.name||'This person')}</b> can request again from the crew page — dismissing only clears it from your list.`,
+        confirmText:'Dismiss'
+      })) return;
       try{ toast(settleMsg(await settle(deleteDoc(doc(db,'teamRequests',r.id))), 'Request dismissed').msg); }
       catch(err){ toast('Could not dismiss'); }
     }
@@ -3463,7 +3518,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!ASGS.length){
       el.innerHTML = _asgsLoaded
         ? '<div class="empty" style="padding:.4rem 0">Nothing here yet — pay rows appear as you assign crew to events.</div>'
-        : '<div class="skel"></div>';
+        : '<div class="skeleton"></div>';
       return;
     }
     const byMember = {};
@@ -3481,7 +3536,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          for you rather than opened one at a time */
       const nDue = list.filter(a=>payDue(a) > 0).length;
       const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : (got > 0 ? 'all paid ✓' : 'nothing due')}</b>${
-        due > 0 ? `<button class="act pmall" type="button" data-pmall="${esc(mid)}" title="Settle ${inr(due)} across ${nDue} shoot${nDue===1?'':'s'}">Settle all</button>` : ''}</div>`;
+        due > 0 ? `<button class="btn btn--sm btn--ghost pmall" type="button" data-pmall="${esc(mid)}" title="Settle ${inr(due)} across ${nDue} shoot${nDue===1?'':'s'}">Settle all</button>` : ''}</div>`;
       if(!open) return head;
       const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
         const p = a.pay||{};
@@ -3499,8 +3554,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           ${st === 'paid'
             ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to see or correct this payment">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
             : st === 'part'
-              ? `<button class="act part2" data-cpay="${a.id}">${inr(payDue(a))} left</button>`
-              : `<button class="act" data-cpay="${a.id}">Pay</button>`}
+              ? `<button class="btn btn--sm btn--ghost part2" data-cpay="${a.id}">${inr(payDue(a))} left</button>`
+              : `<button class="btn btn--sm btn--ghost" data-cpay="${a.id}">Pay</button>`}
         </div>`;
       }).join('');
       return head + rows;
@@ -3703,6 +3758,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Update failed'); }
   });
   $('#teamMembers').addEventListener('click', e=>{
+    if(e.target.closest('[data-tm-add]')){ openTm(null); return; }
     const g = e.target.closest('[data-tmgrp]');
     if(g){ _tmShowInactive = !_tmShowInactive; renderTeamMembers(); return; }
     const row = e.target.closest('[data-tmedit]'); if(!row) return;
@@ -4059,7 +4115,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   $('#asRemove').addEventListener('click', async ()=>{
     const a = ASGS.find(v=>v.id===_asEditId); if(!a) return;
-    if(!confirm(`Remove ${a.memberName||'this member'} from ${a.eventTitle||'this event'}?`)) return;
+    if(!await confirmDialog({
+      title:'Remove from this event?',
+      body:`<b>${esc(a.memberName||'This member')}</b> comes off <b>${esc(a.eventTitle||'this event')}</b> and the date frees up on their schedule.`,
+      confirmText:'Remove'
+    })) return;
     const saved = { ...a }; delete saved.id;
     try{
       const res = await settle(deleteDoc(doc(db,'assignments',a.id)));
@@ -4358,7 +4418,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rm = e.target.closest('[data-cprm]'); if(!rm) return;
     const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
     const pid = rm.dataset.pid;
-    if(!confirm('Remove this payment? The balance goes back up.')) return;
+    if(!await confirmDialog({
+      title:'Remove this payment?',
+      body:'The balance owed goes back up by the same amount.',
+      confirmText:'Remove'
+    })) return;
     /* read-modify-write, so removing one instalment can never carry a stale
        copy of the others back over the server's (same as client payments) */
     try{
@@ -4525,8 +4589,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = items.length ? items.map(it=>`
       <div class="up-ev">
         <span class="what">${esc(it.label)} <span>· deleted ${esc(it.on)}</span></span>
-        <button class="act" data-restore="${it.kind}:${it.id}">Restore</button>
-        <button class="lead-x" data-purge="${it.kind}:${it.id}">✕ Forever</button>
+        <button class="btn btn--sm btn--ghost" data-restore="${it.kind}:${it.id}">Restore</button>
+        <button class="icon-btn icon-btn--danger" data-purge="${it.kind}:${it.id}">✕ Forever</button>
       </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
     /* silent 30-day cleanup — only once BOTH lists have arrived fresh from the server,
        never from a stale cache image (it could hard-delete something restored elsewhere) */
@@ -4565,7 +4629,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const paid = kind==='pkg' && Array.isArray(it.payments) && it.payments.length
         ? `\n\nThis package has ${it.payments.length} recorded payment(s) totalling ${inr(it.payments.reduce((n,p)=>n+(Number(p.amount)||0),0))}. That payment history will be destroyed.`
         : '';
-      if(!confirm('Delete forever? This really cannot be undone.' + paid)) return;
+      if(!await confirmDialog({
+        title:'Delete forever?',
+        body:'This one really cannot be undone — it does not go back to Trash.' + esc(paid),
+        confirmText:'Delete forever'
+      })) return;
       try{
         /* the one delete in the panel with no undo — it must never report
            success for a write the server refused, or one still queued offline
@@ -4710,36 +4778,54 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const due = conf.reduce((n,x)=>n+Math.max(0,(x.totals||{}).balance||0),0);
     const life = conf.reduce((n,x)=>n+((x.totals||{}).finalPrice||0),0);
     const inactive = s.active === false;
+    /* The whole card opens the studio (the [data-stu] handler), so the head is
+       a role=button region rather than a real <button> — a <button> here would
+       wrap the Call link, and a control inside a button is invalid markup that
+       swallows the inner tap. Same visual grammar as Clients and Packages. */
     return `
-    <div class="lead ${inactive?'tm-inactive':''}" data-stu="${s.id}">
-      <div class="stu-top" role="button" tabindex="0" aria-label="Open studio">
-        <span class="nm">${esc(s.name||'—')}</span>
-        <span class="src">${esc([s.city, s.ownerName].filter(Boolean).join(' · '))}</span>
-        ${inactive ? '<span class="stpill draft">inactive</span>' : ''}
-        ${s.phone ? `<a class="act stu-call" href="tel:${esc(s.phone)}" onclick="event.stopPropagation()">📞</a>` : ''}
-        <span class="chev2">›</span>
+    <article class="card ${inactive?'tm-inactive':''}" data-stu="${s.id}">
+      <div class="card__head">
+        <span class="card__toggle" role="button" tabindex="0" aria-label="Open ${esc(s.name||'this studio')}">
+          <span class="l1">
+            <span class="card__title">${esc(s.name||'—')}</span>
+            ${inactive ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}
+          </span>
+          <span class="l2"><span class="card__meta">${esc([s.city, s.ownerName].filter(Boolean).join(' · ')) || '—'}</span></span>
+          <span class="chev" aria-hidden="true">›</span>
+        </span>
+        ${s.phone ? `<span class="card__side"><a class="icon-btn" href="tel:${esc(s.phone)}" aria-label="Call ${esc(s.name||'this studio')}" onclick="event.stopPropagation()">📞</a></span>` : ''}
       </div>
       <div class="stu-chips">
         <b class="c1">${open} open job${open===1?'':'s'}</b>
         <b class="c2">${inr(due)} due</b>
         <b class="c3">${inr(life)} lifetime</b>
       </div>
-    </div>`;
+    </article>`;
   }
   function renderStudioList(){
     const el = $('#studioList'); if(!el) return;
     if(_studiosErr){ el.innerHTML = errBox(_studiosErr, 'studios'); return; }
     if(!STUDIOS.length){
       el.innerHTML = _studiosLoaded
-        ? '<div class="empty2"><span class="ic">🏢</span>No partner studios yet — add the studios that hire Fantasy Studio.</div>'
-        : '<div class="skel"></div>';
+        ? `<div class="empty-state">
+             <span class="empty-state__icon">🏢</span>
+             <p class="empty-state__title">No partner studios yet</p>
+             <p class="empty-state__text">Add the studios that hire Fantasy Studio — their jobs, dues and lifetime value are tracked here.</p>
+             <button type="button" class="btn btn--primary" data-stu-add>＋ Add a partner studio</button>
+           </div>`
+        : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
     const q = ($('#stuSearch').value||'').trim().toLowerCase();
     const hit = s => !q || [s.name, s.ownerName, s.city, s.phone].some(v=>String(v||'').toLowerCase().includes(q));
     const act = STUDIOS.filter(s=>s.active !== false && hit(s)), inact = STUDIOS.filter(s=>s.active === false && hit(s));
     if(!act.length && !inact.length){
-      el.innerHTML = `<div class="empty2"><span class="ic">🔍</span>No studio matches “${esc(q)}”.</div>`;
+      el.innerHTML = `<div class="empty-state">
+          <span class="empty-state__icon">🔍</span>
+          <p class="empty-state__title">No studio matches</p>
+          <p class="empty-state__text">Nothing for “${esc(q)}” among ${STUDIOS.length} studio${STUDIOS.length===1?'':'s'}.</p>
+          <button type="button" class="btn btn--ghost" data-stu-clear>Clear search</button>
+        </div>`;
       return;
     }
     el.innerHTML = act.map(stuCardHTML).join('')
@@ -4778,6 +4864,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#stuAddFab').addEventListener('click', ()=>openStu(null));
   $('#studioList').addEventListener('click', e=>{
     if(e.target.closest('[data-retry]')){ loadStudios(); toast('Reconnecting…'); return; }
+    if(e.target.closest('[data-stu-add]')){ openStu(null); return; }
+    if(e.target.closest('[data-stu-clear]')){ $('#stuSearch').value=''; renderStudioList(); return; }
     const card = e.target.closest('[data-stu]'); if(!card) return;
     openStudioDetail(card.dataset.stu);
   });
@@ -4866,7 +4954,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#stuToggle').addEventListener('click', async ()=>{
     const s = studioById(_stuEditId); if(!s) return;
     const deactivate = !(s.active === false);
-    if(deactivate && !confirm(`Deactivate ${s.name||'this studio'}? Existing jobs stay untouched — it just leaves the new-job picker.`)) return;
+    if(deactivate && !await confirmDialog({
+      title:'Deactivate this studio?',
+      body:`<b>${esc(s.name||'This studio')}</b> leaves the new-job picker. Existing jobs, dues and history stay exactly as they are.`,
+      confirmText:'Deactivate', danger:false
+    })) return;
     try{
       const res = await settle(updateDoc(doc(db,'studios',s.id), { active: !deactivate, updatedAt: serverTimestamp() }));
       const sm = settleMsg(res, deactivate ? 'Studio deactivated' : 'Studio reactivated');
@@ -4958,9 +5050,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _stuRateOpen = rateOpen;   /* keep the toggle's own state in step when a draft forces it open */
     const rateN = Object.keys(rates).length;
     el.innerHTML = `
-      <button class="mini" id="stuBack" style="margin:1rem 0 .6rem">← All studios</button>
+      <button class="btn btn--sm btn--ghost" id="stuBack" style="margin:1rem 0 .6rem">← All studios</button>
       <div class="sec">
-        <h3>🏢 ${esc(s.name||'—')} ${s.active === false ? '<span class="stpill draft">inactive</span>' : ''}</h3>
+        <h3>🏢 ${esc(s.name||'—')} ${s.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}</h3>
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
         ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
         ${s.notes ? `<div class="ln2"><span>Notes</span><span>${esc(s.notes)}</span></div>` : ''}
@@ -4970,11 +5062,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           : _loginKeyOk.get(s.id) === s.phone10 ? `✓ signs in at /studio/ with …${esc(String(s.phone10).slice(-4))}`
           : 'checking the login key…'}</span></div>
         <div class="ev-acts">
-          ${s.phone ? `<a class="mini stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
-          <a class="mini stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-          <button class="mini" type="button" data-stuedit>Edit</button>
-          <button class="mini" type="button" data-stunewjob>＋ New job</button>
-          <button class="mini" type="button" data-stuaddev>＋ Add event</button>
+          ${s.phone ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
+          <a class="btn btn--sm btn--ghost stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
+          <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
+          <button class="btn btn--sm btn--ghost" type="button" data-stuaddev>＋ Add event</button>
         </div>
       </div>
       <div class="sec">
@@ -5002,12 +5094,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                 ${di && di.total ? `<em class="sjd"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b><span class="sjn">${
                   next ? esc(next) : 'handed over ✓'}</span></em>` : ''}
               </span>
-              <span class="stpill ${st}">${STATUS_LABEL(st)}</span>
+              <span class="chip-status no-dot" data-state="${stateOf(st)}">${STATUS_LABEL(st)}</span>
             </div>
             ${open ? `<div class="sj-det">${di && di.total
               ? trackerHTML(x)
               : '<div class="empty" style="padding:.4rem 0">Delivery tracking starts once this job is booked.</div>'}
-              <button class="mini" type="button" data-stuopen="${x.id}">Open package</button></div>` : ''}
+              <button class="btn btn--sm btn--ghost" type="button" data-stuopen="${x.id}">Open package</button></div>` : ''}
           </div>`;
         }).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
       </div>
@@ -5054,7 +5146,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const el = live(); if(!el) return;
       el.innerHTML = ok
         ? `✓ signs in at /studio/ with …${esc(p10.slice(-4))}`
-        : `⚠ login key missing — this partner cannot sign in <button class="mini" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`;
+        : `⚠ login key missing — this partner cannot sign in <button class="btn btn--sm btn--ghost" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`;
     }catch(err){
       const el = live(); if(!el) return;
       el.textContent = navigator.onLine
@@ -5406,7 +5498,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pm = (x.payments||[]).find(p=>p && (b.dataset.pid ? p.id === b.dataset.pid
       : (!p.id && Number(p.amount)===Number(b.dataset.amt) && (p.date||'')===b.dataset.date && (p.mode||'')===b.dataset.mode)));
     if(!pm){ toast('Payment not found — reopen and retry'); return; }
-    if(!confirm(`Remove the ${inr(pm.amount)} payment from ${pm.date}? The balance goes back up.`)) return;
+    if(!await confirmDialog({
+      title:'Remove this payment?',
+      body:`<b>${inr(pm.amount)}</b> recorded on ${esc(dmy(pm.date)||pm.date)} comes off. The balance owed goes back up by the same amount.`,
+      confirmText:'Remove'
+    })) return;
     try{
       const arr = await runTransaction(db, async t=>{
         const ref = doc(db,'packages',x.id);
@@ -5621,13 +5717,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <div class="ledrow finled ${cls}"><span class="l-ev">${label}</span><b>${amt(m.crew)}</b><b>${amt(m.other)}</b><b class="${(m.crew+m.other)>0?'neg':''}">${amt(m.crew+m.other)}</b></div>`;
         return sp.map((m,i)=>line(FMN[i], m)).join('') + line('Total', tot, 'annual');
       })()}
-      <div class="finh">Expenses · ${fyLabel(y)} <button class="mini" type="button" id="expAdd">＋ Add expense</button></div>
+      <div class="finh">Expenses · ${fyLabel(y)} <button class="btn btn--sm btn--ghost" type="button" id="expAdd">＋ Add expense</button></div>
       ${expInFy.length ? expInFy.slice(0, _expAll ? 500 : 8).map(x=>`
         <div class="up-ev exprow">
           <span class="when">${esc(dmy(x.date))}</span>
           <span class="what" data-exp="${esc(x.id)}" role="button" tabindex="0">${esc(catName(x.cat))}${x.note ? ' · ' + esc(x.note) : ''}${x.mode ? `<span> · ${esc(x.mode)}</span>` : ''}</span>
           <b title="${inr(expAmt(x))}">${inrShort(expAmt(x))}</b>
-          <button class="lead-x" data-exdel="${esc(x.id)}" title="Delete this expense">✕</button>
+          <button class="icon-btn icon-btn--danger" data-exdel="${esc(x.id)}" title="Delete this expense">✕</button>
         </div>`).join('')
         + (expInFy.length > 8 ? `<button class="upall" type="button" id="expAll">${_expAll ? '− Show fewer' : `＋ See all ${expInFy.length}`}</button>` : '')
       : `<div class="empty" style="padding:.5rem 0">${_expsLoaded ? 'Nothing recorded for this year yet — tap ＋ Add expense.' : 'Loading…'}</div>`}
@@ -5645,7 +5741,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const del = e.target.closest('[data-exdel]');
     if(del){
       const x = EXPS.find(v=>v.id === del.dataset.exdel); if(!x) return;
-      if(!confirm(`Delete the ${catName(x.cat)} expense of ${inr(expAmt(x))} from ${dmy(x.date)}?`)) return;
+      if(!await confirmDialog({
+        title:'Delete this expense?',
+        body:`<b>${esc(catName(x.cat))}</b> · ${inr(expAmt(x))} · ${esc(dmy(x.date))}`,
+        confirmText:'Delete'
+      })) return;
       /* Expenses are not soft-deleted into Trash the way packages and leads
          are — they are small, hand-typed records. The undo below puts the
          same entry straight back, so a mis-tap is one tap to reverse. */
@@ -5775,8 +5875,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${l && l.grandTotal ? `<div class="ln2"><span>Quoted</span><span>${inr(l.grandTotal)}</span></div>` : ''}
         <div class="ln2"><span>Source</span><span>Booked lead — no package yet</span></div>
         <div class="ev-acts">
-          ${l ? '<button class="mini" type="button" data-evlead>Open lead</button>' : ''}
-          <button class="mini" type="button" data-evcal>Calendar</button>
+          ${l ? '<button class="btn btn--sm btn--ghost" type="button" data-evlead>Open lead</button>' : ''}
+          <button class="btn btn--sm btn--ghost" type="button" data-evcal>Calendar</button>
         </div>`;
       return;
     }
@@ -5801,7 +5901,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : '';
     const stuOfPk = isStudioJob(pk) ? studioById(pk.studioId) : null;
     $('#evBody').innerHTML = `
-      <h3 style="color:var(--gold-b)">${esc(pk.clientName||'—')} <span class="stpill ${st}">${STATUS_LABEL(st)}</span>${isStudioJob(pk) ? ' <span class="b2bpill">🏢 B2B</span>' : ''}</h3>
+      <h3 style="color:var(--gold-b)">${esc(pk.clientName||'—')} <span class="chip-status no-dot" data-state="${stateOf(st)}">${STATUS_LABEL(st)}</span>${isStudioJob(pk) ? ' <span class="b2bpill">🏢 B2B</span>' : ''}</h3>
       <div class="who">${human}${pk.quoteNo ? ' · ' + esc(pk.quoteNo) : ''}${pk.clientPhone ? ' · 📞 ' + esc(pk.clientPhone) : ''}</div>
       ${isStudioJob(pk) ? `
         ${pk.endClientName ? `<div class="ln2"><span>End client</span><span>${esc(pk.endClientName)}</span></div>` : ''}
@@ -5818,9 +5918,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         `<div class="ln2"><span>${esc(a.memberName||'—')}</span><span>${esc(a.role||'')}${a.callTime ? ' · ' + esc(a.callTime) : ''}</span></div>`).join('') : ''}
       ${pays}
       <div class="ev-acts">
-        ${bal > 0 ? `<button class="mini" type="button" data-evpay>＋ Payment</button>` : ''}
-        <button class="mini" type="button" data-evopen>Open package</button>
-        <button class="mini" type="button" data-evcal>Calendar</button>
+        ${bal > 0 ? `<button class="btn btn--sm btn--ghost" type="button" data-evpay>＋ Payment</button>` : ''}
+        <button class="btn btn--sm btn--ghost" type="button" data-evopen>Open package</button>
+        <button class="btn btn--sm btn--ghost" type="button" data-evcal>Calendar</button>
       </div>`;
   }
   $('#evNav').addEventListener('click', e=>{
@@ -5966,7 +6066,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <div class="up-ev" data-hspkg="${x.id}" role="button" tabindex="0">
             <span class="when">📦</span>
             <span class="what">${esc(x.clientName||'—')} <span>· ${esc(x.quoteNo||'')} · ${inr((x.totals||{}).finalPrice||0)}</span></span>
-            <span class="stpill ${x.status||'draft'}">${STATUS_LABEL(x.status||'draft')}</span>
+            <span class="chip-status no-dot" data-state="${stateOf(x.status||'draft')}">${STATUS_LABEL(x.status||'draft')}</span>
           </div>`).join('')
         + ld.map(l=>`
           <div class="up-ev" data-hslead="${l.id}" role="button" tabindex="0">
