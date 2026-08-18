@@ -180,6 +180,11 @@
      venue, one-handed, often in the dark. */
   --tap:44px;
 
+  /* How much of the screen the on-screen keyboard is covering. Set from
+     visualViewport in index.html; 0px whenever there is no keyboard, no API,
+     or no touch device. Bottom sheets and fixed bottom bars offset by it. */
+  --kb:0px;
+
   /* ---- layering ---------------------------------------------------------
      Named so a new overlay cannot be dropped in at an arbitrary number and
      land behind the thing it is supposed to cover. */

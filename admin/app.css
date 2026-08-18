@@ -307,6 +307,9 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .tabs .badge{background:var(--err);color:var(--white);font-size:.62rem;font-weight:600;border-radius:10px;padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
 
 /* app-style bottom navigation on phones */
+/* while the keyboard is up the bottom nav cannot be reached anyway, and the
+   64px it occupies is exactly what a sheet needs */
+:root.kb-up .tabs{transform:translateY(100%);pointer-events:none}
 @media(max-width:699px){
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-nav);margin:0;gap:0;padding:.3rem .3rem calc(.3rem + env(safe-area-inset-bottom));background:var(--bar);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
   .tabs button{background:none;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:.28em 0;font-size:.58rem;letter-spacing:.02em}
@@ -364,7 +367,10 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    conversion, the grab handle and the .fin width used to switch at 560px, so
    a 600px phone got a phone tab bar but desktop-style floating dialogs */
 @media(max-width:699px){
-  .pay-modal{left:0;right:0;top:auto;bottom:0;width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:88vh}
+  /* bottom:var(--kb) lifts the sheet clear of the keyboard; the max-height
+     shrinks by the same amount so a tall form scrolls inside what is left
+     instead of running off the top of the screen */
+  .pay-modal{left:0;right:0;top:auto;bottom:var(--kb);width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:calc(88vh - var(--kb))}
   .pay-modal.open{transform:translateY(0)}
 }
 /* dvh where it exists: 88vh of a phone browser is taller than the VISIBLE
@@ -372,7 +378,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    button — could sit under the browser chrome */
 @supports (height: 1dvh){
   .pay-modal{max-height:86dvh}
-  @media(max-width:699px){ .pay-modal{max-height:90dvh} }
+  @media(max-width:699px){ .pay-modal{max-height:calc(90dvh - var(--kb))} }
 }
 .st-new{color:var(--gold-b)} .st-contacted{color:var(--state-info)} .st-booked{color:var(--ok)}
 .st-shot{color:var(--state-progress)} .st-delivered{color:var(--state-done)} .st-lost{color:var(--err)}
@@ -415,7 +421,8 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .termrow input{width:17px;height:17px;flex:0 0 auto;margin-top:.15rem;accent-color:var(--gold)}
 .termrow span{flex:1;min-width:0}
 .termrow input:not(:checked) + span{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--line-3)}
-.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--bar);border-top:1px solid var(--line);padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+/* the Save button must not be the thing the keyboard covers */
+.savebar{position:fixed;left:0;right:0;bottom:var(--kb);background:var(--bar);border-top:1px solid var(--line);padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
 .savebar .in{max-width:860px;margin:0 auto;display:flex;gap:.6rem;align-items:center}
 .savebar .msg{font-size:.78rem;color:var(--mut);flex:1}
 .savebar .gbtn{width:auto;padding:.75em 1.8em}
@@ -423,6 +430,9 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    the server refused this write" fired while a sheet was open was painted
    BEHIND the sheet the owner was looking at */
 .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--black);border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:var(--z-toast);max-width:min(92vw,480px)}
+/* a toast reporting a refused write is worthless behind the keyboard.
+   The mobile rule further down carries the same offset. */
+.toast{bottom:calc(84px + var(--kb))}
 .toast.show{opacity:1}
 @media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
 
@@ -773,7 +783,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
 /* ==== analytics + event sheets (reuse the payment modal shell) ==== */
 .pay-modal.fin{width:min(94vw,420px);max-height:86vh;overflow:auto;overscroll-behavior:contain}
-@media(max-width:699px){ .pay-modal.fin{width:100%;max-height:88vh} }
+@media(max-width:699px){ .pay-modal.fin{width:100%;max-height:calc(88vh - var(--kb))} }
 /* the money that leaves: same tappable money tile, but it opens the Team tab
    where crew pay is actually settled — so it must not wear the 📊 badge that
    promises the analytics sheet */
@@ -832,7 +842,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
      is the real clearance — 52px still left an 11px overlap */
   .savebar{bottom:calc(64px + env(safe-area-inset-bottom))}
   .pkg-actions{bottom:calc(64px + env(safe-area-inset-bottom))}
-  .toast{bottom:calc(132px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(132px + env(safe-area-inset-bottom) + var(--kb))}
   /* the ⚡ FAB is fixed bottom-right and was covering the last stat tile
      once Home is scrolled to the end — give the tile row room to clear it */
   #homeView > .stats:last-child{margin-bottom:72px}

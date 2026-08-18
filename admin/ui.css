@@ -305,7 +305,8 @@ button.chip-status:active{transform:scale(.97)}
 
 @media(max-width:699px){
   .modal{
-    left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;
+    left:0;right:0;top:auto;bottom:var(--kb);width:100%;
+    max-height:calc(88vh - var(--kb));
     border-radius:var(--r-xl) var(--r-xl) 0 0;border-left:0;border-right:0;border-bottom:0;
     padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));
     transform:translateY(105%);
@@ -318,7 +319,7 @@ button.chip-status:active{transform:scale(.97)}
 }
 @supports (height: 1dvh){
   .modal{max-height:86dvh}
-  @media(max-width:699px){ .modal{max-height:90dvh} }
+  @media(max-width:699px){ .modal{max-height:calc(90dvh - var(--kb))} }
 }
 
 /* ================================================================ SKELETON
@@ -389,9 +390,27 @@ button.chip-status:active{transform:scale(.97)}
   .modal--palette.open{transform:translate(-50%,0) scale(1)}
 }
 @media(max-width:699px){
-  .modal--palette{padding:0;display:flex;flex-direction:column;max-height:86vh}
-  /* the grab handle would sit above the input and push it out of thumb reach */
+  /* Search is the one sheet that must NOT come up from the bottom. It is the
+     only one whose input is focused the instant it opens, so the keyboard is
+     always there — a bottom sheet would put the box it just asked you to type
+     in underneath the keyboard it just summoned. Anchored to the top instead,
+     filling the gap down to the keyboard: box at the top, results below it,
+     exactly where every phone puts a search. */
+  .modal--palette{
+    top:0;bottom:var(--kb);left:0;right:0;width:100%;
+    max-height:none;height:auto;
+    padding:0;display:flex;flex-direction:column;
+    border-radius:0 0 var(--r-xl) var(--r-xl);
+    border-top:0;border-left:0;border-right:0;
+    transform:translateY(-105%);
+    padding-bottom:0;
+  }
+  .modal--palette.open{transform:translateY(0)}
   .modal--palette::before{display:none}
+  .gs-bar{padding-top:calc(.6rem + env(safe-area-inset-top))}
+}
+@supports (height: 1dvh){
+  @media(max-width:699px){ .modal--palette{max-height:none} }
 }
 
 .gs-bar{
@@ -468,7 +487,7 @@ button.chip-status:active{transform:scale(.97)}
    already is. It only exists while rows are being picked.
    ========================================================================= */
 .bulkbar{
-  position:fixed;left:0;right:0;bottom:0;z-index:var(--z-nav);
+  position:fixed;left:0;right:0;bottom:var(--kb);z-index:var(--z-nav);
   background:var(--bar);backdrop-filter:blur(10px);
   border-top:1px solid var(--gold);
   padding:.55rem var(--gut) calc(.55rem + env(safe-area-inset-bottom));
@@ -488,7 +507,8 @@ button.chip-status:active{transform:scale(.97)}
 @media(max-width:699px){
   body.has-bulk .tabs{transform:translateY(100%);pointer-events:none}
   .tabs{transition:transform var(--t-med)}
-  .bulkbar{bottom:0}
+  /* must repeat the keyboard offset — this rule wins over the base one */
+  .bulkbar{bottom:var(--kb)}
 }
 @media(min-width:700px){ .bulk-in{padding:.1rem 0} }
 
