@@ -645,12 +645,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('button[data-f]'); if(!b) return;
     leadFilterVal = b.dataset.f; viewSet('leadF', leadFilterVal); renderStats(); renderLeads();
   });
-  $('#stats').addEventListener('click', e=>{
-    const t = e.target.closest('[data-fs]'); if(!t) return;
-    leadFilterVal = (leadFilterVal === t.dataset.fs) ? '' : t.dataset.fs;
-    viewSet('leadF', leadFilterVal);
-    renderStats(); renderLeads();
-  });
 
   const liveLeads = () => LEADS.filter(l=>!l.deleted);
   function renderStats(){
@@ -662,9 +656,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       if(ts && ts >= mStart && l.grandTotal){ monthTotal += Number(l.grandTotal)||0; monthCount++; }
     });
+    /* Only the money tile. The seven status tiles that used to sit under it
+       printed exactly the counts the filter chips print two rows below, and
+       both filtered the list on tap — the same control twice, costing ~380px
+       before a single lead was on screen. The chips win: they are one line,
+       they scroll sideways, and they show which filter is active. */
     $('#stats').innerHTML =
-      `<div class="stat month"><b>${inr(monthTotal)}</b><span>${monthCount} quotes this month</span></div>` +
-      STATUSES.map(s=>`<div class="stat ${leadFilterVal===s?'sel':''}" data-fs="${s}" role="button" tabindex="0" title="Filter ${s} leads"><b class="st-${s}">${counts[s]||0}</b><span>${s}</span></div>`).join('');
+      `<div class="stat month"><b>${inr(monthTotal)}</b><span>${monthCount} quote${monthCount===1?'':'s'} this month</span></div>`;
     const badge = $('#leadsBadge');
     if(badge){ badge.hidden = !counts.new; badge.textContent = counts.new || ''; }
   }
@@ -1975,7 +1973,59 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Update failed'); }
   });
 
+  /* ------------------------------------------------------------------ today
+     Two tiles above everything else on Home: what is on today, and what came
+     in today. Both are taps — the shoots open the day in the calendar, the
+     money opens the analytics sheet — because a figure you cannot open is
+     just decoration. */
+  function todaysEvents(){
+    const t = todayISO();
+    return calEvents().filter(e=>e.date === t && (e.status === 'booked' || e.status === 'lead'));
+  }
+  /* money actually RECEIVED today, from the same payments[] rows the money
+     sheet totals, so the two can never disagree */
+  function todaysMoney(){
+    const t = todayISO();
+    let sum = 0, n = 0;
+    livePkgs().forEach(x=>(x.payments||[]).forEach(pm=>{
+      if(pm && String(pm.date||'') === t){ sum += Math.max(0, Number(pm.amount)||0); n++; }
+    }));
+    return { sum, n };
+  }
+  function renderToday(){
+    const el = $('#todayStrip'); if(!el) return;
+    const evs = todaysEvents(), money = todaysMoney();
+    const d = new Date();
+    const nice = d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
+    /* the first shoot's name is worth more than the number on its own — at a
+       venue the question is "which one", not "how many" */
+    const lead = evs.length
+      ? esc(evs[0].title) + (evs.length > 1 ? ` +${evs.length-1} more` : '')
+      : 'Nothing booked';
+    el.innerHTML = `
+      <button type="button" class="today-t" data-today="events" data-state="${evs.length?'confirmed':'neutral'}"
+              aria-label="${evs.length} event${evs.length===1?'':'s'} today — open today in the calendar">
+        <span class="today-k">Today · ${esc(nice)}</span>
+        <span class="today-n">${evs.length || '—'}</span>
+        <span class="today-l">${evs.length === 1 ? 'shoot' : 'shoots'}</span>
+        <span class="today-s">${lead}</span>
+      </button>
+      <button type="button" class="today-t" data-today="money" data-state="${money.sum?'confirmed':'neutral'}"
+              title="${inr(money.sum)} received today" aria-label="${inr(money.sum)} received today — open money analytics">
+        <span class="today-k">Received today</span>
+        <span class="today-n">${money.sum ? inrShort(money.sum) : '—'}</span>
+        <span class="today-l">${money.n ? `from ${money.n} payment${money.n===1?'':'s'}` : 'nothing yet'}</span>
+      </button>`;
+  }
+  $('#todayStrip').addEventListener('click', e=>{
+    const b = e.target.closest('[data-today]'); if(!b) return;
+    buzz();
+    if(b.dataset.today === 'money'){ openFin(); return; }
+    gotoCalendar(todayISO());
+  });
+
   function renderHome(){
+    renderToday();
     renderPkgStats();
     renderUpcoming();
     renderFollowups();

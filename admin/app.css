@@ -40,7 +40,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .hd .ttl b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .hd b{font-family:var(--serif);font-size:1.05rem}
 .hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
-.hd .out{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;min-height:36px}
+.hd .out{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.35em 1em;font-size:.75rem;cursor:pointer;min-height:36px}
 .hd .out:active{border-color:var(--gold)}
 .hd .inst{border-color:var(--gold);color:var(--gold-b)}
 /* Config lives in the header beside Logout — the bottom nav keeps 5 tabs */
@@ -51,12 +51,12 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .hd .cfg em{font-style:normal}
 
 /* login */
-.login{max-width:360px;margin:16vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.8rem 1.5rem;text-align:center}
+.login{max-width:360px;margin:16vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:1.8rem 1.5rem;text-align:center}
 .login h1{font-size:1.4rem;margin:.6rem 0 .2rem}
 .login p{color:var(--mut);font-size:.85rem;margin-bottom:1.2rem}
 .fld{margin-bottom:.8rem;text-align:left}
 .fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
-.fld input,.fld select,.fld textarea{width:100%;background:var(--field);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.7em .8em}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.7em .8em}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
 .pwrap{position:relative}
 /* ---- dd-mm-yyyy date fields ----
@@ -71,24 +71,24 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dwrap>.dtxt{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
 .dwrap>.dtxt.ph{opacity:.45}
 .pwrap input{padding-right:2.9em}
-.pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:8px}
+.pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:var(--r-sm)}
 .pwrap button svg{width:20px;height:20px;display:block}
 .pwrap button:active{color:var(--gold-b)}
 @media(hover:hover){ .pwrap button:hover{color:var(--gold-b)} }
-.gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:var(--r-pill);padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .gbtn:active{transform:scale(.98)}
 .err{color:var(--err);font-size:.8rem;margin-top:.7rem}
-.note{background:var(--gold-t1);border:1px solid var(--line);border-radius:10px;padding:1rem;font-size:.85rem;color:var(--mut);margin-top:1rem;text-align:left}
+.note{background:var(--gold-t1);border:1px solid var(--line);border-radius:var(--r-md);padding:1rem;font-size:.85rem;color:var(--mut);margin-top:1rem;text-align:left}
 .note code{color:var(--gold-b)}
 
 /* tabs */
 .tabs{display:flex;gap:.5rem;margin:1rem 0}
-.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:40px;padding:.6em .15em;font-size:.72rem;letter-spacing:.02em;cursor:pointer}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.6em .15em;font-size:.72rem;letter-spacing:.02em;cursor:pointer}
 .tabs button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
 
 /* stats */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .5rem;text-align:center}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:.6rem .5rem;text-align:center}
 .stat b{font-family:var(--serif);font-size:1.25rem;color:var(--gold-b);display:block}
 .stat span{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
 .stat.month{grid-column:1 / -1;background:linear-gradient(135deg,rgba(var(--gold-l-rgb),.2),rgba(var(--gold-d-rgb),.15))}
@@ -100,18 +100,18 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
    the search box and the two buttons beside it, tapped constantly. */
 .bar{display:flex;gap:.5rem;margin-bottom:.8rem}
 .bar select,.bar button,.bar input[type=search]{min-height:var(--tap)}
-.bar select{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em}
-.bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:8px;padding:.55em .9em;cursor:pointer}
+.bar select{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:var(--r-sm);padding:.55em}
+.bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-sm);padding:.55em .9em;cursor:pointer}
 
 /* lead cards */
-.card__toggle .newb{font-size:.62rem;letter-spacing:.12em;color:var(--ink);background:var(--gold-b);border-radius:20px;padding:.2em .6em;font-weight:600}
+.card__toggle .newb{font-size:.62rem;letter-spacing:.12em;color:var(--ink);background:var(--gold-b);border-radius:var(--r-pill);padding:.2em .6em;font-weight:600}
 /* "this number has enquired before" — a warning tone, not the gold NEW badge:
    the two mean opposite things and must not read as the same chip */
-.card__toggle .dupb{font-size:.62rem;letter-spacing:.08em;color:var(--warn);border:1px solid var(--state-pending-ln);background:rgba(var(--state-pending-rgb),.1);border-radius:20px;padding:.2em .6em;font-weight:600;white-space:nowrap}
+.card__toggle .dupb{font-size:.62rem;letter-spacing:.08em;color:var(--warn);border:1px solid var(--state-pending-ln);background:rgba(var(--state-pending-rgb),.1);border-radius:var(--r-pill);padding:.2em .6em;font-weight:600;white-space:nowrap}
 .card__head .chev{color:var(--mut);font-size:.8rem;transition:.25s;margin-left:.1rem}
 .card.is-open .chev{transform:rotate(90deg);color:var(--gold-b)}
 /* search + upcoming */
-.bar input[type=search]{flex:1.2;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em .7em;min-width:0}
+.bar input[type=search]{flex:1.2;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:var(--r-sm);padding:.55em .7em;min-width:0}
 .bar input[type=search]:focus{outline:none;border-color:var(--gold)}
 .upco{padding:.8rem 1rem}
 .upco h3{font-size:.92rem;margin-bottom:.4rem}
@@ -122,7 +122,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .up-ev .what span{color:var(--mut)}
 
 /* professional hover / focus states */
-:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--r-xs)}
 @media(hover:hover){
   .tabs button:hover:not(.on){color:var(--gold-b);border-color:var(--gold)}
   .bar button:hover,.cal-nav button:hover{border-color:var(--gold);color:var(--white)}
@@ -135,13 +135,13 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 
 /* calendar */
 .cal-nav{display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem}
-.cal-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.4em .9em;font-size:.95rem}
+.cal-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.4em .9em;font-size:.95rem}
 .cal-nav #calToday{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
 .cal-title{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.08rem}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem}
 .cal-dow{text-align:center;font-size:.6rem;letter-spacing:.08em;color:var(--mut);padding:.15rem 0}
 .cal-dow.we{color:var(--gold-b);opacity:.75}
-.cal-cell{min-height:56px;display:flex;flex-direction:column;border:1px solid transparent;border-radius:10px;padding:.28rem .3rem;cursor:pointer;background:var(--field)}
+.cal-cell{min-height:56px;display:flex;flex-direction:column;border:1px solid transparent;border-radius:var(--r-md);padding:.28rem .3rem;cursor:pointer;background:var(--field)}
 .cal-cell.we{background:var(--panel-2)}                       /* weekends read at a glance — most functions land there */
 .cal-cell.off{background:none;cursor:default}
 .cal-cell .d{font-size:.78rem;color:var(--text);line-height:1.35}
@@ -168,8 +168,8 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-ev-t span{font-size:.74rem;color:var(--mut)}
 
 /* packages page — status accents, pills, money badges, group headers */
-.duelbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--warn);background:var(--state-pending-bg);border-radius:14px;padding:.2em .6em;margin-right:.45em;vertical-align:2px;font-weight:600}
-.paidlbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--ok);background:var(--state-confirmed-bg);border-radius:14px;padding:.2em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
+.duelbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--warn);background:var(--state-pending-bg);border-radius:var(--r-lg);padding:.2em .6em;margin-right:.45em;vertical-align:2px;font-weight:600}
+.paidlbl{font-style:normal;font-size:.56rem;letter-spacing:.1em;color:var(--ok);background:var(--state-confirmed-bg);border-radius:var(--r-lg);padding:.2em .6em;margin-left:.45em;vertical-align:2px;font-weight:600}
 .grp{display:flex;align-items:center;gap:.6rem;margin:1.05rem 0 .5rem;color:var(--mut);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase}
 .grp::after{content:"";flex:1;height:1px;background:var(--line)}
 .grp b{color:var(--gold-b);font-weight:600}
@@ -186,8 +186,8 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 @media(min-width:700px){.pkg-acts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
 
 /* delivery tracker */
-.dprog{height:4px;border-radius:4px;background:var(--white-t4);overflow:hidden}
-.dprog i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--state-done));border-radius:4px;transition:width .3s}
+.dprog{height:4px;border-radius:var(--r-xs);background:var(--white-t4);overflow:hidden}
+.dprog i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--state-done));border-radius:var(--r-xs);transition:width .3s}
 .dl3{display:flex;align-items:center;gap:.5rem;margin-top:.1rem}
 .dl3 .dprog{flex:1}
 .dl3 b{font-size:.6rem;color:var(--mut);font-weight:600;letter-spacing:.04em;white-space:nowrap;margin-left:auto}
@@ -196,7 +196,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
 .dt-head .dprog{flex:1}
 .dt-head b{color:var(--mut);font-weight:600}
-.dstep{display:flex;align-items:center;gap:.55rem;padding:.36rem .15rem;cursor:pointer;border-radius:8px;font-size:.85rem;color:var(--mut)}
+.dstep{display:flex;align-items:center;gap:.55rem;padding:.36rem .15rem;cursor:pointer;border-radius:var(--r-sm);font-size:.85rem;color:var(--mut)}
 .dstep i{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-size:.6rem;color:transparent;font-style:normal;transition:.2s}
 .dstep em{margin-left:auto;font-style:normal;font-size:.68rem;color:var(--mut);opacity:.85;white-space:nowrap}
 .dstep.done{color:var(--text)}
@@ -204,13 +204,13 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 @media(hover:hover){ .dstep:hover{background:var(--white-t2)} .dstep:hover i{border-color:var(--gold)} }
 
 /* offline chip + forgot password + undo toast */
-.net{flex:0 0 auto;background:rgba(var(--state-overdue-rgb),.15);color:var(--err);border:1px solid rgba(var(--state-overdue-rgb),.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
+.net{flex:0 0 auto;background:rgba(var(--state-overdue-rgb),.15);color:var(--err);border:1px solid rgba(var(--state-overdue-rgb),.4);border-radius:var(--r-pill);padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
 .linky{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;display:block;margin:-.2rem 0 .8rem;padding:0}
 .linky:active{color:var(--gold-b)}
-.toast button{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.15em .85em;margin-left:.6em;cursor:pointer;font-size:.8rem}
+.toast button{background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:var(--r-pill);padding:.15em .85em;margin-left:.6em;cursor:pointer;font-size:.8rem}
 
 /* date-clash warning in the builder */
-.dwarn{color:var(--err);font-size:.76rem;background:var(--state-overdue-bg);border:1px dashed rgba(var(--state-overdue-rgb),.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .6rem}
+.dwarn{color:var(--err);font-size:.76rem;background:var(--state-overdue-bg);border:1px dashed rgba(var(--state-overdue-rgb),.4);border-radius:var(--r-sm);padding:.45rem .65rem;margin:0 0 .6rem}
 
 /* Home: the search box only appears when it's wanted — the calendar owns the top */
 #homeSearchBar button{flex:0 0 auto}
@@ -224,8 +224,8 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-jump{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .8rem}
 .cal-jump .yr{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:1.1rem}
 .cal-jump .yr b{font-family:var(--serif);color:var(--gold-b);font-size:1.02rem}
-.cal-jump .yr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.3em .8em}
-.cal-jump .mo{background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.5em .2em;font-size:.76rem;cursor:pointer}
+.cal-jump .yr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.3em .8em}
+.cal-jump .mo{background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-sm);padding:.5em .2em;font-size:.76rem;cursor:pointer}
 .cal-jump .mo.on{border-color:var(--gold);color:var(--gold-b)}
 @media(hover:hover){ .cal-jump .mo:hover{border-color:var(--gold);color:var(--gold-b)} }
 
@@ -233,7 +233,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cd-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
 .cd-head h3{flex:1;min-width:0;margin:0}
 .cd-head .btn{margin-top:0;flex:0 0 auto;white-space:nowrap}
-.todaypill{font-family:var(--sans);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:var(--gold-b);border-radius:14px;padding:.2em .7em;font-weight:600;vertical-align:3px}
+.todaypill{font-family:var(--sans);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:var(--gold-b);border-radius:var(--r-lg);padding:.2em .7em;font-weight:600;vertical-align:3px}
 #calAdd{border-color:var(--line-2)}
 #qeMode button{font-size:.78rem;padding:.55em .2em}
 #qeStatus button{font-size:.78rem;padding:.5em .2em}
@@ -244,7 +244,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .qe-note{font-size:.74rem;color:var(--mut);margin-top:.8rem}
 /* the service picker on the quick sheet. NOT a .fld: that would drag the
    full-width .fld input styling onto the qty / rate boxes inside .itemrow */
-#qeQueue:not(:empty){margin:0 0 .8rem;border:1px dashed var(--line);border-radius:10px;padding:.1rem .7rem}
+#qeQueue:not(:empty){margin:0 0 .8rem;border:1px dashed var(--line);border-radius:var(--r-md);padding:.1rem .7rem}
 #qeQueue .qeq-h{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);padding:.5rem 0 .1rem}
 /* the sheet is narrower inside the B2B section than on Home — let a banked
    date wrap rather than clipping its time of day and venue */
@@ -255,9 +255,9 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 #qeSvc{margin-bottom:.8rem;text-align:left}
 #qeSvc > label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
 .qe-tot{text-align:right;font-family:var(--serif);font-weight:700;color:var(--gold-b);margin:.45rem 0 .1rem;min-height:1em}
-.qe-warn{color:var(--gold-b);font-size:.78rem;background:var(--gold-t1);border:1px dashed var(--line);border-radius:8px;padding:.6rem .7rem;margin-bottom:.8rem}
+.qe-warn{color:var(--gold-b);font-size:.78rem;background:var(--gold-t1);border:1px dashed var(--line);border-radius:var(--r-sm);padding:.6rem .7rem;margin-bottom:.8rem}
 /* time of day, wherever an event is listed */
-.slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:20px;padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
+.slotpill{display:inline-block;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;border-radius:var(--r-pill);padding:.2em .6em;margin-left:.4em;white-space:nowrap;vertical-align:middle;font-weight:600}
 .slotpill.morning{color:var(--slot-morning);background:rgba(var(--slot-morning-rgb),.14)}
 .slotpill.evening{color:var(--slot-evening);background:rgba(var(--slot-evening-rgb),.16)}
 .slotpill.full{color:var(--state-done);background:rgba(var(--state-done-rgb),.14)}
@@ -265,13 +265,13 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .slotpills button{font-size:.8rem;padding:.5em .4em}
 
 /* balance-due pill on upcoming shoots */
-.up-ev .due,.uh-row .due{color:var(--gold-b);border:1px solid rgba(var(--gold-rgb),.55);background:rgba(var(--gold-rgb),.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500;border-radius:20px}
+.up-ev .due,.uh-row .due{color:var(--gold-b);border:1px solid rgba(var(--gold-rgb),.55);background:rgba(var(--gold-rgb),.12);white-space:nowrap;font-size:.7rem;padding:.28em .75em;font-weight:500;border-radius:var(--r-pill)}
 .up-ev .due:active{background:rgba(var(--gold-rgb),.28)}
 
 /* filter chips with counts */
 .fchips{display:flex;gap:.4rem;overflow-x:auto;margin:0 0 .8rem;padding-bottom:2px;scrollbar-width:none}
 .fchips::-webkit-scrollbar{display:none}
-.fchips button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em .95em;font-size:.74rem;cursor:pointer;white-space:nowrap}
+.fchips button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.35em .95em;font-size:.74rem;cursor:pointer;white-space:nowrap}
 .fchips button b{font-weight:600;margin-left:.3em;opacity:.75}
 .fchips button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
 @media(hover:hover){ .fchips button:hover:not(.on){border-color:var(--gold);color:var(--gold-b)} }
@@ -281,15 +281,15 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 /* empty states */
 
 /* tappable stat tiles */
-.stat[data-fs],.stat[data-goto]{cursor:pointer;transition:border-color .2s}
+.stat[data-goto]{cursor:pointer;transition:border-color .2s}
 .stat.sel{border-color:var(--gold);background:var(--gold-t3)}
-@media(hover:hover){ .stat[data-fs]:hover,.stat[data-goto]:hover{border-color:var(--gold)} }
+@media(hover:hover){ .stat[data-goto]:hover{border-color:var(--gold)} }
 
 /* status picker sheet */
 .st-opts{display:grid;gap:.5rem}
 /* flex-wrap so a quick-add's second line ("name + number, that is all") drops
    below the label instead of squeezing it */
-.st-opts button{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:.85em 1em;color:var(--text);cursor:pointer;font-size:.92rem;text-transform:capitalize;text-align:left;min-height:var(--tap)}
+.st-opts button{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;background:var(--field);border:1px solid var(--line);border-radius:var(--r-md);padding:.85em 1em;color:var(--text);cursor:pointer;font-size:.92rem;text-transform:capitalize;text-align:left;min-height:var(--tap)}
 .st-opts button em{margin-left:auto;font-style:normal;font-size:.66rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
 .st-opts button.on{border-color:var(--gold)}
 .st-opts .dot{width:9px;height:9px;flex:0 0 auto}
@@ -298,13 +298,13 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 /* payment quick amounts */
 .qamt{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.2rem 0 .8rem}
 .qamt:empty{display:none}
-.qamt button{background:rgba(var(--gold-rgb),.12);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.32em .85em;font-size:.72rem;cursor:pointer}
+.qamt button{background:rgba(var(--gold-rgb),.12);border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.32em .85em;font-size:.72rem;cursor:pointer}
 @media(hover:hover){ .qamt button:hover{border-color:var(--gold)} }
 
 /* tab icons + new-leads badge */
 .tabs button{position:relative}
 .tabs button i{display:none;font-style:normal}
-.tabs .badge{background:var(--err);color:var(--white);font-size:.62rem;font-weight:600;border-radius:10px;padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
+.tabs .badge{background:var(--err);color:var(--white);font-size:.62rem;font-weight:600;border-radius:var(--r-md);padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
 
 /* app-style bottom navigation on phones */
 /* while the keyboard is up the bottom nav cannot be reached anyway, and the
@@ -312,7 +312,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 :root.kb-up .tabs{transform:translateY(100%);pointer-events:none}
 @media(max-width:699px){
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-nav);margin:0;gap:0;padding:.3rem .3rem calc(.3rem + env(safe-area-inset-bottom));background:var(--bar);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
-  .tabs button{background:none;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:.28em 0;font-size:.58rem;letter-spacing:.02em}
+  .tabs button{background:none;border:0;border-radius:var(--r-md);display:flex;flex-direction:column;align-items:center;gap:1px;padding:.28em 0;font-size:.58rem;letter-spacing:.02em}
   .tabs button i{display:block;font-size:1.14rem;line-height:1.25;filter:grayscale(1);opacity:.66;transition:.2s}
   .tabs button.on{background:none;color:var(--gold-b)}
   .tabs button.on i{filter:none;opacity:1}
@@ -329,7 +329,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .pay-backdrop.open{opacity:1;pointer-events:auto;visibility:visible;transition:opacity .25s, visibility 0s}
 .pay-modal{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:var(--z-sheet);
-  width:min(92vw,360px);background:var(--panel);border:1px solid var(--gold);border-radius:14px;
+  width:min(92vw,360px);background:var(--panel);border:1px solid var(--gold);border-radius:var(--r-lg);
   /* opacity:0 alone leaves every control inside a CLOSED sheet in the tab
      order and the accessibility tree — the payment amount field and the
      status buttons were reachable while invisible */
@@ -352,7 +352,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pay-modal h3{color:var(--gold-b);font-size:1.15rem;margin-bottom:.2rem}
 .pay-modal .who{font-size:.8rem;color:var(--mut);margin-bottom:.9rem}
 .mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
-.mode-pills button{flex:1;background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.6em;cursor:pointer;font-size:.85rem}
+.mode-pills button{flex:1;background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.6em;cursor:pointer;font-size:.85rem}
 .mode-pills button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
 .pay-hist{font-size:.75rem;color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
 .pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
@@ -370,7 +370,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
   /* bottom:var(--kb) lifts the sheet clear of the keyboard; the max-height
      shrinks by the same amount so a tall form scrolls inside what is left
      instead of running off the top of the screen */
-  .pay-modal{left:0;right:0;top:auto;bottom:var(--kb);width:100%;border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:calc(88vh - var(--kb))}
+  .pay-modal{left:0;right:0;top:auto;bottom:var(--kb);width:100%;border-radius:var(--r-xl) var(--r-xl) 0 0;border-left:0;border-right:0;border-bottom:0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(105%);max-height:calc(88vh - var(--kb))}
   .pay-modal.open{transform:translateY(0)}
 }
 /* dvh where it exists: 88vh of a phone browser is taller than the VISIBLE
@@ -388,16 +388,16 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .lead-det .ln span:last-child{color:var(--mut)}
 
 /* config editor */
-.sec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:.9rem}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:1rem;margin-bottom:.9rem}
 .sec h3{color:var(--gold-b);font-size:1.05rem;margin-bottom:.7rem}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
-.row{border:1px dashed var(--line);border-radius:10px;padding:.7rem;margin-bottom:.6rem}
+.row{border:1px dashed var(--line);border-radius:var(--r-md);padding:.7rem;margin-bottom:.6rem}
 .row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
 /* ready-made packages: one nested card per event inside the preset's .row.
    Replaced a raw-JSON textarea, so this is the first time these are editable
    without writing code. */
 .pevs{margin:.35rem 0 .6rem}
-.pev{border:1px dashed var(--line);border-radius:10px;padding:.65rem;margin-bottom:.55rem;background:var(--white-t1)}
+.pev{border:1px dashed var(--line);border-radius:var(--r-md);padding:.65rem;margin-bottom:.55rem;background:var(--white-t1)}
 .pev .del{float:right;background:none;border:0;color:var(--err);font-size:1.05rem;cursor:pointer;padding:0 .3em}
 .pev .fld{margin-bottom:.55rem}
 .pev .evchips,.pev .svcchips{margin:.1rem 0 .5rem}
@@ -405,12 +405,12 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .psvc{margin-bottom:.4rem}
 .psvc .pslab{flex:1;min-width:0;color:var(--text);font-size:.82rem;align-self:center}
 .psvc .pslab em{font-style:normal;color:var(--err);font-size:.72em;display:block}
-.addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.6em;cursor:pointer;font-size:.82rem}
+.addrow{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-md);padding:.6em;cursor:pointer;font-size:.82rem}
 .evchips,.svcchips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.1rem 0 .85rem}
-.qchip{background:var(--gold-t1);border:1px solid var(--line);color:var(--gold-b);border-radius:30px;padding:.45em 1em;font-size:.8rem;cursor:pointer;transition:.15s;font-family:var(--sans)}
+.qchip{background:var(--gold-t1);border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.45em 1em;font-size:.8rem;cursor:pointer;transition:.15s;font-family:var(--sans)}
 .qchip:active{transform:scale(.95);background:var(--gold-t4)}
 .qchip small{color:var(--mut);font-size:.85em;margin-left:.35em}
-.copyprev{background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:30px;padding:.5em 1.1em;font-size:.78rem;cursor:pointer;margin:0 0 .75rem;font-family:var(--sans)}
+.copyprev{background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.5em 1.1em;font-size:.78rem;cursor:pointer;margin:0 0 .75rem;font-family:var(--sans)}
 .copyprev:active{background:var(--gold-t2)}
 #pkgEvents .pkg-ev:first-child [data-copyprev]{display:none}
 .pkg-total{margin-left:auto;text-align:right;line-height:1.15;align-self:center}
@@ -429,7 +429,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 /* z-index 140: the backdrop is 120 and the sheets 130, so every "NOT saved —
    the server refused this write" fired while a sheet was open was painted
    BEHIND the sheet the owner was looking at */
-.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--black);border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:var(--z-toast);max-width:min(92vw,480px)}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--black);border:1px solid var(--gold);color:var(--gold-b);border-radius:var(--r-pill);padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:var(--z-toast);max-width:min(92vw,480px)}
 /* a toast reporting a refused write is worthless behind the keyboard.
    The mobile rule further down carries the same offset. */
 .toast{bottom:calc(84px + var(--kb))}
@@ -437,12 +437,12 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 @media(min-width:700px){ .stats{grid-template-columns:repeat(6,1fr)} .stat.month{grid-column:span 2} }
 
 /* packages */
-.itemrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;border:1px dashed var(--line);border-radius:10px;padding:.6rem;margin-bottom:.5rem}
+.itemrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem;border:1px dashed var(--line);border-radius:var(--r-md);padding:.6rem;margin-bottom:.5rem}
 .itemrow .l1{display:flex;gap:.45rem}
 .itemrow .l1 select{flex:1;min-width:0}
 .itemrow .l2{display:flex;gap:.45rem;align-items:center;grid-column:1 / -1;flex-wrap:wrap}
-.itemrow select,.itemrow input{background:var(--field);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .6em}
-.itemrow .qwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.itemrow select,.itemrow input{background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.5em .6em}
+.itemrow .qwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
 .itemrow .qwrap button{width:34px;height:38px;background:rgba(var(--gold-rgb),.18);border:0;color:var(--gold-b);font-size:1.1rem;cursor:pointer}
 .itemrow .qwrap input{width:46px;text-align:center;border:0;background:transparent}
 .itemrow input[data-f="rate"]{width:92px}
@@ -452,7 +452,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pkg-ev > .del{position:absolute;top:.5rem;right:.6rem;float:none}
 .prow{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.3rem 0}
 .prow b{font-family:var(--serif);color:var(--gold-b)}
-.prow input{width:130px;background:var(--field);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.45em .6em;text-align:right}
+.prow input{width:130px;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.45em .6em;text-align:right}
 .prow.big{border-top:1px solid var(--line);margin-top:.3rem;padding-top:.6rem}
 .prow.big b{font-size:1.35rem}
 .pkg-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:.4rem 0 1rem}
@@ -460,13 +460,13 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pkg-actions .btn{margin-top:0}
 /* instructions that only matter the first few times: one line by default */
 .howto{margin:0 0 .8rem}
-.howto summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-b);font-size:.74rem;letter-spacing:.04em;border:1px dashed var(--line);border-radius:20px;padding:.35em .95em}
+.howto summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-b);font-size:.74rem;letter-spacing:.04em;border:1px dashed var(--line);border-radius:var(--r-pill);padding:.35em .95em}
 .howto summary::-webkit-details-marker{display:none}
 .howto summary::before{content:"?";display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:rgba(var(--gold-rgb),.25);font-size:.62rem}
 .howto[open] summary{margin-bottom:.5rem}
 .howto p{font-size:.75rem;color:var(--mut);line-height:1.55}
 @media(hover:hover){ .howto summary:hover{border-color:var(--gold)} }
-.hint{background:rgba(var(--gold-rgb),.08);border:1px dashed var(--line);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--mut);margin-bottom:.9rem}
+.hint{background:rgba(var(--gold-rgb),.08);border:1px dashed var(--line);border-radius:var(--r-md);padding:.65rem .8rem;font-size:.78rem;color:var(--mut);margin-bottom:.9rem}
 .hint b{color:var(--gold-b);font-weight:500}
 .sec .sub{font-size:.75rem;color:var(--mut);margin:-.5rem 0 .8rem}
 .stepnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--white);font-size:.75rem;font-family:var(--sans);margin-right:.45rem;vertical-align:-3px}
@@ -484,7 +484,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .muted-xs{font-size:.72rem}
 
 /* ---- team tab ---- */
-.tm-ev{border:1px solid var(--line);border-radius:12px;padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:var(--white-t1)}
+.tm-ev{border:1px solid var(--line);border-radius:var(--r-md);padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:var(--white-t1)}
 /* Two columns, not one wrapping row: the title, the date pills and the client
    line all vary in length, and ＋ Assign used to get pushed onto a line of its
    own the moment a title ran long (VALIMA RECEPTION did it every time). The
@@ -505,9 +505,9 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tm-crew:first-of-type{margin-top:.35rem}
 .tm-crew .nm2{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm-crew .rl{color:var(--mut);font-size:.7rem;white-space:nowrap}
-.tm-crew .ackpill{margin-left:auto;flex:0 0 auto;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border-radius:14px;padding:.22em .65em;font-weight:600}
+.tm-crew .ackpill{margin-left:auto;flex:0 0 auto;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border-radius:var(--r-lg);padding:.22em .65em;font-weight:600}
 /* sits after the pill, which is what margin-left:auto has already pushed right */
-.tm-crew .csbtn{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.2em .55em;font-size:.8rem;line-height:1.2;cursor:pointer}
+.tm-crew .csbtn{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.2em .55em;font-size:.8rem;line-height:1.2;cursor:pointer}
 .tm-crew .csbtn:active{background:rgba(var(--gold-rgb),.2);border-color:var(--gold)}
 .ackpill.seen{color:var(--ok);background:var(--state-confirmed-bg)}
 .ackpill.wait{color:var(--state-neutral);background:var(--white-t3)}
@@ -521,18 +521,18 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 /* sticks BELOW the app header (which is sticky at top:0, z-index 50) — at
    top:0 it slid underneath and vanished */
 .tsegs{display:flex;gap:.4rem;position:sticky;top:var(--hdr-h,56px);z-index:var(--z-subnav);background:var(--ink);padding:.5rem 0 .55rem;margin:-.2rem 0 .2rem}
-.tsegs button{flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:24px;padding:.62em .3em;font-size:.82rem;cursor:pointer;min-height:44px;white-space:nowrap}
+.tsegs button{flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.62em .3em;font-size:.82rem;cursor:pointer;min-height:44px;white-space:nowrap}
 .tsegs button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
-.tsegs .segb{background:var(--err);color:var(--white);border-radius:20px;font-size:.6rem;padding:.05em .4em;font-weight:700}
+.tsegs .segb{background:var(--err);color:var(--white);border-radius:var(--r-pill);font-size:.6rem;padding:.05em .4em;font-weight:700}
 .tsegs button.on .segb{background:var(--ink-0);color:var(--gold-b)}
 .pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
 .pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:.62rem;color:var(--ok);letter-spacing:.02em}
 .pm-row .part2{color:var(--warn);border-color:var(--state-pending-ln)}
 /* .grp sets uppercase + wide letter-spacing for its heading text — the button
    inside it has to opt out or it reads as more heading, not an action */
-.grp .pmall{background:var(--gold-t3);border:1px solid var(--gold);color:var(--gold-b);border-radius:20px;padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
+.grp .pmall{background:var(--gold-t3);border:1px solid var(--gold);color:var(--gold-b);border-radius:var(--r-pill);padding:.3em .9em;font-size:.7rem;letter-spacing:.02em;text-transform:none;cursor:pointer;white-space:nowrap}
 .grp .pmall:active{background:rgba(var(--gold-rgb),.32)}
-.pm-row .paid2{color:var(--ok);background:var(--state-confirmed-bg);border:0;border-radius:14px;padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
+.pm-row .paid2{color:var(--ok);background:var(--state-confirmed-bg);border:0;border-radius:var(--r-lg);padding:.28em .8em;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap}
 /* the rate card's collapsible header — set up once per studio, then rarely
    touched, so it folds away instead of parking a form mid-page */
 .sec h3.rc-tog{display:flex;align-items:center;gap:.55rem;cursor:pointer;user-select:none;-webkit-user-select:none;margin-bottom:.7rem;min-height:40px}
@@ -544,7 +544,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 
 /* a partner studio's job history: progress on the row, the tickable checklist
    one tap inside it */
-.stujob{border-radius:10px;transition:background .2s}
+.stujob{border-radius:var(--r-md);transition:background .2s}
 .stujob.open{background:rgba(var(--gold-rgb),.07)}
 .stujob .up-ev{cursor:pointer}
 /* .what is nowrap+ellipsis for its first line (quote no · price · end client),
@@ -557,7 +557,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .sj-det{padding:0 .2rem .6rem}
 .sj-det .dtrack{margin-top:.2rem}
 .sj-det .btn{width:100%;margin-top:.5rem}
-.as-warn{color:var(--warn);font-size:.76rem;background:rgba(var(--state-pending-rgb),.08);border:1px dashed rgba(var(--state-pending-rgb),.4);border-radius:8px;padding:.45rem .65rem;margin:0 0 .8rem}
+.as-warn{color:var(--warn);font-size:.76rem;background:rgba(var(--state-pending-rgb),.08);border:1px dashed rgba(var(--state-pending-rgb),.4);border-radius:var(--r-sm);padding:.45rem .65rem;margin:0 0 .8rem}
 
 /* ==== Team console: attention list, leaderboard, squad cards ====
    All of it is derived from the assignment docs the tab already holds. */
@@ -565,7 +565,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 #bookingsSec{touch-action:pan-y}
 .listbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem}
 .listbar .howto{margin:0 0 .2rem}
-.swipehint{font-family:var(--sans);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:12px;padding:.18em .6em;vertical-align:3px;margin-left:.4em}
+.swipehint{font-family:var(--sans);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:var(--r-md);padding:.18em .6em;vertical-align:3px;margin-left:.4em}
 .swipehint::before{content:"↔ "}
 @media(min-width:700px){ .swipehint{display:none} }
 @keyframes slideL{from{opacity:.2;transform:translateX(26px)}to{opacity:1;transform:none}}
@@ -600,12 +600,12 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .ed-row .t{flex:1;min-width:0}
 .ed-row .t b{display:block;font-size:.88rem;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ed-row .t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qtag{flex:0 0 auto;font-family:var(--sans);font-size:.58rem;letter-spacing:.07em;color:var(--gold-b);background:var(--gold-t2);border-radius:12px;padding:.18em .6em;font-weight:600;white-space:nowrap}
-.duetag{flex:0 0 auto;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;border-radius:14px;padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(var(--white-rgb),.06);white-space:nowrap}
+.qtag{flex:0 0 auto;font-family:var(--sans);font-size:.58rem;letter-spacing:.07em;color:var(--gold-b);background:var(--gold-t2);border-radius:var(--r-md);padding:.18em .6em;font-weight:600;white-space:nowrap}
+.duetag{flex:0 0 auto;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;border-radius:var(--r-lg);padding:.24em .7em;font-weight:600;color:var(--mut);background:rgba(var(--white-rgb),.06);white-space:nowrap}
 .duetag.soon{color:var(--warn);background:var(--state-pending-bg)}
 .duetag.late{color:var(--err);background:rgba(var(--state-overdue-rgb),.14)}
 .duetag.ok{color:var(--ok);background:var(--state-confirmed-bg)}
-.edact{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.3em .7em;font-size:.7rem;cursor:pointer;min-height:34px;white-space:nowrap}
+.edact{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.3em .7em;font-size:.7rem;cursor:pointer;min-height:34px;white-space:nowrap}
 .edact.tick{border-color:var(--state-confirmed-ln);color:var(--ok)}
 .edact:active{background:rgba(var(--gold-rgb),.18)}
 @media(hover:hover){ .ed-row:hover .t b{color:var(--gold-b)} }
@@ -614,11 +614,11 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tm-ev.none{border-left:3px solid rgba(var(--state-overdue-rgb),.6)}
 .tm-ev.part{border-left:3px solid rgba(var(--state-pending-rgb),.6)}
 .tm-ev.full{border-left:3px solid var(--state-confirmed-ln)}
-.tm-ev-h .away{flex:0 0 auto;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);background:rgba(var(--white-rgb),.06);border-radius:14px;padding:.2em .6em;font-weight:600}
+.tm-ev-h .away{flex:0 0 auto;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);background:rgba(var(--white-rgb),.06);border-radius:var(--r-lg);padding:.2em .6em;font-weight:600}
 .tm-ev-h .away.soon{color:var(--warn);background:var(--state-pending-bg)}
 .tm-fill{display:flex;align-items:center;gap:.55rem;margin:.5rem 0 .1rem}
-.tm-fill .fbar{flex:1;height:4px;border-radius:4px;background:var(--white-t4);overflow:hidden}
-.tm-fill .fbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold-l),var(--gold-b))}
+.tm-fill .fbar{flex:1;height:4px;border-radius:var(--r-xs);background:var(--white-t4);overflow:hidden}
+.tm-fill .fbar i{display:block;height:100%;border-radius:var(--r-xs);background:linear-gradient(90deg,var(--gold-l),var(--gold-b))}
 .tm-fill b{flex:0 0 auto;font-size:.66rem;letter-spacing:.04em;font-weight:600}
 .tm-fill b.none{color:var(--err)} .tm-fill b.part{color:var(--warn)} .tm-fill b.full{color:var(--ok)}
 .tm-fill em{flex:0 0 auto;font-style:normal;font-size:.62rem;color:var(--warn)}
@@ -633,7 +633,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .crewpick .pickhead{grid-column:1/-1;font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);padding:.35rem .1rem .05rem}
 .crewpick .pickhead:first-child{padding-top:0}
 @media(max-width:400px){ .crewpick{grid-template-columns:1fr} }
-.cpick{display:flex;align-items:center;gap:.5rem;text-align:left;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:.5rem .6rem;cursor:pointer;font-family:var(--sans);min-height:46px}
+.cpick{display:flex;align-items:center;gap:.5rem;text-align:left;background:var(--field);border:1px solid var(--line);border-radius:var(--r-md);padding:.5rem .6rem;cursor:pointer;font-family:var(--sans);min-height:46px}
 .cpick .dot{flex:0 0 auto}
 .cp-t{flex:1;min-width:0}
 .cp-t b{display:block;color:var(--text);font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -646,12 +646,12 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 /* "this event's services call for their craft" — a bare ★ read as a rating */
 /* outlined, not filled: a picked member already carries a gold border and gold
    name, and a solid badge on top of that made the list read as all highlight */
-.cp-t b .wantt{font-style:normal;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);border:1px solid rgba(var(--gold-b-rgb),.5);border-radius:12px;padding:.1em .45em;margin-left:.4em;vertical-align:.12em;font-weight:600}
+.cp-t b .wantt{font-style:normal;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);border:1px solid rgba(var(--gold-b-rgb),.5);border-radius:var(--r-md);padding:.1em .45em;margin-left:.4em;vertical-align:.12em;font-weight:600}
 /* 16px like every other input — 12.8px made iOS zoom the whole sheet on focus */
-.crewfilter{width:100%;background:var(--field);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:.5em .7em;margin-bottom:.45rem;font-size:16px}
+.crewfilter{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.5em .7em;margin-bottom:.45rem;font-size:16px}
 .crewfilter:focus{outline:none;border-color:var(--gold)}
 /* what "Assign 3 crew" is actually about to write */
-.as-multi{border:1px dashed var(--line);border-radius:10px;padding:.55rem .65rem;margin:0 0 .85rem;background:rgba(var(--gold-rgb),.06)}
+.as-multi{border:1px dashed var(--line);border-radius:var(--r-md);padding:.55rem .65rem;margin:0 0 .85rem;background:rgba(var(--gold-rgb),.06)}
 .as-multi .amh{font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.4rem}
 .as-multi .amr{display:flex;align-items:baseline;gap:.5rem;font-size:.78rem;padding:.2rem 0}
 .as-multi .amr span{color:var(--text);flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -662,12 +662,12 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .as-multi .amr.tot span{color:var(--mut);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}
 .as-multi .amn{font-size:.68rem;color:var(--warn);margin-top:.45rem;line-height:1.45}
 #asPickHint{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut);font-size:.68rem;margin-left:.4em}
-.copycrew{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin:0 0 .8rem;font-family:var(--sans)}
+.copycrew{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-md);padding:.55em;cursor:pointer;font-size:.78rem;margin:0 0 .8rem;font-family:var(--sans)}
 .copycrew:active{background:var(--gold-t2)}
 @media(hover:hover){ .copycrew:hover{border-color:var(--gold)} }
 
 .lbtog{margin-left:auto;display:inline-flex;gap:.3rem}
-.lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
+.lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
 .lbtog button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
 .lb-row{display:flex;align-items:center;gap:.65rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
 .lb-row:last-child{border-bottom:0}
@@ -679,13 +679,13 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .lb-row.g3 .av{background:var(--rank-3-bg);color:var(--rank-3);border-color:var(--rank-3-ln)}
 .lb-mid{flex:1;min-width:0}
 .lb-mid b{display:block;font-size:.9rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lb-bar{height:4px;border-radius:4px;background:rgba(var(--white-rgb),.08);margin-top:.28rem;overflow:hidden}
-.lb-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold-l),var(--gold-b))}
+.lb-bar{height:4px;border-radius:var(--r-xs);background:rgba(var(--white-rgb),.08);margin-top:.28rem;overflow:hidden}
+.lb-bar i{display:block;height:100%;border-radius:var(--r-xs);background:linear-gradient(90deg,var(--gold-l),var(--gold-b))}
 .lb-n{flex:0 0 auto;text-align:right;line-height:1.15}
 .lb-n b{display:block;font-family:var(--serif);color:var(--gold-b);font-size:1rem}
 .lb-n span{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
 
-.sq{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.8rem .9rem;margin-bottom:.6rem;box-shadow:0 10px 26px rgba(var(--black-rgb),.22)}
+.sq{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:.8rem .9rem;margin-bottom:.6rem;box-shadow:0 10px 26px rgba(var(--black-rgb),.22)}
 .sq.off{opacity:.6}
 .sq-h{display:flex;align-items:center;gap:.7rem}
 .sq-av{position:relative;flex:0 0 auto;width:46px;height:46px}
@@ -696,7 +696,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .sq-t{flex:1;min-width:0}
 .sq-t b{display:block;font-family:var(--serif);color:var(--white);font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sq-t span{display:block;font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sq-m .lvchip{color:var(--gold-b);border:1px solid var(--line);border-radius:20px;padding:.05em .5em}
+.sq-m .lvchip{color:var(--gold-b);border:1px solid var(--line);border-radius:var(--r-pill);padding:.05em .5em}
 .sq-m{display:flex;flex-wrap:wrap;gap:.3rem .55rem;margin-top:.6rem;font-size:.7rem;color:var(--mut)}
 .sq-m b{color:var(--text);font-weight:500}
 .sq-m .due{color:var(--warn)}
@@ -729,14 +729,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .gbtn,.btn--primary{box-shadow:0 6px 16px rgba(var(--gold-d-rgb),.35)}
 .gbtn:active,.btn--primary:active{box-shadow:0 3px 8px rgba(var(--gold-d-rgb),.3)}
 .stat{transition:border-color .2s, transform .15s}
-.stat[data-fs]:active,.stat[data-goto]:active{transform:scale(.97)}
+.stat[data-goto]:active{transform:scale(.97)}
 /* phones: active bottom-nav tab gets a soft gold pill, not just a tint */
 @media(max-width:699px){
   .tabs button.on{background:var(--gold-t2)}
 }
 /* phones: the payment/status/member/assign sheets get a grab handle */
 @media(max-width:699px){
-  .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:4px;background:var(--line-3);margin:-.4rem auto .85rem}
+  .pay-modal::before{content:"";display:block;width:38px;height:4px;border-radius:var(--r-xs);background:var(--line-3);margin:-.4rem auto .85rem}
 }
 
 /* ==== Home stats: all four tiles on ONE line ==== */
@@ -758,18 +758,18 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(hover:hover){ .upmore:hover{color:var(--gold-b)} }
 .up-hero + .up-ev{margin-top:.5rem}
 .up-ev[data-open-ev],#upBody .up-ev{cursor:pointer}
-.upall{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:10px;padding:.55em;cursor:pointer;font-size:.78rem;margin-top:.6rem;font-family:var(--sans)}
+.upall{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-md);padding:.55em;cursor:pointer;font-size:.78rem;margin-top:.6rem;font-family:var(--sans)}
 .upall:active{background:var(--gold-t2)}
 @media(hover:hover){ .upall:hover{border-color:var(--gold)} }
 /* next shoot: the whole DAY is the hero — every event on that date sits
    inside the highlight, not just the first one */
-.up-hero{background:rgba(var(--gold-rgb),.08);border:1px solid var(--line-3);border-radius:14px;padding:.7rem .75rem;margin-top:.3rem}
+.up-hero{background:rgba(var(--gold-rgb),.08);border:1px solid var(--line-3);border-radius:var(--r-lg);padding:.7rem .75rem;margin-top:.3rem}
 .uh-head{display:flex;align-items:center;gap:.7rem;margin-bottom:.55rem}
 .uh-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
 .uh-t b{font-family:var(--serif);color:var(--gold-b);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .uh-t span{font-size:.68rem;color:var(--mut);letter-spacing:.05em;text-transform:uppercase}
 .uh-rows{display:flex;flex-direction:column;gap:.4rem}
-.uh-row{display:flex;align-items:center;gap:.55rem;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:.55rem .65rem;cursor:pointer;transition:border-color .2s,transform .12s}
+.uh-row{display:flex;align-items:center;gap:.55rem;background:var(--field);border:1px solid var(--line);border-radius:var(--r-md);padding:.55rem .65rem;cursor:pointer;transition:border-color .2s,transform .12s}
 .uh-row:active{transform:scale(.985)}
 @media(hover:hover){ .uh-row:hover{border-color:var(--gold)} }
 .uh-row .dot{flex:0 0 auto}
@@ -777,7 +777,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .uh-mid b{font-family:var(--serif);color:var(--white);font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .uh-mid span{font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .uh-row .chev2{color:var(--mut);font-size:1.1rem;flex:0 0 auto}
-.un-when{flex:0 0 auto;text-align:center;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:.3rem .55rem;min-width:52px}
+.un-when{flex:0 0 auto;text-align:center;background:var(--field);border:1px solid var(--line);border-radius:var(--r-md);padding:.3rem .55rem;min-width:52px}
 .un-when b{display:block;font-family:var(--serif);font-size:1.35rem;color:var(--gold-b);line-height:1.1}
 .un-when span{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 
@@ -794,7 +794,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .fintiles .stat{padding:.55rem .3rem}
 .fintiles .stat b{font-size:.95rem}
 .finyr{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .55rem}
-.finyr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.3em .85em;font-size:1rem}
+.finyr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.3em .85em;font-size:1rem}
 .finyr b{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:1.05rem}
 .finsplit{display:flex;gap:.7rem;flex-wrap:wrap;margin:0 0 .55rem;font-size:.72rem;color:var(--mut)}
 .finsplit b{color:var(--gold-b);font-weight:500}
@@ -804,8 +804,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .finrow{display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
 .finrow:last-child{border-bottom:0}
 .finrow .mo{flex:0 0 34px;color:var(--mut)}
-.finrow .fbar{flex:1;height:13px;border-radius:7px;background:rgba(var(--white-rgb),.06);overflow:hidden}
-.finrow .fbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--gold-b));border-radius:7px}
+.finrow .fbar{flex:1;height:13px;border-radius:var(--r-xs);background:rgba(var(--white-rgb),.06);overflow:hidden}
+.finrow .fbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--gold-b));border-radius:var(--r-xs)}
 .finrow .amt3{flex:0 0 auto;font-family:var(--serif);color:var(--gold-b);white-space:nowrap;min-width:62px;text-align:right}
 .finrow .n3{flex:0 0 20px;color:var(--mut);font-size:.64rem;text-align:right}
 .finrow.yr{cursor:pointer}
@@ -825,7 +825,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ledrow.finled .l-ev{font-size:.76rem}
 .ledrow.finled .l-ev span{color:var(--mut);font-size:.62rem}
 .ledrow.finled.hd b{font-size:.56rem}
-.ledrow.finled.annual{background:var(--gold-t1);border-radius:8px;border-bottom:0;padding:.4rem .3rem;margin:.15rem 0 .1rem}
+.ledrow.finled.annual{background:var(--gold-t1);border-radius:var(--r-sm);border-bottom:0;padding:.4rem .3rem;margin:.15rem 0 .1rem}
 .ledrow.finled.annual .l-ev{color:var(--gold-b);font-weight:600}
 .ledrow.finled.on{background:rgba(var(--gold-rgb),.09)}
 .ledrow.finled[data-fyr]{cursor:pointer}
@@ -859,12 +859,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .finh{color:var(--gold-b);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
 .ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
 .ev-nav b{flex:1;text-align:center;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600}
-.ev-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:10px;cursor:pointer;padding:.32em .95em;font-size:1rem;min-width:44px}
+.ev-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.32em .95em;font-size:1rem;min-width:44px}
 .ev-nav button:disabled{opacity:.3;cursor:default}
 .ln2{display:flex;justify-content:space-between;gap:.7rem;padding:.24rem 0;font-size:.84rem;border-bottom:1px dashed var(--line)}
 .ln2 span:first-child{color:var(--mut);flex:0 0 auto}
 .ln2 span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
-.ev-e{border:1px solid var(--line);border-radius:10px;padding:.5rem .7rem;margin-bottom:.45rem;background:var(--field)}
+.ev-e{border:1px solid var(--line);border-radius:var(--r-md);padding:.5rem .7rem;margin-bottom:.45rem;background:var(--field)}
 .ev-e.cur{border-color:rgba(var(--gold-b-rgb),.55);background:var(--gold-t1)}
 .ev-e b{font-family:var(--serif);color:var(--white);display:block;font-size:.92rem}
 .ev-e span{display:block;color:var(--gold-b);font-size:.74rem}
@@ -908,11 +908,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    the studio list was long enough to scroll (Home clears its own the same way) */
 #studioListView > .sec:last-child{margin-bottom:78px}
 .stu-chips{display:flex;gap:.4rem;flex-wrap:wrap;padding:0 1rem .85rem;cursor:pointer}
-.stu-chips b{border-radius:14px;padding:.24em .75em;font-weight:600;font-size:.66rem;letter-spacing:.04em}
+.stu-chips b{border-radius:var(--r-lg);padding:.24em .75em;font-weight:600;font-size:.66rem;letter-spacing:.04em}
 .stu-chips .c1{color:var(--gold-b);background:rgba(var(--gold-rgb),.13)}
 .stu-chips .c2{color:var(--warn);background:var(--state-pending-bg)}
 .stu-chips .c3{color:var(--ok);background:var(--state-confirmed-bg)}
-.b2bpill{flex:0 0 auto;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:var(--b2b);background:var(--state-info-bg);border-radius:14px;padding:.2em .6em;font-weight:600}
+.b2bpill{flex:0 0 auto;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:var(--b2b);background:var(--state-info-bg);border-radius:var(--r-lg);padding:.2em .6em;font-weight:600}
 .stu-a{text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .ledrow{display:flex;align-items:center;gap:.5rem;padding:.32rem 0;border-bottom:1px dashed var(--line);font-size:.78rem}
 .ledrow:last-child{border-bottom:0}

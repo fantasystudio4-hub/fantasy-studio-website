@@ -159,7 +159,11 @@
   --gut:14px;                     /* the page gutter .wrap has always used */
 
   /* ---- radius ----------------------------------------------------------- */
-  --r-sm:8px; --r-md:10px; --r-lg:14px; --r-xl:16px; --r-pill:40px;
+  /* Six steps, and every radius in the panel is one of them. --r-pill is
+     999px rather than a fixed 40px so a pill is perfectly round at ANY height:
+     the old value left a 28px-tall chip looking slightly squared next to a
+     44px button that was fully round. */
+  --r-xs:4px; --r-sm:8px; --r-md:10px; --r-lg:14px; --r-xl:16px; --r-pill:999px;
 
   /* ---- elevation --------------------------------------------------------- */
   --sh-1:0 2px 8px rgba(var(--black-rgb),.25);

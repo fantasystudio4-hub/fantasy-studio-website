@@ -313,7 +313,7 @@ button.chip-status:active{transform:scale(.97)}
   }
   .modal.open{transform:translateY(0)}
   .modal::before{
-    content:"";display:block;width:38px;height:4px;border-radius:4px;
+    content:"";display:block;width:38px;height:4px;border-radius:var(--r-xs);
     background:var(--line-2);margin:-.4rem auto .85rem;
   }
 }
@@ -519,3 +519,36 @@ button.chip-status:active{transform:scale(.97)}
 /* while selecting, the head is a target for the row — not a disclosure */
 body.has-bulk .card__toggle{cursor:pointer}
 body.has-bulk .card__toggle .chev{opacity:.3}
+
+/* ==================================================================== TODAY
+   Two tiles above everything else on Home. Deliberately quieter than a
+   dashboard: a hairline top rule in the state colour rather than a thick edge,
+   one figure each, and the supporting line in the muted tone. They should read
+   as a header for the day, not as four competing alarms.
+   ========================================================================= */
+.today{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin:var(--sp-4) 0 var(--sp-3)}
+.today-t{
+  display:flex;flex-direction:column;align-items:flex-start;gap:.05rem;
+  min-height:92px;padding:.7rem .8rem;
+  background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--state-neutral-d);
+  border-radius:var(--r-md);color:var(--text);font-family:var(--sans);
+  text-align:left;cursor:pointer;-webkit-user-select:none;user-select:none;
+  touch-action:manipulation;transition:border-color var(--t-fast),transform var(--t-fast);
+}
+.today-t:active{transform:scale(.985)}
+.today-t:focus-visible{outline:2px solid var(--gold-b);outline-offset:2px}
+@media(hover:hover){ .today-t:hover{border-color:var(--gold)} }
+
+.today-k{
+  font-size:var(--fs-xs);letter-spacing:.12em;text-transform:uppercase;
+  color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+.today-n{font-family:var(--serif);font-size:1.7rem;font-weight:700;line-height:1.15;color:var(--gold-b)}
+.today-l{font-size:var(--fs-md);color:var(--text);line-height:1.2;margin-top:-.15rem}
+.today-s{
+  font-size:var(--fs-xs);color:var(--mut);margin-top:.25rem;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;
+}
+.today-t[data-state="confirmed"]{border-top-color:var(--state-confirmed)}
+.today-t[data-state="confirmed"] .today-n{color:var(--state-confirmed)}
+.today-t[data-state="neutral"] .today-n{color:var(--mut)}
