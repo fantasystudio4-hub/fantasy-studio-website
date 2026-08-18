@@ -1,0 +1,347 @@
+/* ============================================================================
+   FANTASY STUDIO ADMIN — SHARED COMPONENTS
+   One Button, one Input, one Modal, one Card, one StatusChip, one Skeleton,
+   one EmptyState. Every value comes from tokens.css.
+
+   Loaded AFTER tokens.css and BEFORE app.css, so a section still carrying its
+   old one-off rules keeps winning until it is migrated. Sections migrate one
+   at a time; as each lands, its bespoke rules are deleted from app.css and it
+   drops onto the components below.
+
+   Migrated so far: Clients (Leads).
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- focus ring
+   The panel is keyboard-driven on the desktop machine and tap-driven on the
+   phone. :focus-visible gives the first a visible ring without painting one
+   under every thumb on the second. */
+.btn:focus-visible,.input:focus-visible,.chip-status:focus-visible,
+.card__head:focus-visible,.icon-btn:focus-visible{
+  outline:2px solid var(--gold-b); outline-offset:2px;
+}
+
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+
+/* ================================================================== BUTTON
+   .btn is the whole button surface of the panel. Variants change colour only;
+   every one of them is >= --tap tall, because all of them are thumb targets.
+
+     .btn--primary   the one gold action on a screen
+     .btn--ghost     outlined, the default for everything else
+     .btn--danger    destructive; always paired with a confirm
+     .btn--quiet     text-only, for tertiary links inside cards
+   Modifiers: .btn--sm (still 44px tall — only the text and padding shrink),
+              .btn--block (full width), .btn--pill
+   ======================================================================== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);
+  min-height:var(--tap);padding:.6em 1.1em;
+  font-family:var(--sans);font-size:var(--fs-base);line-height:1.2;
+  border:1px solid transparent;border-radius:var(--r-pill);
+  background:none;color:var(--text);cursor:pointer;
+  transition:border-color var(--t-fast),background var(--t-fast),color var(--t-fast),transform var(--t-fast);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  text-decoration:none;white-space:nowrap;
+}
+.btn:active{transform:scale(.97)}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
+
+.btn--primary{background:var(--grad-gold);color:var(--white);border-color:transparent;font-weight:600;letter-spacing:.02em}
+.btn--ghost{border-color:var(--line);color:var(--gold-b)}
+.btn--ghost:active{background:var(--gold-t2);border-color:var(--gold)}
+.btn--danger{border-color:var(--state-overdue-ln);color:var(--state-overdue)}
+.btn--danger:active{background:var(--state-overdue);color:var(--white);border-color:var(--state-overdue)}
+.btn--quiet{color:var(--mut);padding-left:.5em;padding-right:.5em}
+.btn--quiet:active{color:var(--gold-b)}
+
+.btn--sm{padding:.35em .9em;font-size:var(--fs-md)}
+.btn--block{width:100%}
+.btn--pill{border-radius:var(--r-pill)}
+
+@media(hover:hover){
+  .btn--ghost:hover{border-color:var(--gold);color:var(--white)}
+  .btn--danger:hover{background:var(--state-overdue);color:var(--white);border-color:var(--state-overdue)}
+  .btn--quiet:hover{color:var(--gold-b)}
+  .btn--primary:hover{filter:brightness(1.06)}
+}
+
+/* an icon-only control — the 44px floor matters most here, because the glyph
+   inside is usually 16-20px and nothing else advertises the hit area */
+.icon-btn{
+  display:grid;place-items:center;width:var(--tap);height:var(--tap);
+  flex:0 0 auto;border:0;border-radius:50%;background:none;color:var(--mut);
+  font-size:var(--fs-xl);cursor:pointer;touch-action:manipulation;
+}
+.icon-btn:active{color:var(--gold-b);background:var(--white-t2)}
+
+/* ================================================================== INPUT
+   One well for input, select and textarea. Font size stays 16px (--fs-input):
+   anything smaller and iOS Safari zooms the whole page on focus.
+   ======================================================================== */
+.input{
+  width:100%;min-height:var(--tap);
+  background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);
+  color:var(--text);padding:.6em .8em;font-family:var(--sans);font-size:var(--fs-input);
+}
+.input::placeholder{color:var(--mut);opacity:.75}
+.input:focus{outline:none;border-color:var(--gold)}
+.input[disabled]{opacity:.5}
+textarea.input{min-height:70px;resize:vertical;line-height:1.5}
+
+/* ---- field: label + control + inline error --------------------------------
+   Validation is shown here, under the control, never in an alert(). An alert
+   steals the screen, loses the owner's place in a long form, and on the phone
+   it covers the very field it is complaining about. */
+.field{margin-bottom:var(--sp-3);text-align:left}
+.field__label{
+  display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold-b);margin-bottom:var(--sp-1);
+}
+.field__label .req{color:var(--state-overdue);margin-left:.15em}
+.field__hint{display:block;font-size:var(--fs-md);color:var(--mut);margin-top:var(--sp-1);line-height:1.45}
+.field__error{
+  display:flex;align-items:flex-start;gap:.35em;
+  font-size:var(--fs-md);color:var(--state-overdue);margin-top:var(--sp-1);line-height:1.45;
+}
+.field__error::before{content:"⚠";flex:0 0 auto;font-size:.9em;line-height:1.5}
+.field__error[hidden]{display:none}
+.input[aria-invalid="true"]{border-color:var(--state-overdue);background:var(--state-overdue-bg)}
+.input[aria-invalid="true"]:focus{border-color:var(--state-overdue)}
+
+/* ============================================================ STATUS CHIP
+   The single definition of what a status looks like. Colour comes from
+   data-state, never from the chip's own class, so the same status cannot be
+   amber on one tab and grey on another. Map status -> state once, in JS
+   (STATE_OF), and every screen inherits it.
+   ======================================================================== */
+.chip-status{
+  display:inline-flex;align-items:center;gap:.4em;
+  border:1px solid transparent;border-radius:var(--r-pill);
+  padding:.25em .8em;font-family:var(--sans);font-size:var(--fs-sm);
+  letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+  background:var(--white-t3);color:var(--mut);white-space:nowrap;
+}
+button.chip-status{cursor:pointer;min-height:var(--tap);touch-action:manipulation}
+button.chip-status:active{transform:scale(.97)}
+/* the leading dot — the same six colours the calendar legend uses */
+.chip-status::before{
+  content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;
+  background:currentColor;
+}
+.chip-status.no-dot::before{display:none}
+
+/* ---- status control -------------------------------------------------------
+   Reads as a StatusChip, but it is a real <select>, so one tap opens the
+   platform's own picker. A custom sheet would look tidier and cost two extra
+   taps per lead — the wrong trade on a panel whose whole point is fewer taps.
+   Colour comes from data-state, same vocabulary as the chip. */
+.chip-select{
+  appearance:none;-webkit-appearance:none;
+  min-height:var(--tap);
+  border:1px solid transparent;border-radius:var(--r-pill);
+  padding:.3em 2.1em .3em 1em;
+  font-family:var(--sans);font-size:var(--fs-sm);font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;
+  background-color:var(--white-t3);color:var(--mut);
+  cursor:pointer;touch-action:manipulation;
+}
+.chip-select:focus{outline:none;box-shadow:0 0 0 3px rgba(var(--gold-rgb),.28)}
+.chip-select[data-state="pending"]  {color:var(--state-pending);  background-color:var(--state-pending-bg)}
+.chip-select[data-state="confirmed"]{color:var(--state-confirmed);background-color:var(--state-confirmed-bg)}
+.chip-select[data-state="overdue"]  {color:var(--state-overdue);  background-color:var(--state-overdue-bg)}
+.chip-select[data-state="info"]     {color:var(--state-info);     background-color:var(--state-info-bg)}
+.chip-select[data-state="neutral"]  {color:var(--state-neutral);  background-color:var(--state-neutral-bg)}
+.chip-select[data-state="done"]     {color:var(--state-done);     background-color:var(--state-done-bg)}
+.chip-select[data-state="risk"]     {color:var(--state-risk);     background-color:var(--state-risk-bg)}
+.chip-select[data-state="new"]      {color:var(--state-new);      background-color:var(--state-new-bg)}
+.chip-select[data-state="progress"] {color:var(--state-progress); background-color:rgba(var(--state-progress-rgb),.13)}
+.chip-select[data-state="linked"]   {color:var(--state-linked);   background-color:rgba(var(--state-linked-rgb),.13)}
+/* the option list is painted by the OS — on a dark page it needs a dark ground
+   or Android draws black text on black */
+.chip-select option{background:var(--panel);color:var(--text);text-transform:none;font-weight:400}
+
+.chip-status[data-state="pending"]  {color:var(--state-pending);  background:var(--state-pending-bg)}
+.chip-status[data-state="confirmed"]{color:var(--state-confirmed);background:var(--state-confirmed-bg)}
+.chip-status[data-state="overdue"]  {color:var(--state-overdue);  background:var(--state-overdue-bg)}
+.chip-status[data-state="info"]     {color:var(--state-info);     background:var(--state-info-bg)}
+.chip-status[data-state="neutral"]  {color:var(--state-neutral);  background:var(--state-neutral-bg)}
+.chip-status[data-state="done"]     {color:var(--state-done);     background:var(--state-done-bg)}
+.chip-status[data-state="risk"]     {color:var(--state-risk);     background:var(--state-risk-bg)}
+.chip-status[data-state="new"]      {color:var(--state-new);      background:var(--state-new-bg)}
+.chip-status[data-state="progress"] {color:var(--state-progress); background:rgba(var(--state-progress-rgb),.13)}
+.chip-status[data-state="linked"]   {color:var(--state-linked);   background:rgba(var(--state-linked-rgb),.13)}
+
+/* the same colour vocabulary as a bare dot, for dense rows (calendar cells) */
+.state-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto;background:currentColor}
+.state-dot[data-state="pending"]{color:var(--state-pending)}
+.state-dot[data-state="confirmed"]{color:var(--state-confirmed)}
+.state-dot[data-state="overdue"]{color:var(--state-overdue)}
+.state-dot[data-state="info"]{color:var(--state-info)}
+.state-dot[data-state="neutral"]{color:var(--state-neutral)}
+.state-dot[data-state="done"]{color:var(--state-done)}
+.state-dot[data-state="risk"]{color:var(--state-risk)}
+.state-dot[data-state="new"]{color:var(--state-new)}
+.state-dot[data-state="progress"]{color:var(--state-progress)}
+.state-dot[data-state="linked"]{color:var(--state-linked)}
+
+/* ==================================================================== CARD
+   The panel has no data tables and gets none: at 390px a table either scrolls
+   sideways or crushes its columns. A record is a card at every width; the only
+   thing that changes on a wide screen is how many sit side by side.
+   ======================================================================== */
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  margin-bottom:.6rem;overflow:hidden;
+  transition:border-color var(--t-med),background var(--t-med);
+}
+.card.is-open{border-color:var(--line-2);background:var(--panel-open)}
+.card--flat{background:none;border-style:dashed}
+/* status accent down the leading edge — set data-state on the card itself */
+.card[data-state]{border-left:3px solid currentColor}
+.card[data-state="pending"]{border-left-color:var(--state-pending)}
+.card[data-state="confirmed"]{border-left-color:var(--state-confirmed)}
+.card[data-state="overdue"]{border-left-color:var(--state-overdue)}
+.card[data-state="info"]{border-left-color:var(--state-info)}
+.card[data-state="neutral"]{border-left-color:var(--state-neutral-d)}
+.card[data-state="done"]{border-left-color:var(--state-done)}
+.card[data-state="risk"]{border-left-color:var(--state-risk)}
+.card[data-state="new"]{border-left-color:var(--state-new)}
+.card[data-state="progress"]{border-left-color:var(--state-progress)}
+.card[data-state="linked"]{border-left-color:var(--state-linked)}
+
+/* The head is a ROW, not a button: [ toggle | amount + status | chevron ].
+   The toggle is the only button, so the status control beside it stays
+   tappable — nesting it inside would be invalid markup and the button would
+   eat its taps. */
+.card__head{
+  display:flex;align-items:center;gap:.5rem;padding:.15rem .8rem .15rem 0;
+  -webkit-user-select:none;user-select:none;
+}
+.card__toggle{
+  flex:1;min-width:0;display:grid;
+  grid-template-columns:1fr auto;align-items:center;column-gap:.5rem;row-gap:.15rem;
+  text-align:left;background:none;border:0;color:inherit;font:inherit;
+  padding:.7rem .1rem .7rem 1rem;min-height:var(--tap);cursor:pointer;
+  touch-action:manipulation;
+}
+.card__toggle .l1{grid-column:1;display:flex;align-items:center;gap:.4rem;min-width:0}
+.card__toggle .l2{grid-column:1;display:flex;align-items:baseline;gap:.5rem;min-width:0}
+/* the disclosure sits INSIDE the toggle it belongs to, and points sideways —
+   the status control next to it already owns the downward arrow, and two
+   down-chevrons on one row read as two pickers */
+.card__toggle .chev{
+  grid-column:2;grid-row:1 / 3;align-self:center;
+  color:var(--mut);font-size:1.35rem;line-height:1;
+  transition:transform var(--t-med),color var(--t-med);
+}
+/* the right rail: money above, status below, both hugging the edge */
+.card__side{flex:0 0 auto;display:flex;align-items:center}
+.card__title{font-family:var(--serif);font-size:1.02rem;color:var(--white);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the line that is allowed to give way: it truncates from the tail, and the
+   meta string is built shoot-date-first so the tail is the throwaway part */
+.card__meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card__meta{font-size:var(--fs-md);color:var(--mut)}
+.card__amt{flex:0 0 auto;margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap;line-height:1.1;font-size:.95rem}
+.card__actions{
+  padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;
+  font-size:var(--fs-md);color:var(--mut);
+}
+.card__body{border-top:1px dashed var(--line);padding:.85rem .95rem;font-size:var(--fs-base)}
+
+/* =================================================================== MODAL
+   One overlay for confirms, sheets and pickers. Centred dialog on a wide
+   screen; bottom sheet with a grab handle on a phone, because the top of a
+   6-inch screen is out of thumb reach.
+   ======================================================================== */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:var(--z-backdrop);
+  background:var(--scrim);backdrop-filter:blur(2px);
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity var(--t-med), visibility 0s linear var(--t-med);
+}
+.modal-backdrop.open{opacity:1;pointer-events:auto;visibility:visible;transition:opacity var(--t-med), visibility 0s}
+
+.modal{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);
+  z-index:var(--z-sheet);width:min(94vw,420px);max-height:86vh;overflow:auto;
+  overscroll-behavior:contain;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-xl);
+  box-shadow:var(--sh-3);padding:1.4rem;
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity var(--t-slow), transform var(--t-slow), visibility 0s linear var(--t-slow);
+}
+.modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity var(--t-slow), transform var(--t-slow), visibility 0s}
+.modal__title{font-family:var(--serif);color:var(--gold-b);font-size:1.15rem;margin-bottom:.35rem}
+.modal__text{font-size:var(--fs-base);color:var(--text);line-height:1.55;white-space:pre-line}
+.modal__text b{color:var(--white)}
+.modal__foot{display:flex;gap:var(--sp-2);margin-top:var(--sp-5)}
+.modal__foot .btn{flex:1}
+
+/* a confirm must sit above the sheet that launched it — deleting from inside
+   an open sheet was the case that put this z-index here */
+.modal-backdrop.is-confirm{z-index:var(--z-confirm)}
+.modal.is-confirm{z-index:calc(var(--z-confirm) + 1)}
+
+@media(max-width:699px){
+  .modal{
+    left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;
+    border-radius:var(--r-xl) var(--r-xl) 0 0;border-left:0;border-right:0;border-bottom:0;
+    padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));
+    transform:translateY(105%);
+  }
+  .modal.open{transform:translateY(0)}
+  .modal::before{
+    content:"";display:block;width:38px;height:4px;border-radius:4px;
+    background:var(--line-2);margin:-.4rem auto .85rem;
+  }
+}
+@supports (height: 1dvh){
+  .modal{max-height:86dvh}
+  @media(max-width:699px){ .modal{max-height:90dvh} }
+}
+
+/* ================================================================ SKELETON
+   Shown while the first snapshot is in flight. A skeleton in the shape of the
+   row that is coming reads as "loading"; a blank panel reads as "empty", and
+   the owner taps Refresh on data that was already on its way.
+   ======================================================================== */
+.skeleton,.skel{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  height:64px;margin-bottom:.6rem;position:relative;overflow:hidden;
+}
+.skeleton::after,.skel::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(var(--gold-b-rgb),.08),transparent);
+  animation:shim 1.2s infinite;
+}
+.skeleton--tall{height:92px}
+.skeleton--line{height:14px;border-radius:var(--r-sm);margin-bottom:var(--sp-2)}
+.skeleton--stat{height:62px;border-radius:var(--r-md);margin:0}
+@media (prefers-reduced-motion: reduce){ .skeleton::after,.skel::after{animation:none} }
+
+/* ============================================================= EMPTY STATE
+   Never a bare "no results". Say what is missing, why, and give the one
+   action that fixes it.
+   ======================================================================== */
+.empty-state,.empty2{
+  text-align:center;padding:2.2rem .9rem;color:var(--mut);
+  display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);
+}
+.empty-state__icon,.empty2 .ic{font-size:2.1rem;line-height:1}
+.empty-state__title{font-family:var(--serif);color:var(--text);font-size:var(--fs-xl)}
+.empty-state__text{font-size:var(--fs-base);max-width:34ch;line-height:1.55}
+.empty-state .btn{margin-top:var(--sp-2)}
+
+/* ==================================================================== TOAST
+   Undo lives inside the toast: the confirm already asked, so the second
+   safety net has to be cheap and must not cost another dialog.
+   ======================================================================== */
+.toast button{
+  background:none;border:1px solid var(--gold);color:var(--gold-b);
+  border-radius:var(--r-pill);padding:.15em .8em;margin-left:.5em;
+  font-family:var(--sans);font-size:var(--fs-md);font-weight:600;cursor:pointer;
+}
+.toast button:active{background:var(--gold);color:var(--ink)}

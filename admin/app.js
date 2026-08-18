@@ -29,6 +29,71 @@ function toastUndo(m, fn){
   clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove('show'); t.style.pointerEvents='none'; }, 8000);
 }
 const buzz = () => { try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} };
+
+/* ---------------------------------------------------------------- confirm
+   Every destructive action in the panel goes through this. Returns a promise
+   for true/false, so a call site reads exactly like the window.confirm() it
+   replaces:
+
+       if(!await confirmDialog({ title:…, body:…, confirmText:'Delete' })) return;
+
+   Cancel takes focus, not the destructive button: the owner is usually
+   one-handed on a phone and a stray second tap must not be the one that
+   deletes. Esc, the backdrop and Android's back gesture all cancel. */
+let _cfmResolve = null;
+function confirmDialog({ title, body='', confirmText='Delete', cancelText='Cancel', danger=true }){
+  const bd = $('#confirmBackdrop'), md = $('#confirmModal');
+  const yes = $('#confirmYes'), no = $('#confirmNo');
+  $('#confirmTitle').textContent = title;
+  $('#confirmText').innerHTML = body;               /* callers pass esc()'d text */
+  $('#confirmText').hidden = !body;
+  yes.textContent = confirmText;
+  no.textContent  = cancelText;
+  yes.className = 'btn ' + (danger ? 'btn--danger' : 'btn--primary');
+  bd.classList.add('open'); md.classList.add('open');
+  /* the sheet animates up from the bottom on a phone; focusing mid-flight
+     scrolls the page under it, so wait for it to land */
+  setTimeout(()=>no.focus(), 60);
+  buzz();
+  return new Promise(res=>{ _cfmResolve = res; });
+}
+function closeConfirm(v){
+  if(!_cfmResolve) return;
+  $('#confirmBackdrop').classList.remove('open');
+  $('#confirmModal').classList.remove('open');
+  const r = _cfmResolve; _cfmResolve = null; r(v);
+}
+$('#confirmYes').addEventListener('click', ()=>closeConfirm(true));
+$('#confirmNo').addEventListener('click', ()=>closeConfirm(false));
+$('#confirmBackdrop').addEventListener('click', ()=>closeConfirm(false));
+document.addEventListener('keydown', e=>{
+  if(!_cfmResolve) return;
+  if(e.key === 'Escape'){ e.preventDefault(); closeConfirm(false); }
+  /* the dialog is the only thing on screen while it is open — keep Tab inside
+     it so the next Enter cannot land on a button behind the scrim */
+  if(e.key === 'Tab'){
+    const f = [$('#confirmNo'), $('#confirmYes')];
+    const i = f.indexOf(document.activeElement);
+    e.preventDefault();
+    f[(i + (e.shiftKey ? f.length-1 : 1)) % f.length].focus();
+  }
+});
+
+/* --------------------------------------------------------- status -> state
+   The one place a status becomes a colour. Leads, packages, crew and B2B all
+   read this, so "booked" cannot be green on one tab and gold on another, and
+   a new status added later has to declare its meaning here before it can be
+   drawn anywhere. The state names are defined in tokens.css. */
+const STATE_OF = {
+  /* leads */
+  new:'new', contacted:'info', converted:'linked', booked:'confirmed',
+  shot:'progress', delivered:'done', lost:'overdue',
+  /* packages */
+  draft:'neutral', sent:'info', unconfirmed:'risk',
+};
+const stateOf = s => STATE_OF[s] || 'neutral';
+
+
 /* Search boxes re-rendered on every keystroke. At the 1000-record caps that is
    a lot of DOM per character on a phone, and the owner is still mid-word —
    wait for the typing to settle. Short enough that it still reads as live. */
@@ -606,38 +671,86 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(p.length === 10) (_leadDups[p] = _leadDups[p] || []).push(l);
     });
     if(!list.length){
+      /* Three different nothings, three different answers. "Still loading",
+         "your filter hides them all" and "there are genuinely none" used to
+         look identical, so the owner tapped Refresh at a filter that was
+         doing exactly what it was told. Each one now names the way out. */
+      const filtered = !!(f || q);
       $('#leadList').innerHTML = !_leadsLoaded
-        ? '<div class="skel"></div><div class="skel"></div>'
-        : LEADS.some(l=>!l.deleted)
-        ? '<div class="empty2"><span class="ic">👥</span>No leads match this filter.</div>'
-        : '<div class="empty2"><span class="ic">👥</span>No leads yet — new enquiries from the website appear here instantly.</div>';
+        ? '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>'
+        : filtered
+        ? `<div class="empty-state">
+             <span class="empty-state__icon">🔍</span>
+             <p class="empty-state__title">No leads match</p>
+             <p class="empty-state__text">${q ? `Nothing for “${esc(q)}”` : 'Nothing'}${f ? ` under <b>${esc(f)}</b>` : ''}. There ${liveLeads().length===1?'is':'are'} ${liveLeads().length} lead${liveLeads().length===1?'':'s'} in total.</p>
+             <button type="button" class="btn btn--ghost" data-clear-filter>Clear filter &amp; search</button>
+           </div>`
+        : `<div class="empty-state">
+             <span class="empty-state__icon">👥</span>
+             <p class="empty-state__title">No leads yet</p>
+             <p class="empty-state__text">Enquiries from the website arrive here on their own — there is nothing to add by hand.</p>
+             <button type="button" class="btn btn--ghost" data-refresh-leads>↻ Check again</button>
+           </div>`;
       return;
     }
     $('#leadList').innerHTML = list.map(l=>{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
       const sib = leadSiblings(l);
+      const st = l.status||'new', state = stateOf(st);
+      /* .lead and .lead-det stay on the element: the open-card/draft/caret
+         restore above finds cards by those names, and Packages still styles
+         itself with .lead. Everything visual now comes from the shared
+         components (.card/.btn/.chip-select) instead of the old .lead-top and
+         .lead-sub one-offs. */
+      /* Meta is ordered by what matters at a venue, because it truncates from
+         the tail on a narrow screen: the shoot date first, then where the
+         enquiry came from and when it landed. Losing "· enquiry · 12 Aug" to
+         an ellipsis costs nothing; losing the wedding date would cost a call.
+         The quote shares this line, so it goes out short (₹2.45L) — the full
+         figure is the title attribute and is spelled out in the open card.
+         At 375px the exact figure ate the year off the shoot date, and
+         "22 Nov 202…" is a worse thing to show than "₹2.45L". */
+      const meta = [
+        l.weddingDate ? '💍 ' + esc(dmy(l.weddingDate)) : '',
+        esc(l.source==='contact_form' ? 'enquiry' : 'builder'),
+        esc(when)
+      ].filter(Boolean).join(' · ');
+      /* .lead and .lead-det stay on the element: the open-card/draft/caret
+         restore above finds cards by those names, and Packages still styles
+         itself with .lead. Everything visual now comes from the shared
+         components (.card/.btn/.chip-select) instead of the old .lead-top and
+         .lead-sub one-offs.
+         The status <select> is a SIBLING of the toggle button, never a child:
+         a control inside a button is invalid, and the button swallows its taps. */
       return `
-      <div class="lead" data-id="${l.id}">
-        <div class="lead-top" data-toggle role="button" tabindex="0" aria-label="Open lead">
-          <span class="nm">${esc(l.name||'—')}</span>
-          <span class="src">${esc(l.source==='contact_form'?'enquiry':'builder')}</span>
-          ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
-          ${sib.length ? `<span class="dupb" title="This number has ${sib.length + 1} enquiries — open the card to see the others">↩ ${sib.length + 1}× enquiry</span>` : ''}
-          <span class="amt">${l.grandTotal ? inr(l.grandTotal) : ''}</span>
+      <article class="card lead" data-id="${l.id}" data-state="${state}">
+        <div class="card__head">
+          <button type="button" class="card__toggle" data-toggle aria-expanded="false" aria-controls="ld-${l.id}">
+            <span class="l1">
+              <span class="card__title">${esc(l.name||'—')}</span>
+              ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
+              ${sib.length ? `<span class="dupb" title="This number has ${sib.length + 1} enquiries — open the card to see the others">↩ ${sib.length + 1}×</span>` : ''}
+            </span>
+            <span class="l2">
+              <span class="card__meta">${meta}</span>
+              ${l.grandTotal ? `<span class="card__amt" title="${inr(l.grandTotal)}">${inrShort(l.grandTotal)}</span>` : ''}
+            </span>
+            <span class="chev" aria-hidden="true">›</span>
+          </button>
+          <span class="card__side">
+            <select class="chip-select" data-status data-state="${state}" aria-label="Status for ${esc(l.name||'this lead')}">
+              ${STATUSES.map(x=>`<option value="${x}" ${st===x?'selected':''}>${x}</option>`).join('')}
+            </select>
+          </span>
         </div>
-        <div class="lead-sub">
-          <a href="tel:+91${esc(l.phone||'')}">📞 Call</a>
-          <a href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener">WhatsApp</a>
-          <button class="lead-x" data-del-lead>Delete</button>
-          <span>${when}</span>
-          ${l.weddingDate ? `<span>· 💍 ${esc(dmy(l.weddingDate))}</span>` : ''}
-          <select data-status>
-            ${STATUSES.map(s=>`<option value="${s}" ${(l.status||'new')===s?'selected':''}>${s}</option>`).join('')}
-          </select>
+        <div class="card__actions">
+          <a class="btn btn--sm btn--ghost" href="tel:+91${esc(l.phone||'')}" aria-label="Call ${esc(l.name||'this lead')}">📞 Call</a>
+          <a class="btn btn--sm btn--ghost" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬 WhatsApp</a>
+          <button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button>
         </div>
-        <div class="lead-det" hidden>${leadDetailHTML(l)}</div>
-      </div>`;
+        <div class="card__body lead-det" id="ld-${l.id}" hidden>${leadDetailHTML(l)}</div>
+      </article>`;
     }).join('');
     _restore();
   }
@@ -676,8 +789,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(l.quote.promo) h += `<div class="ln"><span>Promo</span><span>${esc(l.quote.promo)}</span></div>`;
       h += `<div class="ln"><span><b>Grand total</b></span><span><b>${inr(l.grandTotal)}</b></span></div>`;
     }
-    h += `<h4>My notes</h4><textarea data-notes placeholder="Follow-up notes…">${esc(l.notes||'')}</textarea>
-          <button class="mini" data-savenotes>Save notes</button>`;
+    h += `<h4>My notes</h4>
+          <textarea class="input" data-notes rows="3" placeholder="Follow-up notes…">${esc(l.notes||'')}</textarea>
+          <button type="button" class="btn btn--sm btn--ghost" data-savenotes>Save notes</button>`;
     /* this enquiry already became a package — say so, and offer the way back
        to it, instead of silently inviting a second one */
     if(l.pkgId){
@@ -687,11 +801,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          number stored on the lead lets the button read right either way. */
       const pk = PKGS.find(p=>p.id===l.pkgId && !p.deleted);
       const gone = _pkgsLoaded && !pk;
-      h += ` <button class="mini" data-openpkg${gone?' disabled':''}>${gone ? '📦 Package deleted'
+      h += ` <button type="button" class="btn btn--sm btn--ghost" data-openpkg${gone?' disabled':''}>${gone ? '📦 Package deleted'
               : '📦 Open ' + esc((pk && pk.quoteNo) || l.quoteNo || 'package')}</button>`;
     }
     if(l.quote && Array.isArray(l.quote.events) && l.quote.events.length){
-      h += ` <button class="mini" data-convert>→ ${l.pkgId ? 'Create another package' : 'Create package from this lead'}</button>`;
+      h += ` <button type="button" class="btn btn--sm btn--ghost" data-convert>→ ${l.pkgId ? 'Create another package' : 'Create package from this lead'}</button>`;
     }
     return h;
   }
@@ -699,11 +813,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#leadList').addEventListener('click', async e=>{
     const card = e.target.closest('.lead'); if(!card) return;
     if(e.target.closest('[data-toggle]')){
-      const det = card.querySelector('.lead-det'); det.hidden = !det.hidden; return;
+      const det = card.querySelector('.lead-det'); det.hidden = !det.hidden;
+      /* the chevron and the screen-reader state read from this one attribute */
+      const hd = card.querySelector('[data-toggle]');
+      if(hd) hd.setAttribute('aria-expanded', String(!det.hidden));
+      card.classList.toggle('is-open', !det.hidden);
+      return;
     }
+    if(e.target.closest('[data-clear-filter]')){
+      leadFilterVal = ''; $('#leadSearch').value = '';
+      renderStats(); renderLeads(); return;
+    }
+    if(e.target.closest('[data-refresh-leads]')){ loadLeads(); toast('Checking for new leads…'); return; }
     if(e.target.closest('[data-del-lead]')){
       const l = LEADS.find(x=>x.id===card.dataset.id);
-      if(!confirm(`Move the lead "${(l&&l.name)||'this lead'}" to Trash?`)) return;
+      if(!await confirmDialog({
+        title:'Move this lead to Trash?',
+        body:`<b>${esc((l&&l.name)||'This lead')}</b>${l&&l.phone?' · '+esc(l.phone):''} leaves the list. Nothing is erased — you can restore it from Trash, or undo straight from the toast.`,
+        confirmText:'Move to Trash'
+      })) return;
       const id = card.dataset.id;
       try{
         const res = await settle(updateDoc(doc(db,'leads',id), { deleted: true, deletedAt: todayISO() }));
@@ -771,6 +899,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          status the server rejected is the panel lying about its own data */
       if(!sm.ok){ e.target.value = prev; return; }
       const l = LEADS.find(x=>x.id===card.dataset.id); if(l) l.status = e.target.value;
+      /* recolour in place. A full renderLeads() here would collapse whatever
+         card the owner has open and throw away an unsaved note draft. */
+      const st = stateOf(e.target.value);
+      e.target.dataset.state = st; card.dataset.state = st;
       renderStats();
     }catch(err){ toast('Update failed'); e.target.value = prev; }
   });
@@ -787,7 +919,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _cfgLoadFailed = blocked;
     const btn = $('#saveConfig'), m = $('#saveMsg');
     if(btn) btn.disabled = blocked;
-    if(m){ m.textContent = msg || ''; m.style.color = blocked ? 'var(--err,#e07a6a)' : ''; }
+    if(m){ m.textContent = msg || ''; m.style.color = blocked ? 'var(--err)' : ''; }
   }
   async function loadConfig(){
     /* Save All must stay locked until the live values are actually on screen —
@@ -1072,7 +1204,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const serverAt = fresh.data().updatedAt || null;
         if(_cfgLoadedAt && serverAt && serverAt !== _cfgLoadedAt){
           $('#saveMsg').textContent = 'Config was changed on another device since you opened this tab. Reload before saving so you do not overwrite those edits.';
-          $('#saveMsg').style.color = 'var(--err,#e07a6a)';
+          $('#saveMsg').style.color = 'var(--err)';
           toast('Not saved — config changed elsewhere. Reload first.');
           return;
         }
@@ -2989,7 +3121,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const open = jobs.filter(a=>!a.workDone).sort((a,b)=>(a.dueDate||'9999') < (b.dueDate||'9999') ? -1 : 1);
     const done = jobs.filter(a=>a.workDone).sort((a,b)=>(a.dueDate||'') > (b.dueDate||'') ? -1 : 1);
     const late = open.filter(a=>(a.dueDate||'') && a.dueDate < today).length;
-    $('#edCount').innerHTML = late ? `<b style="color:#ffb054">${late} overdue.</b>` : '';
+    $('#edCount').innerHTML = late ? `<b style="color:var(--warn)">${late} overdue.</b>` : '';
     const dueChip = a => {
       if(!/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')) return '<span class="duetag">no date</span>';
       const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
@@ -3358,7 +3490,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* members sign their own work off from the crew page */
         const scissors = a.workDone
           ? '<span title="Completed — marked by the member" style="color:var(--ok)">✓ </span>'
-          : (a.date||'') < todayISO() ? '<span title="Not marked completed yet" style="color:#ffb054">○ </span>'
+          : (a.date||'') < todayISO() ? '<span title="Not marked completed yet" style="color:var(--warn)">○ </span>'
           : '';
         return `
         <div class="pm-row">
@@ -5678,7 +5810,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="fintiles">
         <div class="stat"><b>${inr(fin)}</b><span>package</span></div>
         <div class="stat"><b>${inr(paid)}</b><span>paid</span></div>
-        <div class="stat"><b ${bal>0?'style="color:#ffb054"':''}>${inr(bal)}</b><span>balance</span></div>
+        <div class="stat"><b ${bal>0?'style="color:var(--warn)"':''}>${inr(bal)}</b><span>balance</span></div>
       </div>
       <div class="finh">All events in this package</div>
       ${events || '<div class="empty" style="padding:.4rem 0">No events yet.</div>'}

@@ -13,18 +13,25 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <link rel="icon" href="../icons/admin-192.png" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="../icons/admin-apple.png" />
+<!-- the only literal colour in the panel: the OS reads this before any CSS
+     parses, so it cannot reference a token. Keep in step with --gold. -->
 <meta name="theme-color" content="#B8902B" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="FS Admin" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- design tokens -> shared components -> screen styles. Order matters:
+     tokens define the values, ui.css builds the components from them,
+     app.css is per-screen and may only reference what those two publish. -->
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="ui.css" />
 <link rel="stylesheet" href="app.css" />
 </head>
 <body>
 
 <header hidden id="hdr">
   <div class="hd">
-    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="currentColor">FS</text></svg>
     <div class="ttl"><b>Fantasy Studio</b><span>Admin Panel</span></div>
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
@@ -48,7 +55,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <!-- login -->
 <div class="wrap" id="loginView" hidden>
   <div class="login">
-    <svg viewBox="0 0 100 100" style="width:56px;height:56px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+    <svg viewBox="0 0 100 100" style="width:56px;height:56px"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="currentColor">FS</text></svg>
     <h1>Fantasy Studio</h1>
     <p>Admin sign in</p>
     <form id="loginForm">
@@ -183,7 +190,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="listbar">
       <details class="howto">
         <summary>How this list works</summary>
-        <p>Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:#cf8d85">not confirmed</b> to park a quote whose event is on hold (it leaves the follow-up list).</p>
+        <p>Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:var(--state-risk)">not confirmed</b> to park a quote whose event is on hold (it leaves the follow-up list).</p>
       </details>
       <span class="swipehint">swipe</span>
       </div>
@@ -250,7 +257,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <div class="sec">
         <h3>Save as</h3>
-        <p class="sub"><b style="color:var(--gold-b)">Draft</b> stays private · <b style="color:#7fb2e5">Sent</b> means the quote went out · <b style="color:var(--ok)">Booked</b> is confirmed — it goes straight to the calendar &amp; crew views.</p>
+        <p class="sub"><b style="color:var(--gold-b)">Draft</b> stays private · <b style="color:var(--state-info)">Sent</b> means the quote went out · <b style="color:var(--ok)">Booked</b> is confirmed — it goes straight to the calendar &amp; crew views.</p>
         <div class="mode-pills" id="bStatusPills"></div>
       </div>
       <div class="pkg-actions">
@@ -604,6 +611,24 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 
 <!-- role=status: this is the panel's only channel for "NOT saved — the server
      refused this write", and a screen reader was never told about any of it -->
+<!-- Confirm dialog — the one destructive-action gate for the whole panel.
+     Replaces window.confirm(), which on the installed PWA renders as a bare
+     "admin.fantasystudio.in says…" system box: it cannot show the record's
+     name in the panel's own voice, cannot colour the destructive button, and
+     on Android it is dismissed by the same back-swipe used to go back a
+     screen. role=alertdialog so a screen reader announces it, not just the
+     button that opened it. -->
+<div class="modal-backdrop is-confirm" id="confirmBackdrop"></div>
+<div class="modal is-confirm" id="confirmModal" role="alertdialog" aria-modal="true"
+     aria-labelledby="confirmTitle" aria-describedby="confirmText">
+  <h3 class="modal__title" id="confirmTitle"></h3>
+  <p class="modal__text" id="confirmText"></p>
+  <div class="modal__foot">
+    <button type="button" class="btn btn--ghost" id="confirmNo">Cancel</button>
+    <button type="button" class="btn btn--danger" id="confirmYes">Delete</button>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>

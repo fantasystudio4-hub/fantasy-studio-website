@@ -2,7 +2,7 @@
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets, and
    network-first-with-timeout for app code (see APP_CODE below). */
-const CACHE = 'fs-cache-v11';
+const CACHE = 'fs-cache-v12';   // v12: tokens.css + ui.css split out of app.css
 const PREFIX = 'fs-cache-';
 // Only the public shell. The admin and client apps used to be precached here,
 // which cost every first-time visitor ~133 KB for two pages they will never
@@ -96,7 +96,12 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // App code, now that the admin panel is index.html + app.css + app.js.
+  // App code: index.html + app.css + app.js, plus tokens.css and ui.css.
+  // The two new ones MUST be in this branch, not the cache-first one below.
+  // app.css now declares no colours of its own — every value it uses is a
+  // token. A fresh app.css served against yesterday's cached tokens.css is a
+  // panel with no colours at all, which is the same deploy-skew failure this
+  // branch exists to prevent, just louder.
   // The page is network-first and its assets are cache-first, so a deploy
   // could hand a browser new HTML running yesterday's app.js — on a panel that
   // records payments, that is not a class of bug worth accepting, and no
@@ -106,7 +111,7 @@ self.addEventListener('fetch', e => {
   // copy is served and the panel boots — which is the venue-on-one-bar case
   // the app is built around — while the fetch carries on and refreshes the
   // cache for next time.
-  if (url.origin === location.origin && /\/app\.(js|css)$/.test(url.pathname)) {
+  if (url.origin === location.origin && /\/(app|tokens|ui)\.(js|css)$/.test(url.pathname)) {
     e.respondWith(freshOrCached(req, 2500));
     return;
   }

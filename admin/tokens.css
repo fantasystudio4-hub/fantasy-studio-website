@@ -1,0 +1,200 @@
+/* ============================================================================
+   FANTASY STUDIO ADMIN — DESIGN TOKENS
+   The single source of truth for colour, spacing, radius, shadow and type.
+   Loaded BEFORE app.css and ui.css so everything downstream can read it.
+
+   Rule: no raw hex, rgb() or rgba() literal belongs in app.css / ui.css / app.js.
+   If a value is missing here, add it here — do not inline it there.
+
+   Every value below is the colour the panel ALREADY used. This file names them;
+   it does not restyle anything. The only deliberate changes are three duplicate
+   shades collapsed onto one token each — marked CONSOLIDATED where they appear.
+   ========================================================================== */
+
+:root{
+
+  /* ---- brand ramp -------------------------------------------------------
+     Four golds, darkest to lightest. --gold-l is the lighter head of every
+     gold gradient in the panel (buttons, active pills, the FAB); --gold-d is
+     its tail. They were written inline as a pair ~10 times. */
+  --gold-d:#8E6E1E;
+  --gold:#B8902B;
+  --gold-l:#C9A347;
+  --gold-b:#E2C275;
+  --grad-gold:linear-gradient(135deg,var(--gold-l),var(--gold-d));
+
+
+  /* ---- channel tokens ---------------------------------------------------
+     Alpha is opacity, not colour: a 12%-gold wash and an 18%-gold wash are the
+     same colour at two strengths, and naming each strength gives you twenty
+     tokens that all mean "gold". So the base colours are published here as raw
+     R,G,B channels and composed at the point of use:
+
+         background:rgba(var(--gold-rgb),.18)
+
+     The channel numbers exist once, here. Nothing downstream writes a colour;
+     it only chooses how strong that colour is. Named steps (--gold-t1..t4,
+     --state-*-bg) stay for the washes used often enough to deserve a name. */
+  --gold-rgb:184,144,43;
+  --gold-l-rgb:201,163,71;
+  --gold-d-rgb:142,110,30;
+  --gold-b-rgb:226,194,117;
+  --panel-rgb:36,30,18;
+  --ink-rgb:20,17,10;
+  --white-rgb:255,255,255;
+  --black-rgb:0,0,0;
+  --state-pending-rgb:255,176,84;
+  --state-overdue-rgb:224,122,106;
+  --state-confirmed-rgb:76,175,125;
+  --state-info-rgb:127,178,229;
+  --state-done-rgb:154,219,178;
+  --state-risk-rgb:207,127,118;
+  --slot-morning-rgb:227,198,122;
+  --slot-evening-rgb:169,166,224;
+  --state-progress-rgb:201,154,224;
+  --state-linked-rgb:111,200,192;
+  --rank-2-rgb:200,200,205;
+  --rank-3-rgb:190,124,74;
+
+  /* ---- surfaces ---------------------------------------------------------
+     Darkest first. --ink-0 is the page's top gradient stop and doubles as the
+     ink colour printed ON gold (active tabs, the NEW badge, today's date).
+     CONSOLIDATED: .tsegs used #1a1408 for that same on-gold ink while every
+     other control used #1a150c — one pixel apart, two values. Now one. */
+  --ink-0:#1a150c;
+  --ink:#14110a;
+  --ink-2:#1f1a10;
+  --panel:#241e12;
+  --panel-2:#1c1710;            /* weekend calendar cells — one step off panel */
+  --panel-open:#28211285;       /* an expanded lead card (8-digit: carries alpha) */
+  --field:#171309;              /* every input, select and textarea well */
+  --bg-page:linear-gradient(180deg,var(--ink-0),var(--ink) 40%);
+
+  /* ---- neutrals ---------------------------------------------------------- */
+  --white:#fff;
+  --black:#000;
+  --text:#f3ecdc;
+  --mut:#b3a98f;
+
+  /* ---- lines & scrims ---------------------------------------------------
+     --line is the panel's only border colour. --line-2 is its emphasis form,
+     used when a card opens or a control takes focus. */
+  --line:rgba(var(--gold-b-rgb),.22);
+  --line-2:rgba(var(--gold-b-rgb),.45);
+  --line-3:rgba(var(--gold-b-rgb),.4);
+  --scrim:rgba(var(--black-rgb),.6);                 /* modal backdrop */
+  --bar:rgba(var(--ink-rgb),.97);               /* sticky nav / save bars */
+  --bar-2:rgba(var(--ink-rgb),.96);             /* sticky header */
+
+  /* ---- tints ------------------------------------------------------------
+     Repeated wash fills, named by strength so a new component picks the same
+     step the rest of the panel already uses instead of inventing one. */
+  --gold-t1:rgba(var(--gold-rgb),.10);
+  --gold-t2:rgba(var(--gold-rgb),.14);
+  --gold-t3:rgba(var(--gold-rgb),.16);
+  --gold-t4:rgba(var(--gold-rgb),.22);
+  --white-t1:rgba(var(--white-rgb),.02);
+  --white-t2:rgba(var(--white-rgb),.04);
+  --white-t3:rgba(var(--white-rgb),.07);
+  --white-t4:rgba(var(--white-rgb),.09);
+
+  /* ======================================================================
+     SEMANTIC STATE — the part that must mean the same thing on every screen.
+
+     One meaning, one colour, one token. Leads, packages, crew and B2B all
+     read from this block, so "amber" can never drift into meaning two
+     different things on two different tabs.
+
+       pending    amber   needs you to act — overdue steps, part-paid, no crew
+       confirmed  green   money in / date held / crew assigned
+       overdue    red     failed, lost, refused, deleted
+       info       blue    in flight but not yet committed — sent, contacted
+       neutral    grey    parked, not started — draft, awaiting ack
+       done       mint    finished and handed over — delivered
+       risk       salmon  on hold, unconfirmed, at risk of falling through
+       new        gold    brand-new, unseen
+       progress   purple  work happening now — shot
+       linked     teal    joined to another record — converted
+     ====================================================================== */
+  --state-pending:#ffb054;      --state-pending-bg:rgba(var(--state-pending-rgb),.14);
+  --state-pending-ln:rgba(var(--state-pending-rgb),.5);
+  --state-confirmed:#4caf7d;    --state-confirmed-bg:rgba(var(--state-confirmed-rgb),.13);
+  --state-confirmed-ln:rgba(var(--state-confirmed-rgb),.5);
+  --state-overdue:#e07a6a;      --state-overdue-bg:rgba(var(--state-overdue-rgb),.08);
+  --state-overdue-ln:rgba(var(--state-overdue-rgb),.5);
+  --state-info:#7fb2e5;         --state-info-bg:rgba(var(--state-info-rgb),.13);
+  --state-neutral:#c9c0a8;      --state-neutral-bg:var(--white-t3);
+  --state-neutral-d:#6f6650;    /* the same "parked" grey, at card-edge weight */
+  --state-done:#9adbb2;         --state-done-bg:rgba(var(--state-done-rgb),.13);
+  /* CONSOLIDATED: unconfirmed was #cf7f76 on card edges and #cf8d85 on its own
+     pill — one status wearing two salmons. Both now read this token. */
+  --state-risk:#cf8d85;         --state-risk-bg:rgba(var(--state-risk-rgb),.13);
+  --state-new:var(--gold-b);    --state-new-bg:var(--gold-t2);
+  --state-progress:#c99ae0;
+  --state-linked:#6fc8c0;
+
+  /* legacy aliases — app.css and app.js already say --ok / --err in ~40 places
+     and both mean exactly the semantic tokens above. Kept pointing at them so
+     the two can never diverge. */
+  --ok:var(--state-confirmed);
+  --err:var(--state-overdue);
+  --warn:var(--state-pending);
+
+  /* ---- accent colours that are not statuses ---------------------------- */
+  --money-out:#e8a598;          /* expenses / money leaving */
+  --slot-morning:#e3c67a;
+  --slot-evening:#a9a6e0;
+  --b2b:#8fb8d8;                /* partner-studio marker */
+  --rank-2:#dcdce2;             --rank-2-bg:rgba(var(--rank-2-rgb),.2);
+  --rank-2-ln:rgba(var(--rank-2-rgb),.35);
+  --rank-3:#e0a877;             --rank-3-bg:rgba(var(--rank-3-rgb),.22);
+  --rank-3-ln:rgba(var(--rank-3-rgb),.4);
+
+  /* ======================================================================
+     SPACING — 4px base. Existing screens keep their hand-tuned values; every
+     new or refactored component steps on this scale.
+     ====================================================================== */
+  --sp-1:.25rem;  --sp-2:.5rem;   --sp-3:.75rem;
+  --sp-4:1rem;    --sp-5:1.5rem;  --sp-6:2rem;
+  --gut:14px;                     /* the page gutter .wrap has always used */
+
+  /* ---- radius ----------------------------------------------------------- */
+  --r-sm:8px; --r-md:10px; --r-lg:14px; --r-xl:16px; --r-pill:40px;
+
+  /* ---- elevation --------------------------------------------------------- */
+  --sh-1:0 2px 8px rgba(var(--black-rgb),.25);
+  --sh-2:0 8px 22px rgba(var(--gold-d-rgb),.5);   /* the FAB's gold glow */
+  --sh-3:0 18px 48px rgba(var(--black-rgb),.5);       /* sheets and modals */
+
+  /* ---- type -------------------------------------------------------------
+     16px on inputs is deliberate and must not shrink: anything smaller makes
+     iOS Safari zoom the page on focus, and the owner is usually one-handed. */
+  --serif:'Playfair Display',Georgia,serif;
+  --sans:'Jost',system-ui,sans-serif;
+  --fs-xs:.62rem; --fs-sm:.72rem; --fs-md:.78rem; --fs-base:.85rem;
+  --fs-lg:.92rem; --fs-xl:1.05rem; --fs-2xl:1.25rem; --fs-3xl:1.5rem;
+  --fs-input:16px;
+
+  /* ---- touch ------------------------------------------------------------
+     44px is the floor for anything tappable. This panel is used standing at a
+     venue, one-handed, often in the dark. */
+  --tap:44px;
+
+  /* ---- layering ---------------------------------------------------------
+     Named so a new overlay cannot be dropped in at an arbitrary number and
+     land behind the thing it is supposed to cover. */
+  --z-sticky:30; --z-subnav:40; --z-header:50; --z-fab:60; --z-nav:70;
+  --z-backdrop:120; --z-sheet:130; --z-toast:140; --z-confirm:150;
+
+  /* ---- motion ------------------------------------------------------------ */
+  --t-fast:.15s; --t-med:.25s; --t-slow:.3s;
+}
+
+/* The panel is dark by design — a venue at night, screen brightness down. It
+   does not follow the OS light theme, but it must not fight it either: this
+   tells the browser to paint form controls and scrollbars dark to match. */
+:root{color-scheme:dark}
+
+@media (prefers-reduced-motion: reduce){
+  :root{--t-fast:0s; --t-med:0s; --t-slow:0s}
+}
