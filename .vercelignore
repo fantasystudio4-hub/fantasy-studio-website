@@ -33,6 +33,16 @@
 *.local.md
 **/*.local.md
 
+# Scratch prototypes. _cptest.html is a standalone mock of the panel — no
+# Firebase, no config, no real data — but it was still fetchable at
+# /_cptest.html with no <title> and no noindex, so nothing stopped a crawler
+# indexing an untitled prototype under the business's own domain. It is not in
+# the sitemap and robots.txt only disallows /admin/ /client/ /team/ /studio/.
+_cptest.html
+**/_cptest.html
+*.test.html
+**/*.test.html
+
 # NOTE: firebase-config.js is intentionally NOT excluded — the site needs it at
 # runtime, and a Firebase web config is public by design (it is not a secret;
 # the security boundary is firestore.rules, deployed in the Firebase console).

@@ -111,10 +111,20 @@ const VIEW_KEY = 'fs_view';
 let _view = {};
 try{ _view = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}') || {}; }catch(e){ _view = {}; }
 const viewGet = (k, dflt='') => (k in _view ? _view[k] : dflt);
-const viewSet = debounce((k, v) => {
+/* The STATE updates now; only the disk write is debounced. Debouncing the
+   whole function shared one timer across every key, so two calls inside the
+   window cancelled the first — "Clear filter & search" fires viewSet('leadF')
+   then viewSet('leadQ'), and only the search was ever persisted. The filter
+   the owner had just cleared came straight back on the next load, which is the
+   exact thing this is supposed to prevent. */
+let _viewFlush;
+function viewSet(k, v){
   _view[k] = v;
-  try{ localStorage.setItem(VIEW_KEY, JSON.stringify(_view)); }catch(e){}
-}, 250);
+  clearTimeout(_viewFlush);
+  _viewFlush = setTimeout(()=>{
+    try{ localStorage.setItem(VIEW_KEY, JSON.stringify(_view)); }catch(e){}
+  }, 250);
+}
 
 const SERVICE_LABELS = {
   cinematography:'Cinematography', candidPhotography:'Candid Photography',

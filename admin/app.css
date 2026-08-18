@@ -95,7 +95,11 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .stat.month b{font-size:1.5rem}
 
 /* toolbar */
+/* The toolbar's controls sized themselves from padding alone and landed at
+   43px — one pixel under the floor the rest of the panel holds to. They are
+   the search box and the two buttons beside it, tapped constantly. */
 .bar{display:flex;gap:.5rem;margin-bottom:.8rem}
+.bar select,.bar button,.bar input[type=search]{min-height:var(--tap)}
 .bar select{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.55em}
 .bar button{background:var(--panel);border:1px solid var(--line);color:var(--gold-b);border-radius:8px;padding:.55em .9em;cursor:pointer}
 
