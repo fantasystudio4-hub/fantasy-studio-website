@@ -467,6 +467,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the quick add-event form is MOVED between Home and the B2B page —
        leaving the page it is sitting on closes it rather than stranding it */
     if(typeof closeCalAdd === 'function' && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')) closeCalAdd();
+    /* selection is a Leads-tab mode — carrying it to another tab would leave a
+       bulk bar on screen acting on a list that is no longer in front of you */
+    if(id !== 'tabLeads' && typeof setBulk === 'function' && _bulkOn) setBulk(false);
     if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
@@ -612,6 +615,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   $('#refreshBtn').addEventListener('click', loadLeads);
   let leadFilterVal = viewGet('leadF');
+  /* ---------------------------------------------------------- bulk actions
+     Selection lives in a Set of ids, never in the DOM: the leads list is a
+     live snapshot and rebuilds itself under you, so a checked box in the
+     markup would be wiped by the next write anyone makes. Ids survive that. */
+  let _bulkOn = false, _bulkSel = new Set();
+  const bulkRows = () => LEADS.filter(l=>_bulkSel.has(l.id) && !l.deleted);
   function renderLeadChips(){
     const live = LEADS.filter(l=>!l.deleted);
     const counts = {}; STATUSES.forEach(s=>counts[s]=0);
@@ -722,6 +731,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            </div>`;
       return;
     }
+    /* a lead trashed elsewhere (or by this very bar) must not stay selected —
+       it would keep inflating the count and get written to on the next action */
+    if(_bulkOn && _bulkSel.size){
+      const alive = new Set(LEADS.filter(l=>!l.deleted).map(l=>l.id));
+      [..._bulkSel].forEach(id=>{ if(!alive.has(id)) _bulkSel.delete(id); });
+    }
     $('#leadList').innerHTML = list.map(l=>{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
@@ -747,8 +762,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          The status <select> is a SIBLING of the toggle button, never a child:
          a control inside a button is invalid, and the button swallows its taps. */
       return `
-      <article class="card lead" data-id="${l.id}" data-state="${state}">
+      <article class="card lead${_bulkOn && _bulkSel.has(l.id) ? ' picked' : ''}" data-id="${l.id}" data-state="${state}">
         <div class="card__head">
+          ${_bulkOn ? `<span class="pickbox"><input type="checkbox" data-pick aria-label="Select ${esc(l.name||'this lead')}"${_bulkSel.has(l.id)?' checked':''} /></span>` : ''}
           <button type="button" class="card__toggle" data-toggle aria-expanded="false" aria-controls="ld-${l.id}">
             <span class="l1">
               <span class="card__title">${esc(l.name||'—')}</span>
@@ -776,7 +792,104 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </article>`;
     }).join('');
     _restore();
+    if(_bulkOn) renderBulkBar();
   }
+
+  function setBulk(on){
+    _bulkOn = on;
+    if(!on) _bulkSel.clear();
+    const b = $('#leadPick');
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+    renderLeads(); renderBulkBar();
+  }
+  $('#leadPick').addEventListener('click', ()=>setBulk(!_bulkOn));
+
+  function renderBulkBar(){
+    const bar = $('#bulkBar');
+    if(!_bulkOn){ bar.hidden = true; bar.innerHTML = ''; document.body.classList.remove('has-bulk'); return; }
+    const n = _bulkSel.size;
+    /* "select all" means everything the current filter is showing, not every
+       lead that exists — the visible list is what the owner is reasoning about */
+    const shown = $$('#leadList .lead').map(c=>c.dataset.id);
+    const allShown = shown.length > 0 && shown.every(id=>_bulkSel.has(id));
+    bar.hidden = false;
+    document.body.classList.add('has-bulk');
+    bar.innerHTML = `
+      <div class="bulk-in">
+        <button type="button" class="btn btn--sm btn--quiet" data-bulk-all>${allShown ? 'Clear all' : `All ${shown.length}`}</button>
+        <b class="bulk-n">${n} selected</b>
+        <div class="bulk-acts">
+          <select class="chip-select" data-bulk-status aria-label="Set status on selected"${n?'':' disabled'}>
+            <option value="">Status…</option>
+            ${STATUSES.map(x=>`<option value="${x}">${x}</option>`).join('')}
+          </select>
+          <button type="button" class="btn btn--sm btn--ghost" data-bulk-csv${n?'':' disabled'}>Export</button>
+          <button type="button" class="btn btn--sm btn--danger" data-bulk-del${n?'':' disabled'}>Trash</button>
+        </div>
+        <button type="button" class="icon-btn" data-bulk-off aria-label="Leave selection mode">&times;</button>
+      </div>`;
+  }
+
+  /* One write per row, settled individually. A partial failure is reported as
+     a partial failure — telling the owner "12 updated" when the server refused
+     four of them is the panel lying about their own data. */
+  async function bulkWrite(rows, patch, verb){
+    let ok = 0, bad = 0;
+    const res = await Promise.allSettled(rows.map(l=>settle(updateDoc(doc(db,'leads',l.id), patch))));
+    res.forEach((r,i)=>{
+      if(r.status === 'fulfilled' && r.value !== 'denied'){ ok++; Object.assign(rows[i], patch); }
+      else bad++;
+    });
+    renderStats(); renderLeads(); renderTrash(); renderBulkBar();
+    toast(bad ? `${ok} ${verb}, ${bad} refused by the server` : `${ok} ${verb}`);
+    return { ok, bad };
+  }
+
+  $('#bulkBar').addEventListener('click', async e=>{
+    if(e.target.closest('[data-bulk-off]')){ setBulk(false); return; }
+    if(e.target.closest('[data-bulk-all]')){
+      const shown = $$('#leadList .lead').map(c=>c.dataset.id);
+      const allShown = shown.length > 0 && shown.every(id=>_bulkSel.has(id));
+      if(allShown) _bulkSel.clear(); else shown.forEach(id=>_bulkSel.add(id));
+      renderLeads(); renderBulkBar();
+      return;
+    }
+    if(e.target.closest('[data-bulk-csv]')){
+      const rows = bulkRows(); if(!rows.length) return;
+      const out = [['Created','Name','Phone','Source','Status','Events','WeddingDate','QuoteTotal','Message','Notes']];
+      rows.forEach(l=>out.push([tsDate(l.createdAt), l.name||'', l.phone||'', l.source||'', l.status||'new',
+        l.eventType||'', l.weddingDate||'', l.grandTotal||'', l.message||'', l.notes||'']));
+      dl(`leads-selected-${stamp()}.csv`, csvEnc(out), 'text/csv');
+      toast(`${rows.length} lead${rows.length===1?'':'s'} exported`);
+      return;
+    }
+    if(e.target.closest('[data-bulk-del]')){
+      const rows = bulkRows(); if(!rows.length) return;
+      if(!await confirmDialog({
+        title:`Move ${rows.length} lead${rows.length===1?'':'s'} to Trash?`,
+        body: rows.length <= 5
+          ? rows.map(l=>`<b>${esc(l.name||'—')}</b>`).join(', ') + ' leave the list. Nothing is erased — you can restore from Trash.'
+          : `<b>${rows.length} leads</b> leave the list. Nothing is erased — you can restore them from Trash.`,
+        confirmText:`Move ${rows.length} to Trash`
+      })) return;
+      await bulkWrite(rows, { deleted:true, deletedAt: todayISO() }, 'moved to Trash');
+      setBulk(false);
+      return;
+    }
+  });
+  $('#bulkBar').addEventListener('change', async e=>{
+    const sel = e.target.closest('[data-bulk-status]'); if(!sel || !sel.value) return;
+    const rows = bulkRows(), status = sel.value;
+    sel.value = '';
+    if(!rows.length) return;
+    if(!await confirmDialog({
+      title:`Set ${rows.length} lead${rows.length===1?'':'s'} to “${status}”?`,
+      body:'This changes their status only — nothing else about them moves.',
+      confirmText:'Change status', danger:false
+    })) return;
+    await bulkWrite(rows, { status }, `set to ${status}`);
+  });
 
   /* live leads sharing this one's number, newest first, excluding itself */
   let _leadDups = {};
@@ -815,6 +928,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(l.quote.promo) h += `<div class="ln"><span>Promo</span><span>${esc(l.quote.promo)}</span></div>`;
       h += `<div class="ln"><span><b>Grand total</b></span><span><b>${inr(l.grandTotal)}</b></span></div>`;
     }
+    /* Inline date edit. weddingDate is a plain field on the lead with nothing
+       downstream of it — no calendar entry, no crew, no money — so it is safe
+       to change from the list. (A PACKAGE's event date is not: it moves a
+       calendar entry and can strand crew, which is why that one stays in the
+       editor where the stale-crew re-sync lives.)
+       The dd-mm-yyyy painter in index.html picks this up on its own — it
+       watches the document for new date inputs. */
+    h += `<h4>Shoot date</h4>
+          <input class="input" type="date" data-wdate value="${esc(l.weddingDate||'')}" aria-label="Wedding or shoot date" />`;
     h += `<h4>My notes</h4>
           <textarea class="input" data-notes rows="3" placeholder="Follow-up notes…">${esc(l.notes||'')}</textarea>
           <button type="button" class="btn btn--sm btn--ghost" data-savenotes>Save notes</button>`;
@@ -838,6 +960,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   $('#leadList').addEventListener('click', async e=>{
     const card = e.target.closest('.lead'); if(!card) return;
+    if(_bulkOn){
+      const id = card.dataset.id;
+      if(_bulkSel.has(id)) _bulkSel.delete(id); else _bulkSel.add(id);
+      card.classList.toggle('picked', _bulkSel.has(id));
+      const cb = card.querySelector('[data-pick]'); if(cb) cb.checked = _bulkSel.has(id);
+      renderBulkBar();
+      return;
+    }
     if(e.target.closest('[data-toggle]')){
       const det = card.querySelector('.lead-det'); det.hidden = !det.hidden;
       /* the chevron and the screen-reader state read from this one attribute */
@@ -916,6 +1046,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   });
   $('#leadList').addEventListener('change', async e=>{
+    if(e.target.matches('[data-wdate]')){
+      const card = e.target.closest('.lead'), v = e.target.value || '';
+      const l = LEADS.find(x=>x.id===card.dataset.id);
+      const prev = (l||{}).weddingDate || '';
+      try{
+        const sm = settleMsg(await settle(updateDoc(doc(db,'leads',card.dataset.id),
+          v ? { weddingDate: v } : { weddingDate: deleteField() })), v ? 'Date saved' : 'Date cleared');
+        toast(sm.msg);
+        if(!sm.ok){ e.target.value = prev; return; }
+        if(l){ if(v) l.weddingDate = v; else delete l.weddingDate; }
+        renderLeads(); renderCalendar();
+      }catch(err){ toast('Save failed'); e.target.value = prev; }
+      return;
+    }
     if(!e.target.matches('[data-status]')) return;
     const card = e.target.closest('.lead');
     const prev = (LEADS.find(x=>x.id===card.dataset.id)||{}).status || 'new';

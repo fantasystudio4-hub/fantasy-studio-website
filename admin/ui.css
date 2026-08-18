@@ -504,3 +504,40 @@ button.chip-status:active{transform:scale(.97)}
   padding:.35em 0;min-height:var(--tap);display:inline-flex;align-items:center;
 }
 .telrow .icon-btn{width:36px;height:36px;font-size:.95rem}
+
+/* ============================================================ BULK ACTIONS
+   A selection bar fixed above the tab bar, because that is where the thumb
+   already is. It only exists while rows are being picked.
+   ========================================================================= */
+.bulkbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:var(--z-nav);
+  background:var(--bar);backdrop-filter:blur(10px);
+  border-top:1px solid var(--gold);
+  padding:.55rem var(--gut) calc(.55rem + env(safe-area-inset-bottom));
+}
+.bulk-in{
+  max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+}
+.bulk-n{
+  font-family:var(--serif);font-size:var(--fs-lg);color:var(--gold-b);
+  white-space:nowrap;margin-right:auto;
+}
+.bulk-acts{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.bulk-acts .chip-select{min-width:6.5rem}
+.bulkbar .btn[disabled],.bulkbar .chip-select[disabled]{opacity:.4;pointer-events:none}
+/* the tab bar sits at the bottom too — while the bulk bar is up it moves out
+   of the way rather than stacking two bars on top of each other */
+@media(max-width:699px){
+  body.has-bulk .tabs{transform:translateY(100%);pointer-events:none}
+  .tabs{transition:transform var(--t-med)}
+  .bulkbar{bottom:0}
+}
+@media(min-width:700px){ .bulk-in{padding:.1rem 0} }
+
+/* the checkbox, and what a picked row looks like */
+.pickbox{flex:0 0 auto;display:grid;place-items:center;width:var(--tap);height:var(--tap);margin-left:.15rem}
+.pickbox input{width:20px;height:20px;accent-color:var(--gold);cursor:pointer}
+.card.picked{border-color:var(--gold);background:var(--gold-t1)}
+/* while selecting, the head is a target for the row — not a disclosure */
+body.has-bulk .card__toggle{cursor:pointer}
+body.has-bulk .card__toggle .chev{opacity:.3}

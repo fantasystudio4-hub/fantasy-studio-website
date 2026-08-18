@@ -94,11 +94,15 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="stats" id="stats"></div>
     <div class="bar">
       <input id="leadSearch" type="search" placeholder="Search name or phone…" />
+      <button id="leadPick" type="button" aria-pressed="false" title="Select several leads">☑</button>
       <button id="refreshBtn">↻ Refresh</button>
     </div>
     <div class="fchips" id="leadChips"></div>
     <div id="leadList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
   </div>
+  <!-- Bulk action bar — only on screen while rows are being selected. Fixed to
+       the bottom, above the tab bar, because that is where the thumb already is. -->
+  <div class="bulkbar" id="bulkBar" hidden role="region" aria-label="Bulk actions"></div>
 
   <div id="homeView">
     <!-- Dashboard: the four things that decide what the day looks like. Each
