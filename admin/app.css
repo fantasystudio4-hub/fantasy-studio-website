@@ -1186,3 +1186,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   color:var(--state-overdue);border:1px solid var(--state-overdue-ln);
   background:var(--state-overdue-bg);border-radius:var(--r-pill);padding:.1em .55em;white-space:nowrap;
 }
+
+/* the derived tick on a studio job — it is read-only, so it should not look
+   like the three above it that you tap. Dashed ring instead of a solid box,
+   and it carries the balance while it is still open. */
+.dstep.auto{opacity:.95}
+.dstep.auto i{border-style:dashed}
+.dstep.auto.done i{border-style:solid}
+.dstep.auto em{color:var(--state-overdue)}
+.dstep.auto.done em{color:var(--mut)}

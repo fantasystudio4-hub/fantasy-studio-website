@@ -1572,10 +1572,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       (!/photo/i.test(s)            || hasPhoto(x)) &&
       (!/video/i.test(s)            || hasVideo(x)));
   }
+  /* The fourth tick on a studio job. It is DERIVED, never stored and never
+     tapped: the balance already says whether the job is paid, and a hand-ticked
+     "fully paid" is free to sit there ticked while the ledger on the same page
+     reads ₹90,000 due. Two places claiming different things about money is
+     worse than not showing it at all — so this one reads the same totals the
+     ledger and the money tiles read, and cannot disagree with them.
+
+     It is appended in deliveryInfo() rather than in stepsFor(), because
+     stepsFor() feeds the "every step done → offer to mark Delivered" gate, and
+     a step nobody can tick would have wedged that gate shut forever. */
+  const B2B_PAID_STEP = 'Amount fully paid';
+  function paidInfo(x){
+    const t = (x||{}).totals || {};
+    const billed = Number(t.finalPrice)||0;
+    const paid = billed > 0 && Math.max(0, Number(t.balance)||0) === 0;
+    /* dated by the payment that closed it out */
+    const last = (x.payments||[]).reduce((m,p)=>{ const d = String((p||{}).date||''); return d > m ? d : m; }, '');
+    return { paid, date: paid ? last : '' };
+  }
   function deliveryInfo(x){
-    const steps = stepsFor(x);
+    const steps = stepsFor(x).slice();
     const done = {};
     (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date||''; });
+    if(isStudioJob(x)){
+      steps.push(B2B_PAID_STEP);
+      const pi = paidInfo(x);
+      if(pi.paid) done[B2B_PAID_STEP] = pi.date;
+    }
     const doneCount = steps.filter(s=>s in done).length;
     return { steps, done, doneCount, total: steps.length, pct: steps.length ? Math.round(100*doneCount/steps.length) : 0 };
   }
@@ -1586,6 +1610,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="dt-head"><span>Delivery</span><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b></div>
       ${di.steps.map(s=>{
         const d = (s in di.done);
+        if(s === B2B_PAID_STEP){
+          const bal = Math.max(0, Number((x.totals||{}).balance)||0);
+          /* tapping it opens the payment sheet — the only thing that can
+             actually change it */
+          return `<div class="dstep auto ${d?'done':''}" data-paidstep role="button" tabindex="0"
+                       title="Ticks itself when the balance reaches zero"><i>✓</i><span>${esc(s)}</span><em>${
+            d ? stepDate(di.done[s]) : (bal ? inr(bal) + ' due' : '—')}</em></div>`;
+        }
         return `<div class="dstep ${d?'done':''}" data-tstep data-name="${esc(s)}"><i>✓</i><span>${esc(s)}</span><em>${d?stepDate(di.done[s]):''}</em></div>`;
       }).join('')}
     </div>`;
@@ -2287,6 +2319,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      show progress and not move it. */
   async function toggleDeliveryStep(x, name){
     if(!x || !name) return;
+    if(name === B2B_PAID_STEP) return;   /* derived from the balance; never stored */
     const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
     const had = list.some(d=>d.step === name);
     const delivery = had ? list.filter(d=>d.step !== name) : [...list, { step: name, date: todayISO() }];
@@ -2335,6 +2368,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const x = PKGS.find(p=>p.id===id); if(!x) return;
     if(e.target.closest('[data-cycle]')){ openStatus(x); return; }
+    if(e.target.closest('[data-paidstep]')){ openPay(x); return; }
     if(e.target.closest('[data-tstep]')){
       await toggleDeliveryStep(x, e.target.closest('[data-tstep]').dataset.name);
       return;
@@ -5788,6 +5822,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* Ticking a step and opening the package both live in the expanded panel,
        which is a SIBLING of the row — so neither can be swallowed by the row's
        own expand handler below. */
+    if(e.target.closest('[data-paidstep]')){
+      const x = PKGS.find(p=>p.id===_stuJobOpen);
+      if(x) openPay(x);
+      return;
+    }
     const ts = e.target.closest('[data-tstep]');
     if(ts){
       const x = PKGS.find(p=>p.id===_stuJobOpen);
