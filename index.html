@@ -375,184 +375,6 @@ header.nav.scrolled{
 .builder .h-section{color:var(--ink)}
 .builder .h-section .it{color:var(--gold-deep)}
 .builder .lead{color:var(--ink-soft)}
-.builder-grid{display:grid;grid-template-columns:1fr 388px;gap:2.4rem;align-items:start;position:relative;z-index:2}
-.builder-grid > *{min-width:0}   /* grid items must shrink so wide tables scroll instead of overflowing */
-
-/* glass panels */
-.panel{
-  background:#fff;border:1px solid var(--line);
-  border-radius:12px;padding:1.7rem;box-shadow:var(--shadow-sm);margin-bottom:1.4rem;
-}
-.panel-head{display:flex;align-items:center;gap:.9rem;margin-bottom:1.3rem}
-.panel-head .num{
-  width:34px;height:34px;flex:0 0 auto;border-radius:50%;border:1px solid var(--gold);
-  display:grid;place-items:center;font-family:var(--serif);color:var(--gold-deep);font-size:1rem;
-}
-.panel-head h3{font-size:1.32rem;color:var(--ink)}
-.panel-head p{font-size:.8rem;color:var(--ink-soft);margin-top:1px}
-
-/* event cards */
-.event-card{border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:1.3rem;margin-bottom:1.1rem;background:var(--cream);transition:.3s}
-
-/* each builder box gets its own identity */
-.panel.presets{background:linear-gradient(180deg,#FBF4E1,#F8EFD9);border-color:var(--gold-bright)}
-.panel.presets .panel-head .num{background:var(--gold);border-color:var(--gold);color:#fff}
-.panel.events-panel{background:#fff}
-.panel.album-panel{background:linear-gradient(180deg,#26200f,#171208);border-color:rgba(184,144,43,.55)}
-.album-panel .panel-head h3{color:#fff}
-.album-panel .panel-head p{color:#b3a98f}
-.album-panel .panel-head .num{border-color:var(--gold-bright);color:var(--gold-bright)}
-.album-panel .album-info .nm{color:#fff}
-.album-panel .album-info .pr{color:#a99f86}
-.album-panel .album-control .qty{border-color:var(--gold-bright);background:transparent}
-.album-panel .qty input{color:#fff}
-.album-panel .qty button{background:rgba(184,144,43,.22);color:var(--gold-bright)}
-.album-panel .qty button:hover{background:var(--gold);color:#fff}
-.album-panel .album-total{color:var(--gold-bright)}
-.album-add-chip{
-  width:100%;margin-bottom:1.1rem;padding:.85em 1em;border-radius:40px;cursor:pointer;
-  border:1.5px dashed rgba(226,194,117,.55);background:rgba(184,144,43,.14);color:var(--gold-bright);
-  font-family:var(--sans);font-size:.85rem;letter-spacing:.04em;transition:.25s;
-}
-.album-add-chip:hover{background:var(--gold);color:#fff;border-style:solid}
-.event-top{display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;margin-bottom:1.3rem}
-.field{display:flex;flex-direction:column;gap:.4rem;flex:1 1 160px}
-.field label{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-deep)}
-.field select,.field input[type=date],.field input[type=text],.field input[type=number]{
-  background:#fff;border:1px solid var(--line);color:var(--ink);
-  border-radius:7px;padding:.72em .85em;font-family:var(--sans);font-size:.92rem;width:100%;
-  transition:.25s;
-}
-.field select:focus:not(:focus-visible),.field input:focus:not(:focus-visible){outline:none}
-.field select:focus,.field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.12)}
-.field input.date-dup{border-color:#e0a63a;box-shadow:0 0 0 2px rgba(224,166,58,.22)}
-.field input[type=date]{color-scheme:light}
-.event-remove{
-  background:#fdeeea;border:1px solid #eac6bf;color:#b04030;
-  border-radius:7px;width:42px;height:42px;flex:0 0 auto;cursor:pointer;font-size:1.2rem;transition:.25s;
-}
-.event-remove:hover{background:#b04030;border-color:#b04030;color:#fff}
-.copy-prev{background:none;border:1px dashed rgba(184,144,43,.45);color:var(--gold-deep);border-radius:30px;padding:.7em 1.25em;font-family:var(--sans);font-size:.78rem;letter-spacing:.05em;cursor:pointer;margin:-.3rem 0 .9rem;transition:.25s}
-.copy-prev:hover{background:rgba(184,144,43,.12);border-style:solid}
-
-/* service rows */
-/* minmax(0,1fr) not 1fr: a bare 1fr keeps an automatic min-content floor, which
-   let the longest service name lock the left track and crush the right one. */
-.svc-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
-.svc-toggle{
-  display:flex;align-items:center;gap:.7rem;padding:.7rem .85rem;border-radius:8px;
-  border:1px solid var(--line);background:#fff;transition:.25s;
-  user-select:none;
-}
-.svc-toggle:hover{border-color:var(--gold-soft);background:#FBF6EA}
-.svc-toggle.on{border-color:var(--gold);background:rgba(184,144,43,.10)}
-.svc-meta{flex:1;min-width:0}
-.svc-meta .nm{font-size:.86rem;color:var(--ink);display:block;line-height:1.2}
-.svc-meta .pr{font-size:.72rem;color:#6e6551}
-.svc-toggle.on .svc-meta .pr{color:var(--gold-deep)}
-.svc-badge{
-  display:inline-block;margin-left:.5em;padding:.16em .65em;vertical-align:middle;white-space:nowrap;
-  border:1px solid var(--gold);color:var(--gold-deep);border-radius:30px;
-  font-family:var(--sans);font-size:.55rem;letter-spacing:.07em;text-transform:uppercase;font-weight:500;
-}
-/* qty stepper — always visible */
-.qty{display:flex;align-items:center;gap:0;flex:0 0 auto;border:1px solid var(--gold-soft);border-radius:6px;overflow:hidden;background:#fff}
-.qty button{width:26px;height:28px;background:rgba(184,144,43,.12);border:0;color:var(--gold-deep);cursor:pointer;font-size:1rem;line-height:1;transition:.2s}
-.qty button:hover{background:var(--gold);color:#fff}
-.qty input{width:34px;height:28px;text-align:center;background:transparent;border:0;color:var(--ink);font-family:var(--sans);font-size:.85rem;-moz-appearance:textfield}
-.qty input::-webkit-outer-spin-button,.qty input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-
-.add-event{
-  width:100%;border:1.5px dashed rgba(184,144,43,.5);background:rgba(184,144,43,.06);
-  color:var(--gold-deep);border-radius:10px;padding:1rem;font-family:var(--sans);font-size:.92rem;
-  letter-spacing:.05em;cursor:pointer;transition:.3s;display:flex;align-items:center;justify-content:center;gap:.6rem;
-  text-transform:uppercase;
-}
-.add-event:hover{background:rgba(184,144,43,.14);border-color:var(--gold);transform:translateY(-2px)}
-.events-empty{text-align:center;color:#7d7258;font-family:var(--serif-2);font-style:italic;font-size:1.08rem;padding:.6rem 0 1.3rem}
-
-/* album */
-.album-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.2rem}
-.album-control{display:flex;align-items:center;gap:1rem}
-.album-control .qty{display:flex;border-color:var(--gold-bright)}
-.album-control .qty button{width:40px;height:42px;font-size:1.3rem}
-.album-control .qty input{width:56px;height:42px;font-size:1.05rem}
-.album-info .nm{font-size:1rem;color:#fff;display:block}
-.album-info .pr{font-size:.78rem;color:#a99f86}
-.album-total{font-family:var(--serif);font-size:1.5rem;color:var(--gold-bright)}
-
-/* ---------- summary sidebar ---------- */
-.summary{position:sticky;top:96px}
-.summary-card{
-  background:linear-gradient(180deg,#fffdf8,#f7f0e1);color:var(--ink);
-  border-radius:14px;box-shadow:var(--shadow-lg);overflow:hidden;border:1px solid var(--gold-bright);
-}
-.summary-head{background:linear-gradient(135deg,var(--gold-deep),#7A5E19);color:#fff;padding:1.3rem 1.5rem;text-align:center}
-.summary-head .lbl{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;opacity:.9}
-.summary-head h3{font-size:1.45rem;color:#fff;margin-top:2px}
-.pkg-chip{display:inline-block;margin-top:.5rem;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.5);color:#fff;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;padding:.3em 1em;border-radius:40px}
-.sheet-head .pkg-chip{background:var(--cream);border-color:var(--gold);color:var(--gold-deep);margin:0 auto 0 .8rem}
-.summary-body{padding:1.4rem 1.5rem;max-height:46vh;overflow-y:auto}
-.summary-body::-webkit-scrollbar{width:6px}
-.summary-body::-webkit-scrollbar-thumb{background:var(--gold-bright);border-radius:6px}
-.sum-empty{text-align:center;color:#7d7258;font-family:var(--serif-2);font-style:italic;font-size:1.1rem;padding:1.6rem 0}
-.sum-event{margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px dashed var(--line)}
-.sum-event:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
-.sum-event-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.5rem}
-.sum-event-h .en{font-family:var(--serif);font-size:1.02rem;color:var(--ink);font-weight:600}
-.sum-event-h .ed{font-size:.7rem;color:#6f664f}
-.sum-event-h .et{font-family:var(--serif);font-weight:600;color:var(--gold-deep)}
-.sum-line{display:flex;justify-content:space-between;font-size:.82rem;color:var(--ink-soft);padding:.16rem 0}
-.sum-line .q{color:#6f664f;font-size:.74rem}
-.sum-foot{padding:1.2rem 1.5rem;background:#fff;border-top:1px solid var(--line)}
-.sum-sub{display:flex;justify-content:space-between;font-size:.9rem;color:var(--ink-soft);padding:.2rem 0}
-.disc-field{display:flex;align-items:center;gap:.6rem;margin:.8rem 0;padding:.7rem .8rem;background:var(--cream);border:1px solid var(--line);border-radius:8px}
-.disc-field label{font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);white-space:nowrap}
-.disc-field input{flex:1;background:#fff;border:1px solid var(--line);border-radius:6px;padding:.4em .6em;font-family:var(--sans);width:100%;color:var(--ink);text-transform:uppercase}
-.disc-field input:focus:not(:focus-visible){outline:none}
-.disc-field input:focus{border-color:var(--gold)}
-.disc-field button{
-  background:var(--gold);border:0;color:#fff;border-radius:6px;padding:.45em 1em;
-  font-family:var(--sans);font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:.25s;
-}
-.disc-field button:hover{background:var(--gold-deep)}
-.promo-status{font-size:.78rem;margin:-.3rem 0 .5rem;padding:0 .2rem}
-.promo-status.ok{color:#1f7a3d}
-.promo-status.err{color:#b04030}
-.promo-remove{background:none;border:1px solid #cfc4a8;border-radius:30px;color:#6b6250;font-family:var(--sans);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;padding:.5em 1em;margin-left:.5em;cursor:pointer;transition:.2s}
-.promo-remove:hover{border-color:#b04030;color:#b04030}
-.grand{display:flex;justify-content:space-between;align-items:flex-end;margin-top:.8rem;padding-top:1rem;border-top:2px solid var(--gold)}
-.grand .gl{font-family:var(--serif);font-size:1.05rem}
-.grand .gv{font-family:var(--serif);font-size:2.1rem;font-weight:700;color:var(--gold-deep);line-height:1}
-.grand-was{font-size:.86rem;color:#6b6250;text-decoration:line-through;text-align:right;display:none}
-.grand-was.show{display:block}
-.sum-actions{display:flex;flex-direction:column;gap:.7rem;margin-top:1.1rem}
-.sum-actions .btn{width:100%}
-.btn-wa{background:#1faa52;color:#fff;box-shadow:0 12px 26px rgba(31,170,82,.3)}
-.btn-wa:hover{background:#1a9249;transform:translateY(-3px)}
-.btn-pdf{background:transparent;border:1px solid var(--gold);color:var(--gold-deep)}
-.btn-pdf:hover{background:var(--gold);color:#fff}
-.btn-share{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
-.btn-share:hover{border-color:var(--gold);color:var(--gold-deep);transform:translateY(-3px)}
-.sheet-share{margin:.1rem 1.4rem .3rem;padding:.55em;background:none;border:0;color:var(--gold-deep);font-family:var(--sans);font-size:.8rem;letter-spacing:.04em;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.btn-clear{display:block;margin:.15rem auto 0;background:none;border:0;color:#6b6250;font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;cursor:pointer;transition:.2s;padding:.45em .8em}
-.btn-clear:hover{color:#b04030}
-.sheet-clear{margin:0 auto .35rem}
-
-/* mobile sticky price bar */
-.mobile-bar{
-  position:fixed;left:0;right:0;bottom:0;z-index:900;display:none;
-  background:rgba(28,26,22,.97);backdrop-filter:blur(10px);border-top:1px solid rgba(226,194,117,.3);
-  padding:.7rem .8rem calc(.7rem + env(safe-area-inset-bottom));
-  align-items:center;gap:.55rem;box-shadow:0 -10px 30px rgba(0,0,0,.3);
-}
-.mobile-bar .mb-info{flex:1;min-width:0}
-.mobile-bar .mb-info .l{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
-.mobile-bar .mb-info .v{font-family:var(--serif);font-size:1.5rem;color:#fff;font-weight:700;line-height:1}
-.mobile-bar .btn{padding:.85em 1em;font-size:.72rem;flex:0 0 auto}
-.mobile-bar .mb-pdf{background:transparent;border:1px solid rgba(226,194,117,.65);color:var(--gold-bright);padding:.85em .8em}
-.mobile-bar .mb-pdf:active{background:var(--gold);border-color:var(--gold);color:#fff}
-
 /* ============================================================
    PORTFOLIO → INSTAGRAM CTA
    ============================================================ */
@@ -683,14 +505,9 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
    RESPONSIVE
    ============================================================ */
 @media(max-width:1080px){
-  .builder-grid{grid-template-columns:1fr}
-  .summary{position:static;display:none} /* full summary hidden, mobile bar used */
   .svc-grid{grid-template-columns:repeat(2,1fr)}
-  .mobile-bar{display:flex}   /* show price bar as soon as the sidebar drops */
-  body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
-  .wa-fab{bottom:calc(96px + env(safe-area-inset-bottom))}
-  /* the sticky price bar is the CTA from here down, so the nav pill is redundant
-     — dropping it is what lets the full link row still fit at 861px */
+  /* dropping the nav pill is what lets the full link row still fit at 861px;
+     the hero and the packages section both carry the same CTA */
   .nav-cta{display:none}
 }
 /* The full nav row needs ~1218px to fit on one line, but the burger only takes
@@ -710,59 +527,15 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .burger{display:flex}
   .testi-grid{grid-template-columns:1fr}
   .form-row{grid-template-columns:1fr}
-  .mobile-bar{display:flex}
-  body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
-  .wa-fab{bottom:calc(96px + env(safe-area-inset-bottom))}
 }
 @media(max-width:560px){
   .svc-grid{grid-template-columns:1fr;gap:.6rem}
   .svc-card{padding:.9rem .95rem}
   .svc-card h3{font-size:.95rem}
   .svc-card p{font-size:.75rem;line-height:1.4}
-  .svc-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
   .hero-cta{flex-direction:column;align-items:stretch}
   .hero-cta .btn{width:100%}
   .trust-row{gap:1.2rem 1.8rem}
-}
-
-/* ---- royal quotation (print / save-as-PDF only) ---- */
-#print-quote{display:none}
-#print-quote .pq{font-family:Helvetica,Arial,sans-serif;color:#1c1a16;-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}
-.pq-inner{border:2px solid #B8902B;outline:1px solid #B8902B;outline-offset:3px;margin:6mm;padding:10mm 9mm 22mm;position:relative;min-height:272mm;box-sizing:border-box}
-.pqd{position:absolute;width:9px;height:9px;background:#B8902B;transform:rotate(45deg)}
-.pqd.tl{top:-6px;left:-6px}.pqd.tr{top:-6px;right:-6px}.pqd.bl{bottom:-6px;left:-6px}.pqd.br{bottom:-6px;right:-6px}
-.pq-head{text-align:center}
-.pq-mono{width:58px;height:58px;margin:0 auto 6px;display:block}
-.pq-head h1{font-family:'Times New Roman',Times,serif;font-size:25pt;letter-spacing:5px;color:#B8902B;margin:0;font-weight:bold}
-.pq-sub{font-size:7.5pt;letter-spacing:2px;color:#666;margin-top:4px}
-.pq-rule{display:flex;align-items:center;gap:8px;margin:10px auto 0;max-width:58%}
-.pq-rule::before,.pq-rule::after{content:"";flex:1;height:1px;background:#B8902B}
-.pq-rule span{color:#B8902B;font-size:8pt}
-.pq-title{font-family:'Times New Roman',Times,serif;font-weight:bold;font-size:13.5pt;letter-spacing:4px;margin-top:9px}
-.pq-meta{font-size:9pt;color:#555;margin:5px 0 12px}
-.pq-table{width:100%;border-collapse:collapse;font-size:9.5pt;margin-top:4px}
-.pq-table th{font-family:'Times New Roman',Times,serif;text-align:left;border-top:1.5px solid #B8902B;border-bottom:1.5px solid #B8902B;padding:6px 8px;letter-spacing:1px;font-size:9pt}
-.pq-table td{padding:5px 8px;border-bottom:.5pt solid #eee}
-.pq-table .num{text-align:right;white-space:nowrap}
-.pq-table tr.pq-ev td{background:#F4EAD3;font-family:'Times New Roman',Times,serif;font-weight:bold;font-size:10pt;border-top:1px solid #B8902B}
-.pq-table tr.alt td{background:#FBF6EA}
-.pq-evtotal{color:#8E6E1E}
-.pq-tot{margin:12px 0 0 auto;width:62%;font-size:10pt}
-.pq-tot .row{display:flex;justify-content:space-between;padding:3px 8px}
-.pq-grand{display:flex;justify-content:space-between;background:#B8902B;color:#fff;font-family:'Times New Roman',Times,serif;font-weight:bold;font-size:13pt;padding:8px 12px;border-radius:3px;margin-top:6px}
-.pq-terms{margin-top:16px;font-size:9pt}
-.pq-terms h4{font-family:'Times New Roman',Times,serif;letter-spacing:2px;color:#8E6E1E;margin:0 0 4px;font-size:10pt}
-.pq-terms ol{margin:0;padding-left:16px}
-.pq-note{margin-top:6px;color:#777;font-size:8pt}
-.pq-foot{position:absolute;left:9mm;right:9mm;bottom:7mm;text-align:center;font-size:8.5pt;color:#666;border-top:1px solid #B8902B;padding-top:6px}
-.pq-foot b{color:#B8902B;font-size:11.5pt;letter-spacing:1px}
-@media print{
-  @page{size:A4;margin:0}
-  html,body{background:#fff}
-  body *{visibility:hidden}
-  #print-quote,#print-quote *{visibility:visible}
-  #print-quote{display:block;position:absolute;left:0;top:0;width:100%;padding:0;color:#000}
-  .wa-fab,.mobile-bar,.quote-sheet,.sheet-backdrop,.lead-modal,.lead-backdrop,.toast,.to-top,header.nav{display:none!important}
 }
 
 /* ============================================================
@@ -824,15 +597,7 @@ section[id]{scroll-margin-top:84px}
 .nav-links a.active{color:var(--gold-text)}
 .nav-links a.active::after{width:100%}
 
-/* live-total emphasis on change */
-.grand .gv{transition:color .3s ease}
-.gv.pulse,.mobile-bar .v.pulse{animation:gvpulse .55s ease}
-@keyframes gvpulse{0%{transform:scale(1)}34%{transform:scale(1.1);color:var(--gold)}100%{transform:scale(1)}}
-.svc-toggle{transition:.25s,transform .12s ease}
-.svc-toggle:active{transform:scale(.992)}
-
 /* ---- quick-start presets ---- */
-.presets .num{font-size:1rem}
 .preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem}
 .preset{
   text-align:left;cursor:pointer;border-radius:11px;padding:1.15rem 1.2rem;font-family:var(--sans);
@@ -876,36 +641,6 @@ section[id]{scroll-margin-top:84px}
 .preset .pk-from b{font-family:var(--serif);font-size:1.08rem;letter-spacing:0;margin-left:.2em}
 .preset .pk-tag{position:absolute;top:0;right:0;background:var(--ink);color:var(--gold-bright);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.3em .75em;border-bottom-left-radius:9px}
 
-/* ---- mobile quote bottom-sheet ---- */
-.mobile-bar .mb-info{cursor:pointer}
-.mb-chev{display:block;font-size:.6rem;color:var(--gold-bright);letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
-.sheet-backdrop{position:fixed;inset:0;z-index:960;background:rgba(10,8,4,.55);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.3s}
-.sheet-backdrop.open{opacity:1;pointer-events:auto}
-.quote-sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:970;max-height:82vh;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#fffdf8,#f4eee2);border-radius:22px 22px 0 0;
-  box-shadow:0 -22px 60px rgba(0,0,0,.4);transform:translateY(104%);visibility:hidden;
-  transition:transform .4s cubic-bezier(.2,.7,.3,1), visibility 0s linear .4s;
-}
-.quote-sheet.open{transform:none;visibility:visible;transition:transform .4s cubic-bezier(.2,.7,.3,1), visibility 0s}
-.sheet-grip{width:42px;height:4px;border-radius:4px;background:var(--line);margin:.7rem auto -.2rem}
-.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;border-bottom:1px solid var(--line)}
-.sheet-head h3{font-family:var(--serif);font-size:1.28rem;color:var(--ink)}
-.sheet-close{background:var(--cream);border:1px solid var(--line);border-radius:50%;width:42px;height:42px;display:grid;place-items:center;font-size:1.5rem;line-height:1;color:var(--ink);cursor:pointer;flex:0 0 auto}
-.sheet-close:active{background:var(--line)}
-.sheet-body{padding:1.1rem 1.4rem;overflow-y:auto;color:var(--ink)}
-.sheet-totals{margin-top:.6rem;padding-top:.9rem;border-top:1px solid var(--line)}
-.sheet-promo{margin:.7rem 1.4rem .2rem}
-.quote-sheet .promo-status{margin:0 1.6rem .5rem;color:var(--ink)}
-.quote-sheet .promo-status.ok{color:#1f7a3d}
-.quote-sheet .promo-status.err{color:#b04030}
-.sheet-foot{padding:1rem 1.4rem calc(1rem + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:.7rem}
-/* .btn sets white-space:nowrap and flex items default to min-width:auto, so
-   without min-width:0 these two pills cannot shrink and the row overflowed the
-   screen — "Download PDF" was clipped by the bezel at 360px. */
-.sheet-foot .btn{flex:1 1 0;min-width:0;padding:1em .7em}
-@media(max-width:400px){.sheet-foot .btn{font-size:.78rem;letter-spacing:.02em;padding:1em .5em}}
-@media(min-width:1081px){.quote-sheet,.sheet-backdrop{display:none!important}}
 @media(max-width:900px){.preset-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){
   .preset-grid{grid-template-columns:1fr}
@@ -937,7 +672,7 @@ section[id]{scroll-margin-top:84px}
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
 .toast .t-close{border:0;background:none;color:#b3a98f;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.9em .5em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
-@media(max-width:1080px){.toast{bottom:calc(100px + env(safe-area-inset-bottom))}}
+@media(max-width:1080px){.toast{bottom:calc(84px + env(safe-area-inset-bottom))}}
 
 /* ---- back to top ---- */
 .to-top{
@@ -950,43 +685,18 @@ section[id]{scroll-margin-top:84px}
 .to-top.show{opacity:1;pointer-events:auto;visibility:visible;transform:none;transition:opacity .35s, transform .35s, background .35s, color .35s, border-color .35s, visibility 0s}
 .to-top:hover{background:var(--gold);color:#fff;border-color:var(--gold)}
 .to-top svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
-/* must track the same 1080px breakpoint that lifts .wa-fab and shows the mobile
-   price bar — at 861-1080px both buttons sat at bottom:96px right:22px and the
-   higher-z WhatsApp FAB swallowed every back-to-top tap. */
-@media(max-width:1080px){.to-top{bottom:calc(160px + env(safe-area-inset-bottom));right:24px}}
+/* the WhatsApp button sits at bottom:22px and is 50px tall, and it has the
+   higher z-index — stack back-to-top above it rather than under its tap area */
+@media(max-width:1080px){.to-top{bottom:calc(84px + env(safe-area-inset-bottom));right:24px}}
 
 /* ---- lead capture modal ---- */
 .lead-backdrop{position:fixed;inset:0;z-index:1240;background:rgba(10,8,4,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.3s}
 .lead-backdrop.open{opacity:1;pointer-events:auto}
-.lead-modal{
-  position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.96);z-index:1250;
-  width:min(92vw,430px);background:linear-gradient(180deg,#fffdf8,#f7f0e1);border:1px solid var(--gold-bright);
-  border-radius:14px;box-shadow:var(--shadow-lg);padding:2.1rem 1.9rem 1.7rem;opacity:0;pointer-events:none;visibility:hidden;
-  transition:opacity .35s cubic-bezier(.2,.7,.3,1), transform .35s cubic-bezier(.2,.7,.3,1), visibility 0s linear .35s;
-  color:var(--ink);text-align:center;
-}
-.lead-modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity .35s cubic-bezier(.2,.7,.3,1), transform .35s cubic-bezier(.2,.7,.3,1), visibility 0s}
-.lead-modal .lead-orn{color:var(--gold);font-size:1.35rem;margin-bottom:.2rem}
-.lead-modal h3{font-family:var(--serif);font-size:1.55rem;margin-bottom:.4rem}
-.lead-modal p{font-size:.88rem;color:var(--ink-soft);margin-bottom:1.25rem}
-.lead-modal .fg{text-align:left}
 .lead-close{position:absolute;top:4px;right:4px;width:44px;height:44px;display:grid;place-items:center;background:none;border:0;font-size:1.7rem;color:var(--ink-soft);cursor:pointer;line-height:1}
 .lead-close:hover{color:var(--ink)}
-.lead-err{background:#fbeae7;color:#a33d2c;border:1px solid #eac6bf;border-radius:8px;padding:.55em .8em;font-size:.82rem;margin-bottom:1rem;text-align:left}
-.wb-actions{display:flex;flex-direction:column;gap:.7rem;margin-top:.3rem}
-.wb-actions .btn{width:100%}
-.wb-fresh{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
-.wb-fresh:hover{border-color:#b04030;color:#b04030}
 
 /* on phones every dialog becomes a bottom sheet — thumb-reachable, keyboard-safe */
 @media(max-width:560px){
-  .lead-modal{
-    left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;
-    border-radius:20px 20px 0 0;border-left:0;border-right:0;border-bottom:0;
-    padding:1.7rem 1.3rem calc(1.5rem + env(safe-area-inset-bottom));
-    transform:translateY(106%);
-  }
-  .lead-modal.open{transform:translateY(0)}
   .cmp-modal{
     left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;
     border-radius:20px 20px 0 0;border-left:0;border-right:0;border-bottom:0;
@@ -1006,36 +716,86 @@ section[id]{scroll-margin-top:84px}
 }
 @media(max-width:860px){
   /* keep form controls at 16px so iOS Safari doesn't zoom on focus */
-  .field select,.field input[type=date],.field input[type=text],.field input[type=number],
-  .fg input,.fg textarea,.fg select,.disc-field input,.qty input{font-size:16px}
-  /* comfortable thumb-sized touch targets */
-  .qty button{width:38px;height:42px;font-size:1.15rem}
-  .qty input{width:42px;height:42px}
-  .album-control .qty button{width:46px;height:46px}
-  .album-control .qty input{width:58px;height:46px}
-  .event-remove{width:44px;height:44px}
-  .svc-toggle{padding:.85rem .9rem}
-  .panel{padding:1.25rem}
-  .event-card{padding:1.05rem}
-  .summary-body{max-height:none}
-}
-
-/* compact 2-up service tiles inside event cards on phones */
-@media(max-width:560px){
-  .svc-list .svc-toggle{flex-direction:column;align-items:stretch;gap:.4rem;padding:.6rem}
-  .svc-list .svc-meta .nm{font-size:.875rem;line-height:1.25}
-  .svc-list .svc-meta .pr{font-size:.78rem}
-  .svc-list .svc-badge{display:block;width:fit-content;margin:.3em 0 .15em;font-size:.66rem}
-  .svc-list .svc-toggle .qty{width:100%;justify-content:space-between;background:#fff;margin-top:auto}
-  /* 44px tall: these are the most-tapped controls on the site */
-  .svc-list .svc-toggle .qty button{flex:1 1 auto;width:auto;min-width:36px;height:44px}
-  .svc-list .svc-toggle .qty input{flex:0 0 40px;width:40px;height:44px;font-size:16px}
+  .fg input,.fg textarea,.fg select{font-size:16px}
 }
 
 /* respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
   .reveal{opacity:1!important;transform:none!important}
+}
+
+/* ============================================================
+   PACKAGES SECTION — the entry point to /builder/
+   ============================================================ */
+.btn-outline-gold{background:transparent;border-color:var(--gold);color:var(--gold-deep)}
+.btn-outline-gold:hover{background:var(--gold);color:#fff;transform:translateY(-3px)}
+
+/* returning visitor: pick the saved package back up */
+.resume-card{
+  display:flex;align-items:center;gap:1rem;max-width:760px;margin:0 auto 1.8rem;
+  background:linear-gradient(135deg,#26200f,#171208);border:1px solid rgba(226,194,117,.5);
+  border-radius:14px;padding:1rem 1.2rem;box-shadow:var(--shadow-md);transition:.3s;
+}
+.resume-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.resume-card .rc-ic{color:var(--gold-bright);font-size:1.4rem;flex:0 0 auto}
+.resume-card .rc-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.resume-card .rc-l{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
+.resume-card b{font-family:var(--serif);font-size:1.5rem;color:#fff}
+.resume-card .rc-s{font-size:.76rem;color:#b3a98f}
+.resume-card .rc-btn{flex:0 0 auto;padding:.75em 1.5em;font-size:.74rem}
+
+.pkg-showcase{position:relative;z-index:2;margin-bottom:2.2rem}
+
+/* build-your-own call to action */
+.builder-cta{
+  position:relative;z-index:2;display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:center;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:clamp(1.4rem,3vw,2.2rem);box-shadow:var(--shadow-sm);margin-bottom:2.2rem;
+}
+.builder-cta h3{font-size:clamp(1.3rem,2.6vw,1.75rem);color:var(--ink);margin-bottom:.45rem}
+.builder-cta p{color:var(--ink-soft);font-size:.92rem;max-width:56ch}
+.bc-steps{list-style:none;display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;margin-top:1.1rem}
+.bc-steps li{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--ink-soft)}
+.bc-steps li span{
+  width:26px;height:26px;flex:0 0 auto;border-radius:50%;border:1px solid var(--gold);
+  color:var(--gold-deep);display:grid;place-items:center;font-family:var(--serif);font-size:.82rem;
+}
+.bc-actions{display:flex;flex-direction:column;gap:.7rem}
+.bc-actions .btn{width:100%}
+.bc-note{font-size:.72rem;color:#8d846c;text-align:center;line-height:1.5}
+
+/* open rate card — the prices stay readable (and indexable) on the home page */
+.rate-card{
+  position:relative;z-index:2;background:linear-gradient(180deg,#FFFDF7,#FBF4E1);
+  border:1px solid var(--gold-bright);border-radius:14px;
+  padding:clamp(1.4rem,3vw,2.2rem);box-shadow:var(--shadow-sm);text-align:center;
+}
+.rate-card h3{font-size:clamp(1.3rem,2.6vw,1.75rem);color:var(--ink)}
+.rate-sub{font-size:.85rem;color:var(--ink-soft);margin-top:.3rem}
+.rate-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:.55rem;
+  margin:1.3rem 0 1.1rem;text-align:left;
+}
+.rate-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:.7rem;
+  background:#fff;border:1px solid var(--line);border-radius:9px;padding:.65rem .85rem;
+}
+.rate-row .rn{font-size:.85rem;color:var(--ink);min-width:0}
+.rate-row .ru{display:block;font-size:.68rem;color:#8d846c}
+.rate-row .rp{font-family:var(--serif);font-weight:600;font-size:1.02rem;color:var(--gold-deep);white-space:nowrap}
+.rate-note{font-size:.8rem;color:var(--ink-soft);max-width:70ch;margin:0 auto}
+.rate-note b{color:var(--gold-deep)}
+.rate-cta{margin-top:1.3rem}
+
+@media(max-width:860px){
+  .builder-cta{grid-template-columns:1fr;gap:1.4rem}
+  .resume-card{flex-wrap:wrap}
+  .resume-card .rc-btn{width:100%}
+}
+@media(max-width:560px){
+  .rate-grid{grid-template-columns:1fr}
+  .bc-steps{flex-direction:column;gap:.5rem}
 }
 </style>
 </head>
@@ -1064,7 +824,7 @@ section[id]{scroll-margin-top:84px}
       <span class="logo-text"><b>Fantasy Studio</b><span>Malakpet · Hyderabad</span></span>
     </a>
     <nav class="nav-links">
-      <a href="#builder">Package Builder</a>
+      <a href="builder/">Package Builder</a>
       <a href="#about">About</a>
       <a href="#services">Services</a>
       <a href="#portfolio">Portfolio</a>
@@ -1072,14 +832,14 @@ section[id]{scroll-margin-top:84px}
       <a href="#contact">Contact</a>
       <a href="client/">Login</a>
     </nav>
-    <a href="#builder" class="btn btn-gold nav-cta">Build Your Package</a>
+    <a href="builder/" class="btn btn-gold nav-cta">Build Your Package</a>
     <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
   </div>
 </header>
 
 <div class="mobile-menu" id="mobileMenu" role="dialog" aria-modal="true" aria-label="Menu">
   <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
-  <a href="#builder">Package Builder</a>
+  <a href="builder/">Package Builder</a>
   <a href="#about">About</a>
   <a href="#services">Services</a>
   <a href="#portfolio">Portfolio</a>
@@ -1111,7 +871,7 @@ section[id]{scroll-margin-top:84px}
     <h1 class="reveal d1">FANTASY STUDIO<span class="sr-only"> — Wedding Photography &amp; Cinematography in Hyderabad</span></h1>
     <p class="tagline reveal d2">Wedding Photography · Cinematography · <b>Candid</b> · Drone</p>
     <div class="hero-cta reveal d3">
-      <a href="#builder" class="btn btn-gold">Build Your Package</a>
+      <a href="builder/" class="btn btn-gold">Build Your Package</a>
       <a href="https://www.instagram.com/fantasy_studio_official?igsh=NXNldTh2aXJyMDAz" target="_blank" rel="noopener" class="btn btn-outline-light">View Our Work</a>
     </div>
   </div>
@@ -1120,104 +880,54 @@ section[id]{scroll-margin-top:84px}
 
 <main id="main" tabindex="-1">
 
-<!-- ============ PACKAGE BUILDER ============ -->
+<!-- ============ PACKAGES / BUILDER ENTRY ============ -->
 <section class="builder section-pad" id="builder">
   <div class="wrap">
     <div class="center-head reveal">
       <span class="eyebrow center">Design Your Day</span>
       <h2 class="h-section">Build Your <span class="it">Package</span></h2>
-      <p class="lead">Add your events, choose the coverage you want for each, and watch your price update live. Then send it to us on WhatsApp in one tap.</p>
+      <p class="lead">Start from a ready-made package or build your own — add your functions, choose the coverage for each, and watch the price update live. Two minutes, no sign-up.</p>
     </div>
 
-    <div class="builder-grid">
-      <!-- LEFT: configurator -->
-      <div class="builder-config">
+    <!-- returning visitor with a package already in progress -->
+    <a class="resume-card reveal" id="resumeCard" href="builder/" hidden>
+      <span class="rc-ic" aria-hidden="true">&#10022;</span>
+      <span class="rc-text">
+        <span class="rc-l">You have a package in progress</span>
+        <b id="resumeTotal">₹0</b>
+        <span class="rc-s" id="resumeMeta"></span>
+      </span>
+      <span class="btn btn-gold rc-btn">Continue</span>
+    </a>
 
-        <!-- Quick-start presets -->
-        <div class="panel presets reveal">
-          <div class="panel-head">
-            <span class="num">✦</span>
-            <div><h3>Quick Start</h3><p>Pick a ready-made package, then fine-tune everything below.</p></div>
-          </div>
-          <div class="preset-grid" id="presetGrid"></div>
-          <button type="button" class="pkg-compare-btn" id="pkgCompareBtn">&#8646; Compare packages side-by-side</button>
-        </div>
+    <div class="pkg-showcase reveal d1">
+      <div class="preset-grid" id="presetGrid"></div>
+      <button type="button" class="pkg-compare-btn" id="pkgCompareBtn">&#8646; Compare packages side-by-side</button>
+    </div>
 
-        <!-- Events -->
-        <div class="panel events-panel reveal">
-          <div class="panel-head">
-            <span class="num">1</span>
-            <div><h3>Your Events</h3><p>Add each function — pick a date &amp; the services for it.</p></div>
-          </div>
-          <div id="eventsList"></div>
-          <button class="add-event" id="addEvent">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Add an Event
-          </button>
-        </div>
-
-        <!-- Album -->
-        <div class="panel album-panel reveal" id="albumPanel" hidden>
-          <div class="panel-head">
-            <span class="num">2</span>
-            <div><h3>Album</h3><p>Choose your number of sheets — minimum 15.</p></div>
-          </div>
-          <button type="button" class="album-add-chip" id="albumQuickAdd" hidden></button>
-          <div class="album-row">
-            <div class="album-info">
-              <span class="nm">Album Sheets</span>
-              <span class="pr" id="albumPriceLbl"></span>
-            </div>
-            <div class="album-control">
-              <div class="qty">
-                <button type="button" id="albMinus" aria-label="Fewer sheets">−</button>
-                <input type="number" id="albInput" value="0" min="0" max="100" aria-label="Album sheets" />
-                <button type="button" id="albPlus" aria-label="More sheets">+</button>
-              </div>
-              <div class="album-total" id="albTotal">₹0</div>
-            </div>
-          </div>
-        </div>
-
+    <div class="builder-cta reveal d2">
+      <div class="bc-copy">
+        <h3>Or build it your own way</h3>
+        <p>Add Manje, Sanchak, Mehndi, Nikah, Ruksati or Valima — and choose candid, cinematography, drone, LED screens, live streaming or a dedicated lady shooter for each function.</p>
+        <ol class="bc-steps">
+          <li><span>1</span>Pick your functions</li>
+          <li><span>2</span>Add the coverage you want</li>
+          <li><span>3</span>Send it to us on WhatsApp</li>
+        </ol>
       </div>
+      <div class="bc-actions">
+        <a class="btn btn-gold" href="builder/">Build Your Package</a>
+        <a class="btn btn-outline-gold" href="builder/#events">Add an Event</a>
+        <span class="bc-note">Nothing is charged here — you only send us your list.</span>
+      </div>
+    </div>
 
-      <!-- RIGHT: sticky summary -->
-      <aside class="summary reveal d1">
-        <div class="summary-card">
-          <div class="summary-head">
-            <div class="lbl">Your Live Quote</div>
-            <h3>Fantasy Studio</h3>
-            <div class="pkg-chip" id="pkgChip" hidden></div>
-          </div>
-          <div class="summary-body" id="summaryBody">
-            <div class="sum-empty">Add an event to begin building your quote ✦</div>
-          </div>
-          <div class="sum-foot">
-            <div class="sum-sub"><span>Events Subtotal</span><span id="evSubtotal">₹0</span></div>
-            <div class="sum-sub"><span>Album Subtotal</span><span id="albSubtotal">₹0</span></div>
-            <div class="disc-field" id="promoField" hidden>
-              <label for="promoInput">Promo code</label>
-              <input type="text" id="promoInput" placeholder="Enter code" autocomplete="off" autocapitalize="characters" />
-              <button type="button" id="promoApply">Apply</button>
-            </div>
-            <div class="promo-status" id="promoStatus" role="status" hidden></div>
-            <div class="grand-was" id="grandWas"></div>
-            <div class="grand">
-              <span class="gl">Grand Total</span>
-              <span class="gv" id="grandTotal">₹0</span>
-            </div>
-            <div class="sum-actions">
-              <a class="btn btn-wa" id="waQuote" href="#" rel="noopener">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.8 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6a10 10 0 0 1-4-3.5c-.3-.4-.9-1.3-.9-2.5s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.4.5-.3.3c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.2.1.4.1.6-.1l.7-.9c.2-.2.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.7-.1 1.1Z"/></svg>
-                Get This Quote on WhatsApp
-              </a>
-              <button class="btn btn-pdf" id="pdfBtn">Download Quote PDF</button>
-              <button class="btn btn-share" id="shareBtn" type="button">Share Quote Link</button>
-              <button class="btn-clear" id="clearBtn" type="button" hidden>Clear package</button>
-            </div>
-          </div>
-        </div>
-      </aside>
+    <div class="rate-card reveal d3">
+      <h3>Our rates, in the open</h3>
+      <p class="rate-sub">Every charge below is per function, up to 5 hours.</p>
+      <div class="rate-grid" id="rateGrid"></div>
+      <p class="rate-note" id="rateNote"></p>
+      <a class="btn btn-gold rate-cta" href="builder/">Price my package &rarr;</a>
     </div>
   </div>
 </section>
@@ -1438,7 +1148,7 @@ section[id]{scroll-margin-top:84px}
         <a href="#faq">FAQs</a>
         <a href="#about">About Us</a>
         <a href="#services">Services</a>
-        <a href="#builder">Build a Package</a>
+        <a href="builder/">Build a Package</a>
         <a href="#portfolio">Portfolio</a>
         <a href="#contact">Contact</a>
       </div>
@@ -1467,44 +1177,6 @@ section[id]{scroll-margin-top:84px}
   <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.8 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6a10 10 0 0 1-4-3.5c-.3-.4-.9-1.3-.9-2.5s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.4.5-.3.3c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.2.1.4.1.6-.1l.7-.9c.2-.2.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.7-.1 1.1Z"/></svg>
 </a>
 
-<!-- mobile sticky price bar -->
-<div class="mobile-bar" id="mobileBar">
-  <div class="mb-info" id="mbOpen" role="button" tabindex="0" aria-labelledby="mbLbl mbTotal">
-    <div class="l" id="mbLbl">Your Live Quote</div>
-    <div class="v" id="mbTotal">₹0</div>
-    <span class="mb-chev">Tap for breakdown ▴</span>
-  </div>
-  <button class="btn mb-pdf" id="mbPdf" type="button" aria-label="Download quote PDF">Download PDF</button>
-  <a class="btn btn-wa" id="mbWa" href="#" rel="noopener" aria-label="Send quote on WhatsApp">Send</a>
-</div>
-
-<!-- mobile quote bottom-sheet -->
-<div class="sheet-backdrop" id="sheetBackdrop"></div>
-<div class="quote-sheet" id="quoteSheet" role="dialog" aria-modal="true" aria-label="Your quote breakdown">
-  <div class="sheet-grip"></div>
-  <div class="sheet-head">
-    <h3>Your Live Quote</h3>
-    <span class="pkg-chip" id="pkgChipM" hidden></span>
-    <button class="sheet-close" id="sheetClose" aria-label="Close breakdown">&times;</button>
-  </div>
-  <div class="sheet-body" id="sheetBody"></div>
-  <div class="disc-field sheet-promo" id="sheetPromoField" hidden>
-    <label for="sheetPromoInput">Promo code</label>
-    <input type="text" id="sheetPromoInput" placeholder="Enter code" autocomplete="off" autocapitalize="characters" />
-    <button type="button" id="sheetPromoApply">Apply</button>
-  </div>
-  <div class="promo-status" id="sheetPromoStatus" role="status" hidden></div>
-  <button type="button" class="sheet-share" id="sheetShare">&#128279; Share this quote with family</button>
-  <button type="button" class="btn-clear sheet-clear" id="sheetClear" hidden>Clear package</button>
-  <div class="sheet-foot">
-    <a class="btn btn-wa" id="sheetWa" href="#" rel="noopener">WhatsApp Quote</a>
-    <button class="btn btn-pdf" id="sheetPdf" type="button">Download PDF</button>
-  </div>
-</div>
-
-<!-- the running quote total, announced to screen readers when it settles -->
-<p id="quoteAnnounce" class="sr-only" aria-live="polite" aria-atomic="true"></p>
-
 <!-- toast -->
 <div class="toast" id="toast" role="status" aria-live="polite">
   <span class="t-ic" aria-hidden="true">
@@ -1520,34 +1192,6 @@ section[id]{scroll-margin-top:84px}
   <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
 </button>
 
-<!-- lead capture modal -->
-<div class="lead-backdrop" id="leadBackdrop"></div>
-<div class="lead-modal" id="leadModal" role="dialog" aria-modal="true" aria-labelledby="leadTitle">
-  <button class="lead-close" id="leadClose" type="button" aria-label="Close">&times;</button>
-  <div class="lead-orn">&#10022;</div>
-  <h3 id="leadTitle">Almost there</h3>
-  <p>Share your details so our team can reserve your dates &amp; reply personally.</p>
-  <form id="leadForm" novalidate>
-    <div class="fg"><label for="leadName">Your Name</label><input type="text" id="leadName" required placeholder="Full name" autocomplete="name" /></div>
-    <div class="fg"><label for="leadPhone">Phone / WhatsApp</label><input type="tel" id="leadPhone" required placeholder="10-digit mobile" autocomplete="tel" inputmode="numeric" /></div>
-    <div class="lead-err" id="leadErr" role="alert" hidden></div>
-    <button type="submit" class="btn btn-wa" id="leadSubmit" style="width:100%">Send Quote on WhatsApp</button>
-  </form>
-</div>
-
-<!-- welcome back modal -->
-<div class="lead-backdrop" id="wbBackdrop"></div>
-<div class="lead-modal wb-modal" id="wbModal" role="dialog" aria-modal="true" aria-labelledby="wbTitle">
-  <button class="lead-close" id="wbClose" type="button" aria-label="Close">&times;</button>
-  <div class="lead-orn">&#10022;</div>
-  <h3 id="wbTitle">Welcome back!</h3>
-  <p id="wbText">You have a saved package. Continue where you left off, or start fresh?</p>
-  <div class="wb-actions">
-    <button type="button" class="btn btn-gold" id="wbContinue">Continue my package</button>
-    <button type="button" class="btn wb-fresh" id="wbFresh">Start fresh</button>
-  </div>
-</div>
-
 <!-- package comparison modal -->
 <div class="lead-backdrop" id="cmpBackdrop"></div>
 <div class="cmp-modal" id="cmpModal" role="dialog" aria-modal="true" aria-label="Compare packages">
@@ -1557,1171 +1201,108 @@ section[id]{scroll-margin-top:84px}
   <p class="cmp-note">Every package is fully customisable in the builder — pick one and adjust anything; the price updates live.</p>
 </div>
 
-<!-- print quote target -->
-<div id="print-quote"></div>
 
 <script src="firebase-config.js"></script>
+<script src="catalog.js"></script>
 <script>
 /* ============================================================
-   FANTASY STUDIO — OFFICIAL PRICING (single source of truth)
-   Every rupee shown anywhere on this page traces back here.
+   FANTASY STUDIO — HOME PAGE
+
+   The package builder itself now lives at /builder/ — one page, one
+   cart, one place to maintain. This page presents the packages and
+   the rate card, and hands every "Build Your Package" / "Add an
+   Event" tap over to the builder.
+
+   Prices, packages, promo codes, the Firestore config and the lead
+   writer all come from catalog.js, which the builder loads too.
    ============================================================ */
-const PRICES = {
-  cinematography:    15000,  // per event
-  candidPhotography: 10000,  // per event
-  traditionalVideo:  7000,   // per event
-  traditionalPhoto:  6000,   // per event
-  ladyShooter:       2000,   // per head
-  drone:             8000,   // per event
-  ledScreen6x8:      7000,   // per event
-  ledScreen8x12:     10000,  // per event
-  liveStreaming:     6000,   // per event
-  extraShortVPShoot: 3000,   // per event
-  albumPerSheet:     400,    // album = sheets × 400
-  albumMinSheets:    15,    // albums start at 15 sheets (0 = no album)
-  albumMaxSheets:    100,
-};
-// All per-service charges are per visit / per event / up to 5 hours.
 
-/* Promo whitelist — only the studio edits this. Empty = promo field hidden.
-   Shape: 'CODE': { type:'percent'|'flat', value:Number, label:'shown to client' } */
-const PROMO_CODES = {
-  'SPECIAL10': { type:'percent', value:10, label:'10% special discount' },
-};
-
-const PAYMENT_TERMS = ['50% advance', '40% on event day', '10% at delivery'];
-
-/* Google Analytics 4 — paste your Measurement ID (looks like 'G-XXXXXXXXXX') between the
-   quotes to activate tracking. Leave empty to keep analytics off. */
-const GA_MEASUREMENT_ID = 'G-X5VJYY7NP9';
-
-/* Google Ads conversion tracking — paste from Google Ads > Conversions > "Contact"
-   > Tag setup > "Install the tag yourself". The id looks like 'AW-123456789';
-   the contact label is the part after the slash in send_to (e.g. 'AbCdEfGhIj0'). 
-   Leave empty to keep Ads tracking off. */
-const ADS_TAG = { id: '', labels: { contact: '' } };
-
-/* Announcement bar — edit or disable anytime. code must exist in PROMO_CODES to be applied. */
-const ANNOUNCEMENT = {
-  enabled: true,
-  text: 'Wedding season offer — use code SPECIAL10 for 10% off your package',
-  cta:  'Apply code',
-  code: 'SPECIAL10',
-};
-
-const WA_NUMBER = "918686868803";
-
-/* service catalogue (drives the per-event toggles) */
-const SERVICES = [
-  { key:'cinematography',    label:'Cinematography',      unit:'event' },
-  { key:'candidPhotography', label:'Candid Photography',  unit:'event' },
-  { key:'traditionalVideo',  label:'Traditional Video',   unit:'event' },
-  { key:'traditionalPhoto',  label:'Traditional Photo',   unit:'event' },
-  { key:'ladyShooter',       label:'Female Shooter Premium', unit:'head',
-    badge:'Ladies\u2019 Section Only' },
-  { key:'drone',             label:'Drone Coverage',      unit:'event' },
-  { key:'ledScreen6x8',      label:'LED Screen 6×8',      unit:'event' },
-  { key:'ledScreen8x12',     label:'LED Screen 8×12',     unit:'event' },
-  { key:'liveStreaming',     label:'Live Streaming',      unit:'event' },
-  { key:'extraShortVPShoot', label:'Extra Short VP Shoot',unit:'event' },
-];
-
-const EVENT_TYPES = ['Manje','Sanchak','Mehndi','Nikah','Ruksati','Valima / Reception','Engagement','Birthday'];
-const SERVICE_KEYS = new Set(SERVICES.map(s=>s.key));
-
-/* ============================================================
-   STATE
-   ============================================================ */
-let state = {
-  events: [],      // { id, type, date, services:{ key:qty } }
-  albumSheets: 0,
-  promo: '',       // validated against PROMO_CODES only — never a raw amount
-};
-let eid = 0;
-
-/* Every event that enters state — from a #q= share link, from localStorage, or
-   from a preset — goes through here first. Share links and localStorage are both
-   attacker-reachable, so the type is whitelisted against EVENT_TYPES, the date is
-   regex-checked, the id is forced numeric and quantities are clamped. This is the
-   root fix for the share-link injection: it also scrubs any payload already sitting
-   in a returning visitor's localStorage.
-   Presets come from the owner's own admin Config, where custom event names are a
-   feature, so they pass trustType=true and keep their name (still escaped at every
-   sink); only length is capped. */
-function normalizeEvent(raw, trustType){
-  const r = raw || {};
-  const type = trustType
-    ? String(r.type||EVENT_TYPES[0]).slice(0,40)
-    : (EVENT_TYPES.indexOf(r.type) !== -1 ? r.type : EVENT_TYPES[0]);
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(r.date||'') ? r.date : '';
-  const services = {};
-  Object.keys(r.services||{}).forEach(k=>{
-    if(!SERVICE_KEYS.has(k)) return;             // not a real service — drop it
-    const q = Math.floor(Number(r.services[k]));
-    if(q > 0) services[k] = Math.min(50, q);     // NaN fails this test, so it drops
-  });
-  return { id: ++eid, type, date, services };
-}
-
-/* ---- helpers ---- */
-const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
-const $  = (s,c=document) => c.querySelector(s);
-const $$ = (s,c=document) => [...c.querySelectorAll(s)];
-const TODAY_ISO = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd, local time
-
-/* ---- light anonymous analytics (GTM-ready, no cookies) ---- */
-window.dataLayer = window.dataLayer || [];
-function track(ev, data){
-  try{
-    window.dataLayer.push(Object.assign({event:ev}, data||{}));
-    if(typeof window.gtag === 'function') window.gtag('event', ev, data||{});
-  }catch(e){}
-}
-/* GA4 loads only when a Measurement ID is configured */
-if(typeof GA_MEASUREMENT_ID === 'string' && /^G-[A-Z0-9]+$/.test(GA_MEASUREMENT_ID)){
-  const gs = document.createElement('script');
-  gs.async = true;
-  gs.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
-  document.head.appendChild(gs);
-  window.gtag = function(){ window.dataLayer.push(arguments); };
-  window.gtag('js', new Date());
-  window.gtag('config', GA_MEASUREMENT_ID, { anonymize_ip: true });
-  if(typeof ADS_TAG !== 'undefined' && ADS_TAG.id) window.gtag('config', ADS_TAG.id);
-}
-let _builderStarted = false;
-function markBuilderStarted(){ if(_builderStarted) return; _builderStarted = true; track('builder_started'); }
-/* Google Ads conversion ping (no-op until ADS_TAG is configured) */
-function fireAdsConversion(kind){
-  try{
-    if(typeof ADS_TAG === 'undefined' || !ADS_TAG.id) return;
-    const label = ADS_TAG.labels && ADS_TAG.labels[kind];
-    if(!label || typeof window.gtag !== 'function') return;
-    window.gtag('event', 'conversion', { send_to: ADS_TAG.id + '/' + label });
-  }catch(e){}
-}
-
-/* ============================================================
-   EVENT RENDERING
-   ============================================================ */
-function eventCardHTML(ev, idx){
-  const opts = EVENT_TYPES.map(t=>`<option value="${t}" ${t===ev.type?'selected':''}>${t}</option>`).join('');
-  const svc = SERVICES.map(s=>{
-    const qty = ev.services[s.key]||0;          // quantity starts at 0
-    const on  = qty>0;
-    const unitTxt = s.unit==='head' ? 'per head' : 'per event';
-    return `
-      <div class="svc-toggle ${on?'on':''}" data-ev="${ev.id}" data-svc="${s.key}">
-        <span class="svc-meta">
-          <span class="nm">${s.label}${s.badge?`<span class="svc-badge">${s.badge}</span>`:''}</span>
-          <span class="pr">${inr(PRICES[s.key])} ${unitTxt}</span>
-          ${s.note?`<span class="svc-note">${s.note}</span>`:''}
-        </span>
-        <span class="qty">
-          <button type="button" data-act="dec" aria-label="Decrease ${s.label}">−</button>
-          <input type="number" min="0" step="1" value="${qty}" data-qty aria-label="${s.label} quantity" />
-          <button type="button" data-act="inc" aria-label="Increase ${s.label}">+</button>
-        </span>
-      </div>`;
-  }).join('');
-
-  return `
-  <div class="event-card" data-ev="${ev.id}">
-    <div class="event-top">
-      <div class="field">
-        <label id="evt-lbl-${ev.id}">Event</label>
-        <select data-field="type" aria-label="Event type">${opts}</select>
-      </div>
-      <div class="field">
-        <label id="evd-lbl-${ev.id}">Date</label>
-        <input type="date" data-field="date" aria-label="Event date" value="${esc(ev.date||'')}" min="${TODAY_ISO}" />
-      </div>
-      <button class="event-remove" data-remove title="Remove event" aria-label="Remove ${esc(ev.type||'event')}">&times;</button>
-    </div>
-    ${idx>0?`<button type="button" class="copy-prev" data-copyprev="${ev.id}">&#10697; Same services as previous event</button>`:''}
-    <div class="svc-list">${svc}</div>
-  </div>`;
-}
-
-function renderEvents(){
-  const list = $('#eventsList');
-  list.innerHTML = state.events.length
-    ? state.events.map(eventCardHTML).join('')
-    : '<div class="events-empty">&#10022; Pick a ready-made package above, or add your first event below.</div>';
-  if(typeof checkDupDates === 'function') checkDupDates(false);
-}
-
-/* ============================================================
-   CALCULATION
-   ============================================================ */
-function eventTotal(ev){
-  let t = 0;
-  for(const k in ev.services){ t += (PRICES[k]||0) * ev.services[k]; }
-  return t;
-}
-function activePromo(){ return PROMO_CODES[state.promo] || null; }
-/* album applies only when a photography service (candid / traditional photo) is chosen */
-function albumEligible(){
-  return state.events.some(ev=>(ev.services.candidPhotography||0)>0 || (ev.services.traditionalPhoto||0)>0);
-}
-function calc(){
-  const evSub = state.events.reduce((s,e)=>s+eventTotal(e),0);
-  const albSub = (albumEligible() ? state.albumSheets : 0) * PRICES.albumPerSheet;
-  const sub = evSub + albSub;
-  const p = activePromo();
-  const disc = !p ? 0 : Math.min(sub, p.type==='percent' ? Math.round(sub*p.value/100) : p.value);
-  return { evSub, albSub, sub, disc, promo:p, grand: sub - disc };
-}
-
-/* ============================================================
-   SUMMARY RENDERING
-   ============================================================ */
-const EMPTY_MSG = `<div class="sum-empty">Add an event to begin building your quote ✦</div>`;
-
-/* shared line-item breakdown (used by sidebar + mobile sheet) */
-function buildBreakdownHTML(){
-  const albSub = (albumEligible() ? state.albumSheets : 0) * PRICES.albumPerSheet;
-  let html = '';
-  state.events.forEach((ev,i)=>{
-    const lines = SERVICES.filter(s=>(ev.services[s.key]||0)>0).map(s=>{
-      const q = ev.services[s.key];
-      const qLbl = q>1 ? `<span class="q"> ×${q}${s.unit==='head'?' heads':''}</span>` : (s.unit==='head'?`<span class="q"> ×1 head</span>`:'');
-      return `<div class="sum-line"><span>${s.label}${qLbl}</span><span>${inr(PRICES[s.key]*q)}</span></div>`;
-    }).join('');
-    if(!lines) return;
-    const dateLbl = ev.date ? new Date(ev.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'Date TBD';
-    html += `
-      <div class="sum-event">
-        <div class="sum-event-h">
-          <span class="en">${esc(ev.type||('Event '+(i+1)))}</span>
-          <span class="et">${inr(eventTotal(ev))}</span>
-        </div>
-        <div class="sum-event-h" style="margin-top:-4px"><span class="ed">${dateLbl}</span></div>
-        ${lines}
-      </div>`;
-  });
-  if(albumEligible() && state.albumSheets>0){
-    html += `
-      <div class="sum-event">
-        <div class="sum-event-h"><span class="en">Album</span><span class="et">${inr(albSub)}</span></div>
-        <div class="sum-line"><span>Sheets <span class="q">×${state.albumSheets}</span></span><span>${inr(albSub)}</span></div>
-      </div>`;
-  }
-  return html;
-}
-
-/* animated count-up for the live total */
 const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let prevGrand = 0;
-function animateNumber(el, from, to){
-  if(!el) return;
-  const dur = 480, start = performance.now();
-  function tick(now){
-    const t = Math.min(1, (now-start)/dur);
-    const e = 1 - Math.pow(1-t, 3);           // easeOutCubic
-    el.textContent = inr(from + (to-from)*e);
-    if(t < 1) requestAnimationFrame(tick); else el.textContent = inr(to);
-  }
-  requestAnimationFrame(tick);
-}
-function setGrand(val){
-  const g = $('#grandTotal'), mb = $('#mbTotal');
-  // 1) guarantee the correct value immediately — never let it depend on rAF
-  if(g) g.textContent = inr(val);
-  if(mb) mb.textContent = inr(val);
-  // 2) count-up + pulse are purely visual enhancement (skipped if reduced-motion)
-  if(!REDUCE_MOTION && val !== prevGrand){
-    animateNumber(g, prevGrand, val);   // overwrites before paint when rAF is live
-    animateNumber(mb, prevGrand, val);
-    [g,mb].forEach(el=>{ if(!el) return; el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); });
-  }
-  prevGrand = val;
-  /* announce the settled total once, not on every count-up frame */
-  clearTimeout(setGrand._t);
-  setGrand._t = setTimeout(()=>{
-    const a = $('#quoteAnnounce');
-    if(a) a.textContent = val > 0 ? `Quote total ${inr(val)}` : '';
-  }, 600);
-}
-
-function renderSheet(){
-  const sheet = $('#sheetBody'); if(!sheet) return;
-  const { evSub, albSub, sub, disc, grand } = calc();
-  const bd = buildBreakdownHTML();
-  sheet.innerHTML = (bd || EMPTY_MSG) +
-    `<div class="sheet-totals">
-       <div class="sum-sub"><span>Events Subtotal</span><span>${inr(evSub)}</span></div>
-       <div class="sum-sub"><span>Album Subtotal</span><span>${inr(albSub)}</span></div>
-       ${disc>0?`<div class="sum-sub"><span>Promo (${esc(state.promo)})</span><span>−${inr(disc)}</span></div>`:''}
-       <div class="grand"><span class="gl">Grand Total</span><span class="gv">${inr(grand)}</span></div>
-     </div>`;
-}
-
-function renderSummary(){
-  const { evSub, albSub, sub, disc, grand } = calc();
-  $('#summaryBody').innerHTML = buildBreakdownHTML() || EMPTY_MSG;
-
-  $('#evSubtotal').textContent  = inr(evSub);
-  $('#albSubtotal').textContent = inr(albSub);
-  setGrand(grand);
-
-  const gw = $('#grandWas');
-  if(disc>0){ gw.textContent = inr(sub); gw.classList.add('show'); }
-  else { gw.classList.remove('show'); }
-
-  // album panel labels
-  $('#albTotal').textContent = inr(albSub);
-  const albIn = $('#albInput');
-  if(albIn && document.activeElement !== albIn) albIn.value = state.albumSheets; // don't fight the user's caret
-  $('#albumPriceLbl').textContent = `${inr(PRICES.albumPerSheet)} per sheet`;
-
-  const ap = $('#albumPanel'); if(ap) ap.hidden = !albumEligible();
-  const chip = $('#albumQuickAdd');
-  if(chip){
-    chip.hidden = state.albumSheets > 0;
-    if(!chip.hidden) chip.textContent = `+ Add ${PRICES.albumMinSheets}-sheet album · ${inr(PRICES.albumMinSheets*PRICES.albumPerSheet)}`;
-  }
-  // quote bar CTAs only make sense once something is selected
-  const empty = grand <= 0;
-  ['mbPdf','mbWa','shareBtn','sheetShare','clearBtn','sheetClear'].forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
-  // offer bar rides with the quote: visible only once something is selected
-  const annc = document.getElementById('annc');
-  if(annc){
-    const show = !!window._anncEligible && !empty;
-    annc.hidden = !show;
-    document.body.classList.toggle('has-annc', show);
-  }
-  renderSheet();
-  saveState();
-}
+const smooth = REDUCE_MOTION ? 'auto' : 'smooth';
 
 /* ============================================================
-   WHATSAPP MESSAGE
+   TOAST
    ============================================================ */
-function sortedQuoteEvents(){
-  // only events with >=1 service count; date-sorted (undated last, builder order)
-  return state.events
-    .filter(ev=>SERVICES.some(sv=>(ev.services[sv.key]||0)>0))
-    .slice()
-    .sort((a,b)=>{
-      if(a.date && b.date) return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
-      if(a.date) return -1;
-      if(b.date) return 1;
-      return 0;
-    });
+let toastTimer;
+function showToast(msg, actionLabel, actionFn, ms){
+  const t = $('#toast'), btn = $('#toastAction');
+  $('#toastMsg').textContent = msg;
+  btn.hidden = !actionLabel;
+  btn.textContent = actionLabel || '';
+  btn.setAttribute('aria-label', actionLabel || 'Toast action');
+  btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, ms || 7000);
 }
-function fmtDate(d){ return d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'Date TBD'; }
-
-function buildQuoteText(lead){
-  const { albSub, sub, disc, grand } = calc();
-  const L = [];
-  L.push('*Fantasy Studio — Package Enquiry*');
-  L.push('_Malakpet, Hyderabad_');
-  if(lead && (lead.name || lead.phone)){
-    L.push('');
-    if(lead.name)  L.push('Name: ' + lead.name);
-    /* full international form so an NRI enquiry is callable straight from the chat */
-    if(lead.phoneFull) L.push('Phone: +' + lead.phoneFull);
-    else if(lead.phone) L.push('Phone: ' + lead.phone);
-  }
-  L.push('----------------');
-  const evs = sortedQuoteEvents();
-  evs.forEach((ev,i)=>{
-    L.push('');
-    L.push(`*${i+1}) ${ev.type||'Event'}* — ${fmtDate(ev.date)}`);
-    SERVICES.forEach(sv=>{
-      const q = ev.services[sv.key]||0; if(!q) return;
-      const qTxt = q>1 ? ` ×${q}${sv.unit==='head'?' heads':''}` : (sv.unit==='head'?' ×1 head':'');
-      L.push(`• ${sv.label}${qTxt} — ${inr(PRICES[sv.key]*q)}`);
-    });
-    L.push(`_${ev.type} total: ${inr(eventTotal(ev))}_`);
-  });
-  if(!evs.length){ L.push(''); L.push('_(No services selected yet)_'); }
-  if(albumEligible() && state.albumSheets>0){
-    L.push('');
-    L.push(`*Album:* ${state.albumSheets} sheets × ${inr(PRICES.albumPerSheet)} = ${inr(albSub)}`);
-  }
-  L.push('');
-  L.push('----------------');
-  if(disc>0){
-    L.push(`Subtotal: ${inr(sub)}`);
-    L.push(`Promo (${state.promo}): −${inr(disc)}`);
-  }
-  L.push(`*Grand Total: ${inr(grand)}*`);
-  L.push(`Payment: ${PAYMENT_TERMS.join(' · ')}`);
-  L.push('');
-  L.push('Please confirm availability for my dates. Thank you!');
-  return L.join('\n');
-}
-function waUrl(lead){ return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(buildQuoteText(lead))}`; }
-
-/* ---- shareable quote links: the whole package travels in the URL ---- */
-function encodeQuote(){
-  const payload = {
-    e: state.events.map(ev=>({ t: ev.type, d: ev.date||'', s: ev.services })),
-    a: state.albumSheets, p: state.promo
-  };
-  return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-function decodeQuote(str){
-  try{
-    const d = JSON.parse(decodeURIComponent(escape(atob(str.replace(/-/g,'+').replace(/_/g,'/')))));
-    return (d && Array.isArray(d.e)) ? d : null;
-  }catch(e){ return null; }
-}
-function shareQuote(){
-  const url = location.origin + location.pathname + '#q=' + encodeQuote();
-  track('quote_link_shared', { total: calc().grand });
-  if(navigator.share){
-    navigator.share({ title:'Fantasy Studio — My Wedding Package', text:'Check out the wedding package I built:', url }).catch(()=>{});
-  }else if(window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Share')){
-    /* Android's webview has no navigator.share; the store app's Share plugin
-       opens the same native sheet */
-    window.Capacitor.Plugins.Share.share({ title:'Fantasy Studio — My Wedding Package', text:'Check out the wedding package I built:', url }).catch(()=>{});
-  }else if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(
-      ()=>showToast('Quote link copied — share it with your family!'),
-      ()=>prompt('Copy this link:', url)
-    );
-  }else{
-    prompt('Copy this link:', url);
-  }
-}
-function requestClearPackage(){
-  showToast('Clear this package and start over?', 'Yes, clear', ()=>{
-    closeSheet();
-    startFresh();
-    showToast('Package cleared — start building whenever you like.');
-    track('package_cleared');
-  });
-}
-$('#clearBtn').addEventListener('click', requestClearPackage);
-$('#sheetClear').addEventListener('click', requestClearPackage);
-$('#shareBtn').addEventListener('click', shareQuote);
-$('#sheetShare').addEventListener('click', shareQuote);
-
-/* ---- welcome-back popup for returning visitors with a saved package ---- */
-function openWelcomeBack(){
-  const g = calc().grand;
-  $('#wbText').textContent = g > 0
-    ? `You have a saved package worth ${inr(g)}. Continue where you left off, or start fresh?`
-    : 'You have a saved package. Continue where you left off, or start fresh?';
-  $('#wbModal').classList.add('open'); $('#wbBackdrop').classList.add('open');
-  focusDialog('#wbModal');
-}
-function closeWelcomeBack(){ $('#wbModal').classList.remove('open'); $('#wbBackdrop').classList.remove('open'); restoreOpener(); }
-$('#wbContinue').addEventListener('click', ()=>{
-  closeWelcomeBack();
-  document.querySelector('#builder').scrollIntoView({behavior: REDUCE_MOTION ? 'auto' : 'smooth'});
-});
-$('#wbClose').addEventListener('click', closeWelcomeBack);
-$('#wbBackdrop').addEventListener('click', closeWelcomeBack);
-$('#wbFresh').addEventListener('click', ()=>{
-  startFresh();
-  closeWelcomeBack();
-  showToast('Package cleared — start building whenever you like.');
-});
-
-/* ---- lead capture: identity travels with every WhatsApp quote ---- */
-const LEAD_KEY = 'fs_lead';
-let _leadAction = 'wa';
-function openLeadModal(action, handoff){
-  /* The desktop CTAs stayed live on an empty quote, so it was possible to send
-     the studio a "quote" with no services on it — a ₹0 enquiry that reads as a
-     mistake at both ends. */
-  if(!calc().grand){
-    showToast('Add at least one service to your package first.');
-    document.querySelector('#builder').scrollIntoView({behavior: REDUCE_MOTION ? 'auto' : 'smooth'});
-    return;
-  }
-  _leadAction = action === 'pdf' ? 'pdf' : 'wa';
-  const sub = $('#leadSubmit');
-  if(sub){
-    sub.textContent = _leadAction === 'pdf' ? 'Download Quote PDF' : 'Send Quote on WhatsApp';
-    sub.className = 'btn ' + (_leadAction === 'pdf' ? 'btn-gold' : 'btn-wa');
-  }
-  try{
-    const l = JSON.parse(localStorage.getItem(LEAD_KEY)||'null');
-    if(l){ $('#leadName').value = l.name||''; $('#leadPhone').value = l.phone||''; }
-  }catch(e){}
-  $('#leadErr').hidden = true;
-  $('#leadModal').classList.add('open'); $('#leadBackdrop').classList.add('open');
-  ovOpen('lead', handoff);
-  if(!handoff) _lastOpener = _leadOpener || document.activeElement;
-  setTimeout(()=>$('#leadName').focus(), 400);   /* after the sheet slide-in, so the keyboard doesn't fight the animation */
-}
-let _leadOpener = null;
-function closeLeadModal(fromPop){
-  if(!$('#leadModal').classList.contains('open')) return;
-  $('#leadModal').classList.remove('open'); $('#leadBackdrop').classList.remove('open');
-  ovClosed('lead', fromPop);
-  if(_leadOpener && _leadOpener.focus){ _leadOpener.focus(); _leadOpener = null; }
-}
-/* Focus management for every dialog, not just the lead modal.
-   Tab is trapped inside whichever dialog is currently open, focus moves into it
-   on open, and returns to whatever opened it on close. */
-const DIALOGS = ['#leadModal','#wbModal','#cmpModal','#quoteSheet','#mobileMenu'];
-function openDialog(){ return DIALOGS.map($).find(d=>d && d.classList.contains('open')) || null; }
-function dialogFocusables(d){
-  return [...d.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')]
-    .filter(el=>!el.disabled && el.offsetParent !== null);
-}
-document.addEventListener('keydown', e=>{
-  if(e.key !== 'Tab') return;
-  const d = openDialog(); if(!d) return;
-  const f = dialogFocusables(d);
-  if(!f.length) return;
-  const first = f[0], last = f[f.length-1];
-  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
-  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
-  else if(!d.contains(document.activeElement)){ e.preventDefault(); first.focus(); }
-});
-/* move focus in when a dialog opens; _lastOpener is restored by the close paths */
-let _lastOpener = null;
-function focusDialog(sel){
-  _lastOpener = document.activeElement;
-  const d = $(sel); if(!d) return;
-  setTimeout(()=>{
-    const f = dialogFocusables(d);
-    (f[0] || d).focus();
-  }, 420);   /* after the slide/fade, so the ring doesn't fight the animation */
-}
-function restoreOpener(){
-  if(_lastOpener && _lastOpener.focus && document.contains(_lastOpener)){ _lastOpener.focus(); }
-  _lastOpener = null;
-}
-
-['waQuote','mbWa','sheetWa'].forEach(id=>{
-  const el = document.getElementById(id); if(!el) return;
-  el.addEventListener('click', e=>{
-    e.preventDefault(); _leadOpener = el;
-    /* only #sheetWa is inside the sheet; the other two fire with it already closed */
-    const handoff = $('#quoteSheet').classList.contains('open');
-    closeSheet(false, handoff);
-    openLeadModal('wa', handoff);
-  });
-});
-$('#leadClose').addEventListener('click', closeLeadModal);
-$('#leadBackdrop').addEventListener('click', closeLeadModal);
-
-/* Phone handling for a studio that genuinely has NRI clients.
-   Admin and the client portal already store/match on the last 10 digits of any
-   country's number; the two public forms were still hard-rejecting anything
-   that was not exactly 10 digits (or 91 + 10), so a relative in the Gulf, the
-   UK or the US could not send an enquiry at all. Returns null when the number
-   cannot plausibly be a phone number. */
-function parsePhone(raw){
-  let digits = String(raw||'').replace(/\D/g,'');
-  if(digits.indexOf('00') === 0) digits = digits.slice(2);     // 00 = international prefix
-  if(digits.length < 10 || digits.length > 15) return null;    // E.164 bounds
-  const last10 = digits.slice(-10);                            // what admin stores
-  let cc = digits.length > 10 ? digits.slice(0, digits.length-10) : '';
-  /* a leading 0 is a national trunk prefix, not a country code — "098765 43210"
-     is an Indian number typed the way phones autofill it, not country code 0 */
-  cc = cc.replace(/^0+/, '');
-  if(!cc) cc = '91';
-  return { digits, last10, cc, e164: cc + last10 };
-}
-
-/* ---- lead capture that does not lose leads ----
-   Three ways an enquiry used to vanish with no signal to anyone:
-   (1) __saveLead is only defined after the Firebase SDK import AND the config
-       fetch resolve — on Indian mobile data that window is seconds long, and
-       every submit inside it was skipped by a `typeof === 'function'` guard;
-   (2) addDoc's rejection was swallowed by .catch(()=>{});
-   (3) the 2.5s race resolved identically whether the write landed or not.
-   Now: wait for the SDK if it is still coming, and if the write does not land,
-   park the lead in localStorage and retry it on the next visit. The WhatsApp
-   hand-off is unchanged, so the owner still gets the message either way. */
-const LEAD_QUEUE_KEY = 'fs_lead_queue_v1';
-function queueLead(doc){
-  try{
-    const q = JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY) || '[]');
-    q.push({ doc, at: Date.now() });
-    localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(q.slice(-20)));
-  }catch(e){}
-}
-function firebaseReady(waitMs){
-  if(typeof window.__firebaseReady === 'boolean') return Promise.resolve(window.__firebaseReady);
-  if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey) return Promise.resolve(false);
-  return new Promise(res=>{
-    const done = ()=>{ clearTimeout(t); res(!!window.__firebaseReady); };
-    const t = setTimeout(()=>{ document.removeEventListener('firebase-ready', done); res(false); }, waitMs);
-    document.addEventListener('firebase-ready', done, { once:true });
-  });
-}
-async function saveLeadReliably(doc){
-  const ready = await firebaseReady(4000);        /* the window that used to drop leads */
-  if(!ready || typeof window.__saveLead !== 'function'){ queueLead(doc); return false; }
-  let ok = false;
-  try{ ok = await window.__saveLead(doc); }catch(e){ ok = false; }
-  if(!ok) queueLead(doc);
-  return ok;
-}
-async function flushLeadQueue(){
-  let q;
-  try{ q = JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY) || '[]'); }catch(e){ return; }
-  if(!q.length) return;
-  if(!(await firebaseReady(8000)) || typeof window.__saveLead !== 'function') return;
-  const left = [];
-  for(const item of q){
-    let ok = false;
-    try{ ok = await window.__saveLead(item.doc); }catch(e){ ok = false; }
-    if(!ok) left.push(item);
-  }
-  try{
-    if(left.length) localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(left));
-    else localStorage.removeItem(LEAD_QUEUE_KEY);
-  }catch(e){}
-}
-
-function buildLeadDoc(name, phone, phoneFull){
-  const evs = sortedQuoteEvents();
-  return {
-    name, phone, phoneFull: phoneFull || '',
-    eventType: evs.map(v=>v.type).join(', '),
-    weddingDate: (evs.find(v=>v.date)||{}).date || '',
-    message: '',
-    quote: {
-      events: state.events.map(ev=>({ type: ev.type, date: ev.date||'', services: ev.services })),
-      albumSheets: state.albumSheets,
-      promo: state.promo
-    },
-    grandTotal: calc().grand,
-    source: 'package_builder'
-  };
-}
-$('#leadForm').addEventListener('submit', async e=>{
-  e.preventDefault();
-  const name = $('#leadName').value.trim();
-  const err = $('#leadErr');
-  const fail = (msg, field)=>{
-    err.textContent = msg; err.hidden = false;
-    field.setAttribute('aria-invalid','true'); field.setAttribute('aria-describedby','leadErr'); field.focus();
-  };
-  if(name.length < 2){ fail('Please enter your name.', $('#leadName')); return; }
-  const ph = parsePhone($('#leadPhone').value);
-  if(!ph){ fail('Please enter a valid mobile number with country code (e.g. +91 98765 43210).', $('#leadPhone')); return; }
-  $('#leadName').removeAttribute('aria-invalid'); $('#leadPhone').removeAttribute('aria-invalid');
-  err.hidden = true;
-  const phone = ph.last10;                 // stored the same way admin stores it
-  const lead = { name, phone, phoneFull: ph.e164 };
-  try{ localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); }catch(e2){}
-  const sub = $('#leadSubmit');
-  if(sub && sub.disabled) return;   /* phone double-tap → one lead, one tab */
-  if(sub) sub.disabled = true;
-  setTimeout(()=>{ if(sub) sub.disabled = false; }, 3000);
-  if(_leadAction === 'pdf'){
-    await saveLeadReliably(buildLeadDoc(name, phone, ph.e164));
-    fireAdsConversion('contact');
-    closeLeadModal();
-    downloadQuotePDF();   // reads the saved lead, so 'Prepared for' is always filled
-  }else{
-    // open the tab synchronously (keeps the user gesture), save the lead, then point it at WhatsApp
-    const waWin = window.open('', '_blank');
-    await saveLeadReliably(buildLeadDoc(name, phone, ph.e164));
-    const url = waUrl(lead);
-    let opened = true;
-    if(waWin && !waWin.closed){ waWin.location.href = url; }
-    else{ opened = !!window.open(url, '_blank', 'noopener'); }
-    track('quote_whatsapp_sent', { events: sortedQuoteEvents().length, total: calc().grand });
-    fireAdsConversion('contact');
-    clearSavedQuote();   // stored quote is cleared after a successful send
-    closeLeadModal();
-    showToast(opened ? "Opening WhatsApp — send the message and we'll reply shortly!"
-                     : 'Popup blocked — please allow popups, or WhatsApp us at +91 86868 68803.');
-  }
-});
+function hideToast(){ $('#toast').classList.remove('show'); }
+$('#toastClose').addEventListener('click', hideToast);
 
 /* ============================================================
-   EVENT HANDLERS (delegated)
+   PACKAGES SHOWCASE
+   Cards, the compare table and the open rate card all read PRESETS /
+   PRICES, so a price edited in admin Config changes them all at once.
    ============================================================ */
-function findEvent(id){ return state.events.find(e=>e.id==id); }
-
-document.addEventListener('click', e=>{
-  // qty + / −  (the single source of truth is state.events[..].services)
-  const qb = e.target.closest('.qty button');
-  if(qb){
-    const row = qb.closest('.svc-toggle');
-    /* the album stepper is also a .qty button but lives outside any .svc-toggle
-       and has its own handlers — without this guard every album +/- tap threw
-       "Cannot read properties of null (reading 'dataset')" */
-    if(!row) return;
-    const ev  = findEvent(row.dataset.ev);
-    if(!ev) return;
-    const key = row.dataset.svc;
-    let q = ev.services[key] || 0;                    // read current qty (default 0)
-    q += (qb.dataset.act === 'inc' ? 1 : -1);         // + adds 1, − subtracts 1
-    if(q < 0) q = 0;                                   // never below 0
-    ev.services[key] = q;                             // 1) update state
-    row.querySelector('input[data-qty]').value = q;   // 2) update the number on screen
-    row.classList.toggle('on', q > 0);                //    highlight when selected
-    if(q > 0) markBuilderStarted();
-    markCustomised();
-    renderSummary();                                  // 3) update the live price total
-    return;
-  }
-  // copy services from the previous event
-  const cp = e.target.closest('[data-copyprev]');
-  if(cp){
-    const idx = state.events.findIndex(ev=>ev.id==cp.dataset.copyprev);
-    if(idx > 0){
-      state.events[idx].services = {...state.events[idx-1].services};
-      markBuilderStarted(); markCustomised();
-      renderEvents(); renderSummary();
-      showToast('Copied services from the previous event.');
-    }
-    return;
-  }
-  // remove event
-  const rm = e.target.closest('[data-remove]');
-  if(rm){
-    const card = rm.closest('.event-card');
-    state.events = state.events.filter(ev=>ev.id!=card.dataset.ev);
-    markCustomised();
-    renderEvents(); renderSummary();
-    return;
-  }
-});
-
-/* change: type / date / qty input */
-document.addEventListener('change', e=>{
-  const f = e.target.closest('[data-field]');
-  if(f){
-    const card = f.closest('.event-card');
-    const ev = findEvent(card.dataset.ev);
-    if(f.dataset.field === 'date' && e.target.value && e.target.value < TODAY_ISO){
-      e.target.value = '';
-      ev.date = '';
-      showToast('Past dates can\u2019t be selected \u2014 please pick an upcoming date.');
-      renderSummary();
-      return;
-    }
-    ev[f.dataset.field] = e.target.value;
-    if(f.dataset.field === 'date') checkDupDates(true);
-    markCustomised();
-    renderSummary();
-  }
-});
-
-/* duplicate-date detection: warn, never block */
-let _hadDup = false;
-function checkDupDates(announce){
-  const counts = {};
-  state.events.forEach(ev=>{ if(ev.date) counts[ev.date] = (counts[ev.date]||0) + 1; });
-  let dup = false;
-  $$('.event-card input[type=date]').forEach(inp=>{
-    const isDup = !!(inp.value && counts[inp.value] > 1);
-    inp.classList.toggle('date-dup', isDup);
-    if(isDup) dup = true;
-  });
-  if(announce && dup && !_hadDup){
-    showToast('Note: two of your events share the same date.');
-  }
-  _hadDup = dup;
-  return dup;
-}
-document.addEventListener('input', e=>{
-  if(e.target.matches('input[data-qty]')){
-    const row = e.target.closest('.svc-toggle');
-    const ev  = findEvent(row.dataset.ev);
-    if(e.target.value === '') return;      // let the user clear it while typing
-    let q = parseInt(e.target.value, 10);
-    if(isNaN(q) || q < 0) q = 0;
-    ev.services[row.dataset.svc] = q;
-    row.classList.toggle('on', q > 0);
-    markCustomised();
-    renderSummary();
-  }
-});
-/* blur doesn't bubble — capture phase; write the committed value back */
-document.addEventListener('blur', e=>{
-  if(e.target.matches && e.target.matches('input[data-qty]')){
-    const row = e.target.closest('.svc-toggle');
-    const ev  = findEvent(row.dataset.ev);
-    const q   = ev.services[row.dataset.svc] || 0;
-    e.target.value = q;                     // '' or junk → committed number
-    row.classList.toggle('on', q > 0);
-  }
-}, true);
-
-/* add event */
-$('#addEvent').addEventListener('click', ()=>{
-  const used = state.events.map(e=>e.type);
-  const next = EVENT_TYPES.find(t=>!used.includes(t)) || EVENT_TYPES[0];
-  state.events.push({ id:++eid, type:next, date:'', services:{} });
-  markBuilderStarted();
-  track('event_added', { event_type: next });
-  markCustomised();
-  renderEvents(); renderSummary();
-  // gentle scroll to new card
-  const cards = $$('.event-card'); cards[cards.length-1]?.scrollIntoView({behavior: REDUCE_MOTION ? 'auto' : 'smooth', block:'center'});
-});
-
-/* album controls */
-function setAlbum(n){
-  n = parseInt(n, 10) || 0;
-  if(n <= 0) n = 0;                                   // no album
-  else if(n < PRICES.albumMinSheets) n = PRICES.albumMinSheets;  // albums start at 15 sheets
-  state.albumSheets = Math.min(PRICES.albumMaxSheets, n);
-  markCustomised(); renderSummary();
-}
-$('#albumQuickAdd').addEventListener('click', ()=>setAlbum(PRICES.albumMinSheets));
-$('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets===0 ? PRICES.albumMinSheets : state.albumSheets+1));
-$('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets<=PRICES.albumMinSheets ? 0 : state.albumSheets-1));
-/* typing: keep the raw string, allow empty/partial entry; live total updates
-   without min-snapping so intermediate values (like the "4" in "40") survive */
-$('#albInput').addEventListener('input', e=>{
-  const raw = e.target.value;
-  if(raw === '') return;                              // mid-entry blank is fine
-  const n = parseInt(raw, 10);
-  if(isNaN(n) || n < 0) return;
-  state.albumSheets = Math.min(PRICES.albumMaxSheets, n);  // max-cap only; no snap
-  markCustomised(); renderSummary();
-});
-/* committing: snap 1–14 → 15, clamp to bounds, and normalise the display */
-$('#albInput').addEventListener('blur', e=>{
-  setAlbum(e.target.value === '' ? 0 : parseInt(e.target.value, 10));
-  e.target.value = state.albumSheets;
-});
-$('#albInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') e.target.blur(); });
-
-/* promo code (whitelist-only — customers can never type an amount) */
-const PROMO_UIS = [
-  ['promoField','promoInput','promoStatus'],
-  ['sheetPromoField','sheetPromoInput','sheetPromoStatus'],
-];
-function syncPromoUI(){
-  const hasCodes = Object.keys(PROMO_CODES).length > 0;
-  const p = activePromo();
-  PROMO_UIS.forEach(([f,i,st])=>{
-    const field = document.getElementById(f), inp = document.getElementById(i), status = document.getElementById(st);
-    if(!field) return;
-    field.hidden = !hasCodes;
-    if(p){
-      inp.value = state.promo;
-      status.hidden = false; status.className = 'promo-status ok';
-      status.innerHTML = `✓ ${esc(state.promo)} applied — ${esc(p.label||'discount active')} <button type="button" class="promo-remove" aria-label="Remove promo code">Remove ✕</button>`;
-    }else{
-      status.hidden = true; status.textContent = '';
-    }
-  });
-}
-function tryApplyPromo(inp, status){
-  const code = (inp.value||'').trim().toUpperCase();
-  if(!code){ state.promo=''; renderSummary(); syncPromoUI(); return; }
-  if(PROMO_CODES[code]){
-    state.promo = code;
-    renderSummary(); syncPromoUI();
-  }else{
-    state.promo = '';
-    renderSummary(); syncPromoUI();
-    status.hidden = false; status.className = 'promo-status err';
-    status.textContent = 'Code not recognised.';
-  }
-}
-$('#promoApply').addEventListener('click', ()=>tryApplyPromo($('#promoInput'), $('#promoStatus')));
-$('#sheetPromoApply').addEventListener('click', ()=>tryApplyPromo($('#sheetPromoInput'), $('#sheetPromoStatus')));
-function removePromo(){
-  state.promo = '';
-  ['promoInput','sheetPromoInput'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
-  renderSummary(); syncPromoUI();
-  showToast('Promo code removed.');
-}
-document.addEventListener('click', e=>{ if(e.target.closest('.promo-remove')) removePromo(); });
-
-/* PDF (print) */
-function esc(t){ return String(t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function printQuoteFallback(){
-  const { albSub, sub, disc, grand } = calc();
-  const evs = sortedQuoteEvents();
-  let lead = null; try{ lead = JSON.parse(localStorage.getItem(LEAD_KEY)||'null'); }catch(e){}
-  const today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-
-  let rows = '';
-  evs.forEach((ev,i)=>{
-    rows += `<tr class="pq-ev"><td colspan="3">${i+1}. ${esc((ev.type||'Event').toUpperCase())} — ${fmtDate(ev.date)}</td><td class="num pq-evtotal">${inr(eventTotal(ev))}</td></tr>`;
-    let r = 0;
-    SERVICES.forEach(sv=>{
-      const q = ev.services[sv.key]||0; if(!q) return;
-      rows += `<tr class="${r%2?'alt':''}"><td>${sv.label}</td><td class="num">${q}</td><td class="num">${inr(PRICES[sv.key])}</td><td class="num">${inr(PRICES[sv.key]*q)}</td></tr>`;
-      r++;
-    });
-  });
-  if(albumEligible() && state.albumSheets>0){
-    rows += `<tr class="pq-ev"><td colspan="3">ALBUM</td><td class="num pq-evtotal">${inr(albSub)}</td></tr>`;
-    rows += `<tr><td>Album sheets</td><td class="num">${state.albumSheets}</td><td class="num">${inr(PRICES.albumPerSheet)}</td><td class="num">${inr(albSub)}</td></tr>`;
-  }
-  if(!rows) rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:18px">No services selected yet</td></tr>`;
-
-  $('#print-quote').innerHTML = `
-  <div class="pq"><div class="pq-inner">
-    <i class="pqd tl"></i><i class="pqd tr"></i><i class="pqd bl"></i><i class="pqd br"></i>
-    <div class="pq-head">
-      <svg class="pq-mono" viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
-        <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
-        <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
-        <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
-        <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="Times New Roman,serif" font-weight="bold" font-size="33" fill="#B8902B">FS</text>
-      </svg>
-      <h1>FANTASY STUDIO</h1>
-      <div class="pq-sub">WEDDING PHOTOGRAPHY &amp; CINEMATOGRAPHY &middot; MALAKPET, HYDERABAD</div>
-      <div class="pq-rule"><span>&#9670;</span></div>
-      <div class="pq-title">PACKAGE QUOTATION</div>
-      <div class="pq-meta">Date: ${today}${lead&&lead.name?` &middot; Prepared for: ${esc(lead.name)}${lead.phone?' ('+esc(lead.phone)+')':''}`:''}</div>
-    </div>
-    <table class="pq-table">
-      <thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="pq-tot">
-      ${disc>0?`<div class="row"><span>Subtotal</span><span>${inr(sub)}</span></div><div class="row"><span>Promo (${esc(state.promo)})</span><span>&minus;${inr(disc)}</span></div>`:''}
-      <div class="pq-grand"><span>GRAND TOTAL</span><span>${inr(grand)}</span></div>
-    </div>
-    <div class="pq-terms">
-      <h4>PAYMENT TERMS</h4>
-      <ol>${PAYMENT_TERMS.map(t=>`<li>${t}</li>`).join('')}</ol>
-      <div class="pq-note">This is an estimate; final quote confirmed on booking. Valid for 30 days.</div>
-    </div>
-    <div class="pq-foot">FANTASY STUDIO &middot; MALAKPET, HYDERABAD<br><b>&#9742; 8686868803</b></div>
-  </div></div>`;
-  window.print();
+function renderPresets(){
+  const grid = $('#presetGrid'); if(!grid) return;
+  grid.innerHTML = Object.keys(PRESETS).map(key=>{
+    const p = PRESETS[key];
+    return `<a class="preset" href="builder/?p=${encodeURIComponent(key)}" data-preset="${esc(key)}">
+      ${p.tag?`<span class="pk-tag">${esc(p.tag)}</span>`:''}
+      <span class="pk-name">${esc(p.name||'')}</span>
+      <span class="pk-desc">${esc(p.desc||'')}</span>
+      <span class="pk-from">Package<b>${inr(presetRawTotal(p))}</b></span>
+    </a>`;
+  }).join('');
 }
 
-/* ---- one-click PDF: jsPDF loaded lazily on first use ---- */
-let _jspdfLoading = null;
-function ensureJsPDF(){
-  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
-  if(_jspdfLoading) return _jspdfLoading;
-  _jspdfLoading = new Promise((res, rej)=>{
-    const sc = document.createElement('script');
-    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    sc.integrity = 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk';
-    sc.crossOrigin = 'anonymous';
-    sc.onload = res;
-    sc.onerror = ()=>{ _jspdfLoading = null; rej(new Error('jspdf failed')); };
-    document.head.appendChild(sc);
-  });
-  return _jspdfLoading;
+function renderRateCard(){
+  const grid = $('#rateGrid'); if(!grid) return;
+  grid.innerHTML = SERVICES.map(s=>`
+    <div class="rate-row">
+      <span class="rn">${esc(s.label)}<span class="ru">${s.unit==='head'?'per head, per function':'per function'}</span></span>
+      <span class="rp">${inr(PRICES[s.key])}</span>
+    </div>`).join('');
+  const note = $('#rateNote');
+  if(note) note.innerHTML = `Albums are <b>${inr(PRICES.albumPerSheet)} per sheet</b> (minimum ${PRICES.albumMinSheets} sheets). `
+    + `Raw photos and the fully edited video are delivered on a pendrive with every package. `
+    + `Payment: ${PAYMENT_TERMS.join(' · ')}.`;
 }
 
-function buildPdfDoc(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'mm', format:'a4'});
-  const GOLD=[184,144,43], DEEP=[142,110,30], INK=[28,26,22], CREAM=[251,246,234], CREAM2=[244,234,211];
-  const W=210, H=297, M=8, IL=M+6, IR=W-M-6;
-  const rupee = n => 'Rs. ' + Math.round(n).toLocaleString('en-IN');
-
-  function frame(){
-    doc.setDrawColor(...GOLD);
-    doc.setLineWidth(0.8); doc.rect(M, M, W-2*M, H-2*M);
-    doc.setLineWidth(0.25); doc.rect(M+1.8, M+1.8, W-2*M-3.6, H-2*M-3.6);
-    const d=2.2;
-    [[M,M],[W-M,M],[M,H-M],[W-M,H-M]].forEach(([x,y])=>{
-      doc.setFillColor(...GOLD);
-      doc.triangle(x-d,y, x,y-d, x+d,y, 'F');
-      doc.triangle(x-d,y, x,y+d, x+d,y, 'F');
-    });
-  }
-  function footer(){
-    doc.setDrawColor(...GOLD); doc.setLineWidth(0.3);
-    doc.line(IL, 269, IR, 269);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(102,102,102);
-    doc.text('FANTASY STUDIO  |  MALAKPET, HYDERABAD', 105, 274, {align:'center'});
-    doc.setFont('times','bold'); doc.setFontSize(14); doc.setTextColor(...GOLD);
-    doc.text('Call / WhatsApp: 8686868803', 105, 281.5, {align:'center'});
-  }
-  function newPage(){ doc.addPage(); frame(); footer(); return 22; }
-
-  frame(); footer();
-
-  // header: monogram + name + title
-  doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
-  doc.circle(105, 24, 8); doc.circle(105, 24, 6.2);
-  doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(...GOLD);
-  doc.text('FS', 105, 25.4, {align:'center'});
-  doc.setFontSize(24); doc.text('FANTASY STUDIO', 105, 41.5, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(102,102,102);
-  doc.text('WEDDING PHOTOGRAPHY & CINEMATOGRAPHY  |  MALAKPET, HYDERABAD', 105, 47, {align:'center'});
-  doc.setDrawColor(...GOLD); doc.setLineWidth(0.3); doc.line(62, 51, 148, 51);
-  doc.setFont('times','bold'); doc.setFontSize(13); doc.setTextColor(...INK);
-  doc.text('PACKAGE QUOTATION', 105, 57.5, {align:'center'});
-
-  let lead=null; try{ lead=JSON.parse(localStorage.getItem(LEAD_KEY)||'null'); }catch(e){}
-  const today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(85,85,85);
-  let meta = 'Date: ' + today;
-  if(lead && lead.name) meta += '    |    Prepared for: ' + lead.name + (lead.phone ? ' ('+lead.phone+')' : '');
-  doc.text(meta, 105, 63, {align:'center'});
-
-  // itemised table
-  let y = 70;
-  const colQ=148, colR=170, colA=IR-2, rowH=7;
-  function tableHead(){
-    doc.setDrawColor(...GOLD); doc.setLineWidth(0.5);
-    doc.line(IL, y, IR, y);
-    doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(...INK);
-    doc.text('SERVICE', IL+2, y+5.2);
-    doc.text('QTY', colQ, y+5.2, {align:'right'});
-    doc.text('RATE', colR, y+5.2, {align:'right'});
-    doc.text('AMOUNT', colA, y+5.2, {align:'right'});
-    doc.line(IL, y+7.5, IR, y+7.5);
-    y += 7.5;
-  }
-  function ensureSpace(h){ if(y + h > 252){ y = newPage(); tableHead(); } }
-  tableHead();
-
-  const evs = sortedQuoteEvents();
-  evs.forEach((ev,i)=>{
-    ensureSpace(rowH+2);
-    doc.setFillColor(...CREAM2); doc.rect(IL, y, IR-IL, rowH, 'F');
-    doc.setFont('times','bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-    doc.text(`${i+1}. ${(ev.type||'Event').toUpperCase()}  -  ${fmtDate(ev.date)}`, IL+2, y+4.8);
-    doc.setTextColor(...DEEP);
-    doc.text(rupee(eventTotal(ev)), colA, y+4.8, {align:'right'});
-    y += rowH;
-    let r=0;
-    SERVICES.forEach(sv=>{
-      const q = ev.services[sv.key]||0; if(!q) return;
-      ensureSpace(rowH);
-      if(r%2===0){ doc.setFillColor(...CREAM); doc.rect(IL, y, IR-IL, rowH, 'F'); }
-      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
-      doc.text(sv.label, IL+5, y+4.7);
-      doc.text(String(q), colQ, y+4.7, {align:'right'});
-      doc.text(rupee(PRICES[sv.key]), colR, y+4.7, {align:'right'});
-      doc.text(rupee(PRICES[sv.key]*q), colA, y+4.7, {align:'right'});
-      y += rowH; r++;
-    });
-  });
-  const { albSub, sub, disc, grand } = calc();
-  if(albumEligible() && state.albumSheets>0){
-    ensureSpace(rowH*2+2);
-    doc.setFillColor(...CREAM2); doc.rect(IL, y, IR-IL, rowH, 'F');
-    doc.setFont('times','bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-    doc.text('ALBUM', IL+2, y+4.8);
-    doc.setTextColor(...DEEP); doc.text(rupee(albSub), colA, y+4.8, {align:'right'});
-    y += rowH;
-    doc.setFillColor(...CREAM); doc.rect(IL, y, IR-IL, rowH, 'F');
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
-    doc.text('Album sheets', IL+5, y+4.7);
-    doc.text(String(state.albumSheets), colQ, y+4.7, {align:'right'});
-    doc.text(rupee(PRICES.albumPerSheet), colR, y+4.7, {align:'right'});
-    doc.text(rupee(albSub), colA, y+4.7, {align:'right'});
-    y += rowH;
-  }
-  if(!evs.length && !(albumEligible() && state.albumSheets>0)){
-    doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,150);
-    doc.text('No services selected yet', 105, y+6, {align:'center'});
-    y += 10;
-  }
-  doc.setDrawColor(...GOLD); doc.setLineWidth(0.4); doc.line(IL, y+0.5, IR, y+0.5);
-  y += 7;
-
-  // totals
-  ensureSpace(34);
-  const totX = 118;
-  if(disc>0){
-    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-    doc.text('Subtotal', totX, y); doc.text(rupee(sub), colA, y, {align:'right'}); y += 5.5;
-    doc.text('Promo ('+state.promo+')', totX, y); doc.text('- '+rupee(disc), colA, y, {align:'right'}); y += 5.5;
-  }
-  doc.setFillColor(...GOLD); doc.rect(totX-4, y-1.5, (colA+2)-(totX-4), 10, 'F');
-  doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(255,255,255);
-  doc.text('GRAND TOTAL', totX, y+4.9);
-  doc.text(rupee(grand), colA, y+4.9, {align:'right'});
-  y += 17;
-
-  // payment terms
-  ensureSpace(32);
-  doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(...DEEP);
-  doc.text('PAYMENT TERMS', IL, y); y += 5.5;
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
-  PAYMENT_TERMS.forEach((t,i)=>{ doc.text((i+1)+'.  '+t, IL+2, y); y += 5; });
-  y += 2;
-  doc.setFontSize(8); doc.setTextColor(130,130,130);
-  doc.text('This is an estimate; final quote confirmed on booking. Valid for 30 days.', IL, y);
-  return doc;
-}
-
-async function downloadQuotePDF(){
-  const { grand } = calc();
-  track('pdf_downloaded', { events: sortedQuoteEvents().length, total: grand });
-  try{
-    await ensureJsPDF();
-    buildPdfDoc().save('Fantasy-Studio-Quote.pdf');
-    showToast('Your quote PDF has been downloaded.');
-  }catch(e){
-    printQuoteFallback();   // offline / CDN blocked: print dialog with the same royal layout
-  }
-}
-$('#pdfBtn').addEventListener('click', ()=>{ _leadOpener = $('#pdfBtn'); openLeadModal('pdf'); });
-
-/* ============================================================
-   QUICK-START PRESETS
-   ============================================================ */
-/* Official Fantasy Studio packages. `price` = advertised package price;
-   if it's below the summed service rates, the difference is auto-applied
-   as a package discount so the grand total matches the advertised price. */
-const PRESETS = {
-  single: {
-    name:'Single-Day', tag:'',
-    desc:'One function — engagement or birthday. Traditional photo & video coverage.',
-    events:[{type:'Engagement', services:{traditionalPhoto:1, traditionalVideo:1}}],
-    album:0
-  },
-  essential: {
-    name:'Essential', tag:'',
-    desc:'Sanchak, Nikah & Valima — traditional photo & video. Raw photos + edited video on pendrive.',
-    events:[
-      {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
-      {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2}},
-      {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2}}
-    ],
-    album:0
-  },
-  premium: {
-    name:'Premium', tag:'Popular',
-    desc:'Everything in Essential + cinematography for Nikah & Valima, plus 2 cinematic teasers.',
-    events:[
-      {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
-      {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}},
-      {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}}
-    ],
-    album:0
-  },
-  royal: {
-    name:'Royal', tag:'Signature',
-    desc:'Full signature coverage — cinematography, candid & drone for Nikah & Valima. + cinematic teasers.',
-    events:[
-      {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
-      {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}},
-      {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}}
-    ],
-    album:0
-  }
-};
-function presetRawTotal(p){
-  let t = (p.album||0) * PRICES.albumPerSheet;
-  p.events.forEach(ev=>{ for(const k in ev.services) t += PRICES[k]*ev.services[k]; });
-  return t;
-}
 function renderCompareTable(){
   const tbl = $('#compareTable'); if(!tbl) return;
   const keys = Object.keys(PRESETS);
   const agg = {};
-  keys.forEach(k=>{
-    agg[k] = {};
-    PRESETS[k].events.forEach(ev=>{ for(const sk in ev.services){ agg[k][sk] = (agg[k][sk]||0) + ev.services[sk]; } });
-  });
+  keys.forEach(k=>{ agg[k] = presetServiceTotals(PRESETS[k]); });
   let h = '<thead><tr><th>Included</th>' + keys.map(k=>`<th>${esc(PRESETS[k].name||'')}</th>`).join('') + '</tr></thead><tbody>';
-  h += '<tr><td>Events covered</td>' + keys.map(k=>`<td>${PRESETS[k].events.length}</td>`).join('') + '</tr>';
+  h += '<tr><td>Functions covered</td>' + keys.map(k=>`<td>${PRESETS[k].events.length}</td>`).join('') + '</tr>';
   SERVICES.forEach(sv=>{
     if(!keys.some(k=>agg[k][sv.key])) return;
-    h += `<tr><td>${sv.label}</td>` + keys.map(k=>`<td>${agg[k][sv.key] ? '✓ ×'+agg[k][sv.key] : '—'}</td>`).join('') + '</tr>';
+    h += `<tr><td>${esc(sv.label)}</td>` + keys.map(k=>`<td>${agg[k][sv.key] ? '✓ ×'+agg[k][sv.key] : '—'}</td>`).join('') + '</tr>';
   });
   h += '<tr class="cmp-price"><td>Package price</td>' + keys.map(k=>`<td>${inr(presetRawTotal(PRESETS[k]))}</td>`).join('') + '</tr></tbody>';
   tbl.innerHTML = h;
 }
+
+/* a package saved in the builder shows up here as "continue where you left off" */
+function renderResume(){
+  const card = $('#resumeCard'); if(!card) return;
+  const saved = loadQuote();
+  if(!quoteHasContent(saved)){ card.hidden = true; return; }
+  const st = restoreQuote(saved);
+  const t = calcQuote(st);
+  if(t.grand <= 0){ card.hidden = true; return; }
+  const names = st.events.filter(e=>Object.keys(e.services).length).map(e=>e.type);
+  $('#resumeTotal').textContent = inr(t.grand);
+  $('#resumeMeta').textContent = names.length
+    ? names.slice(0,3).join(' · ') + (names.length>3 ? ' +' + (names.length-3) + ' more' : '')
+    : 'Pick up where you left off';
+  card.hidden = false;
+}
+
+/* ============================================================
+   COMPARE MODAL
+   ============================================================ */
 function openCompare(){
   renderCompareTable();
   $('#cmpModal').classList.add('open'); $('#cmpBackdrop').classList.add('open');
@@ -2735,97 +1316,47 @@ function closeCompare(fromPop){
   ovClosed('cmp', fromPop);
   restoreOpener();
 }
-function renderPresets(){
-  const grid = $('#presetGrid'); if(!grid) return;
-  grid.innerHTML = Object.keys(PRESETS).map(key=>{
-    const p = PRESETS[key];
-    return `<button class="preset" data-preset="${esc(key)}" type="button">
-      ${p.tag?`<span class="pk-tag">${esc(p.tag)}</span>`:''}
-      <span class="pk-name">${esc(p.name||'')}</span>
-      <span class="pk-desc">${esc(p.desc||'')}</span>
-      <span class="pk-from">Package<b>${inr(presetRawTotal(p))}</b></span>
-    </button>`;
-  }).join('');
-}
-/* preset <-> builder sync: any manual edit turns the quote into a Custom Package */
-let activePresetKey = null;
-function updatePkgChip(){
-  const label = activePresetKey === 'custom' ? 'Custom Package'
-              : (activePresetKey && PRESETS[activePresetKey]) ? PRESETS[activePresetKey].name + ' Package' : '';
-  ['#pkgChip','#pkgChipM'].forEach(sel=>{
-    const el = $(sel); if(!el) return;
-    el.hidden = !label;
-    el.textContent = label;
-  });
-}
-function markCustomised(){
-  if(activePresetKey && activePresetKey !== 'custom'){
-    activePresetKey = 'custom';
-    $$('.preset').forEach(b=>b.classList.remove('active'));
-    updatePkgChip();
-  }
-}
-function applyPreset(key){
-  const p = PRESETS[key]; if(!p) return;
-  state.events = p.events.map(ev=>normalizeEvent(ev, true));
-  state.albumSheets = p.album||0;
-  activePresetKey = key;
-  markBuilderStarted();
-  track('preset_applied', { preset: key });
-  updatePkgChip();
-  renderEvents(); renderSummary();
-  $$('.preset').forEach(b=>b.classList.toggle('active', b.dataset.preset===key));
-  $('#eventsList').scrollIntoView({behavior: REDUCE_MOTION ? 'auto' : 'smooth', block:'start'});
-}
-$('#presetGrid').addEventListener('click', e=>{
-  const b = e.target.closest('.preset'); if(b) applyPreset(b.dataset.preset);
-});
 
-/* ============================================================
-   MOBILE QUOTE BOTTOM-SHEET
-   ============================================================ */
 /* overlays register a history entry so the phone back gesture closes them
    instead of leaving the page */
-/* One overlay handing off to another (sheet -> lead modal) must NOT do
-   back()+push: history.back() is async, so its popstate arrives after the new
-   overlay has already pushed, and the popstate handler then closes the overlay
-   that just opened. Instead the incoming overlay REPLACES the outgoing one's
-   entry, so the stack still holds exactly one entry and the back gesture still
-   closes it in one press. */
-function ovOpen(name, handoff){
-  try{
-    if(handoff && history.state && history.state.ov) history.replaceState({ov:name}, '');
-    else history.pushState({ov:name}, '');
-  }catch(e){}
-}
-function ovClosed(name, fromPop, handoff){
-  if(handoff) return;                      // the incoming overlay inherits this entry
+function ovOpen(name){ try{ history.pushState({ov:name}, ''); }catch(e){} }
+function ovClosed(name, fromPop){
   if(!fromPop && history.state && history.state.ov === name){ try{ history.back(); }catch(e){} }
 }
 window.addEventListener('popstate', ()=>{
-  if($('#quoteSheet').classList.contains('open')) closeSheet(true);
-  else if($('#mobileMenu').classList.contains('open')) closeMobileMenu(true);
-  else if($('#leadModal').classList.contains('open')) closeLeadModal(true);
+  if($('#mobileMenu').classList.contains('open')) closeMobileMenu(true);
   else if($('#cmpModal').classList.contains('open')) closeCompare(true);
 });
-function openSheet(){ $('#quoteSheet').classList.add('open'); $('#sheetBackdrop').classList.add('open'); document.body.style.overflow='hidden'; ovOpen('sheet'); focusDialog('#quoteSheet'); }
-function closeSheet(fromPop, handoff){ if(!$('#quoteSheet').classList.contains('open')) return; $('#quoteSheet').classList.remove('open'); $('#sheetBackdrop').classList.remove('open'); document.body.style.overflow=''; ovClosed('sheet', fromPop, handoff); if(!handoff) restoreOpener(); }
-$('#mbOpen').addEventListener('click', openSheet);
-$('#mbOpen').addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openSheet(); }});
-$('#sheetClose').addEventListener('click', closeSheet);
-$('#sheetBackdrop').addEventListener('click', closeSheet);
-$('#sheetPdf').addEventListener('click', ()=>{
-  _leadOpener = $('#sheetPdf');
-  const handoff = $('#quoteSheet').classList.contains('open');
-  closeSheet(false, handoff);
-  openLeadModal('pdf', handoff);
-});
-$('#mbPdf').addEventListener('click', ()=>{ _leadOpener = $('#mbPdf'); openLeadModal('pdf'); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSheet(); closeLeadModal(); closeMobileMenu(); closeCompare(); closeWelcomeBack(); } });
 
-/* ============================================================
-   PORTFOLIO — diverts to Instagram (no on-page gallery)
-   ============================================================ */
+/* Focus management for every dialog. Tab is trapped inside whichever dialog is
+   open, focus moves into it on open, and returns to whatever opened it. */
+const DIALOGS = ['#cmpModal','#mobileMenu'];
+function openDialog(){ return DIALOGS.map($).find(d=>d && d.classList.contains('open')) || null; }
+function dialogFocusables(d){
+  return $$('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])', d)
+    .filter(el=>!el.disabled && el.offsetParent !== null);
+}
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Tab') return;
+  const d = openDialog(); if(!d) return;
+  const f = dialogFocusables(d);
+  if(!f.length) return;
+  const first = f[0], last = f[f.length-1];
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  else if(!d.contains(document.activeElement)){ e.preventDefault(); first.focus(); }
+});
+let _lastOpener = null;
+function focusDialog(sel){
+  _lastOpener = document.activeElement;
+  const d = $(sel); if(!d) return;
+  setTimeout(()=>{ const f = dialogFocusables(d); (f[0] || d).focus(); }, 420);
+}
+function restoreOpener(){
+  if(_lastOpener && _lastOpener.focus && document.contains(_lastOpener)) _lastOpener.focus();
+  _lastOpener = null;
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeCompare(); closeMobileMenu(); } });
 
 /* ============================================================
    NAV / MENU / SCROLL
@@ -2908,67 +1439,6 @@ $('#enquiryForm').addEventListener('submit', async e=>{
 });
 
 /* ============================================================
-   QUOTE PERSISTENCE (localStorage)
-   ============================================================ */
-const STORE_KEY = 'fs_quote_v1';
-function saveState(){
-  try{
-    localStorage.setItem(STORE_KEY, JSON.stringify({
-      events: state.events, albumSheets: state.albumSheets, promo: state.promo
-    }));
-  }catch(e){ /* private mode / quota — persistence is best-effort */ }
-}
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(!raw) return null;
-    const d = JSON.parse(raw);
-    if(!d || !Array.isArray(d.events)) return null;
-    return d;
-  }catch(e){ return null; }
-}
-function hasContent(d){
-  const hasSvc = d.events.some(e=>Object.values(e.services||{}).some(q=>q>0));
-  return hasSvc || d.albumSheets>0;
-}
-function seedDefaults(){
-  state.events = [];   // first visit: only Quick Start shows; returning visits restore saved work
-  state.albumSheets = 0;   // user adds the album themselves (min 15 once chosen)
-  state.promo = '';
-  ['promoInput','sheetPromoInput'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
-  syncPromoUI();
-}
-function startFresh(){
-  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-  seedDefaults();
-  $$('.preset').forEach(b=>b.classList.remove('active'));
-  activePresetKey = null;
-  updatePkgChip();
-  renderEvents(); renderSummary();
-}
-
-/* ============================================================
-   TOAST
-   ============================================================ */
-let toastTimer;
-function showToast(msg, actionLabel, actionFn){
-  const t = $('#toast'), btn = $('#toastAction');
-  $('#toastMsg').textContent = msg;
-  btn.hidden = !actionLabel;
-  btn.textContent = actionLabel || '';
-  btn.setAttribute('aria-label', actionLabel || 'Toast action');
-  btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, arguments.length > 3 && arguments[3] ? arguments[3] : 7000);
-}
-function hideToast(){ $('#toast').classList.remove('show'); }
-$('#toastClose').addEventListener('click', hideToast);
-
-/* clear the saved quote (called after a successful WhatsApp send) */
-function clearSavedQuote(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
-
-/* ============================================================
    ANIMATED STAT COUNTERS (About)
    ============================================================ */
 const statIO = new IntersectionObserver(entries=>{
@@ -2992,7 +1462,7 @@ $$('.stat').forEach(el=>statIO.observe(el));
    ============================================================ */
 const toTop = $('#toTop');
 window.addEventListener('scroll', ()=>{ toTop.classList.toggle('show', window.scrollY>700); }, {passive:true});
-toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: REDUCE_MOTION?'auto':'smooth'}));
+toTop.addEventListener('click', ()=>window.scrollTo({top:0, behavior: smooth}));
 
 /* ============================================================
    INIT
@@ -3002,11 +1472,18 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 
+/* A shared quote link is a builder link. Ones sent before the builder moved
+   still point at the home page, so hand them over rather than dropping the
+   package the sender took the trouble to build. */
+if(location.hash.indexOf('#q=') === 0){
+  location.replace('builder/' + location.hash);
+}
+
 /* always open at the very top (hero) — never restore a mid-page scroll position */
 if('scrollRestoration' in history) history.scrollRestoration = 'manual';
 function _startAtTop(){
   // respect direct section links (#contact etc.); everything else opens on the hero
-  if(location.hash && !location.hash.startsWith('#q=')){
+  if(location.hash){
     try{
       const target = document.querySelector(location.hash);
       if(target){ target.scrollIntoView(); return; }
@@ -3029,26 +1506,38 @@ window.addEventListener('load', ()=>{ _startAtTopSafe(); setTimeout(_startAtTopS
 $('#year').textContent = new Date().getFullYear();
 const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
 
-let _shared = null;
-if(location.hash.indexOf('#q=') === 0) _shared = decodeQuote(location.hash.slice(3));
-const saved = loadState();
-if(_shared){
-  state.events = _shared.e.slice(0,12)
-    .map(ev=>normalizeEvent({ type: ev.t, date: ev.d, services: ev.s }, false));
-  state.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(_shared.a,10)||0));
-  state.promo = PROMO_CODES[_shared.p] ? _shared.p : '';
-  history.replaceState(null, '', location.pathname + location.search);
-  window.scrollTo(0, 0);
-  track('quote_link_opened');
-  showToast('Shared quote loaded — feel free to adjust it.');
-}else if(saved && hasContent(saved)){
-  state.events = saved.events.slice(0,12).map(e=>normalizeEvent(e, false));
-  state.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(saved.albumSheets,10)||0));
-  state.promo = PROMO_CODES[saved.promo] ? saved.promo : '';
-  setTimeout(openWelcomeBack, 350);
-}else{
-  seedDefaults();
-}
+renderPresets();
+renderRateCard();
+renderResume();
+$('#pkgCompareBtn').addEventListener('click', openCompare);
+$('#cmpClose').addEventListener('click', closeCompare);
+$('#cmpBackdrop').addEventListener('click', closeCompare);
+
+/* announcement bar — the code is applied in the builder, where the quote is */
+(function(){
+  if(!ANNOUNCEMENT.enabled || !ANNOUNCEMENT.text) return;
+  try{ if(sessionStorage.getItem('fs_annc_hide')) return; }catch(e){}
+  const a = $('#annc'); if(!a) return;
+  a.hidden = false;
+  document.body.classList.add('has-annc');
+  $('#anncText').textContent = ANNOUNCEMENT.text;
+  const cta = $('#anncCta');
+  if(ANNOUNCEMENT.cta && ANNOUNCEMENT.code && PROMO_CODES[ANNOUNCEMENT.code]){
+    cta.textContent = ANNOUNCEMENT.cta;
+    cta.addEventListener('click', ()=>{
+      track('announcement_cta', {code: ANNOUNCEMENT.code});
+      location.href = builderUrl({ promo: ANNOUNCEMENT.code });
+    });
+  }else{ cta.hidden = true; }
+  $('#anncClose').addEventListener('click', ()=>{
+    a.hidden = true; document.body.classList.remove('has-annc');
+    try{ sessionStorage.setItem('fs_annc_hide','1'); }catch(e){}
+  });
+})();
+
+observeReveals();
+scrollSpy();
+
 /* returning client? the portal keeps them signed in (named app 'client'),
    so read its saved session from Firebase's IndexedDB store and relabel
    the nav "Login" link to "My Booking" — the link itself never changes */
@@ -3089,100 +1578,18 @@ flushLeadQueue();
   try{
     if(localStorage.getItem('fs_ios_hint')) return;
     setTimeout(()=>{
-      showToast('Add Fantasy Studio to your iPhone: tap Share \u2b06 then \u201cAdd to Home Screen\u201d.', 'Got it', ()=>{}, 15000);
+      showToast('Add Fantasy Studio to your iPhone: tap Share ⬆ then “Add to Home Screen”.', 'Got it', ()=>{}, 15000);
       try{ localStorage.setItem('fs_ios_hint','1'); }catch(e){}
     }, 9000);
   }catch(e){}
 })();
 
-renderPresets();
-$('#pkgCompareBtn').addEventListener('click', openCompare);
-$('#cmpClose').addEventListener('click', closeCompare);
-$('#cmpBackdrop').addEventListener('click', closeCompare);
-syncPromoUI();
-
-/* announcement bar — content is wired here; visibility follows the live quote */
-window._anncEligible = false;
-(function(){
-  if(!ANNOUNCEMENT.enabled || !ANNOUNCEMENT.text) return;
-  try{ if(sessionStorage.getItem('fs_annc_hide')) return; }catch(e){}
-  const a = $('#annc'); if(!a) return;
-  window._anncEligible = true;   // shown by renderSummary once something is selected
-  $('#anncText').textContent = ANNOUNCEMENT.text;
-  const cta = $('#anncCta');
-  if(ANNOUNCEMENT.cta){
-    cta.textContent = ANNOUNCEMENT.cta;
-    cta.addEventListener('click', ()=>{
-      if(ANNOUNCEMENT.code && PROMO_CODES[ANNOUNCEMENT.code]){
-        state.promo = ANNOUNCEMENT.code;
-        renderSummary(); syncPromoUI();
-        showToast(`Code ${ANNOUNCEMENT.code} applied — build your package below!`);
-        track('announcement_cta', {code: ANNOUNCEMENT.code});
-      }
-      document.querySelector('#builder').scrollIntoView({behavior: REDUCE_MOTION?'auto':'smooth'});
-    });
-  }else{ cta.hidden = true; }
-  $('#anncClose').addEventListener('click', ()=>{
-    window._anncEligible = false;
-    a.hidden = true; document.body.classList.remove('has-annc');
-    try{ sessionStorage.setItem('fs_annc_hide','1'); }catch(e){}
-  });
-})();
-renderSummary();   // re-evaluate bar visibility now that wiring is ready
-renderEvents();
-renderSummary();
-observeReveals();
-scrollSpy();
-
 /* ============================================================
-   LIVE CONFIG — prices/packages/testimonials/FAQs from Firestore.
-   Called by the Firebase loader below; on any failure the hardcoded
-   values above simply remain in force.
+   LIVE CONFIG — prices/packages come from catalog.js; testimonials
+   and FAQs are this page's own content, applied here.
    ============================================================ */
-window.__applyRemoteConfig = function(cfg){
+onRemoteConfig(function(cfg){
   try{
-    if(cfg && cfg.prices){
-      Object.keys(cfg.prices).forEach(k=>{
-        const v = Number(cfg.prices[k]);
-        if(!isNaN(v) && v >= 0) PRICES[k] = v;
-      });
-    }
-    if(cfg && cfg.presets && Object.keys(cfg.presets).length){
-      /* A preset whose numbers don't add up renders "Package ₹NaN" on the live
-         site, so validate before adopting: quantities must be real numbers and
-         every service key must exist. A bad preset is skipped, keeping the
-         built-in one, rather than publishing NaN to visitors. */
-      const clean = {};
-      Object.keys(cfg.presets).forEach(k=>{
-        const pr = cfg.presets[k];
-        if(!pr || !Array.isArray(pr.events) || !pr.events.length) return;
-        const events = [];
-        let ok = true;
-        pr.events.forEach(ev=>{
-          if(!ev || typeof ev !== 'object') { ok = false; return; }
-          const services = {};
-          Object.keys(ev.services||{}).forEach(sk=>{
-            if(!SERVICE_KEYS.has(sk)) return;
-            const q = Number(ev.services[sk]);
-            if(!isFinite(q) || q < 0){ ok = false; return; }
-            if(q > 0) services[sk] = Math.min(50, Math.floor(q));
-          });
-          events.push({ type: String(ev.type||'Event').slice(0,40), services });
-        });
-        const album = Number(pr.album||0);
-        if(!ok || !isFinite(album) || album < 0) return;      // skip, keep the built-in
-        /* a preset that ended up with nothing priceable would advertise
-           "Package ₹0" — drop it rather than show a free package */
-        const hasAny = events.some(ev=>Object.keys(ev.services).length > 0);
-        if(!hasAny && !album) return;
-        clean[k] = { name: String(pr.name||k), tag: String(pr.tag||''),
-                     desc: String(pr.desc||''), album: Math.floor(album), events };
-      });
-      if(Object.keys(clean).length){
-        Object.keys(PRESETS).forEach(k=>{ if(!clean[k]) delete PRESETS[k]; });
-        Object.keys(clean).forEach(k=>{ PRESETS[k] = clean[k]; });
-      }
-    }
     if(cfg && Array.isArray(cfg.testimonials) && cfg.testimonials.length){
       const grid = document.querySelector('.testi-grid');
       if(grid) grid.innerHTML = cfg.testimonials.map(t=>`
@@ -3211,93 +1618,16 @@ window.__applyRemoteConfig = function(cfg){
         });
       }
     }
-    renderPresets();
-    renderCompareTable();
-    renderEvents();
-    renderSummary();
-    syncPromoUI();
   }catch(e){}
-};
+  /* prices/presets were already merged by catalog.js — repaint what shows them */
+  renderPresets();
+  renderRateCard();
+  renderCompareTable();
+  renderResume();
+  observeReveals();
+});
 </script>
 
-<!-- Firestore over REST.
-     This page previously pulled the full modular SDK (firebase-app + firebase-
-     firestore = 134 KB gzipped / 538 KB raw, ~300-500ms of parse+compile on a
-     mid-range Android) purely to read ONE public config document and to append
-     the occasional lead. Both are plain HTTPS calls, so they are done with
-     fetch() instead: the config read is a single 8 KB GET, and the lead write
-     is one POST issued only when someone actually submits.
-     Verified against the live config/site document: the decoder below
-     reproduces the SDK's object exactly (prices identical, all four presets
-     deep-equal ignoring key order). -->
-<script>
-(function(){
-  var CFG = window.FIREBASE_CONFIG;
-  if(!CFG || !CFG.apiKey){ return; }
-  var BASE = 'https://firestore.googleapis.com/v1/projects/' + CFG.projectId +
-             '/databases/(default)/documents';
-
-  /* Firestore REST wraps every value in a type tag; unwrap back to plain JS. */
-  function fsVal(v){
-    if(v === null || typeof v !== 'object') return null;
-    if('nullValue'      in v) return null;
-    if('booleanValue'   in v) return v.booleanValue;
-    if('integerValue'   in v) return Number(v.integerValue);
-    if('doubleValue'    in v) return Number(v.doubleValue);
-    if('stringValue'    in v) return v.stringValue;
-    if('timestampValue' in v) return v.timestampValue;
-    if('arrayValue'     in v) return (v.arrayValue.values || []).map(fsVal);
-    if('mapValue'       in v) return fsFields(v.mapValue.fields || {});
-    return null;
-  }
-  function fsFields(f){ var o = {}, k; for(k in f) o[k] = fsVal(f[k]); return o; }
-
-  /* ...and the reverse, for writing a lead. */
-  function toVal(v){
-    if(v === null || v === undefined) return { nullValue: null };
-    if(typeof v === 'boolean') return { booleanValue: v };
-    if(typeof v === 'number')  return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
-    /* must be a real Firestore timestamp, not a string: admin sorts leads with
-       orderBy('createdAt') and formats them with createdAt.toDate() */
-    if(v instanceof Date)      return { timestampValue: v.toISOString() };
-    if(Array.isArray(v))       return { arrayValue: { values: v.map(toVal) } };
-    if(typeof v === 'object')  return { mapValue: { fields: toFields(v) } };
-    return { stringValue: String(v) };
-  }
-  function toFields(o){ var f = {}, k; for(k in o) f[k] = toVal(o[k]); return f; }
-
-  /* live pricing & content — hardcoded values stay if this fails */
-  fetch(BASE + '/config/site?key=' + CFG.apiKey)
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(j){
-      if(j && j.fields && typeof window.__applyRemoteConfig === 'function'){
-        window.__applyRemoteConfig(fsFields(j.fields));
-      }
-    })
-    .catch(function(){})
-    .then(function(){
-      window.__firebaseReady = true;
-      document.dispatchEvent(new Event('firebase-ready'));
-    });
-
-  /* Lead capture. Resolves true only if the write actually landed, so the
-     caller can queue it for retry instead of dropping it on the floor.
-     Still time-boxed to 2.5s so the WhatsApp hand-off is never held up. */
-  window.__saveLead = function(lead){
-    /* REST cannot request serverTimestamp() without a commit+transform, so this
-       is the client clock. Same value the SDK would have written while offline. */
-    var doc = Object.assign({ createdAt: new Date(), status: 'new', notes: '' }, lead);
-    return Promise.race([
-      fetch(BASE + '/leads?key=' + CFG.apiKey, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: toFields(doc) })
-      }).then(function(r){ return r.ok; }).catch(function(){ return false; }),
-      new Promise(function(res){ setTimeout(function(){ res(false); }, 2500); })
-    ]);
-  };
-})();
-</script>
 <script>
 /* Paint dd-mm-yyyy over every date field, on every device — see .dwrap in the
    stylesheet. Runs before the app (classic script, module scripts are
