@@ -417,6 +417,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeEditorSilently(){
     _pkgBaseline = '';
     $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false;
+    syncFabs();   /* the search button stands down over the editor's save bar */
     const y = _pkgListScrollY, token = ++_scrollToken;
     requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
   }
@@ -577,13 +578,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(v === 'pkgedit'){
         showTab('tabPkgs');
         $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
+        syncFabs();
       }else if(v === 'studio'){
         showTab('tabCal');
         if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
       }else{
         const tab = TAB_OF_VIEW[v] || 'tabHome';
         showTab(tab);
-        if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; }
+        if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; syncFabs(); }
         if(tab === 'tabCal' && typeof closeStudioDetail === 'function') closeStudioDetail();
       }
     }finally{ _navFromPop = false; }
@@ -5066,9 +5068,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const onHome = !$('#homeView').hidden;
     const onStudioList = !$('#calView').hidden && $('#studioDetailView').hidden;
     $('#fabBtn').hidden = !onHome || formOpen;
-    /* search is global now — the button follows you to every tab. It hides
-       only while the add-event form owns the bottom of the screen. */
-    $('#homeSearchBtn').hidden = formOpen || $('#appView').hidden;
+    /* Search is global now — the button follows you to every tab. It stands
+       down for anything that owns the bottom of the screen: the add-event
+       form, and the package editor, whose save bar it was sitting on top of.
+       It covered "← Back" outright, so leaving the editor meant hitting a
+       button you could not see. */
+    const editorOpen = !$('#pkgView').hidden && !$('#pkgEditView').hidden;
+    $('#homeSearchBtn').hidden = formOpen || editorOpen || $('#appView').hidden;
     $('#stuSearchBtn').hidden = !onStudioList || formOpen;
     $('#stuAddFab').hidden = !onStudioList || formOpen;
     if(!onStudioList) closeStuSearch();
@@ -6708,6 +6714,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        arriving from Home or a lead card starts the list at its top */
     _pkgListScrollY = (!$('#pkgView').hidden && !$('#pkgListView').hidden) ? window.scrollY : 0;
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
+    syncFabs();
     computePkg();
     scrollTopNow();
     pushView('pkgedit', '#packages/edit');

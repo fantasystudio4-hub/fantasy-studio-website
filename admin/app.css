@@ -56,7 +56,16 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .login p{color:var(--mut);font-size:.85rem;margin-bottom:1.2rem}
 .fld{margin-bottom:.8rem;text-align:left}
 .fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
-.fld input,.fld select,.fld textarea{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.7em .8em}
+/* every field in every sheet and in the editor clears the touch floor */
+.fld input,.fld select,.fld textarea{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.7em .8em;min-height:var(--tap)}
+.fld textarea{min-height:calc(var(--tap) * 1.6)}
+/* A two-column row is only balanced while both labels are one line. "Client
+   phone (optional) (10-digit mobile · +country code for NRI)" ran to three at
+   390px and dragged its input half a field below its neighbour's. The hint
+   drops to its own line and the label row keeps a common floor, so the two
+   inputs always start level. */
+.grid2 > .fld > label{display:block;min-height:2.4em}
+.grid2 > .fld > label > span{display:block}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
 .pwrap{position:relative}
 /* ---- dd-mm-yyyy date fields ----
@@ -75,7 +84,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .pwrap button svg{width:20px;height:20px;display:block}
 .pwrap button:active{color:var(--gold-b)}
 @media(hover:hover){ .pwrap button:hover{color:var(--gold-b)} }
-.gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:var(--r-pill);padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:var(--r-pill);padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:var(--tap)}
 .gbtn:active{transform:scale(.98)}
 .err{color:var(--err);font-size:.8rem;margin-top:.7rem}
 .note{background:var(--gold-t1);border:1px solid var(--line);border-radius:var(--r-md);padding:1rem;font-size:.85rem;color:var(--mut);margin-top:1rem;text-align:left}
@@ -394,13 +403,28 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .sec h3{color:var(--gold-b);font-size:1.05rem;margin-bottom:.7rem}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
 .row{border:1px dashed var(--line);border-radius:var(--r-md);padding:.7rem;margin-bottom:.6rem}
-.row .del{float:right;background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;padding:0 .3em}
+/* Appearance belongs to .del itself, not to whoever happens to contain it.
+   It used to be set only by `.row .del` and `.pev .del`, so the editor's
+   remove-event button — a direct child of .pkg-ev, which sets position only —
+   fell through to the BROWSER DEFAULT and rendered as a grey system button
+   with an outset border in the middle of the panel. */
+.del{
+  background:none;border:0;color:var(--err);font-size:1.1rem;cursor:pointer;
+  padding:0 .3em;line-height:1;border-radius:var(--r-sm);
+  /* The 44px floor is a TOUCH requirement and lives in the phone block. A
+     mouse does not need 44, but it does need more than the 18px this was at
+     desktop width — that is the glyph and nothing else. */
+  min-height:32px;min-width:32px;
+}
+.del:active{background:var(--state-overdue-bg)}
+@media(hover:hover){ .del:hover{color:var(--white);background:var(--state-overdue)} }
+.row .del{float:right}
 /* ready-made packages: one nested card per event inside the preset's .row.
    Replaced a raw-JSON textarea, so this is the first time these are editable
    without writing code. */
 .pevs{margin:.35rem 0 .6rem}
 .pev{border:1px dashed var(--line);border-radius:var(--r-md);padding:.65rem;margin-bottom:.55rem;background:var(--white-t1)}
-.pev .del{float:right;background:none;border:0;color:var(--err);font-size:1.05rem;cursor:pointer;padding:0 .3em}
+.pev .del{float:right;font-size:1.05rem}
 .pev .fld{margin-bottom:.55rem}
 .pev .evchips,.pev .svcchips{margin:.1rem 0 .5rem}
 .pev .qchip{padding:.35em .8em;font-size:.74rem}
@@ -412,15 +436,15 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .qchip{background:var(--gold-t1);border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.45em 1em;font-size:.8rem;cursor:pointer;transition:.15s;font-family:var(--sans)}
 .qchip:active{transform:scale(.95);background:var(--gold-t4)}
 .qchip small{color:var(--mut);font-size:.85em;margin-left:.35em}
-.copyprev{background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.5em 1.1em;font-size:.78rem;cursor:pointer;margin:0 0 .75rem;font-family:var(--sans)}
+.copyprev{background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.5em 1.1em;font-size:.78rem;cursor:pointer;margin:0 0 .75rem;font-family:var(--sans);min-height:var(--tap)}
 .copyprev:active{background:var(--gold-t2)}
 #pkgEvents .pkg-ev:first-child [data-copyprev]{display:none}
 .pkg-total{margin-left:auto;text-align:right;line-height:1.15;align-self:center}
 .pkg-total span{display:block;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .pkg-total b{font-family:var(--serif);font-size:1.3rem;color:var(--gold-b)}
-.termrow{display:flex;gap:.6rem;align-items:flex-start;padding:.42rem .2rem;font-size:.85rem;color:var(--text);cursor:pointer;border-bottom:1px dashed var(--line)}
+.termrow{display:flex;gap:.6rem;align-items:center;min-height:var(--tap);padding:.42rem .2rem;font-size:.85rem;color:var(--text);cursor:pointer;border-bottom:1px dashed var(--line)}
 .termrow:last-child{border-bottom:0}
-.termrow input{width:17px;height:17px;flex:0 0 auto;margin-top:.15rem;accent-color:var(--gold)}
+.termrow input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--gold)}
 .termrow span{flex:1;min-width:0}
 .termrow input:not(:checked) + span{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--line-3)}
 /* the Save button must not be the thing the keyboard covers */
@@ -443,7 +467,9 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .itemrow .l1{display:flex;gap:.45rem}
 .itemrow .l1 select{flex:1;min-width:0}
 .itemrow .l2{display:flex;gap:.45rem;align-items:center;grid-column:1 / -1;flex-wrap:wrap}
-.itemrow select,.itemrow input{background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.5em .6em}
+/* the editor's densest controls — still not below the floor */
+.itemrow select,.itemrow input{background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);padding:.5em .6em;min-height:var(--tap)}
+.qwrap button,.qwrap input,.mini-f input{min-height:var(--tap)}
 .itemrow .qwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
 .itemrow .qwrap button{width:34px;height:38px;background:rgba(var(--gold-rgb),.18);border:0;color:var(--gold-b);font-size:1.1rem;cursor:pointer}
 .itemrow .qwrap input{width:46px;text-align:center;border:0;background:transparent}
@@ -509,7 +535,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tm-crew .rl{color:var(--mut);font-size:.7rem;white-space:nowrap}
 .tm-crew .ackpill{margin-left:auto;flex:0 0 auto;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;border-radius:var(--r-lg);padding:.22em .65em;font-weight:600}
 /* sits after the pill, which is what margin-left:auto has already pushed right */
-.tm-crew .csbtn{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.2em .55em;font-size:.8rem;line-height:1.2;cursor:pointer}
+.tm-crew .csbtn{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);padding:.2em .55em;font-size:.8rem;line-height:1.2;cursor:pointer;min-height:32px;min-width:32px}
 .tm-crew .csbtn:active{background:rgba(var(--gold-rgb),.2);border-color:var(--gold)}
 .ackpill.seen{color:var(--ok);background:var(--state-confirmed-bg)}
 .ackpill.wait{color:var(--state-neutral);background:var(--white-t3)}
@@ -1014,7 +1040,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .tm-crew{min-height:44px}
   .tm-crew .csbtn{min-height:var(--tap);min-width:var(--tap)}
   .dstep{min-height:var(--tap)}
-  .row .del,.pev .del,.pkg-ev > .del{width:40px;height:40px;display:grid;place-items:center;padding:0;font-size:1.2rem}
+  .del{width:var(--tap);height:var(--tap);display:grid;place-items:center;padding:0;font-size:1.2rem}
   .itemrow .rm{min-width:var(--tap);min-height:var(--tap)}
   .itemrow .qwrap button{width:40px;height:42px}
   .termrow{padding:.55rem .2rem}
