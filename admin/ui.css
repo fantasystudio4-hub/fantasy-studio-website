@@ -93,7 +93,7 @@
 }
 /* inside dense list rows these sit in a fixed slot, not a 44px circle of
    whitespace — keep the hit box, tighten the footprint */
-.up-ev .icon-btn,.exprow .icon-btn{width:38px;height:38px;font-size:1rem}
+.up-ev .icon-btn,.exprow .icon-btn{width:38px;height:38px;font-size:var(--fs-xl)}
 
 /* ================================================================== INPUT
    One well for input, select and textarea. Font size stays 16px (--fs-input):
@@ -115,7 +115,7 @@ textarea.input{min-height:70px;resize:vertical;line-height:1.5}
    it covers the very field it is complaining about. */
 .field{margin-bottom:var(--sp-3);text-align:left}
 .field__label{
-  display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+  display:block;font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;
   color:var(--gold-b);margin-bottom:var(--sp-1);
 }
 .field__label .req{color:var(--state-overdue);margin-left:.15em}
@@ -252,7 +252,7 @@ button.chip-status:active{transform:scale(.97)}
    down-chevrons on one row read as two pickers */
 .card__toggle .chev{
   grid-column:2;grid-row:1 / -1;align-self:center;
-  color:var(--mut);font-size:1.35rem;line-height:1;
+  color:var(--mut);font-size:var(--fs-2xl);line-height:1;
   transition:transform var(--t-med),color var(--t-med);
 }
 /* the right rail: money above, status below, both hugging the edge */
@@ -263,15 +263,21 @@ button.chip-status:active{transform:scale(.97)}
    indistinguishable. It gets a second line when it needs one; short names are
    unaffected because the box only grows to fit. */
 .card__title{
-  font-family:var(--serif);font-size:1.02rem;color:var(--white);min-width:0;
+  font-family:var(--serif);font-size:var(--fs-xl);color:var(--white);min-width:0;
   overflow:hidden;white-space:normal;overflow-wrap:anywhere;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
 }
 /* the line that is allowed to give way: it truncates from the tail, and the
    meta string is built shoot-date-first so the tail is the throwaway part */
-.card__meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card__meta{font-size:var(--fs-md);color:var(--mut)}
-.card__amt{flex:0 0 auto;margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap;line-height:1.1;font-size:.95rem}
+/* Two lines before anything is lost. This lived scoped to #pkgList and
+   #homeBooked, so lead cards kept clipping theirs on one line — the same rule
+   in two places, applied to one of them. It belongs on the component. */
+.card__meta{
+  flex:1;min-width:0;font-size:var(--fs-md);color:var(--mut);
+  overflow:hidden;white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.card__amt{flex:0 0 auto;margin-left:auto;font-family:var(--serif);font-weight:700;color:var(--gold-b);white-space:nowrap;line-height:1.1;font-size:var(--fs-lg)}
 .card__actions{
   padding:0 .95rem .7rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;
   font-size:var(--fs-md);color:var(--mut);
@@ -301,7 +307,7 @@ button.chip-status:active{transform:scale(.97)}
   transition:opacity var(--t-slow), transform var(--t-slow), visibility 0s linear var(--t-slow);
 }
 .modal.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%) scale(1);transition:opacity var(--t-slow), transform var(--t-slow), visibility 0s}
-.modal__title{font-family:var(--serif);color:var(--gold-b);font-size:1.15rem;margin-bottom:.35rem}
+.modal__title{font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-xl);margin-bottom:.35rem}
 .modal__text{font-size:var(--fs-base);color:var(--text);line-height:1.55;white-space:pre-line}
 .modal__text b{color:var(--white)}
 .modal__foot{display:flex;gap:var(--sp-2);margin-top:var(--sp-5)}
@@ -426,7 +432,7 @@ button.chip-status:active{transform:scale(.97)}
   display:flex;align-items:center;gap:.4rem;flex:0 0 auto;
   padding:.6rem .7rem;border-bottom:1px solid var(--line);
 }
-.gs-ic{flex:0 0 auto;font-size:1.05rem;opacity:.8}
+.gs-ic{flex:0 0 auto;font-size:var(--fs-xl);opacity:.8}
 #gsInput{
   flex:1;min-width:0;background:none;border:0;color:var(--text);
   font-family:var(--sans);font-size:var(--fs-input);padding:.55em .2em;min-height:var(--tap);
@@ -444,7 +450,7 @@ button.chip-status:active{transform:scale(.97)}
 }
 .gs-row.sel{background:var(--gold-t2);border-color:var(--line)}
 @media(hover:hover){ .gs-row:hover{background:var(--white-t2)} }
-.gs-k{flex:0 0 auto;font-size:1.05rem;width:1.5rem;text-align:center}
+.gs-k{flex:0 0 auto;font-size:var(--fs-xl);width:1.5rem;text-align:center}
 .gs-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
 .gs-t b{font-family:var(--serif);font-size:var(--fs-lg);color:var(--white);
         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -489,7 +495,7 @@ button.chip-status:active{transform:scale(.97)}
   color:var(--gold-b);text-decoration:none;border-bottom:1px dotted var(--line-3);
   padding:.35em 0;min-height:var(--tap);display:inline-flex;align-items:center;
 }
-.telrow .icon-btn{width:36px;height:36px;font-size:.95rem}
+.telrow .icon-btn{width:36px;height:36px;font-size:var(--fs-lg)}
 
 /* ============================================================ BULK ACTIONS
    A selection bar fixed above the tab bar, because that is where the thumb

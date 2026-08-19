@@ -175,7 +175,11 @@
      iOS Safari zoom the page on focus, and the owner is usually one-handed. */
   --serif:'Playfair Display',Georgia,serif;
   --sans:'Jost',system-ui,sans-serif;
-  --fs-xs:.62rem; --fs-sm:.72rem; --fs-md:.78rem; --fs-base:.85rem;
+  /* Nine steps. --fs-2xs exists because the panel genuinely needs a size below
+     --fs-xs for the tiny uppercase kickers ("RECEIVED TODAY", "8 EVENTS"), and
+     without it those had drifted to .5, .52, .55, .56 and .58rem — five values
+     doing one job. Every font-size in the panel is now one of these. */
+  --fs-2xs:.55rem; --fs-xs:.62rem; --fs-sm:.72rem; --fs-md:.78rem; --fs-base:.85rem;
   --fs-lg:.92rem; --fs-xl:1.05rem; --fs-2xl:1.25rem; --fs-3xl:1.5rem;
   --fs-input:16px;
 
