@@ -47,7 +47,15 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .hd .cfg{padding:.35em .8em;display:inline-flex;align-items:center;gap:.3em}
 .hd .cfg i{font-style:normal;font-size:.95rem;line-height:1}
 .hd .cfg.on{border-color:var(--gold);color:var(--gold-b);background:var(--gold-t3)}
-@media(max-width:389px){ .hd .cfg em{display:none} }
+/* Search joined Config and Logout up here when the second floating button was
+   retired, and three labelled pills left "Fantasy Studio" as "Fantasy …". The
+   labels drop on any phone-width screen — the icons carry it, each button
+   keeps its 44px box and its aria-label, and the title gets its name back.
+   The old threshold was 389px, one pixel below the 390 this is used at. */
+@media(max-width:519px){
+  .hd .cfg em{display:none}
+  .hd .cfg{padding-inline:.7em}
+}
 .hd .cfg em{font-style:normal}
 
 /* login */
@@ -911,9 +919,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(min-width:700px){ .fab{bottom:24px} }
 /* search sits directly above the ⚡ button — smaller and outlined, so the
    gold one stays the primary action */
-.fab.fab-2{width:46px;height:46px;right:max(20px, env(safe-area-inset-right));font-size:1.15rem;background:var(--panel);border:1px solid var(--gold);color:var(--gold-b);box-shadow:0 6px 16px rgba(var(--black-rgb),.45);bottom:calc(64px + env(safe-area-inset-bottom) + 12px + 64px)}
-.fab.fab-2:active{background:rgba(var(--gold-rgb),.2)}
-@media(min-width:700px){ .fab.fab-2{bottom:88px} }
 #homeResults{padding:.8rem 1rem}
 #homeResults .up-ev .when{min-width:var(--tap);font-size:1rem}
 #cfgJump{position:sticky;top:var(--hdr-h,56px);z-index:var(--z-sticky);background:var(--bar-2);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}

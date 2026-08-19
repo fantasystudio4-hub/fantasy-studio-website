@@ -5067,38 +5067,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      own page has its own actions). One place decides who is on screen, because
      they are fixed to the bottom right and would otherwise sit on top of the
      add-event form's Save row. */
+  /* One floating button per screen, and only where there is an action worth
+     floating: ⚡ on Home, ＋ on the B2B list. Search left this rail for the
+     header — two stacked buttons covered whatever sat under them, and Team,
+     Packages and Leads were carrying the search button alone, so they have no
+     floating button at all now. */
   function syncFabs(){
     const formOpen = !$('#calAdd').hidden;
     const onHome = !$('#homeView').hidden;
     const onStudioList = !$('#calView').hidden && $('#studioDetailView').hidden;
     $('#fabBtn').hidden = !onHome || formOpen;
-    /* Search is global now — the button follows you to every tab. It stands
-       down for anything that owns the bottom of the screen: the add-event
-       form, and the package editor, whose save bar it was sitting on top of.
-       It covered "← Back" outright, so leaving the editor meant hitting a
-       button you could not see. */
-    const editorOpen = !$('#pkgView').hidden && !$('#pkgEditView').hidden;
-    $('#homeSearchBtn').hidden = formOpen || editorOpen || $('#appView').hidden;
-    $('#stuSearchBtn').hidden = !onStudioList || formOpen;
     $('#stuAddFab').hidden = !onStudioList || formOpen;
-    if(!onStudioList) closeStuSearch();
+    if(!onStudioList) clearStuSearch();
   }
-  function openStuSearch(){
-    $('#stuSearchBar').hidden = false;
-    $('#stuSearch').focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  function closeStuSearch(){
-    const box = $('#stuSearch'); if(!box) return;
-    const had = !!box.value;
+  /* The bar is always on screen now, so leaving the tab only needs to clear
+     what was typed — not hide anything. */
+  function clearStuSearch(){
+    const box = $('#stuSearch'); if(!box || !box.value) return;
     box.value = '';
-    $('#stuSearchBar').hidden = true;
-    if(had) renderStudioList();
+    renderStudioList();
   }
   $('#stuSearch').addEventListener('input', debounce(renderStudioList));
-  $('#stuSearch').addEventListener('keydown', e=>{ if(e.key === 'Escape') closeStuSearch(); });
-  $('#stuSearchBtn').addEventListener('click', openStuSearch);
-  $('#stuSearchX').addEventListener('click', closeStuSearch);
+  $('#stuSearch').addEventListener('keydown', e=>{ if(e.key === 'Escape') clearStuSearch(); });
   $('#stuAddFab').addEventListener('click', ()=>openStu(null));
   $('#studioList').addEventListener('click', e=>{
     if(e.target.closest('[data-retry]')){ loadStudios(); toast('Reconnecting…'); return; }
@@ -6522,10 +6512,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('[data-gs]'); if(!b) return;
     gsOpen(_gsRows[Number(b.dataset.gs)]);
   });
-  /* The 🔍 button is the ONLY way in on a phone — there is no Ctrl+K there.
-     It lost its listener when the Home-only search it used to open was
-     removed, which left the button on screen doing nothing. */
-  $('#homeSearchBtn').addEventListener('click', openGs);
+  /* The header 🔍 is the only way in on a phone — there is no Ctrl+K there. */
+  $('#hdrSearch').addEventListener('click', openGs);
   $('#gsClose').addEventListener('click', closeGs);
   $('#gsBackdrop').addEventListener('click', closeGs);
   /* ⌘K on a Mac, Ctrl+K everywhere else. Ignored while a text field already

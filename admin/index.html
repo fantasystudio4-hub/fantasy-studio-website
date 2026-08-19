@@ -35,6 +35,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="ttl"><b>Fantasy Studio</b><span>Admin Panel</span></div>
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
+    <button class="out cfg" id="hdrSearch" title="Search everything (Ctrl+K)" aria-label="Search everything"><i>🔍</i><em>Search</em></button>
     <button class="out cfg" id="tabConfig" title="Site Config" aria-label="Site Config"><i>⚙️</i><em>Config</em></button>
     <button class="out" id="logoutBtn">Logout</button>
   </div>
@@ -84,10 +85,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
   </div>
-  <button class="fab fab-2" id="homeSearchBtn" hidden aria-label="Search a client" title="Search a client">🔍</button>
+  <!-- ONE floating button per screen. The search 🔍 that used to sit above
+       these moved into the header: stacked pairs covered whatever was beneath
+       them — a shoot row's Open on Home, the crew count on Team, the editor's
+       ← Back — and Team, Packages and Leads carried the search button alone,
+       so they now have no floating button at all. -->
   <button class="fab" id="fabBtn" hidden aria-label="Quick actions" title="Quick actions">⚡</button>
-  <!-- the B2B list gets the same pair: search above the action button -->
-  <button class="fab fab-2" id="stuSearchBtn" hidden aria-label="Search studios" title="Search studios">🔍</button>
   <button class="fab" id="stuAddFab" hidden aria-label="Add partner studio" title="Add partner studio">＋</button>
 
   <div id="leadsView">
@@ -272,9 +275,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
        this is readable by clients, crew or the public site (see firestore.rules). -->
   <div id="calView" hidden>
     <div id="studioListView">
-      <div class="bar" id="stuSearchBar" hidden style="margin:1rem 0 .8rem">
+      <!-- always on screen, the way every other list in the panel does it —
+           it used to be revealed by a floating button that is now gone -->
+      <div class="bar" id="stuSearchBar">
         <input id="stuSearch" type="search" placeholder="Studio, owner, city or phone…" />
-        <button id="stuSearchX" type="button" aria-label="Close search">✕</button>
       </div>
       <div class="stats" id="b2bStats"></div>
       <div class="sec">
