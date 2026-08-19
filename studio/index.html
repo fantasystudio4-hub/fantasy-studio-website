@@ -21,6 +21,21 @@
   --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
+
+/* ---- touch floor -----------------------------------------------------------
+   Every control here is sized from padding alone, which left the call and
+   WhatsApp buttons — the ones a partner taps when something has gone wrong —
+   at 38-42px. 44px is the floor the admin panel holds to and there is no
+   reason this screen should be looser about it, on what is almost always a
+   phone. min-height is inert on inline elements, so prose links are untouched;
+   it only lifts the ones that are already blocks or flex items. */
+button,
+a[href],
+input:not([type=hidden]),
+select,
+textarea{ min-height:44px }
+/* a checkbox is a 20px box inside a label; the LABEL is the target */
+input[type=checkbox],input[type=radio]{ min-height:0 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -38,7 +53,7 @@ header::after{content:"";display:block;height:1px;background:linear-gradient(90d
 .hd span.tag{font-size:.68rem;color:var(--mut);letter-spacing:.14em;text-transform:uppercase}
 .hd > div{flex:1;min-width:0}
 .net{font-size:.66rem;color:#e5b57f;border:1px solid rgba(229,181,127,.4);border-radius:20px;padding:.12rem .5rem;flex:none}
-.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.34rem .7rem;font-size:.78rem;cursor:pointer;flex:none;min-height:36px}
+.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.34rem .7rem;font-size:.78rem;cursor:pointer;flex:none;min-height:44px}
 .out:active{color:var(--gold-b)}
 
 .login{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.35rem 1.2rem;margin-top:1.6rem}
@@ -59,7 +74,7 @@ header::after{content:"";display:block;height:1px;background:linear-gradient(90d
 .gbtn.busy{color:transparent}
 .gbtn.busy::before{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border:2px solid #191307;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.mini{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.42rem .8rem;font-size:.8rem;cursor:pointer;min-height:38px}
+.mini{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.42rem .8rem;font-size:.8rem;cursor:pointer;min-height:44px}
 .mini:active{color:var(--gold-b)}
 .err{background:rgba(224,122,106,.12);border:1px solid rgba(224,122,106,.4);color:#f0b3a8;border-radius:10px;padding:.6rem .8rem;font-size:.85rem;margin-top:.8rem}
 .note{color:var(--mut);font-size:.78rem;margin-top:.9rem}

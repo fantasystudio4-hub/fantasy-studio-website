@@ -20,6 +20,21 @@
   --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
+
+/* ---- touch floor -----------------------------------------------------------
+   Every control here is sized from padding alone, which left the call and
+   WhatsApp buttons — the ones a crew member taps when something has gone wrong —
+   at 38-42px. 44px is the floor the admin panel holds to and there is no
+   reason this screen should be looser about it, on what is almost always a
+   phone. min-height is inert on inline elements, so prose links are untouched;
+   it only lifts the ones that are already blocks or flex items. */
+button,
+a[href],
+input:not([type=hidden]),
+select,
+textarea{ min-height:44px }
+/* a checkbox is a 20px box inside a label; the LABEL is the target */
+input[type=checkbox],input[type=radio]{ min-height:0 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}

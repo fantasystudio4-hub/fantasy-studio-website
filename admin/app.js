@@ -63,9 +63,9 @@ function closeConfirm(v){
   $('#confirmModal').classList.remove('open');
   const r = _cfmResolve; _cfmResolve = null; r(v);
 }
-$('#confirmYes').addEventListener('click', ()=>closeConfirm(true));
-$('#confirmNo').addEventListener('click', ()=>closeConfirm(false));
-$('#confirmBackdrop').addEventListener('click', ()=>closeConfirm(false));
+on('#confirmYes', 'click', ()=>closeConfirm(true));
+on('#confirmNo', 'click', ()=>closeConfirm(false));
+on('#confirmBackdrop', 'click', ()=>closeConfirm(false));
 document.addEventListener('keydown', e=>{
   if(!_cfmResolve) return;
   if(e.key === 'Escape'){ e.preventDefault(); closeConfirm(false); }
@@ -97,6 +97,22 @@ const stateOf = s => STATE_OF[s] || 'neutral';
 /* Search boxes re-rendered on every keystroke. At the 1000-record caps that is
    a lot of DOM per character on a phone, and the owner is still mid-word —
    wait for the typing to settle. Short enough that it still reads as live. */
+/* -------------------------------------------------------------------- on()
+   Binding to an id that is not in the DOM threw at module level and took
+   every binding BELOW it down with it — 43 sit under the header search alone,
+   including #pkgNew, #pkgBack and the whole quotation editor. All it takes is
+   a browser holding a stale index.html against a fresh app.js, which is the
+   skew the service worker's network-first branch exists to make rare rather
+   than impossible. One absent element is not a reason to leave the rest of
+   the panel unwired: it warns and carries on.
+   Declared at module top level, because the confirm-dialog bindings run
+   before anything else and would not see it from inside a nested block. */
+function on(sel, ev, fn, opts){
+  const el = typeof sel === 'string' ? $(sel) : sel;
+  if(!el){ console.warn('[wiring] no element for', sel, '\u2014 skipped', ev); return; }
+  el.addEventListener(ev, fn, opts);
+}
+
 const debounce = (fn, ms=140) => { let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this, a), ms); }; };
 
 /* ------------------------------------------------------------ sticky view
@@ -246,7 +262,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   /* ---------- auth ---------- */
-  $('#loginForm').addEventListener('submit', async e=>{
+  on('#loginForm', 'submit', async e=>{
     e.preventDefault();
     $('#loginErr').hidden = true;
     try{ await signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#pass').value); }
@@ -254,7 +270,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   const EYE_ON  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-  $('#passEye').addEventListener('click', ()=>{
+  on('#passEye', 'click', ()=>{
     const p = $('#pass');
     const show = p.type === 'password';
     p.type = show ? 'text' : 'password';
@@ -262,7 +278,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#passEye').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     p.focus();
   });
-  $('#forgotPw').addEventListener('click', async ()=>{
+  on('#forgotPw', 'click', async ()=>{
     const email = $('#email').value.trim();
     if(!email){ toast('Type your email above first'); $('#email').focus(); return; }
     try{ await sendPasswordResetEmail(auth, email); toast('Password reset link sent to ' + email); }
@@ -274,7 +290,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   updNet();
   /* a 40px button 8px from the Config toggle, in the corner the thumb crosses
      to reach it — one mis-tap signed the owner out mid-task */
-  $('#logoutBtn').addEventListener('click', async ()=>{
+  on('#logoutBtn', 'click', async ()=>{
     if(await confirmDialog({ title:'Log out?', body:'You will need your email and password to get back in.',
                              confirmText:'Log out', danger:false })) signOut(auth);
   });
@@ -636,7 +652,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
-  $('#refreshBtn').addEventListener('click', loadLeads);
+  on('#refreshBtn', 'click', loadLeads);
   let leadFilterVal = viewGet('leadF');
   /* ---------------------------------------------------------- bulk actions
      Selection lives in a Set of ids, never in the DOM: the leads list is a
@@ -654,7 +670,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ...STATUSES.map(s=>[s, s[0].toUpperCase()+s.slice(1), counts[s]||0])]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${leadFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
   }
-  $('#leadChips').addEventListener('click', e=>{
+  on('#leadChips', 'click', e=>{
     const b = e.target.closest('button[data-f]'); if(!b) return;
     leadFilterVal = b.dataset.f; viewSet('leadF', leadFilterVal); renderStats(); renderLeads();
   });
@@ -824,7 +840,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     b.setAttribute('aria-pressed', String(on));
     renderLeads(); renderBulkBar();
   }
-  $('#leadPick').addEventListener('click', ()=>setBulk(!_bulkOn));
+  on('#leadPick', 'click', ()=>setBulk(!_bulkOn));
 
   function renderBulkBar(){
     const bar = $('#bulkBar');
@@ -867,7 +883,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return { ok, bad };
   }
 
-  $('#bulkBar').addEventListener('click', async e=>{
+  on('#bulkBar', 'click', async e=>{
     if(e.target.closest('[data-bulk-off]')){ setBulk(false); return; }
     if(e.target.closest('[data-bulk-all]')){
       const shown = $$('#leadList .lead').map(c=>c.dataset.id);
@@ -899,7 +915,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
   });
-  $('#bulkBar').addEventListener('change', async e=>{
+  on('#bulkBar', 'change', async e=>{
     const sel = e.target.closest('[data-bulk-status]'); if(!sel || !sel.value) return;
     const rows = bulkRows(), status = sel.value;
     sel.value = '';
@@ -979,7 +995,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return h;
   }
 
-  $('#leadList').addEventListener('click', async e=>{
+  on('#leadList', 'click', async e=>{
     const card = e.target.closest('.lead'); if(!card) return;
     if(_bulkOn){
       const id = card.dataset.id;
@@ -1066,7 +1082,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }catch(err){ toast('Save failed'); }
     }
   });
-  $('#leadList').addEventListener('change', async e=>{
+  on('#leadList', 'change', async e=>{
     if(e.target.matches('[data-wdate]')){
       const card = e.target.closest('.lead'), v = e.target.value || '';
       const l = LEADS.find(x=>x.id===card.dataset.id);
@@ -1256,28 +1272,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <button class="del" data-del title="Remove">✕</button>
       <div class="fld"><label>Term</label><input data-k="t" value="${esc(t)}" /></div>
     </div>`;
-  $('#addRate').addEventListener('click', ()=>$('#rateList').insertAdjacentHTML('beforeend', rateRow('New Service', 0)));
-  $('#addTerm').addEventListener('click', ()=>$('#termList').insertAdjacentHTML('beforeend', termRow('')));
+  on('#addRate', 'click', ()=>$('#rateList').insertAdjacentHTML('beforeend', rateRow('New Service', 0)));
+  on('#addTerm', 'click', ()=>$('#termList').insertAdjacentHTML('beforeend', termRow('')));
   const dstepRow = (t='') => `
     <div class="row" data-dstep>
       <button class="del" data-del title="Remove">✕</button>
       <div class="fld"><label>Step</label><input data-k="t" value="${esc(t)}" /></div>
     </div>`;
-  $('#addDstep').addEventListener('click', ()=>$('#dstepList').insertAdjacentHTML('beforeend', dstepRow('')));
+  on('#addDstep', 'click', ()=>$('#dstepList').insertAdjacentHTML('beforeend', dstepRow('')));
   const bstepRow = (t='') => `
     <div class="row" data-bstep>
       <button class="del" data-del title="Remove">✕</button>
       <div class="fld"><label>Step</label><input data-k="t" value="${esc(t)}" /></div>
     </div>`;
-  $('#addBstep').addEventListener('click', ()=>$('#bstepList').insertAdjacentHTML('beforeend', bstepRow('')));
+  on('#addBstep', 'click', ()=>$('#bstepList').insertAdjacentHTML('beforeend', bstepRow('')));
 
-  $('#addPkg').addEventListener('click', ()=>{
+  on('#addPkg', 'click', ()=>{
     $('#pkgListRM').insertAdjacentHTML('beforeend', pkgRow('newPackage', {name:'New Package', tag:'', desc:'', album:0, events:[{type:'NIKAH', services:{traditionalPhoto:1}}]}));
     refreshAllPresetChips();
   });
   /* everything inside a preset card: add/remove an event, add/remove a service,
      step a quantity, pick an event name */
-  $('#pkgListRM').addEventListener('click', e=>{
+  on('#pkgListRM', 'click', e=>{
     const addEv = e.target.closest('[data-addpev]');
     if(addEv){
       const box = addEv.closest('[data-pkg]').querySelector('.pevs');
@@ -1314,11 +1330,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       q.value = Math.min(PRESET_QTY_MAX, Math.max(1, (Number(q.value)||1) + (up ? 1 : -1)));
     }
   });
-  $('#addTesti').addEventListener('click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
-  $('#addFaq').addEventListener('click', ()=>$('#faqList').insertAdjacentHTML('beforeend', faqRow()));
+  on('#addTesti', 'click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
+  on('#addFaq', 'click', ()=>$('#faqList').insertAdjacentHTML('beforeend', faqRow()));
   document.addEventListener('click', e=>{ if(e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
 
-  $('#saveConfig').addEventListener('click', async ()=>{
+  on('#saveConfig', 'click', async ()=>{
     if(_cfgLoadFailed){
       toast('Config never loaded — saving now would overwrite your live values with defaults');
       return;
@@ -1434,7 +1450,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      refresh, a closed tab or an Android back-out took a half-written quotation,
      unsaved Config edits or a half-typed add-event form with it, silently. */
   let _cfgTouched = false;
-  $('#configView').addEventListener('input', ()=>{ _cfgTouched = true; });
+  on('#configView', 'input', ()=>{ _cfgTouched = true; });
   function unsavedWork(){
     try{
       if(typeof pkgDirty === 'function' && pkgDirty()) return true;
@@ -1786,8 +1802,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     }catch(err){ _pkgsErr = 'Could not load packages (' + (err.code||err.message) + ')'; renderPkgList(); }
   }
-  $('#pkgRefresh').addEventListener('click', loadPkgs);
-  $('#pkgSearch').addEventListener('input', debounce(()=>{ viewSet('pkgQ', $('#pkgSearch').value||''); renderPkgListOnly(); }));
+  on('#pkgRefresh', 'click', loadPkgs);
+  on('#pkgSearch', 'input', debounce(()=>{ viewSet('pkgQ', $('#pkgSearch').value||''); renderPkgListOnly(); }));
   /* The filter variables restore themselves where they are declared; the two
      search boxes are DOM and have to be put back by hand. Done once, before
      the first render, so the very first paint is already the narrowed list the
@@ -1797,7 +1813,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(lq) $('#leadSearch').value = lq;
     if(pq) $('#pkgSearch').value = pq;
   })();
-  $('#leadSearch').addEventListener('input', debounce(()=>{ viewSet('leadQ', $('#leadSearch').value||''); renderLeads(); }));
+  on('#leadSearch', 'input', debounce(()=>{ viewSet('leadQ', $('#leadSearch').value||''); renderLeads(); }));
 
   let pkgFilterVal = viewGet('pkgF');
   /* 'unconfirmed' = quote sent but the event is NOT confirmed / on hold — it
@@ -1817,7 +1833,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ...PKG_STATES.map(s=>{ const l=STATUS_LABEL(s); return [s, l[0].toUpperCase()+l.slice(1), counts[s]||0]; })]
       .map(([v,lab,n])=>`<button data-f="${v}" class="${pkgFilterVal===v?'on':''}">${lab}<b>${n}</b></button>`).join('');
   }
-  $('#pkgChips').addEventListener('click', e=>{
+  on('#pkgChips', 'click', e=>{
     const b = e.target.closest('button[data-f]'); if(!b) return;
     pkgFilterVal = b.dataset.f; viewSet('pkgF', pkgFilterVal); renderPkgListOnly();
   });
@@ -1832,7 +1848,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     skip: t=>!!(t && t.closest && t.closest('#pkgChips')),
     box:  ()=>$('#pkgList'),
   });
-  $('#pkgStats').addEventListener('click', e=>{
+  on('#pkgStats', 'click', e=>{
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
     /* the tile is a money figure, so land on the money section — not whichever
@@ -1948,7 +1964,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if($('#upModal').classList.contains('open')) renderUpList();
   }
-  $('#upcoming').addEventListener('click', e=>{
+  on('#upcoming', 'click', e=>{
     if(e.target.closest('[data-uplist]')){ openUpList(); return; }
     const open = e.target.closest('[data-open-ev]');
     if(open) openEv(Number(open.dataset.openEv)||0);
@@ -1972,7 +1988,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="btn btn--sm btn--ghost" data-fudone title="Mark followed up">✓</button>
       </div>`).join('');
   }
-  $('#followups').addEventListener('click', async e=>{
+  on('#followups', 'click', async e=>{
     const row = e.target.closest('[data-fu]'); if(!row) return;
     const x = PKGS.find(p=>p.id===row.dataset.fu); if(!x) return;
     const nudge = e.target.closest('[data-funudge]'), done = e.target.closest('[data-fudone]');
@@ -2028,7 +2044,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ongoing: 'Nothing in post right now — a booking moves here the day after its last function.',
     delivered: 'Nothing delivered yet — mark a package <b>delivered</b> once everything is handed over.',
   };
-  $('#homeTabs').addEventListener('click', e=>{
+  on('#homeTabs', 'click', e=>{
     const b = e.target.closest('[data-htab]'); if(!b || b.dataset.htab === _homeTab) return;
     _homeTab = b.dataset.htab;
     _homeBookedAll = false;          /* each tab starts at its own first ten */
@@ -2206,7 +2222,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if($('#finModal').classList.contains('open')) renderFin();
     renderPkgListOnly();
   }
-  $('#pkgList').addEventListener('click', e=>{
+  on('#pkgList', 'click', e=>{
     if(!e.target.closest('[data-pkg-clear]')) return;
     pkgFilterVal = ''; $('#pkgSearch').value = '';
     viewSet('pkgF',''); viewSet('pkgQ','');
@@ -2389,10 +2405,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       catch(err){ toast('Delete failed'); }
     }
   }
-  $('#pkgList').addEventListener('click', pkgCardAction);
-  $('#homeBooked').addEventListener('click', pkgCardAction);
+  on('#pkgList', 'click', pkgCardAction);
+  on('#homeBooked', 'click', pkgCardAction);
   /* View all / show fewer — pkgCardAction ignores clicks outside a card */
-  $('#homeBooked').addEventListener('click', e=>{
+  on('#homeBooked', 'click', e=>{
     if(e.target.closest('[data-hbmore]')){ _homeBookedAll = true; renderHomeBooked(); return; }
     if(e.target.closest('[data-hbless]')){
       _homeBookedAll = false;
@@ -2520,14 +2536,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = `<div class="yr"><button data-jy="-1">‹</button><b>${jumpY}</b><button data-jy="1">›</button></div>` +
       months.map((m,i)=>`<button class="mo ${jumpY===calY && i===calM ? 'on':''}" data-jm="${i}">${m}</button>`).join('');
   }
-  $('#calTitle').addEventListener('click', ()=>{ const el=$('#calJump'); el.hidden = !el.hidden; jumpY = calY; renderCalJump(); });
-  $('#calJump').addEventListener('click', e=>{
+  on('#calTitle', 'click', ()=>{ const el=$('#calJump'); el.hidden = !el.hidden; jumpY = calY; renderCalJump(); });
+  on('#calJump', 'click', e=>{
     const jy = e.target.closest('[data-jy]'); if(jy){ jumpY += Number(jy.dataset.jy); renderCalJump(); return; }
     const jm = e.target.closest('[data-jm]'); if(jm){ calY = jumpY; calM = Number(jm.dataset.jm); $('#calJump').hidden = true; renderCalendar(); }
   });
-  $('#calPrev').addEventListener('click', ()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
-  $('#calNext').addEventListener('click', ()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
-  $('#calToday').addEventListener('click', ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=n.toLocaleDateString('en-CA'); renderCalendar(); });
+  on('#calPrev', 'click', ()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
+  on('#calNext', 'click', ()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
+  on('#calToday', 'click', ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=n.toLocaleDateString('en-CA'); renderCalendar(); });
   /* jump to the calendar on Home, focused on a date */
   function gotoCalendar(dateISO){
     if(/^\d{4}-\d{2}-\d{2}$/.test(dateISO||'')){
@@ -2539,11 +2555,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const g = $('#calGrid');
     if(g) setTimeout(()=>g.closest('.sec').scrollIntoView({ behavior:'smooth', block:'start' }), 140);
   }
-  $('#calGrid').addEventListener('click', e=>{
+  on('#calGrid', 'click', e=>{
     const c = e.target.closest('.cal-cell[data-date]'); if(!c) return;
     calSel = c.dataset.date; renderCalendar();
   });
-  $('#calDetail').addEventListener('click', e=>{
+  on('#calDetail', 'click', e=>{
     if(e.target.closest('[data-addev]')){ openCalAdd(); return; }
     const row = e.target.closest('.cal-ev'); if(!row || !e.target.closest('[data-openev]')) return;
     if(row.dataset.kind === 'pkg'){
@@ -2668,16 +2684,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _qeQueue = []; renderQeQueue();
     if(typeof syncFabs === 'function') syncFabs();
   }
-  $('#qeMode').addEventListener('click', e=>{
+  on('#qeMode', 'click', e=>{
     const b = e.target.closest('[data-qem]'); if(!b || b.dataset.qem === _qeMode) return;
     _qeMode = b.dataset.qem; renderQeFields();
     qeRefreshSvc();   /* B2B ↔ client is a different rate card; typed rows stay */
   });
-  $('#qeStatus').addEventListener('click', e=>{
+  on('#qeStatus', 'click', e=>{
     const b = e.target.closest('[data-qest]'); if(!b) return;
     _qeStatus = b.dataset.qest; syncQePills();
   });
-  $('#qeChips').addEventListener('click', e=>{
+  on('#qeChips', 'click', e=>{
     const b = e.target.closest('[data-qename]'); if(!b) return;
     $('#qeTitle').value = b.dataset.qename;
   });
@@ -2707,11 +2723,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function qeRefreshSvc(){ withRates(qeStudioId(), ()=>refreshSvcChips($('#qeSvc'))); }
   function qeResetSvc(){ $('#qeItems').innerHTML = ''; qeRefreshSvc(); qeCompute(); }
-  $('#qeAddItem').addEventListener('click', ()=>{
+  on('#qeAddItem', 'click', ()=>{
     withRates(qeStudioId(), ()=>$('#qeItems').insertAdjacentHTML('beforeend', itemRowHTML({})));
     qeCompute();
   });
-  $('#calAdd').addEventListener('click', e=>{
+  on('#calAdd', 'click', e=>{
     /* time of day: tap to set, tap the lit one again to clear it */
     const sl = e.target.closest('#qeSlot [data-sv]');
     if(sl){
@@ -2736,10 +2752,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       qeRefreshSvc(); qeCompute();
     }
   });
-  $('#calAdd').addEventListener('input', e=>{
+  on('#calAdd', 'input', e=>{
     if(e.target.matches('[data-f="qty"],[data-f="rate"]')) qeCompute();
   });
-  $('#calAdd').addEventListener('change', e=>{
+  on('#calAdd', 'change', e=>{
     /* a different studio (or a different job) means a different rate card */
     if(e.target.id === 'qeStudio' || e.target.id === 'qePkg'){ qeRefreshSvc(); return; }
     if(e.target.matches('[data-f="service"]')){
@@ -2794,12 +2810,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        number that goes stale as you type is worse than no number */
     $('#qeSave').textContent = _qeQueue.length ? 'Save all dates' : 'Save event';
   }
-  $('#qeQueue').addEventListener('click', e=>{
+  on('#qeQueue', 'click', e=>{
     const b = e.target.closest('[data-qerm]'); if(!b) return;
     _qeQueue.splice(Number(b.dataset.qerm), 1);
     renderQeQueue();
   });
-  $('#qeMore').addEventListener('click', ()=>{
+  on('#qeMore', 'click', ()=>{
     const ev = qeReadEvent(); if(!ev) return;
     _qeQueue.push(ev);
     qeClearEvent();
@@ -2807,8 +2823,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     toast(`${ev.title} added — now enter the next date`);
     $('#qeDate').focus();
   });
-  $('#qeCancel').addEventListener('click', closeCalAdd);
-  $('#qeSave').addEventListener('click', async ()=>{
+  on('#qeCancel', 'click', closeCalAdd);
+  on('#qeSave', 'click', async ()=>{
     /* the banked dates, plus whatever is still on the form. With nothing
        banked this is exactly the old single-event path. */
     const evs = [..._qeQueue];
@@ -3312,7 +3328,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? `<button class="upall" type="button" data-tmev>${_teamEvAll ? '− Show fewer' : `＋ See all ${all.length} — ${all.length - TEAM_EV_N} more`}</button>`
         : '');
   }
-  $('#teamEvents').addEventListener('click', e=>{
+  on('#teamEvents', 'click', e=>{
     if(!e.target.closest('[data-tmev]')) return;
     _teamEvAll = !_teamEvAll;
     renderTeamEvents();
@@ -3434,7 +3450,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           + (_edShowDone ? done.map(row).join('') : '') : '');
   }
   let _edShowDone = false;
-  $('#edList').addEventListener('click', e=>{
+  on('#edList', 'click', e=>{
     if(e.target.closest('[data-edgrp]')){ _edShowDone = !_edShowDone; renderEditDesk(); return; }
     const nd = e.target.closest('[data-nudge]');
     if(nd){
@@ -3517,7 +3533,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asDue').value = '';            /* re-derived from the chosen function */
     renderAsPick(); syncAsUI(); refreshAsConflict();
   }
-  $('#edAdd').addEventListener('click', ()=>{
+  on('#edAdd', 'click', ()=>{
     _bookRows = bookingRows();
     if(!_bookRows.length){ toast('No booked events yet — book a package first, then assign its editing'); return; }
     $('#asWhole').checked = true;      /* per-quote picker: the whole booking is the default */
@@ -3528,8 +3544,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   /* a different booking starts on its own last function, not the index the
      previous one happened to be on */
-  $('#asBook').addEventListener('change', ()=>{ $('#asBookEv').value = ''; fillBookingEvents(); reBook(); });
-  $('#asBookEv').addEventListener('change', reBook);
+  on('#asBook', 'change', ()=>{ $('#asBookEv').value = ''; fillBookingEvents(); reBook(); });
+  on('#asBookEv', 'change', reBook);
 
   /* Upcoming events and Editing are two different jobs — one is staffing a
      day, the other is chasing a deadline — so they are two tabs rather than
@@ -3547,7 +3563,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#workUp').hidden = _teamTab !== 'up';
     $('#workEd').hidden = _teamTab !== 'edit';
   }
-  $('#workTabs').addEventListener('click', e=>{
+  on('#workTabs', 'click', e=>{
     const b = e.target.closest('[data-wtab]'); if(!b || b.dataset.wtab === _teamTab) return;
     _teamTab = b.dataset.wtab;
     renderWorkTabs();
@@ -3594,7 +3610,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="lb-n"><b>${r.n}</b><span>${r.amt ? inr(r.amt) : 'shoots'}</span></span>
       </div>`).join('');
   }
-  $('#lbTog').addEventListener('click', e=>{
+  on('#lbTog', 'click', e=>{
     const b = e.target.closest('[data-lb]'); if(!b || b.dataset.lb === _lbPeriod) return;
     _lbPeriod = b.dataset.lb;
     $$('#lbTog button').forEach(x=>x.classList.toggle('on', x === b));
@@ -3613,7 +3629,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .map(([k,label])=>`<button type="button" data-squadcat="${k}" class="${_squadCat===k?'on':''}">${label} <b>${counts[k]}</b></button>`).join('');
   }
   let _squadCat = viewGet('squad','all');
-  $('#squadCats').addEventListener('click', e=>{
+  on('#squadCats', 'click', e=>{
     const b = e.target.closest('[data-squadcat]'); if(!b) return;
     _squadCat = b.dataset.squadcat; viewSet('squad', _squadCat);
     renderSquadCats(); renderTeamMembers();
@@ -3697,7 +3713,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="icon-btn icon-btn--danger" data-reqno="${esc(r.id)}" title="Dismiss">✕</button>
       </div>`).join('');
   }
-  $('#teamReqs').addEventListener('click', async e=>{
+  on('#teamReqs', 'click', async e=>{
     const ok = e.target.closest('[data-reqok]');
     const no = e.target.closest('[data-reqno]');
     if(ok){
@@ -3845,7 +3861,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
     }
   }
-  $('#teamSegs').addEventListener('click', e=>{
+  on('#teamSegs', 'click', e=>{
     const b = e.target.closest('[data-tseg]'); if(!b) return;
     setTeamSeg(b.dataset.tseg);
   });
@@ -3886,8 +3902,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tmCatOut').classList.toggle('on', _tmCat === 'outdoor');
     $('#tmCatOff').classList.toggle('on', _tmCat === 'office');
   }
-  $('#tmCatOut').addEventListener('click', ()=>setTmCat('outdoor'));
-  $('#tmCatOff').addEventListener('click', ()=>setTmCat('office'));
+  on('#tmCatOut', 'click', ()=>setTmCat('outdoor'));
+  on('#tmCatOff', 'click', ()=>setTmCat('office'));
 
   function openTm(m){
     _tmEditId = m ? m.id : null;
@@ -3913,10 +3929,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeTm(){
     backFrom('tmsheet', closeTmUI);
   }
-  $('#tmClose').addEventListener('click', closeTm);
-  $('#tmBackdrop').addEventListener('click', closeTm);
-  $('#tmAdd').addEventListener('click', ()=>openTm(null));
-  $('#tmSave').addEventListener('click', async ()=>{
+  on('#tmClose', 'click', closeTm);
+  on('#tmBackdrop', 'click', closeTm);
+  on('#tmAdd', 'click', ()=>openTm(null));
+  on('#tmSave', 'click', async ()=>{
     const btn = $('#tmSave'); if(btn.disabled) return;
     const name = $('#tmName').value.trim();
     if(!name){ toast('Name is required'); $('#tmName').focus(); return; }
@@ -3976,7 +3992,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
   });
-  $('#tmToggle').addEventListener('click', async ()=>{
+  on('#tmToggle', 'click', async ()=>{
     const m = TEAM.find(v=>v.id===_tmEditId); if(!m) return;
     const next = !(m.active === false);   /* true → deactivate */
     try{
@@ -3989,7 +4005,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       closeTm();
     }catch(err){ toast('Update failed'); }
   });
-  $('#teamMembers').addEventListener('click', e=>{
+  on('#teamMembers', 'click', e=>{
     if(e.target.closest('[data-tm-add]')){ openTm(null); return; }
     const g = e.target.closest('[data-tmgrp]');
     if(g){ _tmShowInactive = !_tmShowInactive; renderTeamMembers(); return; }
@@ -4079,16 +4095,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#asDue').value = dueFromEvent(($('#asWhole').checked && lastEventDate(_asCtx && _asCtx.pkgId)) || (_asCtx && _asCtx.date));
     $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save Assignment';
   }
-  $('#asRole').addEventListener('change', syncAsUI);
+  on('#asRole', 'change', syncAsUI);
   /* the deadline is measured from the last function once it covers them all */
-  $('#asWhole').addEventListener('change', ()=>{
+  on('#asWhole', 'change', ()=>{
     $('#asDue').value = '';
     if(!$('#asBookWrap').hidden){ fillBookingEvents(); reBook(); return; }
     syncAsUI();
   });
   const DELIVERABLES = ['Photos','Video','Teasers','Album design','Reels'];
   $('#asDelChips').innerHTML = DELIVERABLES.map(d=>`<button type="button" class="qchip" data-del="${esc(d)}">${esc(d)}</button>`).join('');
-  $('#asDelChips').addEventListener('click', e=>{
+  on('#asDelChips', 'click', e=>{
     const b = e.target.closest('[data-del]'); if(!b) return;
     const cur = $('#asDeliver').value.split('+').map(t=>t.trim()).filter(Boolean);
     const v = b.dataset.del;
@@ -4172,7 +4188,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       btn.dataset.copy = src.crew.map(a=>a.memberId).join(',');
     }
   }
-  $('#asPick').addEventListener('click', e=>{
+  on('#asPick', 'click', e=>{
     const b = e.target.closest('[data-pick]'); if(!b || b.disabled) return;
     const id = b.dataset.pick;
     if(_asEditId){ _asPicked = new Set([id]); }            /* editing swaps, never adds */
@@ -4190,7 +4206,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     syncAsUI();
     refreshAsConflict();
   });
-  $('#asCopy').addEventListener('click', ()=>{
+  on('#asCopy', 'click', ()=>{
     const ids = String($('#asCopy').dataset.copy||'').split(',').filter(Boolean);
     if(!ids.length) return;
     _asPicked = new Set(ids);
@@ -4201,8 +4217,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _asForceEdit = false, _bookRows = [];
   /* what is typed in the crew filter, for the length of one sheet */
   let _asFilter = '';
-  $('#asFilter').addEventListener('input', e=>{ _asFilter = e.target.value; renderAsPick(); });
-  $('#asFilter').addEventListener('keydown', e=>{
+  on('#asFilter', 'input', e=>{ _asFilter = e.target.value; renderAsPick(); });
+  on('#asFilter', 'keydown', e=>{
     if(e.key !== 'Escape') return;
     e.stopPropagation();          /* clear the filter first; Escape again closes the sheet */
     _asFilter = ''; e.target.value = ''; renderAsPick();
@@ -4239,11 +4255,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeAs(){
     backFrom('assheet', closeAsUI);
   }
-  $('#asClose').addEventListener('click', closeAs);
-  $('#asBackdrop').addEventListener('click', closeAs);
+  on('#asClose', 'click', closeAs);
+  on('#asBackdrop', 'click', closeAs);
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeTm(); closeAs(); } });
 
-  $('#asSave').addEventListener('click', async ()=>{
+  on('#asSave', 'click', async ()=>{
     const btn = $('#asSave'); if(btn.disabled || !_asCtx) return;
     const picked = [..._asPicked].map(memberById).filter(Boolean);
     if(!picked.length){ toast('Tap a team member to assign'); return; }
@@ -4345,7 +4361,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     finally{ btn.disabled = false; }
   });
 
-  $('#asRemove').addEventListener('click', async ()=>{
+  on('#asRemove', 'click', async ()=>{
     const a = ASGS.find(v=>v.id===_asEditId); if(!a) return;
     if(!await confirmDialog({
       title:'Remove from this event?',
@@ -4368,7 +4384,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Remove failed'); }
   });
 
-  $('#teamEvents').addEventListener('click', e=>{
+  on('#teamEvents', 'click', e=>{
     /* the whole crew row opens the assign sheet — this has to be caught first
        or tapping 📤 would edit the assignment instead of messaging them */
     const cs = e.target.closest('[data-callsheet]');
@@ -4545,11 +4561,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; _cpAllMember = null; }
   function closeCrewPay(){ backFrom('crewpay', closeCrewPayUI); }
-  $('#cpClose').addEventListener('click', closeCrewPay);
-  $('#cpBackdrop').addEventListener('click', closeCrewPay);
-  $('#cpModeOnline').addEventListener('click', ()=>{ _cpMode='online'; $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on'); });
-  $('#cpModeCash').addEventListener('click', ()=>{ _cpMode='cash'; $('#cpModeCash').classList.add('on'); $('#cpModeOnline').classList.remove('on'); });
-  $('#cpQuick').addEventListener('click', e=>{
+  on('#cpClose', 'click', closeCrewPay);
+  on('#cpBackdrop', 'click', closeCrewPay);
+  on('#cpModeOnline', 'click', ()=>{ _cpMode='online'; $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on'); });
+  on('#cpModeCash', 'click', ()=>{ _cpMode='cash'; $('#cpModeCash').classList.add('on'); $('#cpModeOnline').classList.remove('on'); });
+  on('#cpQuick', 'click', e=>{
     const b = e.target.closest('[data-cqa]'); if(!b) return;
     $('#cpAmt').value = b.dataset.cqa; $('#cpAmt').focus();
   });
@@ -4645,8 +4661,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Could not save that payment: ' + (err.message||err.code||'no signal')); }
     finally{ btn.disabled = false; }
   }
-  $('#cpSave').addEventListener('click', saveCrewPayment);
-  $('#cpHist').addEventListener('click', async e=>{
+  on('#cpSave', 'click', saveCrewPayment);
+  on('#cpHist', 'click', async e=>{
     const rm = e.target.closest('[data-cprm]'); if(!rm) return;
     const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
     const pid = rm.dataset.pid;
@@ -4680,7 +4696,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
   });
 
-  $('#teamPay').addEventListener('click', e=>{
+  on('#teamPay', 'click', e=>{
     /* checked BEFORE the group header it sits inside, or tapping it would just
        collapse the member instead */
     const all = e.target.closest('[data-pmall]');
@@ -4744,7 +4760,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              partial: p.partial || l.partial || t.partial || a.partial || st.partial || ex.partial };
   }
   const partNote = p => p ? ' ⚠ offline copy — may be incomplete' : '';
-  $('#expJson').addEventListener('click', async ()=>{
+  on('#expJson', 'click', async ()=>{
     toast('Preparing backup…');
     try{
       const { pkgs, leads, team, asgs, studios, exps, partial } = await fetchAll();
@@ -4763,7 +4779,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast(`Backup downloaded — ${pkgs.length} packages, ${leads.length} leads, ${team.length} team, ${asgs.length} assignments, ${studios.length} studios, ${exps.length} expenses${partNote(partial)}${cfgNote ? ' ⚠ config missing' : ''}`);
     }catch(err){ toast('Backup failed: ' + (err.code||err.message)); }
   });
-  $('#expPkgs').addEventListener('click', async ()=>{
+  on('#expPkgs', 'click', async ()=>{
     toast('Preparing CSV…');
     try{
       const { pkgs, partial } = await fetchAll();
@@ -4778,7 +4794,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       dl(`packages-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Packages CSV — ${live.length} rows${partNote(partial)}`);
     }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
   });
-  $('#expSpend').addEventListener('click', async ()=>{
+  on('#expSpend', 'click', async ()=>{
     toast('Preparing CSV…');
     try{
       const { exps, partial } = await fetchAll();
@@ -4788,7 +4804,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       dl(`expenses-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Expenses CSV — ${live.length} rows${partNote(partial)}`);
     }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
   });
-  $('#expPays').addEventListener('click', async ()=>{
+  on('#expPays', 'click', async ()=>{
     toast('Preparing CSV…');
     try{
       const { pkgs, partial } = await fetchAll();
@@ -4798,7 +4814,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       dl(`payments-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Payments CSV — ${rows.length-1} rows${partNote(partial)}`);
     }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
   });
-  $('#expLeads').addEventListener('click', async ()=>{
+  on('#expLeads', 'click', async ()=>{
     toast('Preparing CSV…');
     try{
       const { leads, partial } = await fetchAll();
@@ -4841,7 +4857,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     }
   }
-  $('#trashList').addEventListener('click', async e=>{
+  on('#trashList', 'click', async e=>{
     const rBtn = e.target.closest('[data-restore]');
     const pBtn = e.target.closest('[data-purge]');
     if(!rBtn && !pBtn) return;
@@ -5087,10 +5103,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     box.value = '';
     renderStudioList();
   }
-  $('#stuSearch').addEventListener('input', debounce(renderStudioList));
-  $('#stuSearch').addEventListener('keydown', e=>{ if(e.key === 'Escape') clearStuSearch(); });
-  $('#stuAddFab').addEventListener('click', ()=>openStu(null));
-  $('#studioList').addEventListener('click', e=>{
+  on('#stuSearch', 'input', debounce(renderStudioList));
+  on('#stuSearch', 'keydown', e=>{ if(e.key === 'Escape') clearStuSearch(); });
+  on('#stuAddFab', 'click', ()=>openStu(null));
+  on('#studioList', 'click', e=>{
     if(e.target.closest('[data-retry]')){ loadStudios(); toast('Reconnecting…'); return; }
     if(e.target.closest('[data-stu-add]')){ openStu(null); return; }
     if(e.target.closest('[data-stu-clear]')){ $('#stuSearch').value=''; renderStudioList(); return; }
@@ -5099,10 +5115,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   /* the short ₹8.4L form has no tooltip on a phone — the tile opens the
      analytics sheet, where the exact figures live */
-  $('#b2bStats').addEventListener('click', e=>{ if(e.target.closest('[data-fin]')) openFin(); });
-  $('#stuAdd').addEventListener('click', ()=>openStu(null));
+  on('#b2bStats', 'click', e=>{ if(e.target.closest('[data-fin]')) openFin(); });
+  on('#stuAdd', 'click', ()=>openStu(null));
   /* same quick-add form as a studio's own page, with the studio still to pick */
-  $('#b2bAddEv').addEventListener('click', ()=>openCalAdd({ b2b: true }));
+  on('#b2bAddEv', 'click', ()=>openCalAdd({ b2b: true }));
 
   /* ---------- add / edit studio sheet ---------- */
   function openStu(s){
@@ -5130,9 +5146,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeStu(){
     backFrom('stusheet', closeStuUI);
   }
-  $('#stuClose').addEventListener('click', closeStu);
-  $('#stuBackdrop').addEventListener('click', closeStu);
-  $('#stuSave').addEventListener('click', async ()=>{
+  on('#stuClose', 'click', closeStu);
+  on('#stuBackdrop', 'click', closeStu);
+  on('#stuSave', 'click', async ()=>{
     const btn = $('#stuSave'); if(btn.disabled) return;
     const name = $('#stuName').value.trim();
     if(!name){ toast('Studio name is required'); $('#stuName').focus(); return; }
@@ -5179,7 +5195,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
   });
-  $('#stuToggle').addEventListener('click', async ()=>{
+  on('#stuToggle', 'click', async ()=>{
     const s = studioById(_stuEditId); if(!s) return;
     const deactivate = !(s.active === false);
     if(deactivate && !await confirmDialog({
@@ -5382,7 +5398,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `login key set for …${p10.slice(-4)} (offline — not verified)`;
     }
   }
-  $('#studioDetailView').addEventListener('click', async e=>{
+  on('#studioDetailView', 'click', async e=>{
     if(e.target.closest('#stuBack')){
       backFrom('studio', closeStudioDetail);
       return;
@@ -5491,7 +5507,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeJt(){
     backFrom('jt', closeJtUI);
   }
-  $('#jtOpts').addEventListener('click', e=>{
+  on('#jtOpts', 'click', e=>{
     if(e.target.closest('[data-jt-direct]')){
       if(!canLeaveEditor()) return;
       closeJtUI();
@@ -5519,8 +5535,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
     }
   });
-  $('#jtClose').addEventListener('click', closeJt);
-  $('#jtBackdrop').addEventListener('click', closeJt);
+  on('#jtClose', 'click', closeJt);
+  on('#jtBackdrop', 'click', closeJt);
 
   /* ---------- status picker sheet ---------- */
   let statusId = null;
@@ -5536,9 +5552,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeStatus(){
     backFrom('stsheet', closeStatusUI);
   }
-  $('#stClose').addEventListener('click', closeStatus);
-  $('#stBackdrop').addEventListener('click', closeStatus);
-  $('#stOpts').addEventListener('click', async e=>{
+  on('#stClose', 'click', closeStatus);
+  on('#stBackdrop', 'click', closeStatus);
+  on('#stOpts', 'click', async e=>{
     const b = e.target.closest('[data-st]'); if(!b) return;
     const x = PKGS.find(p=>p.id===statusId);
     if(!x){ closeStatus(); return; }
@@ -5606,14 +5622,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closePay(){
     backFrom('pay', closePayUI);
   }
-  $('#payQuick').addEventListener('click', e=>{
+  on('#payQuick', 'click', e=>{
     const b = e.target.closest('[data-qa]'); if(!b) return;
     $('#payAmt').value = b.dataset.qa; $('#payAmt').focus();
   });
-  $('#payClose').addEventListener('click', closePay);
-  $('#payBackdrop').addEventListener('click', closePay);
-  $('#modeOnline').addEventListener('click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
-  $('#modeCash').addEventListener('click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
+  on('#payClose', 'click', closePay);
+  on('#payBackdrop', 'click', closePay);
+  on('#modeOnline', 'click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
+  on('#modeCash', 'click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
   document.addEventListener('keydown', e=>{
     if(e.key !== 'Escape') return;
     /* the expense form sits inside the money sheet — one Escape should close
@@ -5661,7 +5677,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
 
-  $('#paySave').addEventListener('click', async ()=>{
+  on('#paySave', 'click', async ()=>{
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
     const amount = Math.round(Number($('#payAmt').value)||0);
@@ -5719,7 +5735,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* remove a mistaken payment — transaction so totals stay exact (needs signal) */
-  $('#payHist').addEventListener('click', async e=>{
+  on('#payHist', 'click', async e=>{
     const b = e.target.closest('[data-rmpay]'); if(!b) return;
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     /* resolve the payment by identity (not row index) — the list may have refreshed since the modal opened */
@@ -5959,7 +5975,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${fys.length ? HD + fys.map(fy=>row3(`${fy}-${String((fy+1)%100).padStart(2,'0')}`, byFy[fy], fy===y?'on':'', `data-fyr="${fy}" role="button" tabindex="0" title="Show ${fyLabel(fy)} quarter-wise"`)).join('')
       : '<div class="empty" style="padding:.6rem 0">No confirmed bookings yet — this table fills in as packages are booked.</div>'}`;
   }
-  $('#finBody').addEventListener('click', async e=>{
+  on('#finBody', 'click', async e=>{
     const fy = e.target.closest('[data-fy]');
     if(fy){ finYear = Number(finYear) + Number(fy.dataset.fy); renderFin(); return; }
     if(e.target.closest('#expAdd')){ openExpForm(null); return; }
@@ -6025,16 +6041,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     setTimeout(()=>{ if(!$('#expForm').hidden) $('#exAmt').focus(); }, 80);
   }
   function closeExpForm(){ $('#expForm').hidden = true; _expEdit = null; }
-  $('#exCat').addEventListener('click', e=>{
+  on('#exCat', 'click', e=>{
     const b = e.target.closest('[data-exc]'); if(!b) return;
     _exCat = b.dataset.exc; syncExPills();
   });
-  $('#exMode').addEventListener('click', e=>{
+  on('#exMode', 'click', e=>{
     const b = e.target.closest('[data-exm]'); if(!b) return;
     _exMode = b.dataset.exm; syncExPills();
   });
-  $('#exCancel').addEventListener('click', closeExpForm);
-  $('#exSave').addEventListener('click', async ()=>{
+  on('#exCancel', 'click', closeExpForm);
+  on('#exSave', 'click', async ()=>{
     const date = $('#exDate').value;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this expense'); $('#exDate').focus(); return; }
     const amount = Math.round(Number($('#exAmt').value)||0);
@@ -6065,8 +6081,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
   });
-  $('#finClose').addEventListener('click', closeFin);
-  $('#finBackdrop').addEventListener('click', closeFin);
+  on('#finClose', 'click', closeFin);
+  on('#finBackdrop', 'click', closeFin);
 
   /* ---------- upcoming shoot sheet: full event + package detail ---------- */
   let _evIdx = 0, _evKey = null;
@@ -6151,11 +6167,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="btn btn--sm btn--ghost" type="button" data-evcal>Calendar</button>
       </div>`;
   }
-  $('#evNav').addEventListener('click', e=>{
+  on('#evNav', 'click', e=>{
     const b = e.target.closest('[data-evn]'); if(!b || b.disabled) return;
     openEv(_evIdx + Number(b.dataset.evn));
   });
-  $('#evBody').addEventListener('click', e=>{
+  on('#evBody', 'click', e=>{
     const ev = _upEvents[_evIdx]; if(!ev) return;
     if(e.target.closest('[data-evpay]')){
       const pk = PKGS.find(p=>p.id===ev.id);
@@ -6180,8 +6196,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       gotoCalendar(ev.date);
     }
   });
-  $('#evClose').addEventListener('click', closeEv);
-  $('#evBackdrop').addEventListener('click', closeEv);
+  on('#evClose', 'click', closeEv);
+  on('#evBackdrop', 'click', closeEv);
 
   /* ---------- complete upcoming-shoots list ----------
      Opened from the ＋ button (or the "N upcoming" chip) on Home; tapping a
@@ -6218,13 +6234,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
     }).join('');
   }
-  $('#upBody').addEventListener('click', e=>{
+  on('#upBody', 'click', e=>{
     const r = e.target.closest('[data-goev]'); if(!r) return;
     closeUpUI();
     openEv(Number(r.dataset.goev)||0);
   });
-  $('#upClose').addEventListener('click', closeUpList);
-  $('#upBackdrop').addEventListener('click', closeUpList);
+  on('#upClose', 'click', closeUpList);
+  on('#upBackdrop', 'click', closeUpList);
 
   /* ---------- quick actions — the ⚡ button on Home ---------- */
   function openQa(){
@@ -6343,7 +6359,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : '<div class="empty" style="padding:.6rem 0">Nothing is due — every balance is clear 🎉</div>')
       + '<button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>';
   }
-  $('#qaOpts').addEventListener('click', e=>{
+  on('#qaOpts', 'click', e=>{
     if(e.target.closest('[data-qa-lead]')){ renderQaLead(); return; }
     if(e.target.closest('#qlSave')){ saveQaLead(); return; }
     if(e.target.closest('[data-qa-book]')){
@@ -6363,12 +6379,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-qa-member]')){ closeQaUI(); $('#tabTeam').click(); openTm(null); return; }
   });
-  $('#qaOpts').addEventListener('keydown', e=>{
+  on('#qaOpts', 'keydown', e=>{
     if(e.key === 'Enter' && e.target.matches('#qlName,#qlPhone,#qlType')){ e.preventDefault(); saveQaLead(); }
   });
-  $('#fabBtn').addEventListener('click', openQa);
-  $('#qaClose').addEventListener('click', closeQa);
-  $('#qaBackdrop').addEventListener('click', closeQa);
+  on('#fabBtn', 'click', openQa);
+  on('#qaClose', 'click', closeQa);
+  on('#qaBackdrop', 'click', closeQa);
 
   /* ---------- Global search — one box over every record type ----------
      Was a box that only existed on Home and only knew about packages, leads
@@ -6497,8 +6513,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeGs(){ backFrom('gs', closeGsUI); }
 
-  $('#gsInput').addEventListener('input', debounce(()=>{ _gsSel = 0; renderGs(); }, 120));
-  $('#gsInput').addEventListener('keydown', e=>{
+  on('#gsInput', 'input', debounce(()=>{ _gsSel = 0; renderGs(); }, 120));
+  on('#gsInput', 'keydown', e=>{
     if(e.key === 'Escape'){ e.preventDefault(); closeGs(); return; }
     if(e.key === 'Enter'){ e.preventDefault(); gsOpen(_gsRows[_gsSel]); return; }
     if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
@@ -6508,14 +6524,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       renderGs();
     }
   });
-  $('#gsResults').addEventListener('click', e=>{
+  on('#gsResults', 'click', e=>{
     const b = e.target.closest('[data-gs]'); if(!b) return;
     gsOpen(_gsRows[Number(b.dataset.gs)]);
   });
   /* The header 🔍 is the only way in on a phone — there is no Ctrl+K there. */
-  $('#hdrSearch').addEventListener('click', openGs);
-  $('#gsClose').addEventListener('click', closeGs);
-  $('#gsBackdrop').addEventListener('click', closeGs);
+  on('#hdrSearch', 'click', openGs);
+  on('#gsClose', 'click', closeGs);
+  on('#gsBackdrop', 'click', closeGs);
   /* ⌘K on a Mac, Ctrl+K everywhere else. Ignored while a text field already
      has focus for a reason — the owner may be mid-word in a note. */
   document.addEventListener('keydown', e=>{
@@ -6544,8 +6560,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   })();
 
   /* ---------- builder ---------- */
-  $('#pkgNew').addEventListener('click', ()=>openJobType());
-  $('#pkgBack').addEventListener('click', ()=>{
+  on('#pkgNew', 'click', ()=>openJobType());
+  on('#pkgBack', 'click', ()=>{
     /* closes the editor BEFORE history.back() — the popstate handler re-checks
        dirtiness, and an already-hidden editor is what tells it "already
        answered", instead of a second spurious prompt */
@@ -6716,7 +6732,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _advanceAtOpen = 0;
   let _phoneFullAtOpen = '';
   let _bStatus = 'draft';
-  $('#bStatusPills').addEventListener('click', e=>{
+  on('#bStatusPills', 'click', e=>{
     const b = e.target.closest('[data-bst]'); if(!b) return;
     _bStatus = b.dataset.bst;
     $$('#bStatusPills button').forEach(p=>p.classList.toggle('on', p === b));
@@ -6806,15 +6822,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const st = $('#stickyTotal'); if(st) st.textContent = inr(d.totals.finalPrice);
   }
   /* typing a title by hand hides that card's name chips */
-  $('#pkgEditView').addEventListener('input', e=>{
+  on('#pkgEditView', 'input', e=>{
     if(e.target.matches('[data-f="title"]')){
       const chips = e.target.closest('.pkg-ev').querySelector('[data-evchips]');
       if(chips) chips.hidden = !!e.target.value.trim();
     }
   });
 
-  $('#pkgEditView').addEventListener('input', computePkg);
-  $('#pkgEditView').addEventListener('change', e=>{
+  on('#pkgEditView', 'input', computePkg);
+  on('#pkgEditView', 'change', e=>{
     if(e.target.matches('[data-f="date"]')){
       const card = e.target.closest('.pkg-ev');
       const warn = card && card.querySelector('[data-dwarn]');
@@ -6836,7 +6852,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       computePkg();
     }
   });
-  $('#pkgEditView').addEventListener('click', e=>{
+  on('#pkgEditView', 'click', e=>{
     if(e.target.closest('[data-qm]') || e.target.closest('[data-qp]')){
       const row = e.target.closest('.itemrow');
       const q = row.querySelector('[data-f="qty"]');
@@ -6894,16 +6910,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
   });
-  $('#pkgAddEvent').addEventListener('click', ()=>{
+  on('#pkgAddEvent', 'click', ()=>{
     $('#pkgEvents').insertAdjacentHTML('beforeend', evCardHTML({}));
     const cards = $$('#pkgEvents .pkg-ev');
     const last = cards[cards.length-1];
     refreshSvcChips(last);
     last.scrollIntoView({behavior:'smooth', block:'center'});
   });
-  $('#pkgAddAddon').addEventListener('click', ()=>$('#pkgAddons').insertAdjacentHTML('beforeend', addonRowHTML('')));
+  on('#pkgAddAddon', 'click', ()=>$('#pkgAddons').insertAdjacentHTML('beforeend', addonRowHTML('')));
 
-  $('#pkgSave').addEventListener('click', async ()=>{
+  on('#pkgSave', 'click', async ()=>{
     const d = readForm();
     if(!d.clientName){ toast('Client name is required'); $('#pcName').focus(); return; }
     if(!d.events.length){ toast('Add at least one event with a service'); return; }
@@ -7052,7 +7068,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       docPdf.save(fname);
     }catch(err){ toast('PDF failed: ' + (err.message||err)); }
   }
-  $('#pkgPdf').addEventListener('click', async ()=>{
+  on('#pkgPdf', 'click', async ()=>{
     const d = readForm();
     if(!d.events.length){ toast('Add at least one event first'); return; }
     /* keep the saved quote number on PDFs generated from inside the editor */
