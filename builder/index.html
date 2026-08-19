@@ -176,20 +176,6 @@ img{max-width:100%;display:block}
 }
 .cart-btn .cnt[hidden]{display:none}
 
-/* announcement ribbon */
-.annc{
-  display:flex;align-items:center;justify-content:center;gap:.8rem;position:relative;
-  padding:.45rem 2.6rem .45rem 1rem;
-  background:linear-gradient(90deg,#1c1a16,#2a2318 50%,#1c1a16);color:var(--gold-bright);
-  font-size:.76rem;letter-spacing:.04em;
-}
-.annc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.annc button{cursor:pointer;font-family:var(--sans)}
-#anncCta{background:var(--gold);border:0;color:#fff;border-radius:30px;padding:.3em 1em;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
-#anncCta:hover{background:var(--gold-deep)}
-.annc-x{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:42px;height:34px;display:grid;place-items:center;background:none;border:0;color:#b3a98f;font-size:1.25rem;line-height:1}
-.annc-x:hover{color:#fff}
-
 /* ============================================================
    SHOP LAYOUT
    ============================================================ */
@@ -584,12 +570,91 @@ img{max-width:100%;display:block}
   .ev-remove{width:42px;height:42px}
 }
 @media(max-width:560px){
-  .prods{grid-template-columns:1fr}
-  .deal{flex:0 0 84vw}
-  .ev-picker{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .ev-tile{flex-direction:column;align-items:flex-start;gap:.35rem}
+  /* ---- the shop floor, rebuilt for a thumb ----
+     Ten stacked cards per function was roughly two metres of scrolling on a
+     phone. Each service becomes one compact row instead: what it is on the
+     left, what it costs on the right, and the button across the bottom.
+     Squeezing the button into a second column as well saves another 40px a row
+     but costs the service name (three lines for "Female Shooter Premium") and
+     most of the blurb, so the button keeps the full width of the row. */
+  .prods{grid-template-columns:1fr;gap:.5rem}
+  .prod{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"top price" "blurb blurb" "act act";
+    align-items:start;column-gap:.6rem;row-gap:.35rem;padding:.7rem .75rem;
+  }
+  .prod-top{grid-area:top}
+  .prod .blurb{grid-area:blurb;margin-top:0;font-size:.71rem;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .prod-price{grid-area:price;margin-top:0;flex-direction:column;align-items:flex-end;gap:0;text-align:right}
+  .prod-price b{font-size:1.05rem;line-height:1.2}
+  .prod-act{grid-area:act;margin-top:.4rem}
+  .prod-ic{width:32px;height:32px;border-radius:8px}
+  .prod-ic svg{width:18px;height:18px}
+  .prod h4{font-size:.86rem}
+  .prod .hot{top:-7px;right:auto;left:10px}
+  .prod .line-tot{font-size:.68rem;margin-top:.3rem}
+  /* ---- 44px of thumb, everywhere it is tapped ----
+     Most of these read fine on a trackpad at 30-34px and are a coin-flip with
+     a thumb, and the Add button is the single most-tapped control on the site. */
+  .stepper button{width:44px;height:46px;font-size:1.2rem}
+  .stepper input{height:46px}
+  .add-btn{min-height:46px;font-size:.85rem}
+  .dept,.bundle{min-height:40px;display:inline-flex;align-items:center}
+  .alb-chip{min-height:42px;display:inline-flex;align-items:center}
+  .alb-row .stepper button{width:48px;height:48px}
+  .alb-row .stepper input{height:48px}
+  /* the per-line remove in the quote sheet was a 24px target */
+  .ci-line .cl-x{width:34px;height:34px;font-size:1.15rem}
+  .ci-line{padding:.3rem 0}
+  .mq-bar .btn{padding:.9em 1.1em}
+  .linkish{padding:.6em .1em}
+
+  /* chip rows swipe sideways rather than stacking into four lines */
+  .dept-row,.bundles,.trust-strip{
+    flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+  }
+  .dept-row::-webkit-scrollbar,.bundles::-webkit-scrollbar,.trust-strip::-webkit-scrollbar{display:none}
+  .dept,.bundle,.trust-chip{flex:0 0 auto;scroll-snap-align:start}
+  .dept-row,.bundles{margin-left:-.95rem;margin-right:-.95rem;padding:0 .95rem .3rem}
+  .bundles{margin-bottom:.7rem}
+  .trust-strip{margin-left:-.9rem;margin-right:-.9rem;padding:0 .9rem}
+
+  /* the function header stops wrapping into four ragged lines */
+  .ev-head{
+    display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"ei name rm" "dt dt tot";
+    gap:.5rem .55rem;align-items:center;padding:.75rem .8rem;
+  }
+  .ev-head .ei{grid-area:ei}
+  .ev-head .ename{grid-area:name;flex:none}
+  .ev-head .ev-remove{grid-area:rm}
+  .ev-head .edate{grid-area:dt;flex:none;min-width:0}
+  .ev-head .etot{grid-area:tot;margin-left:0;text-align:right}
+  .ev-body{padding:.8rem .95rem .9rem}
+
+  .deal{flex:0 0 78vw;padding:.85rem}
+  .deal h3{font-size:1.05rem}
+  .deal .pk-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  /* equal-height cards put a hand's width of dead space in the middle of the
+     short ones when only one is on screen — let each size to its own content */
+  .deals{gap:.6rem;margin-left:-.9rem;margin-right:-.9rem;padding:.15rem .9rem .8rem;align-items:flex-start}
+  .deal .pk-price{margin-top:.7rem;padding-top:0}
+  .deal-foot{flex-direction:column;align-items:stretch;gap:.1rem}
+
+  .ev-picker{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+  .ev-tile{flex-direction:column;align-items:flex-start;gap:.35rem;padding:.65rem .7rem}
   .sec-body{padding:1rem .9rem}
-  .sec-head{padding:1rem .9rem}
+  .sec-head{padding:.9rem .9rem;gap:.7rem}
+  .sec-head h2{font-size:1.05rem}
+  .sec-head p{font-size:.75rem}
+  .sec-head .n{width:28px;height:28px;font-size:.88rem}
+  .sec-head .opt{font-size:.6rem;padding:.25em .6em}
+  .sec{margin-bottom:.85rem}
+  .intro{margin-bottom:1rem}
+  .intro p{font-size:.88rem}
+  .shop{padding-left:.9rem;padding-right:.9rem}
   .review-actions .btn{flex:1 1 100%}
   .lead-modal{
     left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;
@@ -605,14 +670,19 @@ img{max-width:100%;display:block}
   .cmp-modal.open{transform:translateY(0)}
   .toast{flex-wrap:wrap;border-radius:16px;max-width:94vw;justify-content:flex-end}
   .toast #toastMsg{flex:1 1 100%;text-align:left}
-  /* the ribbon has to earn its 34px on a phone: let the offer wrap to two
-     short lines instead of ending in "…use code SPEC…" */
-  .annc{font-size:.66rem;gap:.5rem;padding:.4rem 2.4rem .4rem .8rem;line-height:1.3;text-align:left}
-  .annc span{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  #anncCta{padding:.3em .8em;font-size:.62rem}
   /* Contact lives one tap away in the footer of the home page; the builder's
      header needs the width for the cart */
   .hdr-link.hide-sm{display:none}
+}
+
+/* very narrow phones (320-380px) */
+@media(max-width:380px){
+  .hdr-back .nm b{font-size:.9rem}
+  .hdr-in{gap:.5rem;padding:0 .7rem}
+  .cart-btn{padding:.45em .8em .45em .7em;font-size:.78rem}
+  .cart-btn .amt{font-size:.92rem}
+  .ev-picker{grid-template-columns:1fr}
+  .ev-tile{flex-direction:row;align-items:center}
 }
 
 /* respect reduced-motion preferences */
@@ -667,11 +737,6 @@ img{max-width:100%;display:block}
 
 <!-- ============ HEADER ============ -->
 <header class="hdr">
-  <div class="annc" id="annc" hidden role="region" aria-label="Announcement">
-    <span id="anncText"></span>
-    <button id="anncCta" type="button"></button>
-    <button class="annc-x" id="anncClose" type="button" aria-label="Dismiss announcement">&times;</button>
-  </div>
   <div class="hdr-in">
     <a href="../" class="hdr-back" aria-label="Back to Fantasy Studio home">
       <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
@@ -1592,10 +1657,6 @@ function renderQuote(){
   ['pdfBtn','pdfBtn2','shareBtn','shareBtn2','clearBtn','clearBtn2','sheetShare','sheetClear','mqPdf']
     .forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
 
-  /* offer ribbon rides with the quote: visible only once something is selected */
-  const annc = $('#annc');
-  if(annc) annc.hidden = !(window._anncEligible && !empty);
-
   updateSteps(t);
   updatePkgChip();
   /* the deal row is a horizontal scroller — only redraw it when the highlighted
@@ -2244,32 +2305,6 @@ if(wantedPromo && PROMO_CODES[wantedPromo]){
 
 renderAll();
 syncPromoUI();
-
-/* offer ribbon — content is wired here; visibility follows the live quote */
-window._anncEligible = false;
-(function(){
-  if(!ANNOUNCEMENT.enabled || !ANNOUNCEMENT.text) return;
-  try{ if(sessionStorage.getItem('fs_annc_hide')) return; }catch(e){}
-  const a = $('#annc'); if(!a) return;
-  window._anncEligible = true;   // shown by renderQuote once something is selected
-  $('#anncText').textContent = ANNOUNCEMENT.text;
-  const cta = $('#anncCta');
-  if(ANNOUNCEMENT.cta && ANNOUNCEMENT.code && PROMO_CODES[ANNOUNCEMENT.code]){
-    cta.textContent = ANNOUNCEMENT.cta;
-    cta.addEventListener('click', ()=>{
-      state.promo = ANNOUNCEMENT.code;
-      renderQuote(); syncPromoUI();
-      showToast(`Code ${ANNOUNCEMENT.code} applied — your total just dropped.`);
-      track('announcement_cta', { code: ANNOUNCEMENT.code });
-    });
-  }else{ cta.hidden = true; }
-  $('#anncClose').addEventListener('click', ()=>{
-    window._anncEligible = false;
-    a.hidden = true;
-    try{ sessionStorage.setItem('fs_annc_hide','1'); }catch(e){}
-  });
-})();
-renderQuote();   // re-evaluate ribbon visibility now that wiring is ready
 
 /* "what's always included" reassurance chips */
 $('#inclRow').innerHTML = ALWAYS_INCLUDED.map(t=>`<span>✓ ${esc(t)}</span>`).join('');

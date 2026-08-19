@@ -52,14 +52,6 @@ var GA_MEASUREMENT_ID = 'G-X5VJYY7NP9';
    Leave empty to keep Ads tracking off. */
 var ADS_TAG = { id: '', labels: { contact: '' } };
 
-/* Announcement bar — edit or disable anytime. code must exist in PROMO_CODES to be applied. */
-var ANNOUNCEMENT = {
-  enabled: true,
-  text: 'Wedding season offer — use code SPECIAL10 for 10% off your package',
-  cta:  'Apply code',
-  code: 'SPECIAL10',
-};
-
 var WA_NUMBER = "918686868803";
 
 /* ---- service catalogue ----
