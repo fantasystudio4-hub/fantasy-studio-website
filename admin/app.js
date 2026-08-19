@@ -3390,6 +3390,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#teamEvents', 'click', e=>{
     if(!e.target.closest('[data-tmev]')) return;
     _teamEvAll = !_teamEvAll;
+    renderWorkTabs();   /* the chip stops claiming a cap once the cap is lifted */
     renderTeamEvents();
   });
 
@@ -3636,9 +3637,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
       return Object.entries(need).some(([r,q])=>q - (have[r]||0) > 0);
     });
-    el.innerHTML = WORK_TABS.map(([k,l])=>
-      `<button type="button" data-wtab="${k}" class="${_teamTab===k&&!_workFilter?'on':''}">${l}<b class="${
-        (k==='edit'&&late) || (k==='today'&&shortToday) ? 'late' : ''}">${n[k]}</b></button>`).join('');
+    /* The list caps at TEAM_EV_N with a "see all" button under it, so a chip
+       reading 11 above ten rows looked like one had gone missing. When the tab
+       being shown is capped, the chip says what is on screen AND the total. */
+    el.innerHTML = WORK_TABS.map(([k,l])=>{
+      const capped = k === _teamTab && k !== 'edit' && !_teamEvAll && n[k] > TEAM_EV_N;
+      return `<button type="button" data-wtab="${k}" class="${_teamTab===k&&!_workFilter?'on':''}">${l}<b class="${
+        (k==='edit'&&late) || (k==='today'&&shortToday) ? 'late' : ''}">${
+        capped ? `${TEAM_EV_N}/${n[k]}` : n[k]}</b></button>`;
+    }).join('');
     $('#workUp').hidden = _teamTab === 'edit';
     $('#workEd').hidden = _teamTab !== 'edit';
     /* the hint has to follow the tab: "Tap ＋ Assign" is the wrong advice on a
@@ -5100,6 +5107,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      scope, because this page is rebuilt on every packages/studios/assignments
      snapshot and an expanded row must survive that. */
   let _stuJobOpen = null;
+  /* Job history splits Open work from Closed. "Closed" is delivered — the job
+     is finished and filed; "Open" is everything still live, which is what the
+     page should land on. */
+  const STU_TABS = [['open','📂 Open'],['closed','✅ Closed'],['all','All']];
+  let _stuTab = 'open';
+  let _stuEvOpen = false;   /* the shot list under the ledger */
   /* the rate card starts collapsed — it is set up once per studio and then
      rarely touched, but its open form is one input row per service and was
      parked between the profile and the money the owner actually came for */
@@ -5299,6 +5312,64 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#stuSearch', 'input', debounce(renderStudioList));
   on('#stuSearch', 'keydown', e=>{ if(e.key === 'Escape') clearStuSearch(); });
   on('#stuAddFab', 'click', ()=>openStu(null));
+  /* studio-detail controls. The page is rebuilt on every snapshot, so these
+     are delegated from the container rather than bound to the buttons. */
+  on('#studioDetailView', 'click', e=>{
+    const t = e.target.closest('[data-stutab]');
+    if(t){ if(t.dataset.stutab !== _stuTab){ _stuTab = t.dataset.stutab; renderStudioDetail(); } return; }
+    if(e.target.closest('[data-stuevtog]')){ _stuEvOpen = !_stuEvOpen; renderStudioDetail(); return; }
+    if(e.target.closest('[data-stucsv]')){ exportStudioLedger(); return; }
+    if(e.target.closest('[data-stustmt]')){ sendStudioStatement(); return; }
+  });
+
+  /* One studio's ledger, in the same shape as the other CSVs so it opens the
+     same way. Scoped to the studio on screen — the whole-database export in
+     Backup covers everything else. */
+  function exportStudioLedger(){
+    const s2 = studioById(_stuDetailId); if(!s2) return;
+    const conf = studioJobs(s2.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft'))
+      .sort((a,b)=>String(a.quoteDate||'').localeCompare(String(b.quoteDate||'')));
+    const rows = [['QuoteNo','QuoteDate','EndClient','Status','Billed','Received','Due','Events','FirstEventDate']];
+    conf.forEach(x=>{
+      const t = x.totals||{};
+      const evs = (x.events||[]).filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''));
+      rows.push([x.quoteNo||'', x.quoteDate||'', x.endClientName||'', x.status||'',
+        Number(t.finalPrice)||0, Math.max(0,Number(t.advance)||0), Math.max(0,Number(t.balance)||0),
+        evs.length, evs.map(e2=>e2.date).sort()[0] || '']);
+    });
+    if(rows.length === 1){ toast('Nothing to export — no confirmed jobs yet'); return; }
+    const slug = String(s2.name||'studio').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    dl(`ledger-${slug}-${stamp()}.csv`, csvEnc(rows), 'text/csv');
+    toast(`Ledger exported — ${rows.length-1} job${rows.length===2?'':'s'}`);
+  }
+
+  /* A statement the studio can read in WhatsApp. Figures only — no client
+     names and no venues, because a partner's chat is not the place for another
+     client's details. */
+  function sendStudioStatement(){
+    const s2 = studioById(_stuDetailId); if(!s2 || !s2.phone) return;
+    const conf = studioJobs(s2.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
+    const billed = conf.reduce((n,x)=>n + (Number((x.totals||{}).finalPrice)||0), 0);
+    const paid   = conf.reduce((n,x)=>n + Math.max(0,Number((x.totals||{}).advance)||0), 0);
+    const due    = conf.reduce((n,x)=>n + Math.max(0,Number((x.totals||{}).balance)||0), 0);
+    const lines = [
+      `*Fantasy Studio — account statement*`,
+      `${s2.name||''}`.trim(),
+      ``,
+      `Jobs (booked & delivered): ${conf.length}`,
+      `Billed: ${inr(billed)}`,
+      `Received: ${inr(paid)}`,
+      due > 0 ? `*Outstanding: ${inr(due)}*` : `Outstanding: nil — thank you`,
+    ];
+    const open = conf.filter(x=>Math.max(0,Number((x.totals||{}).balance)||0) > 0);
+    if(open.length){
+      lines.push('', 'Open items:');
+      open.forEach(x=>lines.push(`· ${x.quoteNo||'—'} — ${inr(Math.max(0,Number((x.totals||{}).balance)||0))}`));
+    }
+    openWa('https://wa.me/' + String(normPhoneFull(s2.phone)).replace(/\D/g,'')
+           + '?text=' + encodeURIComponent(lines.join('\n')));
+  }
+
   on('#studioList', 'click', e=>{
     if(e.target.closest('[data-retry]')){ loadStudios(); toast('Reconnecting…'); return; }
     if(e.target.closest('[data-stu-add]')){ openStu(null); return; }
@@ -5417,6 +5488,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        the wrong studio (a leak that predates the collapse). */
     if(_stuDetailId !== id){
       _stuJobOpen = null; _stuRateOpen = false;
+      /* The history tab and the shot list belong to the studio you were
+         looking at, not the next one. Carrying "Closed" across meant opening a
+         partner with live work on an empty tab that said nothing was
+         delivered — true, and completely the wrong thing to be told. */
+      _stuTab = 'open'; _stuEvOpen = false;
       const rl = $('#stuRateList'); if(rl) rl.innerHTML = '';
     }
     _stuListScrollY = (!$('#calView').hidden && !$('#studioListView').hidden) ? window.scrollY : 0;
@@ -5430,7 +5506,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
-    _stuDetailId = null; _stuJobOpen = null; _stuRateOpen = false;
+    _stuDetailId = null; _stuJobOpen = null; _stuRateOpen = false; _stuTab = 'open'; _stuEvOpen = false;
     closeCalAdd();   /* the quick-add form belongs to the studio page above it */
     syncFabs();
     const y = _stuListScrollY, token = ++_scrollToken;
@@ -5480,6 +5556,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       run += out;
       return { x, billed, got, out, run };
     });
+    /* Job history, split. Closed = delivered and filed; Open = still live. */
+    const closedJobs = jobs.filter(x=>(x.status||'draft') === 'delivered');
+    const openJobs   = jobs.filter(x=>(x.status||'draft') !== 'delivered');
+    const shownJobs  = _stuTab === 'closed' ? closedJobs : _stuTab === 'all' ? jobs : openJobs;
+
+    const totBilled = led.reduce((n,r)=>n + r.billed, 0);
+    const totPaid   = led.reduce((n,r)=>n + r.got, 0);
+
+    /* Every dated event across this studio's confirmed jobs, newest first —
+       what was actually shot for them, and whether anyone was on it. */
+    const shot = [];
+    conf.forEach(x=>{
+      (x.events||[]).forEach(ev=>{
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(ev.date||'')) return;
+        shot.push({ date: ev.date, title: ev.title||'Event', venue: ev.venue||'',
+                    quoteNo: x.quoteNo||'—', endClient: x.endClientName||'',
+                    crew: evCrew(x.id, ev.date, ev.title).length });
+      });
+    });
+    shot.sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+
     const rates = s.rateCard || {};
     /* unsaved typing keeps the card open through any snapshot re-render —
        collapsing is only ever something the owner did on purpose */
@@ -5507,27 +5604,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
       </div>
       <div class="sec">
-        <h3>📒 Ledger <span style="font-size:.7rem;color:var(--mut)">(booked &amp; delivered jobs)</span></h3>
-        ${led.length ? `
-          <div class="ledrow hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
-          ${led.map(r=>`
-          <div class="ledrow"><span class="l-ev">${esc(r.x.quoteNo||'—')} <span>· ${esc(((r.x.events||[])[0]||{}).title||'Job')}${r.x.endClientName ? ' · ' + esc(r.x.endClientName) : ''}</span></span><b title="${inr(r.billed)}">${inrShort(r.billed)}</b><b style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
-          <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>`
-        : '<div class="empty" style="padding:.5rem 0">No confirmed jobs yet — the ledger fills in as jobs are booked.</div>'}
-      </div>
-      <div class="sec">
         <h3>📦 Job history <span style="font-size:.7rem;color:var(--mut)">(${jobs.length})</span></h3>
-        ${jobs.length ? jobs.map(x=>{
+        <div class="fchips" id="stuTabs">${STU_TABS.map(([k,l])=>{
+          const cnt = k === 'all' ? jobs.length : k === 'closed' ? closedJobs.length : openJobs.length;
+          return `<button type="button" data-stutab="${k}" class="${_stuTab===k?'on':''}">${l}<b>${cnt}</b></button>`;
+        }).join('')}</div>
+        ${shownJobs.length ? shownJobs.map(x=>{
           const st = x.status||'draft';
           /* delivery only means anything once the job is confirmed */
           const di = CONFIRMED_ST.includes(st) ? deliveryInfo(x) : null;
-          const next = di ? di.steps.find(s=>!(s in di.done)) : '';
+          const next = di ? di.steps.find(s2=>!(s2 in di.done)) : '';
           const open = _stuJobOpen === x.id;
+          const bal = Math.max(0, Number((x.totals||{}).balance)||0);
           return `
           <div class="stujob ${open?'open':''}">
             <div class="up-ev" data-stujob="${x.id}" role="button" tabindex="0" aria-expanded="${open}">
               <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
               <span class="what">${esc(x.quoteNo||'—')} <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span>
+                ${bal > 0 ? `<em class="sjdue">${inr(bal)} due</em>` : ''}
                 ${di && di.total ? `<em class="sjd"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b><span class="sjn">${
                   next ? esc(next) : 'handed over ✓'}</span></em>` : ''}
               </span>
@@ -5538,7 +5632,40 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               : '<div class="empty" style="padding:.4rem 0">Delivery tracking starts once this job is booked.</div>'}
               <button class="btn btn--sm btn--ghost" type="button" data-stuopen="${x.id}">Open package</button></div>` : ''}
           </div>`;
-        }).join('') : '<div class="empty" style="padding:.5rem 0">No jobs yet — ＋ New job starts one with this studio\'s rates.</div>'}
+        }).join('') : `<div class="empty" style="padding:.5rem 0">${
+          _stuTab === 'closed' ? 'Nothing delivered for this studio yet.'
+          : _stuTab === 'open' ? 'No open jobs — everything for this studio is delivered.'
+          : 'No jobs yet — ＋ New job starts one with this studio\'s rates.'}</div>`}
+      </div>
+      <div class="sec">
+        <h3>📒 Ledger <span style="font-size:.7rem;color:var(--mut)">(booked &amp; delivered jobs)</span></h3>
+        ${led.length ? `
+          <!-- The ledger only ever showed what was still OWED. What the studio
+               has actually paid across the relationship is the other half of
+               the picture, and it was nowhere on this page. -->
+          <div class="stu-money">
+            <div class="stat"><b title="${inr(totBilled)}">${inrShort(totBilled)}</b><span>billed</span></div>
+            <div class="stat"><b style="color:var(--ok)" title="${inr(totPaid)}">${inrShort(totPaid)}</b><span>paid</span></div>
+            <div class="stat ${run>0?'warn':''}"><b title="${inr(run)}">${inrShort(run)}</b><span>outstanding</span></div>
+          </div>
+          <div class="ledrow hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
+          ${led.map(r=>`
+          <div class="ledrow"><span class="l-ev">${esc(r.x.quoteNo||'—')} <span>· ${esc(((r.x.events||[])[0]||{}).title||'Job')}${r.x.endClientName ? ' · ' + esc(r.x.endClientName) : ''}</span></span><b title="${inr(r.billed)}">${inrShort(r.billed)}</b><b style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
+          <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
+          <div class="ev-acts" style="margin-top:.7rem">
+            <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
+            ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>` : ''}
+          </div>
+          <h4 class="shotlist-h ${_stuEvOpen?'':'closed'}" data-stuevtog role="button" tabindex="0" aria-expanded="${_stuEvOpen}">
+            🎬 Every shoot for this studio <b>${shot.length}</b><span class="car">▾</span></h4>
+          ${_stuEvOpen ? (shot.length ? `<div class="shotlist">${shot.map(r=>`
+            <div class="shot-row">
+              <span class="when">${esc(stepDate(r.date)||r.date)}</span>
+              <span class="what">${esc(r.title)}<span>· ${esc(r.quoteNo)}${r.endClient ? ' · ' + esc(r.endClient) : ''}${r.venue ? ' · 📍 ' + esc(r.venue) : ''}</span></span>
+              <b class="${r.crew ? '' : 'neg'}">${r.crew} crew</b>
+            </div>`).join('')}</div>`
+            : '<div class="empty" style="padding:.4rem 0">No dated events on the confirmed jobs yet.</div>') : ''}`
+        : '<div class="empty" style="padding:.5rem 0">No confirmed jobs yet — the ledger fills in as jobs are booked.</div>'}
       </div>
       <div class="sec">
         <h3 class="rc-tog ${rateOpen?'':'closed'}" data-ratetog role="button" tabindex="0" aria-expanded="${rateOpen}">💱 Rate card

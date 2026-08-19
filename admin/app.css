@@ -1152,3 +1152,37 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 #leadList .card__body h4{font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-lg);margin:.5rem 0 .3rem}
 #leadList .card__body .btn{margin-top:var(--sp-2)}
 #leadList .card__body textarea.input{margin-top:.3rem}
+
+/* ============================================================ STUDIO LEDGER
+   The three figures that answer "how does this partner stand with us" —
+   billed, paid, outstanding — above the per-job rows that explain them.
+   ========================================================================= */
+.stu-money{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);margin:0 0 .8rem}
+.stu-money .stat{margin:0}
+
+/* the shot list: every dated event across this studio's confirmed jobs */
+.shotlist-h{
+  display:flex;align-items:center;gap:.5rem;cursor:pointer;user-select:none;-webkit-user-select:none;
+  margin:1rem 0 .4rem;min-height:var(--tap);color:var(--gold-b);font-size:var(--fs-lg);
+}
+.shotlist-h b{color:var(--text);font-weight:600;font-size:var(--fs-sm)}
+.shotlist-h .car{margin-left:auto;color:var(--gold-b);font-size:var(--fs-xs);transition:transform .15s}
+.shotlist-h.closed .car{transform:rotate(-90deg)}
+.shot-row{
+  display:flex;align-items:center;gap:.6rem;min-height:var(--tap);
+  padding:.4rem 0;border-bottom:1px dashed var(--line);font-size:var(--fs-md);
+}
+.shot-row:last-child{border-bottom:0}
+.shot-row .when{flex:0 0 auto;min-width:58px;color:var(--gold-b);font-family:var(--serif);font-size:var(--fs-base)}
+.shot-row .what{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.shot-row .what span{color:var(--mut);font-size:var(--fs-sm)}
+.shot-row b{flex:0 0 auto;font-size:var(--fs-sm);color:var(--mut);font-weight:600;white-space:nowrap}
+/* a shoot that went out with nobody recorded on it is worth seeing at a glance */
+.shot-row b.neg{color:var(--state-overdue)}
+
+/* money still owed on a job, in its history row */
+.sjdue{
+  display:inline-block;margin-left:.4rem;font-style:normal;font-size:var(--fs-xs);
+  color:var(--state-overdue);border:1px solid var(--state-overdue-ln);
+  background:var(--state-overdue-bg);border-radius:var(--r-pill);padding:.1em .55em;white-space:nowrap;
+}
