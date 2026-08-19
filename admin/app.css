@@ -306,7 +306,27 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 /* empty states */
 
 /* tappable stat tiles */
-.stat[data-goto]{cursor:pointer;transition:border-color .2s}
+.stat[data-goto],.stat[data-tstat]{cursor:pointer;transition:border-color .2s}
+/* the strip is <button>s now, not <div>s — strip the UA chrome back to how the
+   tiles looked as divs, then let the shared rules take over */
+.stat[data-tstat]{font-family:var(--sans);text-align:center;-webkit-appearance:none;appearance:none}
+.stat[data-tstat].sel{border-color:var(--gold);background:var(--gold-t2)}
+@media(hover:hover){ .stat[data-tstat]:hover{border-color:var(--gold)} }
+.stat[data-tstat]:active{transform:scale(.97)}
+
+/* Says what the list is currently hiding. A narrowed list that does not admit
+   it is how "no events" gets mistaken for "nothing on". */
+.workfilter{
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:nowrap;
+  margin:.1rem 0 .6rem;padding:.45rem .6rem;
+  background:var(--gold-t1);border:1px solid var(--line);border-left:3px solid var(--gold);
+  border-radius:var(--r-md);font-size:var(--fs-md);color:var(--mut);line-height:1.35;
+}
+.workfilter b{color:var(--gold-b);font-weight:600}
+/* the TEXT wraps, never the button: letting it wrap dropped "Show all" onto a
+   third line and made a one-line notice 200px tall */
+.workfilter > span{flex:1;min-width:0}
+.workfilter .btn{flex:0 0 auto;margin-left:auto}
 .stat.sel{border-color:var(--gold);background:var(--gold-t3)}
 @media(hover:hover){ .stat[data-goto]:hover{border-color:var(--gold)} }
 
