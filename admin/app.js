@@ -3154,16 +3154,42 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                           stepDate(c.date) || c.date].filter(Boolean).join(' · ');
 
   /* booked-package events from today onward, soonest first */
-  function teamUpcoming(){
+  /* Every booked event, split by when it is. The Work section used to show one
+     undifferentiated "upcoming" list, so a shoot happening in four hours sat
+     in the same run as one in March, and anything already shot vanished from
+     the section entirely — with no way to check whether its crew had been
+     signed off or paid.
+
+     'past' also counts DELIVERED packages: a delivered job's events definitely
+     happened, and they are exactly the ones with pay still to settle. The
+     forward-looking periods stay booked-only, because a delivered package is
+     not work you still have to crew. */
+  function teamEventsIn(period){
     const today = todayISO();
+    const wantPast = period === 'past';
     const rows = [];
-    livePkgs().filter(x=>(x.status||'draft')==='booked').forEach(pk=>{
+    livePkgs().filter(x=>{
+      const st = x.status||'draft';
+      return st === 'booked' || (wantPast && st === 'delivered');
+    }).forEach(pk=>{
       (pk.events||[]).forEach((ev,idx)=>{
-        if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||'') && ev.date >= today) rows.push({ pk, ev, idx });
+        const d = ev.date||'';
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+        if(period === 'today'    && d !== today) return;
+        if(period === 'up'       && !(d >  today)) return;
+        if(period === 'past'     && !(d <  today)) return;
+        if(period === 'upcoming' && !(d >= today)) return;
+        rows.push({ pk, ev, idx });
       });
     });
-    return rows.sort((a,b)=>a.ev.date<b.ev.date?-1:a.ev.date>b.ev.date?1:0);
+    /* soonest first everywhere except Done, which reads newest first — the
+       shoot you just finished is the one you are chasing sign-off on */
+    return rows.sort((a,b)=>{
+      const c = a.ev.date < b.ev.date ? -1 : a.ev.date > b.ev.date ? 1 : 0;
+      return wantPast ? -c : c;
+    });
   }
+  const teamUpcoming = () => teamEventsIn('upcoming');
   /* crew whose stored date matches this exact event */
   /* Two functions of the same package on ONE date (e.g. Nikah morning +
      Reception evening) used to show each other's crew, because a match on
@@ -3256,10 +3282,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderTeamEvents(){
     const el = $('#teamEvents'); if(!el) return;
     if(_asgsErr){ el.innerHTML = errBox(_asgsErr, 'team'); return; }
-    const all = teamUpcoming();
+    const period = _teamTab === 'edit' ? 'up' : _teamTab;
+    const all = teamEventsIn(period);
     if(!all.length){
+      const EMPTY = {
+        today: 'Nothing shooting today. <span style="color:var(--mut)">Enjoy it.</span>',
+        up:    'No upcoming booked events. Events appear here once a package is <b style="color:var(--ok)">booked</b> and its dates are set.',
+        past:  'No past events yet — shoots move here the day after they happen.'
+      };
       el.innerHTML = (_pkgsLoaded && _asgsLoaded)
-        ? '<div class="empty" style="padding:.4rem 0">No upcoming booked events. Events appear here once a package is <b style="color:var(--ok)">booked</b> and its dates are set.</div>'
+        ? `<div class="empty" style="padding:.4rem 0">${EMPTY[period] || EMPTY.up}</div>`
         : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
@@ -3289,7 +3321,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          decide which row gets crewed next */
       const unconf = crew.filter(a=>a.status !== 'acknowledged').length;
       const days = Math.round((new Date(ev.date+'T00:00') - new Date(today+'T00:00'))/864e5);
-      const away = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
+      /* the Done tab shows dates in the past, where "in -40d" is nonsense */
+      const away = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days === -1 ? 'yesterday'
+                 : days > 0 ? `in ${days}d` : `${-days}d ago`;
       const fill = needTotal ? Math.min(100, Math.round(100*crew.length/needTotal)) : (crew.length ? 100 : 0);
       /* Role-aware, not headcount: three photographers on a job that wants two
          photographers and a cinematographer used to read as fully crewed. */
@@ -3316,7 +3350,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                actually crewed. */
             : (crew.length && state === 'full' ? '<em class="ok">all confirmed</em>' : '')}
         </div>
-        ${needTotal ? (gapTxt
+        ${period === 'past'
+          /* "Still needs 2× Photography" on a shoot that already happened is
+             noise — nobody is crewing it now. What is actually open on a past
+             event is sign-off and money, so say that instead. */
+          ? (()=>{
+              const signed = crew.filter(a=>a.workDone).length;
+              const owed = crew.reduce((n,a)=>n + payDue(a), 0);
+              /* A shoot that already happened with NOBODY on it is the worst
+                 case on this tab, and it was the one saying nothing: somebody
+                 covered it and no assignment was ever recorded, so no one is
+                 getting paid for it. */
+              if(!crew.length) return '<div class="tm-need">No crew was ever recorded on this shoot <b class="miss">— nobody can be paid for it</b></div>';
+              const bits = [`<b class="${signed===crew.length?'ok2':'miss'}">${signed}/${crew.length}</b> signed off`];
+              bits.push(owed > 0 ? `<b class="miss">${inr(owed)}</b> still to pay` : '<b class="ok2">paid up ✓</b>');
+              return `<div class="tm-need">${bits.join(' · ')}</div>`;
+            })()
+          : needTotal ? (gapTxt
             ? `<div class="tm-need" title="This event needs ${esc(needTxt)}">Still needs <b class="miss">${esc(gapTxt)}</b></div>`
             : `<div class="tm-need" title="This event needs ${esc(needTxt)}">Fully crewed <b class="ok2">✓</b></div>`)
           : ''}
@@ -3550,28 +3600,58 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Upcoming events and Editing are two different jobs — one is staffing a
      day, the other is chasing a deadline — so they are two tabs rather than
      two stacked sections you scroll past. */
-  const WORK_TABS = [['up','📅 Upcoming'],['edit','✂️ Editing']];
-  let _teamTab = 'up';
+  /* Today first, because that is the question the Work section exists to
+     answer when the owner opens it at 8am. Then what is coming, then what is
+     already shot and still needs signing off or paying, then post-production. */
+  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Editing']];
+  let _teamTab = viewGet('workTab','today');
   function renderWorkTabs(){
     const el = $('#workTabs'); if(!el) return;
     const today = todayISO();
-    const n = { up: teamUpcoming().length,
-                edit: ASGS.filter(a=>a.kind === 'edit' && !a.workDone).length };
+    const n = { today: teamEventsIn('today').length,
+                up:    teamEventsIn('up').length,
+                past:  teamEventsIn('past').length,
+                edit:  ASGS.filter(a=>a.kind === 'edit' && !a.workDone).length };
     const late = ASGS.filter(a=>a.kind === 'edit' && !a.workDone && (a.dueDate||'') && a.dueDate < today).length;
+    /* a shoot TODAY that is still short of crew is the one thing on this page
+       worth shouting about */
+    const shortToday = teamEventsIn('today').some(({pk,ev})=>{
+      const need = neededRoles(ev);
+      if(!Object.keys(need).length) return false;
+      const have = {};
+      evCrew(pk.id, ev.date, ev.title).forEach(a=>{
+        const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0)+1;
+      });
+      return Object.entries(need).some(([r,q])=>q - (have[r]||0) > 0);
+    });
     el.innerHTML = WORK_TABS.map(([k,l])=>
-      `<button type="button" data-wtab="${k}" class="${_teamTab===k?'on':''}">${l}<b class="${k==='edit'&&late?'late':''}">${n[k]}</b></button>`).join('');
-    $('#workUp').hidden = _teamTab !== 'up';
+      `<button type="button" data-wtab="${k}" class="${_teamTab===k?'on':''}">${l}<b class="${
+        (k==='edit'&&late) || (k==='today'&&shortToday) ? 'late' : ''}">${n[k]}</b></button>`).join('');
+    $('#workUp').hidden = _teamTab === 'edit';
     $('#workEd').hidden = _teamTab !== 'edit';
+    /* the hint has to follow the tab: "Tap ＋ Assign" is the wrong advice on a
+       shoot that finished six weeks ago */
+    const hint = $('#workHint');
+    if(hint) hint.innerHTML = _teamTab === 'past'
+      ? 'Already shot. What is left here is sign-off and money — tap a name to record a payment, or <b style="color:var(--gold-b)">＋ Assign</b> if someone worked it and was never added.'
+      : 'Tap <b style="color:var(--gold-b)">＋ Assign</b> to put someone on an event; tap a name to edit or remove.';
   }
   on('#workTabs', 'click', e=>{
     const b = e.target.closest('[data-wtab]'); if(!b || b.dataset.wtab === _teamTab) return;
-    _teamTab = b.dataset.wtab;
-    renderWorkTabs();
+    _teamTab = b.dataset.wtab; viewSet('workTab', _teamTab);
+    renderWorkTabs(); renderTeamEvents();
+  });
+  wireSwipe($('#paySec'), {
+    keys: ()=>PAY_TABS.map(([k])=>k),
+    cur:  ()=>_payTab,
+    go:   k=>{ _payTab = k; viewSet('payTab', k); renderPayTabs(); renderTeamPay(); },
+    skip: t=>!!(t && t.closest && t.closest('#payTabs')),
+    box:  ()=>$('#teamPay'),
   });
   wireSwipe($('#workSec'), {
     keys: ()=>WORK_TABS.map(([k])=>k),
     cur:  ()=>_teamTab,
-    go:   k=>{ _teamTab = k; renderWorkTabs(); },
+    go:   k=>{ _teamTab = k; viewSet('workTab', k); renderWorkTabs(); renderTeamEvents(); },
     skip: t=>!!(t && t.closest && t.closest('#workTabs')),
     box:  ()=>$('#workBody'),
   });
@@ -3761,6 +3841,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   let _payOpen = new Set();
+  /* Outdoor first: shooters are usually paid on the day or within a week of
+     it, and they are the ones who ask. Office (editors, album designers) runs
+     on a slower cycle. Settled is everyone square — kept reachable so a paid
+     member can still be checked, but out of the way of the ones owed money. */
+  const PAY_TABS = [['outdoor','🎥 Outdoor'],['office','🏢 Office'],['settled','✓ Settled']];
+  let _payTab = viewGet('payTab','outdoor');
+  function payGroups(){
+    const byMember = {};
+    ASGS.forEach(a=>{ (byMember[a.memberId] = byMember[a.memberId]||[]).push(a); });
+    const g = { outdoor:[], office:[], settled:[] };
+    Object.entries(byMember).forEach(([mid, list])=>{
+      const due = list.reduce((n,a)=>n + payDue(a), 0);
+      const m = memberById(mid);
+      /* a member deleted from the roster still has pay history — treat them as
+         outdoor rather than dropping them off the page entirely */
+      g[due > 0 ? (m ? catOf(m) : 'outdoor') : 'settled'].push([mid, list]);
+    });
+    /* biggest debt first inside each tab; settled alphabetically */
+    const dueOf = e => e[1].reduce((n,a)=>n + payDue(a), 0);
+    g.outdoor.sort((a,b)=>dueOf(b)-dueOf(a));
+    g.office.sort((a,b)=>dueOf(b)-dueOf(a));
+    g.settled.sort((a,b)=>String((memberById(a[0])||{}).name||'').localeCompare(String((memberById(b[0])||{}).name||'')));
+    return g;
+  }
+  function renderPayTabs(){
+    const el = $('#payTabs'); if(!el) return;
+    const g = payGroups();
+    const dueOf = k => g[k].reduce((n,e)=>n + e[1].reduce((m,a)=>m + payDue(a), 0), 0);
+    el.innerHTML = PAY_TABS.map(([k,l])=>{
+      /* the badge is the MONEY for the two owing tabs and a headcount for
+         settled — "3" tells you nothing useful when the question is how much */
+      const badge = k === 'settled' ? String(g.settled.length) : (dueOf(k) ? inrShort(dueOf(k)) : '0');
+      return `<button type="button" data-ptab="${k}" class="${_payTab===k?'on':''}">${l}<b class="${
+        k!=='settled' && dueOf(k) ? 'late' : ''}">${badge}</b></button>`;
+    }).join('');
+  }
+  on('#payTabs', 'click', e=>{
+    const b = e.target.closest('[data-ptab]'); if(!b || b.dataset.ptab === _payTab) return;
+    _payTab = b.dataset.ptab; viewSet('payTab', _payTab);
+    renderPayTabs(); renderTeamPay();
+  });
+
   function renderTeamPay(){
     const el = $('#teamPay'); if(!el) return;
     if(!ASGS.length){
@@ -3769,8 +3891,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : '<div class="skeleton"></div>';
       return;
     }
-    const byMember = {};
-    ASGS.forEach(a=>{ (byMember[a.memberId] = byMember[a.memberId]||[]).push(a); });
+    const groups = payGroups();
+    const picked = groups[_payTab] || [];
+    if(!picked.length){
+      const EMPTY = {
+        outdoor: 'No outdoor crew owed anything right now.',
+        office:  'No office work owed anything right now.',
+        settled: 'Nobody is fully settled yet.'
+      };
+      el.innerHTML = `<div class="empty" style="padding:.4rem 0">${EMPTY[_payTab]}</div>`;
+      return;
+    }
+    const byMember = Object.fromEntries(picked);
     /* the ✓/○ prefixes only explained themselves in title tooltips, which a
        touch screen never shows — one visible line instead */
     el.innerHTML = '<p class="sub" style="margin:0 0 .5rem">✓ marked completed by the member · ○ shot done, not marked yet</p>'
@@ -3876,6 +4008,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderLeaderboard();
     renderSquadCats();
     renderTeamMembers();
+    renderPayTabs();
     renderTeamPay();
     /* badges so an unseen request or an unpaid crew member is never hidden
        behind a section the owner is not looking at */

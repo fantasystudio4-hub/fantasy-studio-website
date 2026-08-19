@@ -313,7 +313,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="fchips" id="workTabs"></div>
       <div id="workBody">
         <div id="workUp">
-          <p class="sub">Tap <b style="color:var(--gold-b)">＋ Assign</b> to put someone on an event; tap a name to edit or remove.</p>
+          <p class="sub" id="workHint"></p>
           <div id="teamEvents"></div>
         </div>
         <div id="workEd" hidden>
@@ -344,7 +344,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     </div>
     <div class="sec" id="paySec">
       <h3>💰 Pay tracker</h3>
-      <p class="sub">Every assignment with its pay, per member. Tap a name to open it, then record what you pay as you settle up.</p>
+      <p class="sub">Who is owed what, per member. Tap a name to open their shoots, then record what you pay as you settle up.</p>
+      <!-- Outdoor and Office are paid on different rhythms — crew on the day or
+           soon after, editors and album designers on a cycle — so they are
+           separate tabs rather than one mixed list. Settled is everyone with
+           nothing outstanding, kept out of the way but not hidden. -->
+      <div class="fchips" id="payTabs"></div>
       <div id="teamPay"></div>
     </div>
   </div>
