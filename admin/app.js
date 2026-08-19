@@ -2117,7 +2117,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        quote number off its own line. */
     const amt = _paid > 0
       ? (_bal > 0
-          ? `<span class="card__amt" title="Balance due ${inr(_bal)} of ${inr(_fin)} total"><em class="duelbl">DUE</em>${inrShort(_bal)}<em>/${inrShort(_fin)}</em></span>`
+          ? `<span class="card__amt" title="Balance due ${inr(_bal)} of ${inr(_fin)} total"><em class="duelbl">DUE</em>${inrShort(_bal)}<em class="oftot">/${inrShort(_fin)}</em></span>`
           : `<span class="card__amt" title="${inr(_fin)} — paid in full">${inrShort(_fin)}<em class="paidlbl">PAID</em></span>`)
       : `<span class="card__amt" title="${inr(_fin)}">${inrShort(_fin)}</span>`;
     const nd = st === 'booked' ? nextShootDate(x) : '';
@@ -2145,11 +2145,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           </span>
           <span class="l2">
             <span class="card__meta">${[
-              x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
-              isStudioJob(x) && x.endClientName ? `for ${esc(x.endClientName)}` : '',
-              `${evn} event${evn===1?'':'s'}`,
+              /* Ordered by what goes stale, because the tail is what a narrow
+                 screen clips: when the shoot is, then which quote it is, then
+                 its size, and the end client last. A B2B row with a long
+                 end-client name used to push the DATE off the card. */
               nd ? `📅 ${stepDate(nd)}` : '',
-              sentDays != null && sentDays >= 0 ? `📤 ${sentDays}d` : ''
+              sentDays != null && sentDays >= 0 ? `📤 ${sentDays}d` : '',
+              x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
+              `${evn} event${evn===1?'':'s'}`,
+              isStudioJob(x) && x.endClientName ? `for ${esc(x.endClientName)}` : ''
             ].filter(Boolean).join(' · ')}</span>
             ${amt}
           </span>

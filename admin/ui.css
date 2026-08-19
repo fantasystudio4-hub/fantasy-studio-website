@@ -257,7 +257,16 @@ button.chip-status:active{transform:scale(.97)}
 }
 /* the right rail: money above, status below, both hugging the edge */
 .card__side{flex:0 0 auto;display:flex;align-items:center}
-.card__title{font-family:var(--serif);font-size:1.02rem;color:var(--white);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Part 1 said the name never truncates. On one line that is not achievable:
+   "Lakshmi Priyanka & Venkata Subrahmanyam" wants 351px and gets 230 at 390px,
+   so a third of it vanished — and two clients sharing a first name became
+   indistinguishable. It gets a second line when it needs one; short names are
+   unaffected because the box only grows to fit. */
+.card__title{
+  font-family:var(--serif);font-size:1.02rem;color:var(--white);min-width:0;
+  overflow:hidden;white-space:normal;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
 /* the line that is allowed to give way: it truncates from the tail, and the
    meta string is built shoot-date-first so the tail is the throwaway part */
 .card__meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

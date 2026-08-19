@@ -803,7 +803,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .uh-row .dot{flex:0 0 auto}
 .uh-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:.05rem}
 .uh-mid b{font-family:var(--serif);color:var(--white);font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.uh-mid span{font-size:.72rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* "FS-2026-041 · Vikram Rao · 📍 Taj Krishna, Banjara Hills" wanted 274px and
+   got 146 — the venue, which is the one thing you need on the way there, was
+   the part that fell off. Two lines. */
+.uh-mid span{font-size:.72rem;color:var(--mut);white-space:normal;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .uh-row .chev2{color:var(--mut);font-size:1.1rem;flex:0 0 auto}
 .un-when{flex:0 0 auto;text-align:center;background:var(--field);border:1px solid var(--line);border-radius:var(--r-md);padding:.3rem .55rem;min-width:52px}
 .un-when b{display:block;font-family:var(--serif);font-size:1.35rem;color:var(--gold-b);line-height:1.1}
@@ -1083,6 +1087,16 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    for: the delivery progress bar. */
 #pkgList .card__toggle .l2 .card__amt,#homeBooked .card__toggle .l2 .card__amt{margin-left:auto}
 #pkgList .card__meta b.qno,#homeBooked .card__meta b.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em}
+/* The meta needed ~200px and was getting ~110, because "DUE ₹1.1L/₹3.1L" took
+   half the row — so the next shoot date, the one thing worth knowing on the
+   way to a venue, was the part that fell off. Two fixes, together: the meta
+   may take a second line, and the package TOTAL stands down on a narrow
+   screen. What is still owed is the actionable number; the total is context,
+   and it is one tap away inside the card (and in the title attribute). */
+#pkgList .card__meta,#homeBooked .card__meta{
+  white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+@media(max-width:480px){ .card__amt .oftot{display:none} }
 #pkgList .dl3,#homeBooked .dl3{grid-column:1}
 /* the status chip is the widest thing in the right rail — give it a floor so
    "new" and "delivered" do not make two different card widths */
