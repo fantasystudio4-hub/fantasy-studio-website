@@ -214,6 +214,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
   catch(e){ db = initializeFirestore(app, {}); }
 
+  /* ---------------------------------------------------------------- demo mode
+     Fills the panel with invented records so its screens can be worked on
+     without signing in to the real account. Two locks, both of which must
+     hold: the page must be served from localhost, AND ?demo must be in the
+     URL. On fantasystudio.in the first can never be true, and _demo-data.js is
+     excluded from the deploy bundle, so the import below has nothing to fetch
+     even if it somehow ran. It never writes — nothing here touches Firestore. */
+  const DEMO = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+            && new URLSearchParams(location.search).has('demo');
+
   /* Resolves 'ok' on server ack, 'queued' if still pending after 2.5s (offline),
      'denied' if the server actually refused it.
      The old version swallowed the rejection with p.catch(()=>{}) and then let
@@ -300,6 +310,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   onAuthStateChanged(auth, async user=>{
+    if(DEMO) return;   /* the fixtures own the view; a real session would overwrite them */
     if(!user && _leadsUnsub){ try{ _leadsUnsub(); }catch(e){} _leadsUnsub = null; _leadsInit = false; }
     if(!user && _pkgsUnsub){ try{ _pkgsUnsub(); }catch(e){} _pkgsUnsub = null; }
     if(!user && _teamUnsub){ try{ _teamUnsub(); }catch(e){} _teamUnsub = null; }
@@ -7049,4 +7060,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(editingId){ const ex = PKGS.find(p=>p.id===editingId); if(ex && ex.quoteNo) d.quoteNo = ex.quoteNo; }
     await makePdf(d);
   });
+
+  /* Last thing in the module on purpose: PKGS, TEAM, STUDIOS and the rest are
+     `let`s declared throughout the body above, so anything reaching for them
+     earlier would hit the temporal dead zone. */
+  if(DEMO){
+    (async ()=>{
+      try{
+        const d = await import('./_demo-data.js');
+        LEADS   = d.leads.slice();
+        PKGS    = d.packages.slice();
+        TEAM    = d.team.slice();
+        ASGS    = d.assignments.slice();
+        STUDIOS = d.studios.slice();
+        EXPS    = d.expenses.slice();
+        REQS    = [];
+        CFG     = d.config;
+        /* every "have we heard from the server yet" flag, or the panel paints
+           skeletons and "nothing yet" over perfectly good fixtures */
+        _leadsLoaded = _pkgsLoaded = _teamLoaded = _asgsLoaded = true;
+        _studiosLoaded = _expsLoaded = true;
+        _leadsFresh = _pkgsFresh = _asgsFresh = true;
+
+        $('#loginView').hidden = true;
+        $('#appView').hidden = false;
+        $('#hdr').hidden = false;
+        syncHdrH();
+        showTab('tabHome');
+
+        renderStats(); renderLeads();
+        renderPkgList();            /* cascades into Home, Trash, Team and B2B */
+        renderCalendar();
+        toast('Demo data — nothing here is real, and nothing is saved');
+      }catch(err){
+        console.error('[demo] fixtures failed to load', err);
+      }
+    })();
+  }
 }

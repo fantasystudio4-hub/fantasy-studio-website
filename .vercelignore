@@ -43,6 +43,12 @@ _cptest.html
 *.test.html
 **/*.test.html
 
+# Demo fixtures. admin/_demo-data.js is invented data used to work on the panel
+# without signing in. app.js only imports it on localhost with ?demo, but it is
+# excluded here as well so the file does not exist in production to be fetched.
+_demo-data.js
+**/_demo-data.js
+
 # NOTE: firebase-config.js is intentionally NOT excluded — the site needs it at
 # runtime, and a Firebase web config is public by design (it is not a secret;
 # the security boundary is firestore.rules, deployed in the Firebase console).
