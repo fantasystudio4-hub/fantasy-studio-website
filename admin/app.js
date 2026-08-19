@@ -2286,7 +2286,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('#pkgEmptyNew')){ openJobType(); return; }
     const gh = e.target.closest('[data-grp]');
     if(gh){ togglePkgGrp(gh.dataset.grp); return; }
-    const card = e.target.closest('.lead'); if(!card) return;
+    /* Package cards became .card in the component migration; this still looked
+       for .lead and so returned on the very first line. That killed EVERY
+       action on a booking — expand, status, Edit, PDF, Send, + Payment, Call,
+       WhatsApp, Delete and the delivery tracker — on both the Packages tab and
+       Home's Bookings box. Only .card here: pkgCardAction is bound to #pkgList
+       and #homeBooked, and neither ever holds a lead card. */
+    const card = e.target.closest('.card'); if(!card) return;
     const id = card.dataset.id;
     const inHome = !!card.closest('#homeBooked');
     if(e.target.closest('[data-expand]')){

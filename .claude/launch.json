@@ -4,8 +4,22 @@
     {
       "name": "Fantasy Studio (static site)",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8000"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8000"
+      ],
       "port": 8000
+    },
+    {
+      "name": "Verify (port 8011)",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8011"
+      ],
+      "port": 8011
     }
   ]
 }
