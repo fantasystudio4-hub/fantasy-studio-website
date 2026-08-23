@@ -210,84 +210,86 @@ img{max-width:100%;display:block}
 .sec-body{padding:1.15rem 1.25rem}
 
 /* ============================================================
-   STEP 1 — READY-MADE PACKAGES
+   STEP 1 — PACKAGES (a list, not a card carousel)
    ============================================================ */
-.deals{display:flex;gap:.9rem;overflow-x:auto;padding:.15rem .15rem 1rem;scroll-snap-type:x proximity;scrollbar-width:thin}
-.deals::-webkit-scrollbar{height:7px}
-.deals::-webkit-scrollbar-thumb{background:var(--gold-bright);border-radius:6px}
+.deals{display:flex;flex-direction:column;gap:.5rem}
 .deal{
-  flex:0 0 246px;scroll-snap-align:start;display:flex;flex-direction:column;text-align:left;
-  border:1px solid var(--line);border-radius:12px;background:#fff;padding:1rem;
-  position:relative;transition:.28s cubic-bezier(.2,.7,.3,1);
+  display:flex;align-items:center;gap:.9rem;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--line);border-radius:11px;background:#fff;padding:.85rem .95rem;
+  font-family:var(--sans);transition:.22s;
 }
-.deal:hover{border-color:var(--gold-soft);box-shadow:0 12px 26px rgba(184,144,43,.16);transform:translateY(-3px)}
-.deal.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(184,144,43,.28)}
-.deal .pk-tag{position:absolute;top:-9px;left:12px;background:var(--ink);color:var(--gold-bright);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.3em .75em;border-radius:20px}
-.deal h3{font-size:1.15rem;color:var(--ink);margin-bottom:.25rem}
-.deal .pk-desc{font-size:.77rem;color:var(--ink-soft);line-height:1.45}
-.deal .pk-inc{display:flex;flex-wrap:wrap;gap:.3rem;margin:.7rem 0 .2rem}
-.deal .pk-inc span{font-size:.66rem;background:var(--cream);border:1px solid var(--line);border-radius:20px;padding:.22em .6em;color:var(--ink-soft)}
-.deal .pk-price{margin-top:auto;padding-top:.8rem;display:flex;align-items:baseline;gap:.4rem}
-.deal .pk-price b{font-family:var(--serif);font-size:1.42rem;color:var(--gold-deep)}
-.deal .pk-price s{font-size:.72rem;color:#8d846c}
-.deal .pk-add{
-  margin-top:.7rem;width:100%;cursor:pointer;border:0;border-radius:40px;padding:.72em 1em;
-  background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#fff;
-  font-family:var(--sans);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;transition:.25s;
+.deal:hover{border-color:var(--gold-soft);box-shadow:0 6px 16px rgba(184,144,43,.14)}
+.deal.active{border-color:var(--gold);background:linear-gradient(180deg,#FFFCF3,#FBF4E1);box-shadow:0 0 0 1px rgba(184,144,43,.35)}
+.deal .dl{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem}
+.deal .dl b{font-family:var(--serif);font-size:1.08rem;color:var(--ink);display:flex;align-items:center;gap:.5rem}
+.deal .pk-tag{
+  font-family:var(--sans);font-style:normal;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--ink);color:var(--gold-bright);padding:.25em .6em;border-radius:20px;flex:0 0 auto;
 }
-.deal .pk-add:hover{filter:brightness(1.08)}
-.deal.active .pk-add{background:var(--ink);color:var(--gold-bright)}
-.deal-foot{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between}
+.deal .dn{font-size:.76rem;color:#7d7461;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deal .dr{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}
+.deal .dr b{font-family:var(--serif);font-size:1.15rem;color:var(--gold-deep)}
+.deal .dpick{
+  font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-deep);
+  border:1px solid var(--gold);border-radius:30px;padding:.3em .8em;white-space:nowrap;
+}
+.deal.active .dpick{background:var(--gold);border-color:var(--gold);color:#fff}
+.deal-foot{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between;margin-top:.8rem}
 .linkish{background:none;border:0;cursor:pointer;font-family:var(--sans);font-size:.8rem;color:var(--gold-deep);text-decoration:underline;text-underline-offset:3px;padding:.4em .1em}
 .linkish:hover{color:var(--ink)}
 
 /* ============================================================
-   STEP 2 — EVENTS
+   STEP 2 — FUNCTIONS
    ============================================================ */
 .ev-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
+#eventsList:not(:empty){margin-top:1.1rem;padding-top:1.1rem;border-top:1px dashed var(--line)}
 .ev-tile{
   display:flex;align-items:center;gap:.65rem;text-align:left;cursor:pointer;
   border:1px solid var(--line);border-radius:11px;background:var(--cream);padding:.75rem .8rem;
-  font-family:var(--sans);transition:.24s;position:relative;
+  font-family:var(--sans);transition:.22s;position:relative;
 }
-.ev-tile:hover{border-color:var(--gold);background:#FBF4E1;transform:translateY(-2px)}
+.ev-tile:hover{border-color:var(--gold);background:#FBF4E1}
 .ev-tile:active{transform:scale(.985)}
-.ev-tile svg{width:26px;height:26px;flex:0 0 auto;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.ev-tile .tn{display:block;font-size:.88rem;color:var(--ink);line-height:1.2}
-.ev-tile .tt{display:block;font-size:.68rem;color:#7d7461;margin-top:2px}
-.ev-tile .added{position:absolute;top:6px;right:8px;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ok)}
+.ev-tile.added{border-color:var(--gold);background:linear-gradient(180deg,#FFFCF3,#FBF4E1)}
+.ev-tile svg{width:24px;height:24px;flex:0 0 auto;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.ev-tile .tn{display:block;font-size:.87rem;color:var(--ink);line-height:1.2}
+.ev-tile .tt{display:block;font-size:.67rem;color:#7d7461;margin-top:2px}
+.ev-tile .tick{position:absolute;top:7px;right:9px;color:var(--ok);font-size:.85rem;font-weight:600}
 
-/* an added function */
-.ev-panel{border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;background:var(--cream);margin-bottom:1rem;overflow:hidden}
-.ev-head{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem;padding:.85rem .95rem;background:#fff;border-bottom:1px solid var(--line)}
-.ev-head .ei{width:28px;height:28px;flex:0 0 auto;border-radius:50%;background:rgba(184,144,43,.14);color:var(--gold-deep);display:grid;place-items:center;font-family:var(--serif);font-size:.85rem}
-.ev-head .ename{flex:1 1 150px;min-width:0}
-.ev-head select{
-  width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);
-  font-family:var(--serif);font-size:1.02rem;padding:.4em .6em;cursor:pointer;transition:.2s;
+/* a function: one bar, opened one at a time */
+.ev-panel{border:1px solid var(--line);border-radius:11px;background:#fff;margin-bottom:.55rem;overflow:hidden;transition:.2s}
+.ev-panel.open{border-color:var(--gold);box-shadow:0 6px 20px rgba(184,144,43,.14)}
+.ev-bar{
+  display:flex;align-items:center;gap:.75rem;width:100%;cursor:pointer;text-align:left;
+  background:none;border:0;padding:.8rem .9rem;font-family:var(--sans);transition:.2s;
 }
-.ev-head select:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(184,144,43,.12)}
-.ev-head .edate{flex:0 1 172px;min-width:150px}
-.ev-head input[type=date]{
-  width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);
-  font-family:var(--sans);font-size:.9rem;padding:.5em .6em;color-scheme:light;transition:.2s;
+.ev-bar:hover{background:#FBF6EA}
+.ev-panel.open .ev-bar{background:linear-gradient(180deg,#FFFCF3,#FBF4E1);border-bottom:1px solid var(--line)}
+.ev-ic{
+  width:36px;height:36px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
+  background:rgba(184,144,43,.12);border:1px solid rgba(184,144,43,.25);
 }
-.ev-head input[type=date]:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(184,144,43,.12)}
-.ev-head input.date-dup{border-color:#e0a63a;box-shadow:0 0 0 2px rgba(224,166,58,.22)}
-.ev-head .etot{font-family:var(--serif);font-weight:600;font-size:1.05rem;color:var(--gold-deep);margin-left:auto;white-space:nowrap}
-.ev-remove{background:#fdeeea;border:1px solid #eac6bf;color:#b04030;border-radius:8px;width:38px;height:38px;flex:0 0 auto;cursor:pointer;font-size:1.15rem;line-height:1;transition:.22s}
-.ev-remove:hover{background:#b04030;border-color:#b04030;color:#fff}
-.ev-body{padding:.9rem .95rem 1rem}
+.ev-ic svg{width:20px;height:20px;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.ev-name{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.ev-name b{font-family:var(--serif);font-size:1.05rem;color:var(--ink)}
+.ev-name span{font-size:.72rem;color:#7d7461;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-bar .etot{font-family:var(--serif);font-weight:600;font-size:1.05rem;color:var(--gold-deep);flex:0 0 auto;white-space:nowrap}
+.ev-chev{flex:0 0 auto;color:var(--gold-deep);font-size:.9rem;width:20px;text-align:center}
+.ev-body{padding:.9rem}
 
-/* department filter + bundles */
-.dept-row{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.75rem}
-.dept{
-  background:#fff;border:1px solid var(--line);border-radius:40px;padding:.4em .95em;cursor:pointer;
-  font-family:var(--sans);font-size:.74rem;letter-spacing:.03em;color:var(--ink-soft);transition:.2s;
+.fld{display:flex;flex-direction:column;gap:.3rem;min-width:0}
+.date-fld{max-width:230px;margin-bottom:.85rem}
+.fld span{font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep)}
+.fld select,.fld input[type=date]{
+  width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);
+  font-family:var(--sans);font-size:.9rem;padding:.55em .6em;transition:.2s;color-scheme:light;
 }
-.dept:hover{border-color:var(--gold-soft);color:var(--gold-deep)}
-.dept.on{background:var(--ink);border-color:var(--ink);color:var(--gold-bright)}
-.bundles{display:flex;flex-wrap:wrap;gap:.45rem;margin:-.15rem 0 .85rem}
+.fld select:focus,.fld input:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(184,144,43,.12)}
+.fld input.date-dup{border-color:#e0a63a;box-shadow:0 0 0 2px rgba(224,166,58,.22)}
+
+/* quick-start combos: a way in, so they retire once the function has anything */
+.bundles{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.9rem}
+.bundles .bl{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:#8d846c;flex:0 0 auto}
 .bundle{
   display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;font-family:var(--sans);
   background:rgba(184,144,43,.09);border:1px dashed rgba(184,144,43,.5);border-radius:40px;
@@ -296,64 +298,72 @@ img{max-width:100%;display:block}
 .bundle:hover{background:rgba(184,144,43,.18);border-style:solid}
 .bundle b{font-weight:600}
 .bundle .bp{color:var(--ink-soft);font-size:.7rem}
-.bundle.on{background:rgba(31,122,61,.1);border-color:rgba(31,122,61,.45);border-style:solid;color:var(--ok)}
-.copy-prev{background:none;border:1px dashed rgba(184,144,43,.45);color:var(--gold-deep);border-radius:30px;padding:.5em 1.1em;font-family:var(--sans);font-size:.75rem;cursor:pointer;margin:0 0 .8rem;transition:.22s}
-.copy-prev:hover{background:rgba(184,144,43,.12);border-style:solid}
 
-/* ---- product cards ---- */
-.prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:.65rem}
+/* ---- one service, one row ---- */
+.prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.5rem}
 .prod{
-  display:flex;flex-direction:column;border:1px solid var(--line);border-radius:11px;background:#fff;
-  padding:.8rem .85rem;transition:.24s;position:relative;
+  display:grid;grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:"ic name" "ic blurb" "ic foot";
+  column-gap:.7rem;row-gap:.15rem;align-items:start;
+  border:1px solid var(--line);border-radius:10px;background:#fff;padding:.7rem .8rem;transition:.2s;
 }
-.prod:hover{border-color:var(--gold-soft);box-shadow:0 8px 20px rgba(184,144,43,.12)}
-.prod.on{border-color:var(--gold);background:linear-gradient(180deg,#FFFCF3,#FBF4E1);box-shadow:0 0 0 1px rgba(184,144,43,.35)}
-.prod-top{display:flex;align-items:flex-start;gap:.6rem}
+.prod:hover{border-color:var(--gold-soft)}
+.prod.on{border-color:var(--gold);background:linear-gradient(180deg,#FFFCF3,#FBF4E1)}
 .prod-ic{
-  width:38px;height:38px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
+  grid-area:ic;width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
   background:rgba(184,144,43,.12);border:1px solid rgba(184,144,43,.25);
 }
-.prod-ic svg{width:21px;height:21px;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.prod-ic svg{width:19px;height:19px;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .prod.on .prod-ic{background:var(--gold);border-color:var(--gold)}
 .prod.on .prod-ic svg{stroke:#fff}
-.prod h4{font-family:var(--sans);font-weight:500;font-size:.9rem;color:var(--ink);line-height:1.25}
-.prod .blurb{font-size:.73rem;color:#7d7461;line-height:1.4;margin-top:.35rem;flex:1}
+.prod h4{grid-area:name;font-family:var(--sans);font-weight:500;font-size:.9rem;color:var(--ink);line-height:1.25}
 .prod .svc-badge{
-  display:inline-block;margin-top:.3em;padding:.14em .6em;
+  display:inline-block;margin-left:.4em;padding:.12em .55em;vertical-align:middle;white-space:nowrap;
   border:1px solid var(--gold);color:var(--gold-deep);border-radius:30px;
-  font-size:.56rem;letter-spacing:.07em;text-transform:uppercase;
+  font-size:.54rem;letter-spacing:.07em;text-transform:uppercase;
 }
-.prod .hot{position:absolute;top:-8px;right:10px;background:var(--ink);color:var(--gold-bright);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;padding:.25em .6em;border-radius:20px}
-.prod-price{display:flex;align-items:baseline;gap:.35rem;margin-top:.7rem}
-.prod-price b{font-family:var(--serif);font-size:1.12rem;color:var(--ink)}
+.prod .blurb{grid-area:blurb;font-size:.72rem;color:#7d7461;line-height:1.4}
+.prod-foot{grid-area:foot;display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.45rem}
+.prod-price{font-size:.7rem;color:#8d846c;white-space:nowrap}
+.prod-price b{font-family:var(--serif);font-size:1.02rem;color:var(--ink)}
 .prod.on .prod-price b{color:var(--gold-deep)}
-.prod-price span{font-size:.68rem;color:#8d846c}
-.prod-act{margin-top:.6rem}
+.prod-act{flex:0 0 auto}
 .add-btn{
-  width:100%;cursor:pointer;border:1px solid var(--gold);background:rgba(184,144,43,.1);color:var(--gold-deep);
-  border-radius:40px;padding:.6em 1em;font-family:var(--sans);font-size:.8rem;letter-spacing:.05em;transition:.22s;
+  cursor:pointer;border:1px solid var(--gold);background:rgba(184,144,43,.1);color:var(--gold-deep);
+  border-radius:40px;padding:.5em 1.4em;font-family:var(--sans);font-size:.8rem;letter-spacing:.04em;transition:.22s;
 }
 .add-btn:hover{background:var(--gold);color:#fff}
-.stepper{display:flex;align-items:center;justify-content:space-between;gap:.4rem;border:1px solid var(--gold);border-radius:40px;background:#fff;overflow:hidden}
-.stepper button{width:40px;height:38px;flex:0 0 auto;border:0;background:rgba(184,144,43,.14);color:var(--gold-deep);cursor:pointer;font-size:1.15rem;line-height:1;transition:.2s}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--gold);border-radius:40px;background:#fff;overflow:hidden}
+.stepper button{width:34px;height:34px;flex:0 0 auto;border:0;background:rgba(184,144,43,.14);color:var(--gold-deep);cursor:pointer;font-size:1.1rem;line-height:1;transition:.2s}
 .stepper button:hover{background:var(--gold);color:#fff}
 .stepper input{
-  flex:1 1 auto;width:100%;min-width:0;height:38px;text-align:center;border:0;background:transparent;
-  color:var(--ink);font-family:var(--sans);font-size:.9rem;-moz-appearance:textfield;
+  width:38px;height:34px;text-align:center;border:0;background:transparent;
+  color:var(--ink);font-family:var(--sans);font-size:.88rem;-moz-appearance:textfield;
 }
 .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.prod .line-tot{margin-top:.45rem;text-align:center;font-size:.74rem;color:var(--ok)}
-.prods-empty{padding:1.4rem 0;text-align:center;color:#7d7258;font-family:var(--serif-2);font-style:italic;font-size:1.02rem}
+
+.more-btn{
+  width:100%;margin-top:.55rem;cursor:pointer;background:none;border:1px dashed rgba(184,144,43,.45);
+  color:var(--gold-deep);border-radius:40px;padding:.6em 1em;font-family:var(--sans);font-size:.78rem;transition:.22s;
+}
+.more-btn:hover{background:rgba(184,144,43,.1);border-style:solid}
+.ev-tools{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.85rem;padding-top:.75rem;border-top:1px dashed var(--line)}
+.tool{
+  background:none;border:1px solid var(--line);border-radius:30px;cursor:pointer;font-family:var(--sans);
+  font-size:.74rem;color:var(--ink-soft);padding:.45em 1em;transition:.2s;
+}
+.tool:hover{border-color:var(--gold);color:var(--gold-deep)}
+.tool.danger:hover{border-color:#b04030;color:#b04030}
 
 .add-more{
   width:100%;border:1.5px dashed rgba(184,144,43,.5);background:rgba(184,144,43,.06);color:var(--gold-deep);
-  border-radius:11px;padding:.95rem;font-family:var(--sans);font-size:.88rem;letter-spacing:.05em;
-  cursor:pointer;transition:.28s;display:flex;align-items:center;justify-content:center;gap:.5rem;text-transform:uppercase;
+  border-radius:11px;padding:.85rem;font-family:var(--sans);font-size:.85rem;letter-spacing:.04em;
+  cursor:pointer;transition:.25s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.55rem;
 }
-.add-more:hover{background:rgba(184,144,43,.14);border-color:var(--gold);transform:translateY(-2px)}
+.add-more:hover{background:rgba(184,144,43,.14);border-color:var(--gold)}
 .hint{
-  display:flex;gap:.6rem;align-items:flex-start;background:var(--cream);border:1px solid var(--line);
-  border-radius:10px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink-soft);margin-bottom:.85rem;
+  display:flex;gap:.55rem;align-items:flex-start;background:var(--cream);border:1px solid var(--line);
+  border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--ink-soft);margin-bottom:.8rem;
 }
 .hint b{color:var(--gold-deep)}
 
@@ -382,10 +392,18 @@ img{max-width:100%;display:block}
 /* ============================================================
    STEP 4 — REVIEW
    ============================================================ */
-.review-box{border:1px solid var(--line);border-radius:11px;background:var(--cream);padding:1rem 1.05rem}
-.terms{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.9rem}
-.term{flex:1 1 150px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--ink-soft)}
-.term b{display:block;font-family:var(--serif);color:var(--gold-deep);font-size:1.02rem}
+.send-total{
+  display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.5rem;
+  border:1px solid var(--gold-bright);border-radius:11px;
+  background:linear-gradient(180deg,#FFFCF3,#FBF4E1);padding:.95rem 1.05rem;
+}
+.send-total .st-l{flex:1 1 150px;min-width:0;font-size:.85rem;color:var(--ink-soft)}
+.send-total .st-v{font-family:var(--serif);font-size:1.8rem;font-weight:700;color:var(--gold-deep);line-height:1}
+.send-total .st-s{flex:1 1 100%;font-size:.74rem;color:#8d846c}
+.send-total .st-e{flex:1 1 100%;text-align:center;color:#7d7258;font-family:var(--serif-2);font-style:italic;font-size:1.02rem}
+.see-items{display:block;margin:.5rem auto 0}
+.terms-line{margin-top:.85rem;font-size:.8rem;color:var(--ink-soft);text-align:center;line-height:1.7}
+.terms-line b{font-family:var(--serif);color:var(--gold-deep);font-size:.95rem}
 .review-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem}
 .review-actions .btn{flex:1 1 190px}
 .incl{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.9rem}
@@ -564,87 +582,55 @@ img{max-width:100%;display:block}
   .hdr-back .nm span{display:none}
   .prods{grid-template-columns:repeat(2,minmax(0,1fr))}
   /* keep form controls at 16px so iOS Safari doesn't zoom on focus */
-  .ev-head select,.ev-head input[type=date],.fg input,.disc-field input,.stepper input{font-size:16px}
+  .fld select,.fld input[type=date],.fg input,.disc-field input,.stepper input{font-size:16px}
   .stepper button{width:44px;height:44px}
   .stepper input{height:44px}
-  .ev-remove{width:42px;height:42px}
 }
 @media(max-width:560px){
-  /* ---- the shop floor, rebuilt for a thumb ----
-     Ten stacked cards per function was roughly two metres of scrolling on a
-     phone. Each service becomes one compact row instead: what it is on the
-     left, what it costs on the right, and the button across the bottom.
-     Squeezing the button into a second column as well saves another 40px a row
-     but costs the service name (three lines for "Female Shooter Premium") and
-     most of the blurb, so the button keeps the full width of the row. */
-  .prods{grid-template-columns:1fr;gap:.5rem}
-  .prod{
-    display:grid;grid-template-columns:minmax(0,1fr) auto;
-    grid-template-areas:"top price" "blurb blurb" "act act";
-    align-items:start;column-gap:.6rem;row-gap:.35rem;padding:.7rem .75rem;
+  /* one column of service rows; the row itself is already compact */
+  .prods{grid-template-columns:1fr;gap:.45rem}
+  .prod{padding:.65rem .7rem}
+  .prod h4{font-size:.88rem}
+
+  /* chip rows swipe sideways rather than stacking */
+  .bundles{
+    flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+    margin-left:-.9rem;margin-right:-.9rem;padding:0 .9rem .3rem;
   }
-  .prod-top{grid-area:top}
-  .prod .blurb{grid-area:blurb;margin-top:0;font-size:.71rem;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .prod-price{grid-area:price;margin-top:0;flex-direction:column;align-items:flex-end;gap:0;text-align:right}
-  .prod-price b{font-size:1.05rem;line-height:1.2}
-  .prod-act{grid-area:act;margin-top:.4rem}
-  .prod-ic{width:32px;height:32px;border-radius:8px}
-  .prod-ic svg{width:18px;height:18px}
-  .prod h4{font-size:.86rem}
-  .prod .hot{top:-7px;right:auto;left:10px}
-  .prod .line-tot{font-size:.68rem;margin-top:.3rem}
-  /* ---- 44px of thumb, everywhere it is tapped ----
-     Most of these read fine on a trackpad at 30-34px and are a coin-flip with
-     a thumb, and the Add button is the single most-tapped control on the site. */
-  .stepper button{width:44px;height:46px;font-size:1.2rem}
-  .stepper input{height:46px}
-  .add-btn{min-height:46px;font-size:.85rem}
-  .dept,.bundle{min-height:40px;display:inline-flex;align-items:center}
+  .bundles::-webkit-scrollbar{display:none}
+  .bundle{flex:0 0 auto;scroll-snap-align:start}
+
+  /* ---- 44px of thumb, everywhere it is tapped ---- */
+  .stepper button{width:44px;height:44px;font-size:1.2rem}
+  .stepper input{width:44px;height:44px;font-size:16px}
+  .add-btn{min-height:44px;padding:.5em 1.6em;font-size:.85rem}
+  .bundle{min-height:40px;display:inline-flex;align-items:center}
   .alb-chip{min-height:42px;display:inline-flex;align-items:center}
   .alb-row .stepper button{width:48px;height:48px}
-  .alb-row .stepper input{height:48px}
-  /* the per-line remove in the quote sheet was a 24px target */
+  .alb-row .stepper input{width:56px;height:48px}
   .ci-line .cl-x{width:34px;height:34px;font-size:1.15rem}
   .ci-line{padding:.3rem 0}
   .mq-bar .btn{padding:.9em 1.1em}
   .linkish{padding:.6em .1em}
+  .tool{min-height:38px;display:inline-flex;align-items:center}
+  .more-btn{min-height:44px}
+  .ev-bar{padding:.75rem .8rem;gap:.6rem}
+  .ev-body{padding:.8rem}
+  .fld select,.fld input[type=date]{font-size:16px}
 
-  /* chip rows swipe sideways rather than stacking into four lines */
-  .dept-row,.bundles,.trust-strip{
-    flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
-    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
-  }
-  .dept-row::-webkit-scrollbar,.bundles::-webkit-scrollbar,.trust-strip::-webkit-scrollbar{display:none}
-  .dept,.bundle,.trust-chip{flex:0 0 auto;scroll-snap-align:start}
-  .dept-row,.bundles{margin-left:-.95rem;margin-right:-.95rem;padding:0 .95rem .3rem}
-  .bundles{margin-bottom:.7rem}
-  .trust-strip{margin-left:-.9rem;margin-right:-.9rem;padding:0 .9rem}
-
-  /* the function header stops wrapping into four ragged lines */
-  .ev-head{
-    display:grid;grid-template-columns:auto minmax(0,1fr) auto;
-    grid-template-areas:"ei name rm" "dt dt tot";
-    gap:.5rem .55rem;align-items:center;padding:.75rem .8rem;
-  }
-  .ev-head .ei{grid-area:ei}
-  .ev-head .ename{grid-area:name;flex:none}
-  .ev-head .ev-remove{grid-area:rm}
-  .ev-head .edate{grid-area:dt;flex:none;min-width:0}
-  .ev-head .etot{grid-area:tot;margin-left:0;text-align:right}
-  .ev-body{padding:.8rem .95rem .9rem}
-
-  .deal{flex:0 0 78vw;padding:.85rem}
-  .deal h3{font-size:1.05rem}
-  .deal .pk-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  /* equal-height cards put a hand's width of dead space in the middle of the
-     short ones when only one is on screen — let each size to its own content */
-  .deals{gap:.6rem;margin-left:-.9rem;margin-right:-.9rem;padding:.15rem .9rem .8rem;align-items:flex-start}
-  .deal .pk-price{margin-top:.7rem;padding-top:0}
+  .deal{padding:.75rem .8rem;gap:.7rem}
+  .deal .dl b{font-size:1rem}
+  .deal .dr b{font-size:1.08rem}
   .deal-foot{flex-direction:column;align-items:stretch;gap:.1rem}
 
-  .ev-picker{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
-  .ev-tile{flex-direction:column;align-items:flex-start;gap:.35rem;padding:.65rem .7rem}
+  .ev-picker{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
+  .ev-tile{gap:.5rem;padding:.6rem .65rem}
+  .ev-tile svg{width:21px;height:21px}
+  .ev-tile .tn{font-size:.83rem}
+  .ev-tile .tt{font-size:.64rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* one line of blurb on a phone; the full sentence still reads on a tablet up */
+  .prod .blurb{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
   .sec-body{padding:1rem .9rem}
   .sec-head{padding:.9rem .9rem;gap:.7rem}
   .sec-head h2{font-size:1.05rem}
@@ -681,8 +667,7 @@ img{max-width:100%;display:block}
   .hdr-in{gap:.5rem;padding:0 .7rem}
   .cart-btn{padding:.45em .8em .45em .7em;font-size:.78rem}
   .cart-btn .amt{font-size:.92rem}
-  .ev-picker{grid-template-columns:1fr}
-  .ev-tile{flex-direction:row;align-items:center}
+  .ev-tile .tt{display:none}   /* the note is a nicety; two columns is not */
 }
 
 /* respect reduced-motion preferences */
@@ -776,12 +761,7 @@ img{max-width:100%;display:block}
 
   <div class="intro">
     <h1>Build your <span class="it">package</span></h1>
-    <p>Add the functions you're having, choose the coverage for each one, and your price updates as you go. Nothing is booked until you send it to us.</p>
-    <div class="trust-strip">
-      <span class="trust-chip"><b>✦</b> Est. 2012 · 1500+ weddings</span>
-      <span class="trust-chip"><b>✦</b> Raw photos + edited video included</span>
-      <span class="trust-chip"><b>✦</b> Lady shooters available</span>
-    </div>
+    <p>Pick a package, or choose your functions below. Nothing is booked until you send it.</p>
   </div>
 
   <!-- ============ STEP 1 — READY-MADE PACKAGES ============ -->
@@ -789,16 +769,16 @@ img{max-width:100%;display:block}
     <div class="sec-head">
       <span class="n">1</span>
       <div>
-        <h2>Start with a ready-made package</h2>
-        <p>Tap one to fill your builder instantly — then change anything you like.</p>
+        <h2>Pick a package</h2>
+        <p>The fastest way — change anything afterwards.</p>
       </div>
       <span class="opt">Optional</span>
     </div>
     <div class="sec-body">
       <div class="deals" id="dealRow"></div>
       <div class="deal-foot">
-        <button type="button" class="linkish" id="cmpBtn">&#8646; Compare all packages side-by-side</button>
-        <button type="button" class="linkish" id="skipPresets">Skip — I'll build my own &rarr;</button>
+        <button type="button" class="linkish" id="cmpBtn">&#8646; Compare packages</button>
+        <button type="button" class="linkish" id="skipPresets">Build my own &rarr;</button>
       </div>
     </div>
   </section>
@@ -809,19 +789,19 @@ img{max-width:100%;display:block}
       <span class="n">2</span>
       <div>
         <h2>Choose your functions</h2>
-        <p>Add each event, then pick the coverage you want for it.</p>
+        <p>Tap a function, then pick its coverage.</p>
       </div>
     </div>
     <div class="sec-body">
-      <div id="eventsList"></div>
-
       <div id="pickerWrap">
         <div class="hint" id="pickerHint">
           <span aria-hidden="true">&#10022;</span>
-          <span id="pickerHintText">Tap a function below to add it. Most families start with <b>Nikah</b> and <b>Valima / Reception</b>.</span>
+          <span id="pickerHintText">Tap every function you are having.</span>
         </div>
         <div class="ev-picker" id="evPicker"></div>
       </div>
+
+      <div id="eventsList"></div>
     </div>
   </section>
 
@@ -830,7 +810,7 @@ img{max-width:100%;display:block}
     <div class="sec-head">
       <span class="n">3</span>
       <div>
-        <h2>Add a premium album</h2>
+        <h2>Add an album</h2>
         <p id="albHeadNote">Printed, hand-finished sheets — minimum 15.</p>
       </div>
       <span class="opt">Optional</span>
@@ -861,18 +841,16 @@ img{max-width:100%;display:block}
     <div class="sec-head">
       <span class="n">4</span>
       <div>
-        <h2>Review &amp; send</h2>
-        <p>Check the list, then send it to us on WhatsApp — we reply personally.</p>
+        <h2>Send it to us</h2>
+        <p>We reply personally, usually within the hour.</p>
       </div>
     </div>
     <div class="sec-body">
-      <div class="review-box" id="reviewBox"></div>
+      <div class="send-total" id="sendTotal"></div>
+      <button type="button" class="linkish see-items" id="seeItems">See the full list &rarr;</button>
 
-      <div class="terms">
-        <div class="term"><b>50%</b> advance to confirm your dates</div>
-        <div class="term"><b>40%</b> on the event day</div>
-        <div class="term"><b>10%</b> at delivery</div>
-      </div>
+      <p class="terms-line"><b>50%</b> advance to confirm your dates ·
+        <b>40%</b> on the event day · <b>10%</b> at delivery</p>
       <div class="incl" id="inclRow"></div>
 
       <div class="review-actions">
@@ -1028,7 +1006,13 @@ const smooth = REDUCE_MOTION ? 'auto' : 'smooth';
 
 let state = { events: [], albumSheets: 0, promo: '' };
 let activePresetKey = null;
-let deptFilter = {};          // per-event department filter (event id -> cat key)
+let openEv = null;            // only one function is expanded at a time
+let showAllSvc = {};          // per-function: are the add-ons revealed?
+
+/* The five below the fold are the ones people add last and least often, so
+   they start hidden: a function opens showing the coverage decision, not
+   ten of them. Anything already chosen is always shown, wherever it sits. */
+const MAIN_SERVICES = 5;
 
 /* ---- bundles: one tap for the combinations people actually ask for ---- */
 const BUNDLES = [
@@ -1091,19 +1075,23 @@ let _shownPresetKey = null;   // what the deal row is currently highlighting
 function renderDeals(){
   const row = $('#dealRow'); if(!row) return;
   _shownPresetKey = activePresetKey;
+  /* one tappable row each: name, the functions it covers, the price. The
+     card grid needed a sideways scroll and about 700px of screen to say the
+     same four things. */
   row.innerHTML = Object.keys(PRESETS).map(key=>{
     const p = PRESETS[key];
-    const agg = presetServiceTotals(p);
-    const chips = SERVICES.filter(s=>agg[s.key]).slice(0,4)
-      .map(s=>`<span>${esc(s.label)}${agg[s.key]>1?' ×'+agg[s.key]:''}</span>`).join('');
-    return `<div class="deal ${activePresetKey===key?'active':''}" data-preset="${esc(key)}">
-      ${p.tag?`<span class="pk-tag">${esc(p.tag)}</span>`:''}
-      <h3>${esc(p.name||'')}</h3>
-      <span class="pk-desc">${esc(p.desc||'')}</span>
-      <div class="pk-inc">${chips}<span>${p.events.length} function${p.events.length>1?'s':''}</span></div>
-      <div class="pk-price"><b>${inr(presetRawTotal(p))}</b></div>
-      <button type="button" class="pk-add" data-preset="${esc(key)}">${activePresetKey===key?'✓ In your quote':'Add to my quote'}</button>
-    </div>`;
+    const fns = p.events.map(e=>e.type.replace(' / Reception','')).join(', ');
+    const on = activePresetKey === key;
+    return `<button type="button" class="deal ${on?'active':''}" data-preset="${esc(key)}">
+      <span class="dl">
+        <b>${esc(p.name||'')}${p.tag?`<i class="pk-tag">${esc(p.tag)}</i>`:''}</b>
+        <span class="dn">${esc(fns)}</span>
+      </span>
+      <span class="dr">
+        <b>${inr(presetRawTotal(p))}</b>
+        <span class="dpick">${on?'✓ Chosen':'Choose'}</span>
+      </span>
+    </button>`;
   }).join('');
 }
 function applyPreset(key, quiet){
@@ -1157,16 +1145,16 @@ function renderPicker(){
   grid.innerHTML = EVENT_TYPES.map(t=>{
     const m = EVENT_META[t] || {};
     const n = eventCount(t);
-    return `<button type="button" class="ev-tile" data-addtype="${esc(t)}">
+    return `<button type="button" class="ev-tile ${n?'added':''}" data-addtype="${esc(t)}">
       ${icon(m.icon||'spark')}
       <span><span class="tn">${esc(t)}</span><span class="tt">${esc(m.note||'Add this function')}</span></span>
-      ${n?`<span class="added">Added${n>1?' ×'+n:''}</span>`:''}
+      ${n?'<span class="tick">✓</span>':''}
     </button>`;
   }).join('');
   const hint = $('#pickerHintText');
-  if(hint) hint.innerHTML = state.events.length
-    ? 'Having another function? Add it here — each one is priced separately.'
-    : 'Tap a function below to add it. Most families start with <b>Nikah</b> and <b>Valima / Reception</b>.';
+  if(hint) hint.textContent = state.events.length
+    ? 'Tap another to add it, or tap a ✓ one to open it.'
+    : 'Tap every function you are having. Most families pick Nikah and Valima.';
 }
 
 function bundleSatisfied(ev, b){
@@ -1177,63 +1165,71 @@ function bundlePrice(b){
   return t;
 }
 
+/* which services this function shows: the main five, plus anything already
+   chosen from the add-ons, plus everything once the add-ons are revealed */
+function visibleServices(ev){
+  if(showAllSvc[ev.id]) return SERVICES;
+  return SERVICES.filter((s,i)=> i < MAIN_SERVICES || (ev.services[s.key]||0) > 0);
+}
+
 function eventPanelHTML(ev, idx){
-  const opts = EVENT_TYPES.map(t=>`<option value="${esc(t)}" ${t===ev.type?'selected':''}>${esc(t)}</option>`).join('');
-  const cat = deptFilter[ev.id] || 'all';
-  const depts = SERVICE_CATS.map(c=>
-    `<button type="button" class="dept ${c.key===cat?'on':''}" data-dept="${c.key}" data-ev="${ev.id}">${esc(c.label)}</button>`).join('');
+  const open = openEv === ev.id;
+  const chosen = Object.keys(ev.services).filter(k=>ev.services[k]>0).length;
 
-  const bundles = BUNDLES.map(b=>{
-    const on = bundleSatisfied(ev, b);
-    return `<button type="button" class="bundle ${on?'on':''}" data-bundle="${b.key}" data-ev="${ev.id}">
-      <b>${on?'✓ ':'+ '}${esc(b.name)}</b><span class="bp">${inr(bundlePrice(b))}</span></button>`;
-  }).join('');
+  /* the quick combos are a way to start, so they step aside once the
+     function has anything in it */
+  const bundles = chosen ? '' : BUNDLES.map(b=>
+    `<button type="button" class="bundle" data-bundle="${b.key}" data-ev="${ev.id}">
+      <b>+ ${esc(b.name)}</b><span class="bp">${inr(bundlePrice(b))}</span></button>`).join('');
 
-  const list = SERVICES.filter(s=>cat==='all' || s.cat===cat);
+  const list = visibleServices(ev);
+  const hiddenCount = SERVICES.length - list.length;
   const prods = list.map(s=>{
     const qty = ev.services[s.key]||0, on = qty>0;
     const unitTxt = s.unit==='head' ? 'per head' : 'per event';
     return `<div class="prod ${on?'on':''}" data-ev="${ev.id}" data-svc="${s.key}">
-      ${s.tag?`<span class="hot">${esc(s.tag)}</span>`:''}
-      <div class="prod-top">
-        <span class="prod-ic">${icon(s.icon)}</span>
-        <div style="min-width:0">
-          <h4>${esc(s.label)}</h4>
-          ${s.badge?`<span class="svc-badge">${esc(s.badge)}</span>`:''}
-        </div>
-      </div>
+      <span class="prod-ic">${icon(s.icon)}</span>
+      <h4>${esc(s.label)}${s.badge?`<span class="svc-badge">${esc(s.badge)}</span>`:''}</h4>
       <p class="blurb">${esc(s.blurb||'')}</p>
-      <div class="prod-price"><b>${inr(PRICES[s.key])}</b><span>${unitTxt}</span></div>
-      <div class="prod-act">
+      <div class="prod-foot">
+        <span class="prod-price"><b>${inr(PRICES[s.key])}</b> ${unitTxt}</span>
+        <span class="prod-act">
         ${on
-          ? `<div class="stepper">
+          ? `<span class="stepper">
                <button type="button" data-act="dec" aria-label="Remove one ${esc(s.label)}">−</button>
                <input type="number" min="0" step="1" value="${qty}" data-qty aria-label="${esc(s.label)} quantity" />
                <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
-             </div>
-             <div class="line-tot">✓ Added · ${inr(PRICES[s.key]*qty)}</div>`
-          : `<button type="button" class="add-btn" data-act="add">Add to quote</button>`}
+             </span>`
+          : `<button type="button" class="add-btn" data-act="add">Add</button>`}
+        </span>
       </div>
     </div>`;
   }).join('');
 
   const m = EVENT_META[ev.type] || {};
+  const sub = chosen
+    ? chosen + (chosen>1?' services':' service') + (ev.date ? ' · ' + fmtDate(ev.date) : '')
+    : 'Tap to choose coverage';
+
   return `
-  <div class="ev-panel" data-ev="${ev.id}">
-    <div class="ev-head">
-      <span class="ei" aria-hidden="true">${idx+1}</span>
-      <div class="ename"><label class="sr-only" for="evt-${ev.id}">Function</label>
-        <select id="evt-${ev.id}" data-field="type">${opts}</select></div>
-      <div class="edate"><label class="sr-only" for="evd-${ev.id}">Date</label>
-        <input id="evd-${ev.id}" type="date" data-field="date" value="${esc(ev.date||'')}" min="${TODAY_ISO}" /></div>
+  <div class="ev-panel ${open?'open':''}" data-ev="${ev.id}">
+    <button type="button" class="ev-bar" data-toggle="${ev.id}" aria-expanded="${open}">
+      <span class="ev-ic" aria-hidden="true">${icon(m.icon||'spark')}</span>
+      <span class="ev-name"><b>${esc(ev.type)}</b><span>${esc(sub)}</span></span>
       <span class="etot">${inr(eventTotal(ev))}</span>
-      <button class="ev-remove" data-remove type="button" aria-label="Remove ${esc(ev.type||'function')}">&times;</button>
-    </div>
-    <div class="ev-body">
-      ${idx>0?`<button type="button" class="copy-prev" data-copyprev="${ev.id}">&#10697; Same services as ${esc(state.events[idx-1].type)}</button>`:''}
-      <div class="bundles">${bundles}</div>
-      <div class="dept-row">${depts}</div>
-      <div class="prods">${prods || '<div class="prods-empty">Nothing in this category.</div>'}</div>
+      <span class="ev-chev" aria-hidden="true">${open?'⌃':'⌄'}</span>
+    </button>
+    <div class="ev-body" ${open?'':'hidden'}>
+      <label class="fld date-fld"><span>Date of this function</span>
+        <input id="evd-${ev.id}" type="date" data-field="date" value="${esc(ev.date||'')}" min="${TODAY_ISO}" /></label>
+      ${bundles?`<div class="bundles"><span class="bl">Quick start</span>${bundles}</div>`:''}
+      <div class="prods">${prods}</div>
+      ${hiddenCount?`<button type="button" class="more-btn" data-more="${ev.id}">＋ ${hiddenCount} more options</button>`:''}
+      ${showAllSvc[ev.id] && !hiddenCount?`<button type="button" class="more-btn" data-more="${ev.id}">− Fewer options</button>`:''}
+      <div class="ev-tools">
+        ${idx>0?`<button type="button" class="tool" data-copyprev="${ev.id}">&#10697; Same as ${esc(state.events[idx-1].type)}</button>`:''}
+        <button type="button" class="tool danger" data-remove>Remove this function</button>
+      </div>
     </div>
   </div>`;
 }
@@ -1243,7 +1239,7 @@ function renderEvents(){
   list.innerHTML = state.events.map(eventPanelHTML).join('') +
     (state.events.length ? `<button type="button" class="add-more" id="addMore">
        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-       Add another function</button>` : '');
+       Add the same function twice</button>` : '');
   checkDupDates(false);
   renderPicker();
 }
@@ -1258,74 +1254,94 @@ function renderEventPanel(id){
   el.outerHTML = eventPanelHTML(ev, state.events.indexOf(ev));
   checkDupDates(false);
 }
-/* one product card: the Add button becomes a stepper and back again */
+/* one service row: the Add button becomes a stepper and back again */
 function refreshProd(evId, key){
   const ev = findEvent(evId); if(!ev) return;
   const card = document.querySelector(`.prod[data-ev="${evId}"][data-svc="${key}"]`);
   const s = SERVICES.find(x=>x.key===key);
-  /* the card can be filtered out of view by the department chips — the head
-     total and the bundle chips still have to follow the change */
   if(!card || !s){ refreshEventChrome(ev); return; }
   const q = ev.services[key]||0;
   card.classList.toggle('on', q>0);
   card.querySelector('.prod-act').innerHTML = q>0
-    ? `<div class="stepper">
+    ? `<span class="stepper">
          <button type="button" data-act="dec" aria-label="Remove one ${esc(s.label)}">−</button>
          <input type="number" min="0" step="1" value="${q}" data-qty aria-label="${esc(s.label)} quantity" />
          <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
-       </div>
-       <div class="line-tot">✓ Added · ${inr(PRICES[key]*q)}</div>`
-    : `<button type="button" class="add-btn" data-act="add">Add to quote</button>`;
+       </span>`
+    : `<button type="button" class="add-btn" data-act="add">Add</button>`;
   refreshEventChrome(ev);
 }
-/* the running total on the panel head, and which bundles now read as complete */
+/* the total and the "3 services" line on the collapsed bar */
 function refreshEventChrome(ev){
   const panel = document.querySelector(`.ev-panel[data-ev="${ev.id}"]`);
   if(!panel) return;
   const tot = panel.querySelector('.etot');
   if(tot) tot.textContent = inr(eventTotal(ev));
-  $$('[data-bundle]', panel).forEach(btn=>{
-    const b = BUNDLES.find(x=>x.key===btn.dataset.bundle); if(!b) return;
-    const on = bundleSatisfied(ev, b);
-    btn.classList.toggle('on', on);
-    const lbl = btn.querySelector('b');
-    if(lbl) lbl.textContent = (on?'✓ ':'+ ') + b.name;
-  });
+  const chosen = Object.keys(ev.services).filter(k=>ev.services[k]>0).length;
+  const sub = panel.querySelector('.ev-name span');
+  if(sub) sub.textContent = chosen
+    ? chosen + (chosen>1?' services':' service') + (ev.date ? ' · ' + fmtDate(ev.date) : '')
+    : 'Tap to choose coverage';
 }
+/* how many services this function has — the quick-start row appears and
+   disappears across the 0/1 boundary, so that crossing needs a full redraw */
+function chosenCount(ev){ return Object.keys(ev.services).filter(k=>ev.services[k]>0).length; }
 
 function addEvent(type, quiet){
   const t = EVENT_TYPES.indexOf(type) !== -1 ? type
           : (EVENT_TYPES.find(x=>!state.events.some(e=>e.type===x)) || EVENT_TYPES[0]);
   const ev = { id: ++eid, type: t, date: '', services: {} };
   state.events.push(ev);
+  openEv = ev.id;                       // a function you just added is the one you want open
   markBuilderStarted();
   markCustomised();
   track('event_added', { event_type: t });
   renderAll();
-  if(!quiet){
-    const card = document.querySelector(`.ev-panel[data-ev="${ev.id}"]`);
-    if(card) card.scrollIntoView({ behavior: smooth, block:'center' });
-  }
+  if(!quiet) scrollToPanel(ev.id);
   return ev;
+}
+function scrollToPanel(id){
+  const el = document.querySelector(`.ev-panel[data-ev="${id}"]`);
+  if(!el) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 74;
+  window.scrollTo({ top:y, behavior: smooth });
+}
+/* one open at a time — the whole reason the page stopped being a mile long */
+function toggleEvent(id){
+  openEv = (openEv == id) ? null : Number(id);
+  renderEvents();
+  if(openEv) scrollToPanel(openEv);
 }
 
 /* one delegated click handler for the whole shop floor */
 document.addEventListener('click', e=>{
   /* add a function from the picker */
   const tile = e.target.closest('[data-addtype]');
-  if(tile){ addEvent(tile.dataset.addtype); return; }
+  if(tile){
+    const type = tile.dataset.addtype;
+    const existing = state.events.find(ev=>ev.type === type);
+    /* tapping "Nikah" twice used to silently create a second Nikah */
+    if(existing){ openEv = existing.id; renderEvents(); scrollToPanel(existing.id); }
+    else addEvent(type);
+    return;
+  }
+
+  /* open / close a function */
+  const tg = e.target.closest('[data-toggle]');
+  if(tg){ toggleEvent(tg.dataset.toggle); return; }
+
+  /* reveal the add-ons */
+  const more = e.target.closest('[data-more]');
+  if(more){
+    const id = more.dataset.more;
+    showAllSvc[id] = !showAllSvc[id];
+    renderEventPanel(id);
+    return;
+  }
 
   /* "add another function" scrolls back to the picker */
   if(e.target.closest('#addMore')){
     $('#pickerWrap').scrollIntoView({ behavior: smooth, block:'center' });
-    return;
-  }
-
-  /* department filter */
-  const d = e.target.closest('[data-dept]');
-  if(d){
-    deptFilter[d.dataset.ev] = d.dataset.dept;
-    renderEventPanel(d.dataset.ev);
     return;
   }
 
@@ -1367,10 +1383,12 @@ document.addEventListener('click', e=>{
     else                    q -= 1;
     if(q < 0) q = 0;
     if(q > 50) q = 50;
+    const before = chosenCount(ev);
     if(q > 0) ev.services[key] = q; else delete ev.services[key];
     if(q > 0) markBuilderStarted();
     markCustomised();
-    refreshProd(ev.id, key);
+    if((before === 0) !== (chosenCount(ev) === 0)) renderEventPanel(ev.id);
+    else refreshProd(ev.id, key);
     renderAlbum(); renderQuote();
     /* keep the thumb on the same button after the stepper is rebuilt */
     if(kind !== 'add' && q > 0){
@@ -1401,6 +1419,7 @@ document.addEventListener('click', e=>{
     const ev = findEvent(card.dataset.ev);
     const snapshot = ev ? JSON.parse(JSON.stringify(ev)) : null;
     state.events = state.events.filter(x=>x.id!=card.dataset.ev);
+    if(openEv == card.dataset.ev) openEv = null;
     markCustomised();
     renderAll();
     if(snapshot) showToast(`${snapshot.type} removed.`, 'Undo', ()=>{
@@ -1416,9 +1435,11 @@ document.addEventListener('click', e=>{
   if(cx){
     const ev = findEvent(cx.dataset.ev);
     if(ev){
+      const before = chosenCount(ev);
       delete ev.services[cx.dataset.svc];
       markCustomised();
-      refreshProd(ev.id, cx.dataset.svc);
+      if((before === 0) !== (chosenCount(ev) === 0)) renderEventPanel(ev.id);
+      else refreshProd(ev.id, cx.dataset.svc);
       renderAlbum(); renderQuote();
     }
     return;
@@ -1443,8 +1464,6 @@ document.addEventListener('input', e=>{
   if(q > 0) ev.services[card.dataset.svc] = q; else delete ev.services[card.dataset.svc];
   markCustomised();
   /* price only — never re-render the field the caret is sitting in */
-  const tot = card.querySelector('.line-tot');
-  if(tot) tot.textContent = q > 0 ? '✓ Added · ' + inr(PRICES[card.dataset.svc]*q) : '';
   refreshEventChrome(ev);
   renderAlbum();
   renderQuote();
@@ -1456,7 +1475,7 @@ document.addEventListener('blur', e=>{
   const ev = findEvent(card.dataset.ev); if(!ev) return;
   const q = ev.services[card.dataset.svc] || 0;
   e.target.value = q;                           // '' or junk → committed number
-  if(q === 0) renderEvents();                   // back to the "Add to quote" button
+  if(q === 0) renderEventPanel(ev.id);          // back to the "Add" button
 }, true);
 
 /* type / date */
@@ -1473,8 +1492,8 @@ document.addEventListener('change', e=>{
   }
   ev[f.dataset.field] = e.target.value;
   markCustomised();
-  if(f.dataset.field === 'date'){ checkDupDates(true); renderQuote(); }
-  else renderAll();
+  if(f.dataset.field === 'date'){ checkDupDates(true); refreshEventChrome(ev); renderQuote(); }
+  else { renderEventPanel(ev.id); renderPicker(); renderQuote(); }
 });
 
 /* duplicate-date detection: warn, never block */
@@ -1645,12 +1664,16 @@ function renderQuote(){
   cnt.hidden = !n; cnt.textContent = n;
   $('#mqCount').textContent = n ? `${n} item${n>1?'s':''} · tap for breakdown ▴` : 'Tap for breakdown ▴';
 
-  /* review panel */
-  $('#reviewBox').innerHTML = bd
-    ? bd + `<div class="crow" style="margin-top:.8rem"><span>Subtotal</span><span>${inr(t.sub)}</span></div>` +
-      (t.disc>0?`<div class="crow"><span>Promo (${esc(state.promo)})</span><span>−${inr(t.disc)}</span></div>`:'') +
-      `<div class="grand"><span class="gl">Grand Total</span><span class="gv">${inr(t.grand)}</span></div>`
-    : EMPTY_MSG;
+  /* The send step used to render the whole quote a third time, under the
+     bottom bar and the sheet that already show it. It states the total and
+     links to the list instead. */
+  const names = state.events.filter(e=>chosenCount(e)).map(e=>e.type);
+  $('#sendTotal').innerHTML = n
+    ? `<span class="st-l">${esc(names.join(' · '))}${(albumEligible(state)&&state.albumSheets>0)?' · album':''}</span>
+       <span class="st-v">${inr(t.grand)}</span>
+       ${t.disc>0?`<span class="st-s">${inr(t.sub)} − ${esc(state.promo)} discount</span>`:''}`
+    : '<span class="st-e">Nothing added yet — pick a package or a function above.</span>';
+  const si = $('#seeItems'); if(si) si.hidden = !n;
 
   /* the send/save actions only make sense once something is selected */
   const empty = t.grand <= 0;
@@ -1819,11 +1842,14 @@ function closeSheet(fromPop, handoff){
 $('#mqOpen').addEventListener('click', openSheet);
 $('#sheetClose').addEventListener('click', ()=>closeSheet());
 $('#sheetBackdrop').addEventListener('click', ()=>closeSheet());
-/* the header cart: the sidebar on desktop, the sheet on phones */
-$('#cartBtn').addEventListener('click', ()=>{
+/* the header cart and "see the full list": the sheet on phones, the sidebar
+   on desktop — the itemised quote lives in exactly one place now */
+function showItems(){
   if(window.matchMedia('(max-width:1080px)').matches) openSheet();
-  else scrollToSec('secReview');
-});
+  else document.querySelector('.cart').scrollIntoView({ behavior: smooth, block:'start' });
+}
+$('#cartBtn').addEventListener('click', showItems);
+$('#seeItems').addEventListener('click', showItems);
 
 function openCompare(){
   renderCompareTable();
@@ -1871,7 +1897,8 @@ function startFresh(){
   clearSavedQuote();
   state = { events: [], albumSheets: 0, promo: '' };
   activePresetKey = null;
-  deptFilter = {};
+  openEv = null;
+  showAllSvc = {};
   ['promoInput','sheetPromoInput'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   syncPromoUI();
   renderAll();
