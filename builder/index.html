@@ -146,19 +146,6 @@ img{max-width:100%;display:block}
 .hdr-back .nm{display:flex;flex-direction:column;line-height:1}
 .hdr-back .nm b{font-family:var(--serif);font-size:1rem;letter-spacing:.03em}
 .hdr-back .nm span{font-size:.55rem;letter-spacing:.34em;text-transform:uppercase;color:var(--gold-text);margin-top:3px}
-.hdr-steps{display:flex;align-items:center;gap:.2rem;margin:0 auto}
-.step-pill{
-  display:inline-flex;align-items:center;gap:.45rem;background:none;border:0;cursor:pointer;
-  font-family:var(--sans);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--ink-soft);padding:.5em .8em;border-radius:40px;transition:.25s;white-space:nowrap;
-}
-.step-pill i{
-  width:20px;height:20px;border-radius:50%;border:1px solid var(--gold-soft);color:var(--gold-deep);
-  display:grid;place-items:center;font-style:normal;font-size:.66rem;flex:0 0 auto;transition:.25s;
-}
-.step-pill:hover{background:rgba(184,144,43,.1);color:var(--gold-deep)}
-.step-pill.done i{background:var(--gold);border-color:var(--gold);color:#fff}
-.step-sep{width:14px;height:1px;background:var(--line);flex:0 0 auto}
 .hdr-right{display:flex;align-items:center;gap:.5rem;flex:0 0 auto;margin-left:auto}
 .hdr-link{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:.5em .6em;transition:.2s}
 .hdr-link:hover{color:var(--gold-deep)}
@@ -208,6 +195,36 @@ img{max-width:100%;display:block}
 .sec-head p{font-size:.8rem;color:var(--ink-soft);margin-top:1px}
 .sec-head .opt{margin-left:auto;flex:0 0 auto;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:#8d846c;border:1px solid var(--line);border-radius:30px;padding:.3em .8em;white-space:nowrap}
 .sec-body{padding:1.15rem 1.25rem}
+
+/* ============================================================
+   THE WIZARD — progress bar and step navigation
+   ============================================================ */
+.wiz-bar{margin-bottom:1rem}
+.wiz-dots{list-style:none;display:flex;align-items:center;gap:.3rem;margin:0;padding:0}
+.wiz-dots li{flex:1 1 0;min-width:0}
+.wiz-dot{
+  width:100%;display:flex;flex-direction:column;align-items:center;gap:.3rem;cursor:pointer;
+  background:none;border:0;padding:.2rem 0;font-family:var(--sans);color:#a3987d;transition:.2s;
+}
+.wiz-dot i{
+  width:100%;height:4px;border-radius:4px;background:var(--line);font-style:normal;
+  font-size:0;line-height:0;overflow:hidden;transition:.25s;
+}
+.wiz-dot span{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.wiz-dot.past i,.wiz-dot.now i{background:var(--gold)}
+.wiz-dot.past span{color:var(--gold-deep)}
+.wiz-dot.now span{color:var(--ink);font-weight:600}
+.wiz-dot:not(.past):not(.now){cursor:default}
+.wiz-now{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;margin-top:.7rem}
+.wiz-now b{font-family:var(--serif);font-size:clamp(1.5rem,4vw,2rem);color:var(--ink)}
+.wiz-now span{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8d846c;white-space:nowrap}
+.wiz-nav{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.7rem;margin-top:1rem}
+.wiz-nav .btn{padding:.9em 1.7em}
+.wiz-back{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
+.wiz-back:hover{border-color:var(--gold);color:var(--gold-deep)}
+.wiz-next:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
+.wiz-help{flex:1 1 200px;font-size:.78rem;color:#8d846c}
+.mq-next:disabled{opacity:.5}
 
 /* ============================================================
    STEP 1 — PACKAGES (a list, not a card carousel)
@@ -565,9 +582,6 @@ img{max-width:100%;display:block}
 /* ============================================================
    RESPONSIVE
    ============================================================ */
-@media(max-width:1180px){
-  .hdr-steps{display:none}
-}
 @media(max-width:1080px){
   .shop{grid-template-columns:minmax(0,1fr)}
   .cart{display:none}
@@ -654,8 +668,11 @@ img{max-width:100%;display:block}
   .sec-head .n{width:28px;height:28px;font-size:.88rem}
   .sec-head .opt{font-size:.6rem;padding:.25em .6em}
   .sec{margin-bottom:.85rem}
-  .intro{margin-bottom:1rem}
-  .intro p{font-size:.88rem}
+  .wiz-dot span{font-size:.6rem;letter-spacing:.04em}
+  .wiz-now{margin-top:.6rem}
+  .wiz-nav{margin-top:.9rem}
+  .wiz-nav .btn{flex:1 1 100%;padding:1em 1.2em}
+  .wiz-help{flex:1 1 100%;text-align:center;order:-1}
   .shop{padding-left:.9rem;padding-right:.9rem}
   .review-actions .btn{flex:1 1 100%}
   .lead-modal{
@@ -750,17 +767,6 @@ img{max-width:100%;display:block}
       <span class="nm"><b>Fantasy Studio</b><span>Package Builder</span></span>
     </a>
 
-    <nav class="hdr-steps" aria-label="Builder steps">
-      <button class="step-pill" type="button" data-goto="secPackages"><i id="stI1">1</i>Packages</button>
-      <span class="step-sep"></span>
-      <button class="step-pill" type="button" data-goto="secEvents"><i id="stI2">2</i>Functions</button>
-      <span class="step-sep"></span>
-      <button class="step-pill" type="button" data-goto="secCoverage"><i id="stI3">3</i>Coverage</button>
-      <span class="step-sep"></span>
-      <button class="step-pill" type="button" data-goto="secAlbum"><i id="stI4">4</i>Album</button>
-      <span class="step-sep"></span>
-      <button class="step-pill" type="button" data-goto="secReview"><i id="stI5">5</i>Send</button>
-    </nav>
 
     <div class="hdr-right">
       <a class="hdr-link hide-sm" href="../#contact">Contact</a>
@@ -777,15 +783,16 @@ img{max-width:100%;display:block}
 <div class="shop" id="shop">
 <main class="shop-main">
 
-  <div class="intro">
-    <h1>Build your <span class="it">package</span></h1>
-    <p>Pick a package, or choose your functions below. Nothing is booked until you send it.</p>
-  </div>
+  <!-- ============ WIZARD PROGRESS ============ -->
+  <nav class="wiz-bar" aria-label="Progress">
+    <ol class="wiz-dots" id="wizDots"></ol>
+    <p class="wiz-now"><b id="wizTitle">Start</b><span id="wizCount">Step 1 of 4</span></p>
+  </nav>
 
-  <!-- ============ STEP 1 — READY-MADE PACKAGES ============ -->
+  <!-- ============ STEP 1 — START ============ -->
+  <div class="wiz-step" data-step="1">
   <section class="sec" id="secPackages">
     <div class="sec-head">
-      <span class="n">1</span>
       <div>
         <h2>Pick a package</h2>
         <p>The fastest way — change anything afterwards.</p>
@@ -804,7 +811,6 @@ img{max-width:100%;display:block}
   <!-- ============ STEP 2 — WHICH FUNCTIONS ============ -->
   <section class="sec" id="secEvents">
     <div class="sec-head">
-      <span class="n">2</span>
       <div>
         <h2>Which functions are you having?</h2>
         <p>Tap all of them — you will choose the coverage next.</p>
@@ -818,10 +824,16 @@ img{max-width:100%;display:block}
     </div>
   </section>
 
-  <!-- ============ STEP 3 — COVERAGE PER FUNCTION ============ -->
-  <section class="sec" id="secCoverage" hidden>
+    <div class="wiz-nav">
+      <span class="wiz-help" id="wizHelp1">Pick a package, or tap the functions you are having.</span>
+      <button type="button" class="btn btn-gold wiz-next" data-goto-step="2">Next: choose coverage &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ============ STEP 2 — COVERAGE ============ -->
+  <div class="wiz-step" data-step="2" hidden>
+  <section class="sec" id="secCoverage">
     <div class="sec-head">
-      <span class="n">3</span>
       <div>
         <h2>Add coverage</h2>
         <p>Open a function and tap what you want for it.</p>
@@ -832,10 +844,16 @@ img{max-width:100%;display:block}
     </div>
   </section>
 
+    <div class="wiz-nav">
+      <button type="button" class="btn wiz-back" data-goto-step="1">&larr; Back</button>
+      <button type="button" class="btn btn-gold wiz-next" data-goto-step="3">Next: album &rarr;</button>
+    </div>
+  </div>
+
   <!-- ============ STEP 3 — ALBUM ============ -->
+  <div class="wiz-step" data-step="3" hidden>
   <section class="sec" id="secAlbum">
     <div class="sec-head">
-      <span class="n">4</span>
       <div>
         <h2>Add an album</h2>
         <p id="albHeadNote">Printed, hand-finished sheets — minimum 15.</p>
@@ -863,10 +881,16 @@ img{max-width:100%;display:block}
     </div>
   </section>
 
-  <!-- ============ STEP 4 — REVIEW & SEND ============ -->
+    <div class="wiz-nav">
+      <button type="button" class="btn wiz-back" data-goto-step="2">&larr; Back</button>
+      <button type="button" class="btn btn-gold wiz-next" data-goto-step="4">Next: send &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ============ STEP 4 — SEND ============ -->
+  <div class="wiz-step" data-step="4" hidden>
   <section class="sec" id="secReview">
     <div class="sec-head">
-      <span class="n">5</span>
       <div>
         <h2>Send it to us</h2>
         <p>We reply personally, usually within the hour.</p>
@@ -891,6 +915,10 @@ img{max-width:100%;display:block}
       <button class="btn-clear" id="clearBtn" type="button" hidden>Clear my package</button>
     </div>
   </section>
+    <div class="wiz-nav">
+      <button type="button" class="btn wiz-back" data-goto-step="3">&larr; Back</button>
+    </div>
+  </div>
 
 </main>
 
@@ -936,8 +964,9 @@ img{max-width:100%;display:block}
     <span class="mq-total" id="mqTotal">₹0</span>
     <span class="c" id="mqCount">Tap for breakdown ▴</span>
   </button>
-  <button class="btn mq-pdf" id="mqPdf" type="button" aria-label="Download quote PDF">PDF</button>
-  <a class="btn btn-wa" id="mqWa" href="#" rel="noopener" aria-label="Send quote on WhatsApp">Send</a>
+  <button class="btn mq-pdf" id="mqPdf" type="button" aria-label="Download quote PDF" hidden>PDF</button>
+  <a class="btn btn-wa" id="mqWa" href="#" rel="noopener" aria-label="Send quote on WhatsApp" hidden>Send</a>
+  <button class="btn btn-gold mq-next" id="mqNext" type="button">Next &rarr;</button>
 </div>
 
 <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -1130,15 +1159,17 @@ function applyPreset(key, quiet){
   track('preset_applied', { preset: key });
   renderAll();
   if(!quiet){
-    showToast(`${p.name} package added — change anything you like below.`);
-    scrollToSec('secCoverage');
+    showToast(`${p.name} package added — change anything you like.`);
+    goStep(2);
   }
 }
 $('#dealRow').addEventListener('click', e=>{
   const b = e.target.closest('[data-preset]'); if(!b) return;
   applyPreset(b.dataset.preset);
 });
-$('#skipPresets').addEventListener('click', ()=>scrollToSec('secEvents'));
+$('#skipPresets').addEventListener('click', ()=>{
+  const t = $('#evPicker'); if(t) t.scrollIntoView({ behavior: smooth, block:'center' });
+});
 
 function renderCompareTable(){
   const tbl = $('#compareTable'); if(!tbl) return;
@@ -1180,7 +1211,7 @@ function renderPicker(){
   }).join('');
   const hint = $('#pickerHintText');
   if(hint) hint.textContent = state.events.length
-    ? state.events.length + (state.events.length>1?' functions':' function') + ' chosen — add coverage for each below.'
+    ? state.events.length + (state.events.length>1?' functions':' function') + ' chosen'
     : 'Most families pick Nikah and Valima / Reception.';
 }
 
@@ -1330,7 +1361,9 @@ function addEvent(type, quiet){
           : (EVENT_TYPES.find(x=>!state.events.some(e=>e.type===x)) || EVENT_TYPES[0]);
   const ev = { id: ++eid, type: t, date: '', services: {} };
   state.events.push(ev);
-  openEv = ev.id;                       // a function you just added is the one you want open
+  /* on the coverage step the new function opens; on the picker step it just
+     gets ticked, and the first one opens when that step is reached */
+  if(step !== 1) openEv = ev.id;
   markBuilderStarted();
   markCustomised();
   track('event_added', { event_type: t });
@@ -1358,9 +1391,28 @@ document.addEventListener('click', e=>{
   if(tile){
     const type = tile.dataset.addtype;
     const existing = state.events.find(ev=>ev.type === type);
-    /* tapping "Nikah" twice used to silently create a second Nikah */
-    if(existing){ openEv = existing.id; renderEvents(); scrollToPanel(existing.id); }
-    else addEvent(type);
+    /* a multi-select: tap to choose, tap again to unchoose. Unchoosing one
+       that already has coverage on it is undoable rather than blocked. */
+    if(existing){
+      const snapshot = JSON.parse(JSON.stringify(existing));
+      const had = chosenCount(existing);
+      state.events = state.events.filter(ev=>ev.id !== existing.id);
+      if(openEv === existing.id) openEv = null;
+      markCustomised();
+      renderAll();
+      if(had) showToast(`${type} removed — its ${had} ${had>1?'services':'service'} went with it.`, 'Undo', ()=>{
+        state.events.push(snapshot);
+        state.events.sort((a,b)=>a.id-b.id);
+        renderAll();
+      });
+    }else{
+      addEvent(type, true);
+      /* tap order is not wedding order — a Mehndi added after the Valima still
+         belongs before it. Sort by the canonical sequence, stably, so repeats
+         of one function stay together. */
+      state.events.sort((a,b)=>EVENT_TYPES.indexOf(a.type) - EVENT_TYPES.indexOf(b.type));
+      renderEvents();
+    }
     trackStep();
     return;
   }
@@ -1725,10 +1777,22 @@ function renderQuote(){
 
   /* the send/save actions only make sense once something is selected */
   const empty = t.grand <= 0;
-  ['pdfBtn','pdfBtn2','shareBtn','shareBtn2','clearBtn','clearBtn2','sheetShare','sheetClear','mqPdf']
+  ['pdfBtn','pdfBtn2','shareBtn','shareBtn2','clearBtn','clearBtn2','sheetShare','sheetClear']
     .forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
 
-  updateSteps(t);
+  /* the phone's bottom bar carries whatever this step is for: Next on the way
+     through, Send once you are on the last one */
+  const last = step === WIZ.length;
+  const nx = $('#mqNext'), wa = $('#mqWa'), pf = $('#mqPdf');
+  if(nx){
+    nx.hidden = last;
+    nx.disabled = !stepReachable(step + 1);
+    nx.textContent = step === 1 ? 'Next: coverage →' : step === 2 ? 'Next: album →' : 'Next: send →';
+  }
+  if(wa) wa.hidden = !last;
+  if(pf) pf.hidden = !last || empty;
+
+  renderWizBar();
   updatePkgChip();
   /* the deal row is a horizontal scroller — only redraw it when the highlighted
      package actually changes, so a tap on "+" doesn't scroll it back to the start */
@@ -1743,20 +1807,6 @@ function renderAll(){
   renderDeals();
 }
 
-function updateSteps(t){
-  const done = [
-    !!activePresetKey,
-    state.events.length > 0,
-    state.events.some(e=>chosenCount(e) > 0),
-    albumEligible(state) && state.albumSheets > 0,
-    t.grand > 0
-  ];
-  ['#stI1','#stI2','#stI3','#stI4','#stI5'].forEach((sel,i)=>{
-    const el = $(sel); if(!el) return;
-    el.parentElement.classList.toggle('done', done[i]);
-    el.textContent = done[i] ? '✓' : String(i+1);
-  });
-}
 function updatePkgChip(){
   const label = activePresetKey === 'custom' ? 'Custom Package'
               : (activePresetKey && PRESETS[activePresetKey]) ? PRESETS[activePresetKey].name + ' Package' : '';
@@ -1771,12 +1821,67 @@ function markCustomised(){
   if(activePresetKey && activePresetKey !== 'custom') activePresetKey = 'custom';
 }
 
+/* ============================================================
+   THE WIZARD
+
+   One screen at a time. Step 1 asks the only two questions that can
+   start a package — pick a ready-made one, or tap the functions you
+   are having — and nothing else is on screen while you answer them.
+   ============================================================ */
+const WIZ = [
+  { n:1, key:'start',    title:'Start',    label:'Start' },
+  { n:2, key:'coverage', title:'Coverage', label:'Coverage' },
+  { n:3, key:'album',    title:'Album',    label:'Album' },
+  { n:4, key:'send',     title:'Send',     label:'Send' },
+];
+let step = 1;
+
+function stepReachable(n){
+  if(n <= 1) return true;
+  return state.events.length > 0;      /* nothing to cover until a function exists */
+}
+function goStep(n, quiet){
+  n = Math.max(1, Math.min(WIZ.length, Number(n) || 1));
+  if(!stepReachable(n)){
+    showToast('Choose at least one function first.');
+    return;
+  }
+  step = n;
+  if(step === 2 && state.events.length){
+    const stillEmpty = state.events.find(e=>chosenCount(e) === 0);
+    if(!openEv || !findEvent(openEv)) openEv = (stillEmpty || state.events[0]).id;
+    renderEvents();
+  }
+  $$('.wiz-step').forEach(el=>{ el.hidden = Number(el.dataset.step) !== step; });
+  renderQuote();          /* redraws the progress bar and the bottom bar with it */
+  if(!quiet) window.scrollTo({ top:0, behavior: smooth });
+  track('builder_step', { step: WIZ[step-1].key });
+}
+function renderWizBar(){
+  const dots = $('#wizDots');
+  if(dots) dots.innerHTML = WIZ.map(w=>{
+    const state_ = w.n === step ? 'now' : (w.n < step ? 'past' : '');
+    return `<li><button type="button" class="wiz-dot ${state_}" data-goto-step="${w.n}"
+      ${w.n === step ? 'aria-current="step"' : ''}><i>${w.n < step ? '✓' : w.n}</i><span>${esc(w.label)}</span></button></li>`;
+  }).join('');
+  const t = $('#wizTitle'), c = $('#wizCount');
+  if(t) t.textContent = WIZ[step-1].title;
+  if(c) c.textContent = 'Step ' + step + ' of ' + WIZ.length;
+  /* the Next button on step 1 is the gate — it says what is missing */
+  const help = $('#wizHelp1');
+  if(help) help.hidden = state.events.length > 0;   /* the button speaks for itself once it works */
+  $$('.wiz-step[data-step="1"] .wiz-next').forEach(b=>{ b.disabled = !state.events.length; });
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-goto-step]');
+  if(b && !b.disabled) goStep(b.dataset.gotoStep);
+});
+
 function scrollToSec(id){
   const el = document.getElementById(id); if(!el) return;
   const y = el.getBoundingClientRect().top + window.scrollY - 78;
   window.scrollTo({ top:y, behavior: smooth });
 }
-$$('[data-goto]').forEach(b=>b.addEventListener('click', ()=>scrollToSec(b.dataset.goto)));
 function trackStep(){ track('functions_chosen', { count: state.events.length }); }
 
 /* ============================================================
@@ -1890,6 +1995,7 @@ function closeSheet(fromPop, handoff){
   if(!handoff) restoreOpener();
 }
 $('#mqOpen').addEventListener('click', openSheet);
+$('#mqNext').addEventListener('click', ()=>goStep(step + 1));
 $('#sheetClose').addEventListener('click', ()=>closeSheet());
 $('#sheetBackdrop').addEventListener('click', ()=>closeSheet());
 /* the header cart and "see the full list": the sheet on phones, the sidebar
@@ -1927,7 +2033,7 @@ function closeWelcomeBack(){
   $('#wbModal').classList.remove('open'); $('#wbBackdrop').classList.remove('open');
   restoreOpener();
 }
-$('#wbContinue').addEventListener('click', ()=>{ closeWelcomeBack(); scrollToSec('secCoverage'); });
+$('#wbContinue').addEventListener('click', ()=>{ closeWelcomeBack(); goStep(2); });
 $('#wbClose').addEventListener('click', closeWelcomeBack);
 $('#wbBackdrop').addEventListener('click', closeWelcomeBack);
 $('#wbFresh').addEventListener('click', ()=>{
@@ -1952,6 +2058,7 @@ function startFresh(){
   ['promoInput','sheetPromoInput'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   syncPromoUI();
   renderAll();
+  goStep(1, true);
 }
 function requestClearPackage(){
   showToast('Clear this package and start over?', 'Yes, clear', ()=>{
@@ -1997,7 +2104,7 @@ function openLeadModal(action, handoff){
      mistake at both ends */
   if(!calcQuote(state).grand){
     showToast('Add at least one service to your package first.');
-    scrollToSec('secEvents');
+    goStep(state.events.length ? 2 : 1);
     return;
   }
   _leadAction = action === 'pdf' ? 'pdf' : 'wa';
@@ -2382,14 +2489,16 @@ if(wantedPromo && PROMO_CODES[wantedPromo]){
 
 renderAll();
 syncPromoUI();
+/* a shared link, a saved package or a chosen preset all arrive with functions
+   already on them — start on coverage rather than asking the question again */
+goStep(state.events.length ? 2 : 1, true);
 
 /* "what's always included" reassurance chips */
 $('#inclRow').innerHTML = ALWAYS_INCLUDED.map(t=>`<span>✓ ${esc(t)}</span>`).join('');
 
-/* arriving from "Add an Event" on the home page */
-if(wantsAdd && !_shared && !_presetLoaded){
-  addEvent(null, true);
-  setTimeout(()=>scrollToSec('secEvents'), 60);
+/* arriving from "Add an Event" on the home page: land on the picker */
+if(wantsAdd && !_shared && !_presetLoaded && !state.events.length){
+  goStep(1, true);
 }
 
 /* live prices & packages — the cards and every total re-render when they land */
