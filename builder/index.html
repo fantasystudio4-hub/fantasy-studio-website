@@ -242,7 +242,7 @@ img{max-width:100%;display:block}
    STEP 2 — FUNCTIONS
    ============================================================ */
 .ev-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
-#eventsList:not(:empty){margin-top:1.1rem;padding-top:1.1rem;border-top:1px dashed var(--line)}
+
 .ev-tile{
   display:flex;align-items:center;gap:.65rem;text-align:left;cursor:pointer;
   border:1px solid var(--line);border-radius:11px;background:var(--cream);padding:.75rem .8rem;
@@ -300,14 +300,16 @@ img{max-width:100%;display:block}
 .bundle .bp{color:var(--ink-soft);font-size:.7rem}
 
 /* ---- one service, one row ---- */
-.prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.5rem}
+.prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem}
 .prod{
-  display:grid;grid-template-columns:auto minmax(0,1fr);
-  grid-template-areas:"ic name" "ic blurb" "ic foot";
-  column-gap:.7rem;row-gap:.15rem;align-items:start;
-  border:1px solid var(--line);border-radius:10px;background:#fff;padding:.7rem .8rem;transition:.2s;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  grid-template-areas:"ic name price" "ic blurb act";
+  column-gap:.7rem;row-gap:.15rem;align-items:center;
+  border:1px solid var(--line);border-radius:10px;background:#fff;padding:.65rem .8rem;transition:.18s;
 }
-.prod:hover{border-color:var(--gold-soft)}
+.prod[data-act]{cursor:pointer}
+.prod[data-act]:hover{border-color:var(--gold);background:#FBF6EA}
+.prod[data-act]:active{transform:scale(.995)}
 .prod.on{border-color:var(--gold);background:linear-gradient(180deg,#FFFCF3,#FBF4E1)}
 .prod-ic{
   grid-area:ic;width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
@@ -315,24 +317,24 @@ img{max-width:100%;display:block}
 }
 .prod-ic svg{width:19px;height:19px;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .prod.on .prod-ic{background:var(--gold);border-color:var(--gold)}
-.prod.on .prod-ic svg{stroke:#fff}
+.tickmark{color:#fff;font-size:1.05rem;font-weight:600;line-height:1}
 .prod h4{grid-area:name;font-family:var(--sans);font-weight:500;font-size:.9rem;color:var(--ink);line-height:1.25}
 .prod .svc-badge{
   display:inline-block;margin-left:.4em;padding:.12em .55em;vertical-align:middle;white-space:nowrap;
   border:1px solid var(--gold);color:var(--gold-deep);border-radius:30px;
   font-size:.54rem;letter-spacing:.07em;text-transform:uppercase;
 }
-.prod .blurb{grid-area:blurb;font-size:.72rem;color:#7d7461;line-height:1.4}
-.prod-foot{grid-area:foot;display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.45rem}
-.prod-price{font-size:.7rem;color:#8d846c;white-space:nowrap}
-.prod-price b{font-family:var(--serif);font-size:1.02rem;color:var(--ink)}
+.prod .blurb{grid-area:blurb;font-size:.72rem;color:#7d7461;line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.prod-price{grid-area:price;min-width:0;font-size:.66rem;color:#8d846c;white-space:nowrap;text-align:right;overflow:hidden;text-overflow:ellipsis}
+.prod-price b{font-family:var(--serif);font-size:1.02rem;color:var(--ink);display:block}
 .prod.on .prod-price b{color:var(--gold-deep)}
-.prod-act{flex:0 0 auto}
-.add-btn{
-  cursor:pointer;border:1px solid var(--gold);background:rgba(184,144,43,.1);color:var(--gold-deep);
-  border-radius:40px;padding:.5em 1.4em;font-family:var(--sans);font-size:.8rem;letter-spacing:.04em;transition:.22s;
+.prod-act{grid-area:act;justify-self:end}
+.add-pill{
+  display:inline-block;border:1px solid var(--gold);background:rgba(184,144,43,.1);color:var(--gold-deep);
+  border-radius:40px;padding:.4em 1.1em;font-size:.78rem;letter-spacing:.03em;transition:.18s;white-space:nowrap;
 }
-.add-btn:hover{background:var(--gold);color:#fff}
+.prod[data-act]:hover .add-pill{background:var(--gold);color:#fff}
 .stepper{display:inline-flex;align-items:center;border:1px solid var(--gold);border-radius:40px;background:#fff;overflow:hidden}
 .stepper button{width:34px;height:34px;flex:0 0 auto;border:0;background:rgba(184,144,43,.14);color:var(--gold-deep);cursor:pointer;font-size:1.1rem;line-height:1;transition:.2s}
 .stepper button:hover{background:var(--gold);color:#fff}
@@ -361,11 +363,7 @@ img{max-width:100%;display:block}
   cursor:pointer;transition:.25s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.55rem;
 }
 .add-more:hover{background:rgba(184,144,43,.14);border-color:var(--gold)}
-.hint{
-  display:flex;gap:.55rem;align-items:flex-start;background:var(--cream);border:1px solid var(--line);
-  border-radius:10px;padding:.65rem .8rem;font-size:.78rem;color:var(--ink-soft);margin-bottom:.8rem;
-}
-.hint b{color:var(--gold-deep)}
+.hint-line{margin-top:.8rem;font-size:.78rem;color:#8d846c;text-align:center}
 
 /* ============================================================
    STEP 3 — ALBUM
@@ -587,10 +585,29 @@ img{max-width:100%;display:block}
   .stepper input{height:44px}
 }
 @media(max-width:560px){
-  /* one column of service rows; the row itself is already compact */
+  /* One column, and the row gets its own shape: the name never has room to
+     sit beside the price at 375px, so the price goes under it and the blurb
+     takes the full width. Once a service is chosen the blurb has done its
+     job and steps out, which is what keeps a picked row down to ~64px. */
   .prods{grid-template-columns:1fr;gap:.45rem}
-  .prod{padding:.65rem .7rem}
-  .prod h4{font-size:.88rem}
+  .prod{
+    grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:"ic name act" "ic price act" "blurb blurb blurb";
+    row-gap:.1rem;column-gap:.65rem;align-items:center;padding:.65rem .7rem;
+  }
+  .prod h4{grid-area:name;font-size:.89rem;line-height:1.3}
+  .prod-price{grid-area:price;text-align:left;font-size:.68rem}
+  .prod-price b{display:inline;font-size:.95rem}
+  .prod .blurb{grid-area:blurb;margin-top:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .prod.on .blurb{display:none}
+  .prod-act{grid-area:act;justify-self:end;align-self:center}
+  /* a chosen row has no blurb, so give the name the full width and let the
+     price share its line with the stepper — "Traditional Photo" stops wrapping */
+  .prod.on{grid-template-areas:"ic name name" "ic price act"}
+  .prod.on h4{padding-right:.2rem}
+  /* the stepper needs 132px of the 217 the row has; "per event" is what gives
+     way, not the price */
+  .prod.on .unit{display:none}
 
   /* chip rows swipe sideways rather than stacking */
   .bundles{
@@ -604,7 +621,8 @@ img{max-width:100%;display:block}
   /* ---- 44px of thumb, everywhere it is tapped ---- */
   .stepper button{width:44px;height:44px;font-size:1.2rem}
   .stepper input{width:44px;height:44px;font-size:16px}
-  .add-btn{min-height:44px;padding:.5em 1.6em;font-size:.85rem}
+  .add-pill{padding:.55em 1.2em;font-size:.82rem}
+  .prod{padding:.7rem .75rem;min-height:74px}
   .bundle{min-height:40px;display:inline-flex;align-items:center}
   .alb-chip{min-height:42px;display:inline-flex;align-items:center}
   .alb-row .stepper button{width:48px;height:48px}
@@ -629,8 +647,6 @@ img{max-width:100%;display:block}
   .ev-tile svg{width:21px;height:21px}
   .ev-tile .tn{font-size:.83rem}
   .ev-tile .tt{font-size:.64rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  /* one line of blurb on a phone; the full sentence still reads on a tablet up */
-  .prod .blurb{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
   .sec-body{padding:1rem .9rem}
   .sec-head{padding:.9rem .9rem;gap:.7rem}
   .sec-head h2{font-size:1.05rem}
@@ -739,9 +755,11 @@ img{max-width:100%;display:block}
       <span class="step-sep"></span>
       <button class="step-pill" type="button" data-goto="secEvents"><i id="stI2">2</i>Functions</button>
       <span class="step-sep"></span>
-      <button class="step-pill" type="button" data-goto="secAlbum"><i id="stI3">3</i>Album</button>
+      <button class="step-pill" type="button" data-goto="secCoverage"><i id="stI3">3</i>Coverage</button>
       <span class="step-sep"></span>
-      <button class="step-pill" type="button" data-goto="secReview"><i id="stI4">4</i>Send</button>
+      <button class="step-pill" type="button" data-goto="secAlbum"><i id="stI4">4</i>Album</button>
+      <span class="step-sep"></span>
+      <button class="step-pill" type="button" data-goto="secReview"><i id="stI5">5</i>Send</button>
     </nav>
 
     <div class="hdr-right">
@@ -783,24 +801,33 @@ img{max-width:100%;display:block}
     </div>
   </section>
 
-  <!-- ============ STEP 2 — FUNCTIONS ============ -->
+  <!-- ============ STEP 2 — WHICH FUNCTIONS ============ -->
   <section class="sec" id="secEvents">
     <div class="sec-head">
       <span class="n">2</span>
       <div>
-        <h2>Choose your functions</h2>
-        <p>Tap a function, then pick its coverage.</p>
+        <h2>Which functions are you having?</h2>
+        <p>Tap all of them — you will choose the coverage next.</p>
       </div>
     </div>
     <div class="sec-body">
       <div id="pickerWrap">
-        <div class="hint" id="pickerHint">
-          <span aria-hidden="true">&#10022;</span>
-          <span id="pickerHintText">Tap every function you are having.</span>
-        </div>
         <div class="ev-picker" id="evPicker"></div>
+        <p class="hint-line" id="pickerHintText"></p>
       </div>
+    </div>
+  </section>
 
+  <!-- ============ STEP 3 — COVERAGE PER FUNCTION ============ -->
+  <section class="sec" id="secCoverage" hidden>
+    <div class="sec-head">
+      <span class="n">3</span>
+      <div>
+        <h2>Add coverage</h2>
+        <p>Open a function and tap what you want for it.</p>
+      </div>
+    </div>
+    <div class="sec-body">
       <div id="eventsList"></div>
     </div>
   </section>
@@ -808,7 +835,7 @@ img{max-width:100%;display:block}
   <!-- ============ STEP 3 — ALBUM ============ -->
   <section class="sec" id="secAlbum">
     <div class="sec-head">
-      <span class="n">3</span>
+      <span class="n">4</span>
       <div>
         <h2>Add an album</h2>
         <p id="albHeadNote">Printed, hand-finished sheets — minimum 15.</p>
@@ -839,7 +866,7 @@ img{max-width:100%;display:block}
   <!-- ============ STEP 4 — REVIEW & SEND ============ -->
   <section class="sec" id="secReview">
     <div class="sec-head">
-      <span class="n">4</span>
+      <span class="n">5</span>
       <div>
         <h2>Send it to us</h2>
         <p>We reply personally, usually within the hour.</p>
@@ -1104,7 +1131,7 @@ function applyPreset(key, quiet){
   renderAll();
   if(!quiet){
     showToast(`${p.name} package added — change anything you like below.`);
-    scrollToSec('secEvents');
+    scrollToSec('secCoverage');
   }
 }
 $('#dealRow').addEventListener('click', e=>{
@@ -1153,8 +1180,8 @@ function renderPicker(){
   }).join('');
   const hint = $('#pickerHintText');
   if(hint) hint.textContent = state.events.length
-    ? 'Tap another to add it, or tap a ✓ one to open it.'
-    : 'Tap every function you are having. Most families pick Nikah and Valima.';
+    ? state.events.length + (state.events.length>1?' functions':' function') + ' chosen — add coverage for each below.'
+    : 'Most families pick Nikah and Valima / Reception.';
 }
 
 function bundleSatisfied(ev, b){
@@ -1187,22 +1214,23 @@ function eventPanelHTML(ev, idx){
   const prods = list.map(s=>{
     const qty = ev.services[s.key]||0, on = qty>0;
     const unitTxt = s.unit==='head' ? 'per head' : 'per event';
-    return `<div class="prod ${on?'on':''}" data-ev="${ev.id}" data-svc="${s.key}">
-      <span class="prod-ic">${icon(s.icon)}</span>
+    /* Off, the whole row is the target — a 300px-wide tap beats aiming at a
+       button. On, the stepper owns its own clicks and the row is inert. */
+    return `<div class="prod ${on?'on':''}" data-ev="${ev.id}" data-svc="${s.key}"
+      ${on?'':`data-act="add" role="button" tabindex="0" aria-label="Add ${esc(s.label)}, ${inr(PRICES[s.key])} ${unitTxt}"`}>
+      <span class="prod-ic">${on?'<span class="tickmark" aria-hidden="true">✓</span>':icon(s.icon)}</span>
       <h4>${esc(s.label)}${s.badge?`<span class="svc-badge">${esc(s.badge)}</span>`:''}</h4>
+      <span class="prod-price"><b>${inr(PRICES[s.key])}</b> <span class="unit">${unitTxt}</span></span>
       <p class="blurb">${esc(s.blurb||'')}</p>
-      <div class="prod-foot">
-        <span class="prod-price"><b>${inr(PRICES[s.key])}</b> ${unitTxt}</span>
-        <span class="prod-act">
-        ${on
-          ? `<span class="stepper">
-               <button type="button" data-act="dec" aria-label="Remove one ${esc(s.label)}">−</button>
-               <input type="number" min="0" step="1" value="${qty}" data-qty aria-label="${esc(s.label)} quantity" />
-               <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
-             </span>`
-          : `<button type="button" class="add-btn" data-act="add">Add</button>`}
-        </span>
-      </div>
+      <span class="prod-act">
+      ${on
+        ? `<span class="stepper">
+             <button type="button" data-act="dec" aria-label="Remove one ${esc(s.label)}">−</button>
+             <input type="number" min="0" step="1" value="${qty}" data-qty aria-label="${esc(s.label)} quantity" />
+             <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
+           </span>`
+        : '<span class="add-pill">＋ Add</span>'}
+      </span>
     </div>`;
   }).join('');
 
@@ -1235,6 +1263,8 @@ function eventPanelHTML(ev, idx){
 }
 
 function renderEvents(){
+  const sec = $('#secCoverage');
+  if(sec) sec.hidden = !state.events.length;   /* nothing to cover yet */
   const list = $('#eventsList');
   list.innerHTML = state.events.map(eventPanelHTML).join('') +
     (state.events.length ? `<button type="button" class="add-more" id="addMore">
@@ -1268,7 +1298,15 @@ function refreshProd(evId, key){
          <input type="number" min="0" step="1" value="${q}" data-qty aria-label="${esc(s.label)} quantity" />
          <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
        </span>`
-    : `<button type="button" class="add-btn" data-act="add">Add</button>`;
+    : '<span class="add-pill">＋ Add</span>';
+  card.querySelector('.prod-ic').innerHTML = q>0
+    ? '<span class="tickmark" aria-hidden="true">✓</span>' : icon(s.icon);
+  /* the row is only a button while it is off */
+  if(q>0){ card.removeAttribute('data-act'); card.removeAttribute('role'); card.removeAttribute('tabindex'); card.removeAttribute('aria-label'); }
+  else{
+    card.setAttribute('data-act','add'); card.setAttribute('role','button'); card.setAttribute('tabindex','0');
+    card.setAttribute('aria-label', 'Add ' + s.label + ', ' + inr(PRICES[key]) + (s.unit==='head'?' per head':' per event'));
+  }
   refreshEventChrome(ev);
 }
 /* the total and the "3 services" line on the collapsed bar */
@@ -1323,6 +1361,7 @@ document.addEventListener('click', e=>{
     /* tapping "Nikah" twice used to silently create a second Nikah */
     if(existing){ openEv = existing.id; renderEvents(); scrollToPanel(existing.id); }
     else addEvent(type);
+    trackStep();
     return;
   }
 
@@ -1451,6 +1490,15 @@ document.addEventListener('click', e=>{
 });
 
 function findEvent(id){ return state.events.find(e=>e.id==id); }
+
+/* the row-as-button needs Enter and Space, like a real button would have */
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest && e.target.closest('.prod[data-act]');
+  if(!row || row !== e.target) return;
+  e.preventDefault();
+  row.click();
+});
 
 /* typed quantity */
 document.addEventListener('input', e=>{
@@ -1699,10 +1747,11 @@ function updateSteps(t){
   const done = [
     !!activePresetKey,
     state.events.length > 0,
+    state.events.some(e=>chosenCount(e) > 0),
     albumEligible(state) && state.albumSheets > 0,
     t.grand > 0
   ];
-  ['#stI1','#stI2','#stI3','#stI4'].forEach((sel,i)=>{
+  ['#stI1','#stI2','#stI3','#stI4','#stI5'].forEach((sel,i)=>{
     const el = $(sel); if(!el) return;
     el.parentElement.classList.toggle('done', done[i]);
     el.textContent = done[i] ? '✓' : String(i+1);
@@ -1728,6 +1777,7 @@ function scrollToSec(id){
   window.scrollTo({ top:y, behavior: smooth });
 }
 $$('[data-goto]').forEach(b=>b.addEventListener('click', ()=>scrollToSec(b.dataset.goto)));
+function trackStep(){ track('functions_chosen', { count: state.events.length }); }
 
 /* ============================================================
    PROMO CODES (whitelist-only — customers can never type an amount)
@@ -1877,7 +1927,7 @@ function closeWelcomeBack(){
   $('#wbModal').classList.remove('open'); $('#wbBackdrop').classList.remove('open');
   restoreOpener();
 }
-$('#wbContinue').addEventListener('click', ()=>{ closeWelcomeBack(); scrollToSec('secEvents'); });
+$('#wbContinue').addEventListener('click', ()=>{ closeWelcomeBack(); scrollToSec('secCoverage'); });
 $('#wbClose').addEventListener('click', closeWelcomeBack);
 $('#wbBackdrop').addEventListener('click', closeWelcomeBack);
 $('#wbFresh').addEventListener('click', ()=>{

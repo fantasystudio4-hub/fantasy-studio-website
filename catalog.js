@@ -55,21 +55,27 @@ var ADS_TAG = { id: '', labels: { contact: '' } };
 var WA_NUMBER = "918686868803";
 
 /* ---- service catalogue ----
-   key / label / unit drive the price; cat / blurb / icon / tag are shop-front
-   copy for the builder's product cards and are never part of a calculation. */
+   key / label / unit drive the price; cat / blurb / icon are shop-front copy
+   for the builder's service rows and never enter a calculation.
+
+   ORDER MATTERS. It is the order clients see in the builder, in the WhatsApp
+   quote and in the PDF, and the first five are the ones a function opens
+   with — the rest sit behind "5 more options". Traditional photo and video
+   lead because that is what most families start from; cinematography and
+   candid follow as the upgrade. */
 var SERVICES = [
-  { key:'cinematography',    label:'Cinematography',      unit:'event', cat:'video',
-    blurb:'Cinematic wedding film with teasers — the highlight everyone shares.',
-    icon:'film', tag:'Most booked' },
-  { key:'candidPhotography', label:'Candid Photography',  unit:'event', cat:'photo',
-    blurb:'A photographer following the real moments, not just the posed ones.',
-    icon:'camera', tag:'Most booked' },
-  { key:'traditionalVideo',  label:'Traditional Video',   unit:'event', cat:'video',
-    blurb:'Full start-to-finish video coverage of the function.',
-    icon:'video' },
   { key:'traditionalPhoto',  label:'Traditional Photo',   unit:'event', cat:'photo',
     blurb:'Classic posed and stage photography, album-ready.',
     icon:'photo' },
+  { key:'traditionalVideo',  label:'Traditional Video',   unit:'event', cat:'video',
+    blurb:'Full start-to-finish video coverage of the function.',
+    icon:'video' },
+  { key:'cinematography',    label:'Cinematography',      unit:'event', cat:'video',
+    blurb:'Cinematic wedding film with teasers — the highlight everyone shares.',
+    icon:'film' },
+  { key:'candidPhotography', label:'Candid Photography',  unit:'event', cat:'photo',
+    blurb:'A photographer following the real moments, not just the posed ones.',
+    icon:'camera' },
   { key:'ladyShooter',       label:'Female Shooter Premium', unit:'head', cat:'photo',
     badge:'Ladies’ Section Only',
     blurb:'A lady photographer covering the ladies’ side exclusively — for pardah-observing families.',
@@ -89,15 +95,6 @@ var SERVICES = [
   { key:'extraShortVPShoot', label:'Extra Short VP Shoot',unit:'event', cat:'extras',
     blurb:'An extra short video-portrait shoot alongside the main coverage.',
     icon:'spark' },
-];
-
-/* shop departments for the builder's filter chips */
-var SERVICE_CATS = [
-  { key:'all',     label:'Everything' },
-  { key:'photo',   label:'Photography' },
-  { key:'video',   label:'Video & Film' },
-  { key:'screens', label:'Screens & Live' },
-  { key:'extras',  label:'Extras' },
 ];
 
 var EVENT_TYPES = ['Manje','Sanchak','Mehndi','Nikah','Ruksati','Valima / Reception','Engagement','Birthday'];
