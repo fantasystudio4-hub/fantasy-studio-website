@@ -193,7 +193,10 @@ img{max-width:100%;display:block}
 }
 .sec-head h2{font-size:1.2rem}
 .sec-head p{font-size:.8rem;color:var(--ink-soft);margin-top:1px}
-.sec-head .opt{margin-left:auto;flex:0 0 auto;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:#8d846c;border:1px solid var(--line);border-radius:30px;padding:.3em .8em;white-space:nowrap}
+.sec-head .opt{
+  display:inline-block;margin-left:.35em;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;
+  color:#a3987d;border:1px solid var(--line);border-radius:30px;padding:.2em .7em;white-space:nowrap;vertical-align:.08em;
+}
 .sec-body{padding:1.15rem 1.25rem}
 
 /* ============================================================
@@ -295,7 +298,14 @@ img{max-width:100%;display:block}
 .ev-body{padding:.9rem}
 
 .fld{display:flex;flex-direction:column;gap:.3rem;min-width:0}
-.date-fld{max-width:230px;margin-bottom:.85rem}
+/* the date is useful but secondary — one compact row, not a stacked block
+   pushing the actual choosing below the fold */
+.date-fld{
+  flex-direction:row;align-items:center;gap:.6rem;margin-bottom:.85rem;
+  padding:.4rem .6rem;background:var(--cream);border:1px solid var(--line);border-radius:9px;
+}
+.date-fld span{flex:0 0 auto;margin:0}
+.date-fld input[type=date]{flex:1 1 auto;max-width:190px;background:#fff}
 .fld span{font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-deep)}
 .fld select,.fld input[type=date]{
   width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);
@@ -367,6 +377,12 @@ img{max-width:100%;display:block}
 }
 .more-btn:hover{background:rgba(184,144,43,.1);border-style:solid}
 .ev-tools{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.85rem;padding-top:.75rem;border-top:1px dashed var(--line)}
+.done-btn{
+  width:100%;margin-top:.7rem;cursor:pointer;border:0;border-radius:40px;padding:.8em 1em;
+  background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#fff;
+  font-family:var(--sans);font-size:.82rem;letter-spacing:.04em;transition:.22s;
+}
+.done-btn:hover{filter:brightness(1.07)}
 .tool{
   background:none;border:1px solid var(--line);border-radius:30px;cursor:pointer;font-family:var(--sans);
   font-size:.74rem;color:var(--ink-soft);padding:.45em 1em;transition:.2s;
@@ -603,6 +619,27 @@ img{max-width:100%;display:block}
   .stepper input{height:44px}
 }
 @media(max-width:560px){
+  /* ---- flatten the chrome ----
+     Only one step is on screen, so the section card was a box drawn inside a
+     box: 60px of the 375 went to nested padding and the page opened with three
+     headings stacked — the progress labels, "Start / Step 1 of 4", and the
+     section title — all naming the same step. The progress bar names it; the
+     section title asks the question; the content runs edge to edge. */
+  .wiz-now{display:none}
+  .wiz-bar{margin-bottom:.9rem}
+  .wiz-dot span{font-size:.58rem}
+  .sec{
+    background:none;border:0;border-radius:0;box-shadow:none;overflow:visible;
+    margin-bottom:1.15rem;
+  }
+  .sec-head{background:none;border-bottom:0;padding:0 0 .7rem;display:block}
+  .sec-head h2{font-size:1.3rem}
+  .sec-head p{font-size:.79rem;margin-top:.15rem}
+  .sec-head .opt{border:0;padding:0;font-size:.64rem;letter-spacing:.08em}
+  .sec-body{padding:0}
+  .deals{gap:.45rem}
+  .deal-foot{margin-top:.7rem;justify-content:center}
+
   /* ---- step 2 on a phone: a shop shelf, two tiles to a row ----
      Icon on top like a product picture, then the name, what it is, the price,
      and a full-width Add across the bottom. The grid areas from the wider
@@ -621,11 +658,11 @@ img{max-width:100%;display:block}
   .prod.on .prod-ic{background:linear-gradient(160deg,var(--gold),var(--gold-deep))}
   .prod h4{order:2;font-size:.8rem;line-height:1.25}
   .prod .svc-badge{display:none}            /* the blurb already says it */
-  /* one line, the way a food app labels a dish — the names carry most of the
-     meaning and the extra line was what stopped the tile being a tile */
+  /* two lines: at 155px a single line cuts "Classic posed and stage…" off
+     mid-phrase, which reads as broken rather than brief */
   .prod .blurb{
     order:3;font-size:.65rem;line-height:1.3;margin-top:0;
-    display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
   /* price on one line: "₹5,500 per event" rather than stacked */
   .prod-price{order:4;text-align:left;font-size:.62rem;margin-top:.15rem}
@@ -645,10 +682,9 @@ img{max-width:100%;display:block}
     margin-left:-.9rem;margin-right:-.9rem;padding:0 .9rem .3rem;
   }
   .bundles::-webkit-scrollbar{display:none}
-  .bundle{flex:0 0 auto;scroll-snap-align:start}
+  .bundle{flex:0 0 auto;scroll-snap-align:start;min-height:40px;display:inline-flex;align-items:center}
 
   /* ---- 44px of thumb, everywhere it is tapped ---- */
-  .bundle{min-height:40px;display:inline-flex;align-items:center}
   .alb-chip{min-height:42px;display:inline-flex;align-items:center}
   .alb-row .stepper button{width:48px;height:48px}
   .alb-row .stepper input{width:56px;height:48px}
@@ -665,22 +701,12 @@ img{max-width:100%;display:block}
   .deal{padding:.75rem .8rem;gap:.7rem}
   .deal .dl b{font-size:1rem}
   .deal .dr b{font-size:1.08rem}
-  .deal-foot{flex-direction:column;align-items:stretch;gap:.1rem}
 
   .ev-picker{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
   .ev-tile{gap:.5rem;padding:.6rem .65rem}
   .ev-tile svg{width:21px;height:21px}
   .ev-tile .tn{font-size:.83rem}
   .ev-tile .tt{font-size:.64rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sec-body{padding:1rem .9rem}
-  .sec-head{padding:.9rem .9rem;gap:.7rem}
-  .sec-head h2{font-size:1.05rem}
-  .sec-head p{font-size:.75rem}
-  .sec-head .n{width:28px;height:28px;font-size:.88rem}
-  .sec-head .opt{font-size:.6rem;padding:.25em .6em}
-  .sec{margin-bottom:.85rem}
-  .wiz-dot span{font-size:.6rem;letter-spacing:.04em}
-  .wiz-now{margin-top:.6rem}
   .wiz-nav{margin-top:.9rem}
   .wiz-nav .btn{flex:1 1 100%;padding:1em 1.2em}
   .wiz-help{flex:1 1 100%;text-align:center;order:-1}
@@ -806,15 +832,14 @@ img{max-width:100%;display:block}
     <div class="sec-head">
       <div>
         <h2>Pick a package</h2>
-        <p>The fastest way — change anything afterwards.</p>
+        <p>The fastest way — change anything afterwards. <span class="opt">Optional</span></p>
       </div>
-      <span class="opt">Optional</span>
     </div>
     <div class="sec-body">
       <div class="deals" id="dealRow"></div>
       <div class="deal-foot">
         <button type="button" class="linkish" id="cmpBtn">&#8646; Compare packages</button>
-        <button type="button" class="linkish" id="skipPresets">Build my own &rarr;</button>
+
       </div>
     </div>
   </section>
@@ -867,9 +892,8 @@ img{max-width:100%;display:block}
     <div class="sec-head">
       <div>
         <h2>Add an album</h2>
-        <p id="albHeadNote">Printed, hand-finished sheets — minimum 15.</p>
+        <p><span id="albHeadNote">Printed, hand-finished sheets — minimum 15.</span> <span class="opt">Optional</span></p>
       </div>
-      <span class="opt">Optional</span>
     </div>
     <div class="sec-body">
       <div class="alb-lock" id="albLock" hidden>
@@ -1178,9 +1202,7 @@ $('#dealRow').addEventListener('click', e=>{
   const b = e.target.closest('[data-preset]'); if(!b) return;
   applyPreset(b.dataset.preset);
 });
-$('#skipPresets').addEventListener('click', ()=>{
-  const t = $('#evPicker'); if(t) t.scrollIntoView({ behavior: smooth, block:'center' });
-});
+
 
 function renderCompareTable(){
   const tbl = $('#compareTable'); if(!tbl) return;
@@ -1277,6 +1299,9 @@ function eventPanelHTML(ev, idx){
   }).join('');
 
   const m = EVENT_META[ev.type] || {};
+  /* whichever function still has nothing on it is the one to go to next */
+  const nextEv = state.events.slice(idx+1).find(e=>chosenCount(e) === 0)
+              || state.events.slice(0, idx).find(e=>chosenCount(e) === 0);
   const sub = chosen
     ? chosen + (chosen>1?' services':' service') + (ev.date ? ' · ' + fmtDate(ev.date) : '')
     : 'Tap to choose coverage';
@@ -1290,7 +1315,7 @@ function eventPanelHTML(ev, idx){
       <span class="ev-chev" aria-hidden="true">${open?'⌃':'⌄'}</span>
     </button>
     <div class="ev-body" ${open?'':'hidden'}>
-      <label class="fld date-fld"><span>Date of this function</span>
+      <label class="fld date-fld"><span>Date</span>
         <input id="evd-${ev.id}" type="date" data-field="date" value="${esc(ev.date||'')}" min="${TODAY_ISO}" /></label>
       ${bundles?`<div class="bundles"><span class="bl">Quick start</span>${bundles}</div>`:''}
       <div class="prods">${prods}</div>
@@ -1300,6 +1325,7 @@ function eventPanelHTML(ev, idx){
         ${idx>0?`<button type="button" class="tool" data-copyprev="${ev.id}">&#10697; Same as ${esc(state.events[idx-1].type)}</button>`:''}
         <button type="button" class="tool danger" data-remove>Remove this function</button>
       </div>
+      ${nextEv?`<button type="button" class="done-btn" data-toggle="${nextEv.id}">Done &mdash; next: ${esc(nextEv.type)} &rarr;</button>`:''}
     </div>
   </div>`;
 }
@@ -1789,8 +1815,9 @@ function renderQuote(){
   ['pdfBtn','pdfBtn2','shareBtn','shareBtn2','clearBtn','clearBtn2','sheetShare','sheetClear']
     .forEach(id=>{ const el = document.getElementById(id); if(el) el.hidden = empty; });
 
-  /* the phone's bottom bar carries whatever this step is for: Next on the way
-     through, Send once you are on the last one */
+  /* The bottom bar carries Next on the way through. On the last step the page
+     itself holds Send, PDF and Share as full-width buttons, so the bar drops
+     back to being the running total rather than a second copy of them. */
   const last = step === WIZ.length;
   const nx = $('#mqNext'), wa = $('#mqWa'), pf = $('#mqPdf');
   if(nx){
@@ -1798,8 +1825,8 @@ function renderQuote(){
     nx.disabled = !stepReachable(step + 1);
     nx.textContent = step === 1 ? 'Next: coverage →' : step === 2 ? 'Next: album →' : 'Next: send →';
   }
-  if(wa) wa.hidden = !last;
-  if(pf) pf.hidden = !last || empty;
+  if(wa) wa.hidden = true;
+  if(pf) pf.hidden = true;
 
   renderWizBar();
   updatePkgChip();
