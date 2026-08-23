@@ -334,7 +334,7 @@ img{max-width:100%;display:block}
 }
 .prod-ic svg{width:19px;height:19px;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .prod.on .prod-ic{background:var(--gold);border-color:var(--gold)}
-.tickmark{color:#fff;font-size:1.05rem;font-weight:600;line-height:1}
+.prod.on .prod-ic svg{stroke:#fff}
 .prod h4{grid-area:name;font-family:var(--sans);font-weight:500;font-size:.9rem;color:var(--ink);line-height:1.25}
 .prod .svc-badge{
   display:inline-block;margin-left:.4em;padding:.12em .55em;vertical-align:middle;white-space:nowrap;
@@ -586,6 +586,10 @@ img{max-width:100%;display:block}
   .shop{grid-template-columns:minmax(0,1fr)}
   .cart{display:none}
   .mq-bar{display:flex}
+  /* the sticky bar already carries Next at this width — an in-page copy of it
+     is a second button for one action, sitting just above the first */
+  .wiz-nav .wiz-next{display:none}
+  .wiz-nav{justify-content:flex-start}
 }
 @media(min-width:1081px){
   .quote-sheet,.sheet-backdrop,.mq-bar{display:none!important}
@@ -599,29 +603,40 @@ img{max-width:100%;display:block}
   .stepper input{height:44px}
 }
 @media(max-width:560px){
-  /* One column, and the row gets its own shape: the name never has room to
-     sit beside the price at 375px, so the price goes under it and the blurb
-     takes the full width. Once a service is chosen the blurb has done its
-     job and steps out, which is what keeps a picked row down to ~64px. */
-  .prods{grid-template-columns:1fr;gap:.45rem}
+  /* ---- step 2 on a phone: a shop shelf, two tiles to a row ----
+     Icon on top like a product picture, then the name, what it is, the price,
+     and a full-width Add across the bottom. The grid areas from the wider
+     layout go inert under flex, so the children stack in DOM order and `order`
+     puts the blurb above the price. */
+  .prods{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
   .prod{
-    grid-template-columns:auto minmax(0,1fr) auto;
-    grid-template-areas:"ic name act" "ic price act" "blurb blurb blurb";
-    row-gap:.1rem;column-gap:.65rem;align-items:center;padding:.65rem .7rem;
+    display:flex;flex-direction:column;align-items:stretch;gap:.2rem;
+    padding:.45rem .45rem .5rem;min-height:0;
   }
-  .prod h4{grid-area:name;font-size:.89rem;line-height:1.3}
-  .prod-price{grid-area:price;text-align:left;font-size:.68rem}
-  .prod-price b{display:inline;font-size:.95rem}
-  .prod .blurb{grid-area:blurb;margin-top:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .prod.on .blurb{display:none}
-  .prod-act{grid-area:act;justify-self:end;align-self:center}
-  /* a chosen row has no blurb, so give the name the full width and let the
-     price share its line with the stepper — "Traditional Photo" stops wrapping */
-  .prod.on{grid-template-areas:"ic name name" "ic price act"}
-  .prod.on h4{padding-right:.2rem}
-  /* the stepper needs 132px of the 217 the row has; "per event" is what gives
-     way, not the price */
-  .prod.on .unit{display:none}
+  .prod-ic{
+    order:1;width:100%;height:62px;border-radius:8px;
+    background:linear-gradient(160deg,rgba(184,144,43,.14),rgba(184,144,43,.06));
+  }
+  .prod-ic svg{width:27px;height:27px}
+  .prod.on .prod-ic{background:linear-gradient(160deg,var(--gold),var(--gold-deep))}
+  .prod h4{order:2;font-size:.8rem;line-height:1.25}
+  .prod .svc-badge{display:none}            /* the blurb already says it */
+  /* one line, the way a food app labels a dish — the names carry most of the
+     meaning and the extra line was what stopped the tile being a tile */
+  .prod .blurb{
+    order:3;font-size:.65rem;line-height:1.3;margin-top:0;
+    display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  /* price on one line: "₹5,500 per event" rather than stacked */
+  .prod-price{order:4;text-align:left;font-size:.62rem;margin-top:.15rem}
+  .prod-price b{display:inline;font-size:.95rem;line-height:1.2;margin-right:.2em}
+  .prod.on .unit{display:inline}
+  .prod-act{order:5;width:100%;margin-top:auto;padding-top:.35rem;justify-self:auto}
+  /* still 44px of thumb, inside a 140px tile */
+  .add-pill{display:block;width:100%;text-align:center;padding:.75em .4em;font-size:.82rem;min-height:44px}
+  .stepper{width:100%;justify-content:space-between}
+  .stepper button{width:44px;height:44px;flex:0 0 44px}
+  .stepper input{flex:1 1 auto;width:auto;min-width:0;height:44px;font-size:16px}
 
   /* chip rows swipe sideways rather than stacking */
   .bundles{
@@ -633,10 +648,6 @@ img{max-width:100%;display:block}
   .bundle{flex:0 0 auto;scroll-snap-align:start}
 
   /* ---- 44px of thumb, everywhere it is tapped ---- */
-  .stepper button{width:44px;height:44px;font-size:1.2rem}
-  .stepper input{width:44px;height:44px;font-size:16px}
-  .add-pill{padding:.55em 1.2em;font-size:.82rem}
-  .prod{padding:.7rem .75rem;min-height:74px}
   .bundle{min-height:40px;display:inline-flex;align-items:center}
   .alb-chip{min-height:42px;display:inline-flex;align-items:center}
   .alb-row .stepper button{width:48px;height:48px}
@@ -1249,7 +1260,7 @@ function eventPanelHTML(ev, idx){
        button. On, the stepper owns its own clicks and the row is inert. */
     return `<div class="prod ${on?'on':''}" data-ev="${ev.id}" data-svc="${s.key}"
       ${on?'':`data-act="add" role="button" tabindex="0" aria-label="Add ${esc(s.label)}, ${inr(PRICES[s.key])} ${unitTxt}"`}>
-      <span class="prod-ic">${on?'<span class="tickmark" aria-hidden="true">✓</span>':icon(s.icon)}</span>
+      <span class="prod-ic">${icon(s.icon)}</span>
       <h4>${esc(s.label)}${s.badge?`<span class="svc-badge">${esc(s.badge)}</span>`:''}</h4>
       <span class="prod-price"><b>${inr(PRICES[s.key])}</b> <span class="unit">${unitTxt}</span></span>
       <p class="blurb">${esc(s.blurb||'')}</p>
@@ -1330,8 +1341,6 @@ function refreshProd(evId, key){
          <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
        </span>`
     : '<span class="add-pill">＋ Add</span>';
-  card.querySelector('.prod-ic').innerHTML = q>0
-    ? '<span class="tickmark" aria-hidden="true">✓</span>' : icon(s.icon);
   /* the row is only a button while it is off */
   if(q>0){ card.removeAttribute('data-act'); card.removeAttribute('role'); card.removeAttribute('tabindex'); card.removeAttribute('aria-label'); }
   else{
