@@ -1243,6 +1243,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#dstepList').innerHTML = dsteps.map(dstepRow).join('');
     const fests = (CFG.festivals && CFG.festivals.length) ? CFG.festivals : DEFAULTS.festivals;
     $('#cfgFestivals').value = fests.join('\n');
+    renderFestWarn(fests);
     const bsteps = (CFG.b2bDeliverySteps && CFG.b2bDeliverySteps.length) ? CFG.b2bDeliverySteps : DEFAULTS.b2bDeliverySteps;
     $('#bstepList').innerHTML = bsteps.map(bstepRow).join('');
     $('#pkgListRM').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
@@ -1651,6 +1652,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return m;
   }
   const festivalsOn = iso => festivalMap()[iso] || [];
+
+  /* This list is hand-maintained and it RUNS OUT. Nothing breaks when it does —
+     festivals simply stop appearing, silently, and the owner works out months
+     later why Sankranti never showed. So the Config page says how far ahead it
+     reaches, and starts asking for the next year with three months to go. */
+  function renderFestWarn(list){
+    const el = $('#festWarn'); if(!el) return;
+    const dates = (list||[]).map(l=>String(l).slice(0,10)).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    if(!dates.length){
+      el.hidden = false;
+      el.className = 'festwarn out';
+      el.innerHTML = '<b>No festivals listed.</b> The calendar will not mark any dates until you add some.';
+      return;
+    }
+    const last = dates[dates.length-1];
+    const days = Math.round((new Date(last+'T00:00') - new Date(todayISO()+'T00:00')) / 864e5);
+    const upcoming = dates.filter(d=>d >= todayISO()).length;
+    if(days < 0){
+      el.hidden = false; el.className = 'festwarn out';
+      el.innerHTML = `<b>This list has run out.</b> The last date in it was ${esc(dmy(last))}, so the calendar is marking nothing. Add the coming year below.`;
+    }else if(days <= 92){
+      el.hidden = false; el.className = 'festwarn soon';
+      el.innerHTML = `<b>Running out.</b> The last date here is ${esc(dmy(last))} — about ${Math.max(1,Math.round(days/30.4))} month${Math.round(days/30.4)===1?'':'s'} away. Add next year's dates before then, or the calendar will quietly stop marking them.`;
+    }else{
+      el.hidden = false; el.className = 'festwarn ok';
+      el.innerHTML = `Covered to <b>${esc(dmy(last))}</b> — ${upcoming} date${upcoming===1?'':'s'} still ahead.`;
+    }
+  }
 
   function stepsFor(x){
     /* the keyword filter below decides which RETAIL steps apply to a package;
@@ -2620,7 +2649,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          makes. The name still reaches a screen reader and a desktop hover
          through the label and the title. */
       const fest = festivalsOn(iso);
-      h += `<div class="cal-cell ${col>4?'we':''} ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''} ${fest.length?'fest':''}" data-date="${iso}" role="button" tabindex="0" aria-pressed="${iso===calSel}"${
+      h += `<div class="cal-cell ${col>4?'we':''} ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''} ${fest.length?'festday':''}" data-date="${iso}" role="button" tabindex="0" aria-pressed="${iso===calSel}"${
         fest.length?` title="${esc(fest.join(' · '))}"`:''} aria-label="${d} — ${evs.length} event${evs.length===1?'':'s'}${fest.length?' — '+esc(fest.join(', ')):''}">
         <span class="d">${d}</span>
         <div class="dots">${evs.slice(0,4).map(e=>`<i class="dot ${e.status}"></i>`).join('')}${evs.length>4?`<b>+${evs.length-4}</b>`:''}</div>

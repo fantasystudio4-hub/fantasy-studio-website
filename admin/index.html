@@ -423,6 +423,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <h3>Calendar Festivals</h3>
       <p class="sub">Shown on the calendar — a marker on the date, the name in the day box below it. One per line as <b style="color:var(--gold-b)">YYYY-MM-DD|Name</b>.
         <br><b style="color:var(--warn)">Check the lunar ones.</b> Hindu festivals follow a lunisolar calendar and Islamic ones the Hijri, so their dates move every year and an Indian observance can shift a day on a moon sighting. The seeded list is a starting point, not an authority — fixed-date holidays like Republic Day and Christmas are safe; Raksha Bandhan, Milad un Nabi, Diwali and the rest are worth a minute against a panchang.</p>
+      <div id="festWarn" hidden></div>
       <div class="fld"><label>Festival dates</label><textarea id="cfgFestivals" rows="10" spellcheck="false" placeholder="2026-08-28|Raksha Bandhan"></textarea></div>
     </div>
     <div class="sec">
