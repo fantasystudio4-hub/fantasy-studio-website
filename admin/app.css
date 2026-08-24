@@ -588,6 +588,16 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tsegs .segb{background:var(--err);color:var(--white);border-radius:var(--r-pill);font-size:var(--fs-xs);padding:.05em .4em;font-weight:700}
 .tsegs button.on .segb{background:var(--ink-0);color:var(--gold-b)}
 .pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
+/* the fee is a control now, not a label — it opens the Edit Fee sheet. It has
+   to read as tappable without turning a dense money list into a row of
+   buttons, so: dotted underline, and the panel's own button reset. */
+.pm-row button.amt2{
+  background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;
+  text-align:right;border-bottom:1px dotted var(--line-3);
+  min-height:var(--tap);display:inline-flex;flex-direction:column;justify-content:center;align-items:flex-end;
+}
+.pm-row button.amt2:active{color:var(--gold-b)}
+@media(hover:hover){ .pm-row button.amt2:hover{color:var(--gold-b);border-bottom-color:var(--gold)} }
 .pm-row .got2{display:block;font-family:var(--sans);font-style:normal;font-size:var(--fs-xs);color:var(--ok);letter-spacing:.02em}
 .pm-row .part2{color:var(--warn);border-color:var(--state-pending-ln)}
 /* .grp sets uppercase + wide letter-spacing for its heading text — the button

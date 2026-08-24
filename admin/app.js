@@ -4156,7 +4156,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         return `
         <div class="pm-row">
           <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)} <span>· ${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'')}</span></span>
-          <span class="amt2">${inr(payFee(a))}${st === 'part' ? `<i class="got2">${inr(payGot(a))} paid</i>` : ''}</span>
+          <button type="button" class="amt2" data-feeedit="${esc(a.id)}" title="Tap to change this event's fee">${inr(payFee(a))}${st === 'part' ? `<i class="got2">${inr(payGot(a))} paid</i>` : ''}</button>
           ${st === 'paid'
             ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to see or correct this payment">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
             : st === 'part'
@@ -4166,6 +4166,58 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }).join('');
       return head + rows;
     }).join('');
+  }
+
+  /* ---------- edit one event's fee, from the Pay tracker ----------
+     The fee was plain text here: to change it you had to find the assignment in
+     the Work list and open the whole assign sheet — member picker, role, call
+     time, venue, notes — to alter one number. */
+  let _feeId = null;
+  function openFeeEdit(id){
+    const a = ASGS.find(v=>v.id===id); if(!a) return;
+    _feeId = id;
+    const got = payGot(a);
+    $('#feeWho').textContent = `${a.memberName||'—'} — ${stepDate(a.date)||a.date||''} · ${a.eventTitle||'Event'}`;
+    $('#feeAmt').value = payFee(a) || '';
+    /* the one thing that constrains the new figure, said before it is typed */
+    $('#feeNote').innerHTML = got > 0
+      ? `<p class="sub" style="margin:.1rem 0 .8rem">${inr(got)} has already been paid on this event. A lower fee will show as overpaid — it will not take money back.</p>`
+      : '';
+    const wasOpen = $('#feeModal').classList.contains('open');
+    $('#feeModal').classList.add('open'); $('#feeBackdrop').classList.add('open');
+    setTimeout(()=>$('#feeAmt').focus(), 80);
+    if(!wasOpen) pushView('fee', '#team/fee');
+  }
+  function closeFeeUI(){ $('#feeModal').classList.remove('open'); $('#feeBackdrop').classList.remove('open'); _feeId = null; }
+  function closeFee(){ backFrom('fee', closeFeeUI); }
+  on('#feeClose', 'click', closeFee);
+  on('#feeBackdrop', 'click', closeFee);
+  on('#feeAmt', 'keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); saveFee(); } });
+  on('#feeSave', 'click', ()=>saveFee());
+
+  async function saveFee(){
+    const a = ASGS.find(v=>v.id===_feeId); if(!a) return;
+    const amt = Math.max(0, Math.round(Number($('#feeAmt').value)||0));
+    if(amt === payFee(a)){ closeFee(); return; }
+    const btn = $('#feeSave'); btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      /* the same rules the assign sheet applies — see feeChangePatch */
+      const patch = feeChangePatch(a, amt);
+      const sm = settleMsg(await settle(updateDoc(doc(db,'assignments',_feeId), patch)), `Fee set to ${inr(amt)}`);
+      btn.disabled = false; btn.textContent = 'Save Fee';
+      toast(sm.msg);
+      if(!sm.ok) return;
+      /* mirror locally in the same shape the patch just wrote */
+      a.pay = { ...(a.pay||{}), amount: amt };
+      if(patch['pay.payments'])   a.pay.payments   = patch['pay.payments'];
+      if('pay.paidAmount' in patch) a.pay.paidAmount = patch['pay.paidAmount'];
+      if('pay.paid' in patch)       a.pay.paid       = patch['pay.paid'];
+      closeFeeUI();
+      renderTeam();
+    }catch(err){
+      btn.disabled = false; btn.textContent = 'Save Fee';
+      toast('Save failed');
+    }
   }
 
   function renderTeamStats(){
@@ -4399,6 +4451,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const m = TEAM.find(v=>v.id===row.dataset.tmedit);
     if(m) openTm(m);
   });
+
+  /* The fee can change; what was already handed over cannot. On a row marked
+     paid before instalments existed there is no separate figure — its payment
+     IS pay.amount — so editing the fee would silently rewrite history and hand
+     the member a receipt for money never paid. Freeze the old figure into
+     payments[]/paidAmount before the fee moves.
+
+     Extracted from the assign sheet so the Pay tracker can change a fee
+     without reimplementing these rules, which is exactly how the two would
+     drift apart. */
+  function feeChangePatch(old, amt){
+    const cur = (old||{}).pay || {}, frozen = payGot(old);
+    const patch = { 'pay.amount': amt };
+    if(frozen > 0 && !(Array.isArray(cur.payments) && cur.payments.length)){
+      patch['pay.payments']   = priorPayments(cur);
+      patch['pay.paidAmount'] = frozen;
+    }
+    if(frozen > 0 || cur.paid) patch['pay.paid'] = amt > 0 && frozen >= amt;
+    return patch;
+  }
 
   /* ---------- assign sheet ---------- */
   let _asEditId = null, _asCtx = null;
@@ -4708,12 +4780,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            its payment IS pay.amount — so editing the fee would silently rewrite
            history and hand the member a receipt for money never paid. Freeze
            the old figure into payments[]/paidAmount before the fee moves. */
-        const _curPay = (old||{}).pay || {}, _frozen = payGot(old);
-        if(_frozen > 0 && !(Array.isArray(_curPay.payments) && _curPay.payments.length)){
-          patch['pay.payments']   = priorPayments(_curPay);
-          patch['pay.paidAmount'] = _frozen;
-        }
-        if(_frozen > 0 || _curPay.paid) patch['pay.paid'] = amt > 0 && _frozen >= amt;
+        Object.assign(patch, feeChangePatch(old, amt));
         /* details the member already acknowledged have changed — they must
            confirm again, so the ✓ never silently means an outdated plan */
         const reset = old && old.status === 'acknowledged'
@@ -5089,6 +5156,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        collapse the member instead */
     const all = e.target.closest('[data-pmall]');
     if(all){ openCrewPayAll(all.dataset.pmall); return; }
+    /* also before the group header — the fee button sits inside a member's rows */
+    const fe = e.target.closest('[data-feeedit]');
+    if(fe){ openFeeEdit(fe.dataset.feeedit); return; }
     const g = e.target.closest('[data-pmgrp]');
     if(g){
       const id = g.dataset.pmgrp;

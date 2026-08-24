@@ -468,6 +468,21 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button class="gbtn" id="paySave" type="button">Save Payment</button>
 </div>
 
+<!-- Edit fee: opened from a Pay tracker row. Deliberately its own small sheet
+     rather than an inline input — the pay list re-renders on every snapshot,
+     which would wipe a half-typed number, and a fee is not a field to fat-finger
+     while scrolling. -->
+<div class="pay-backdrop" id="feeBackdrop"></div>
+<div class="pay-modal" id="feeModal" role="dialog" aria-modal="true" aria-label="Edit event fee">
+  <button class="pay-close" id="feeClose" type="button" aria-label="Close">&times;</button>
+  <h3>Edit Fee</h3>
+  <div class="who" id="feeWho"></div>
+  <div class="fld"><label>Fee for this event (₹)</label>
+    <input id="feeAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
+  <div id="feeNote"></div>
+  <button class="gbtn" id="feeSave" type="button">Save Fee</button>
+</div>
+
 <div class="pay-backdrop" id="cpBackdrop"></div>
 <div class="pay-modal" id="cpModal" role="dialog" aria-modal="true" aria-label="Pay crew member">
   <button class="pay-close" id="cpClose" type="button" aria-label="Close">&times;</button>
