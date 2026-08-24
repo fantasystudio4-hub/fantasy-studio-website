@@ -1052,9 +1052,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       h += ` <button type="button" class="btn btn--sm btn--ghost" data-openpkg${gone?' disabled':''}>${gone ? '📦 Package deleted'
               : '📦 Open ' + esc((pk && pk.quoteNo) || l.quoteNo || 'package')}</button>`;
     }
-    if(l.quote && Array.isArray(l.quote.events) && l.quote.events.length){
-      h += ` <button type="button" class="btn btn--sm btn--ghost" data-convert>→ ${l.pkgId ? 'Create another package' : 'Create package from this lead'}</button>`;
-    }
+    /* This used to require l.quote.events — which only a PACKAGE BUILDER lead
+       ever has. Every enquiry from the contact form, and every lead added by
+       hand through Quick Add, therefore had no way to become a package at all;
+       the owner had to retype the name and number into a blank quotation.
+       pkgFromLead() already coped with a missing quote, so the gate was the
+       whole problem. */
+    const hasQuote = !!(l.quote && Array.isArray(l.quote.events) && l.quote.events.length);
+    h += ` <button type="button" class="btn btn--sm btn--primary" data-convert>→ ${
+      l.pkgId ? 'Create another package' : hasQuote ? 'Create package from this quote' : 'Create package from this lead'}</button>`;
     return h;
   }
 
@@ -1129,7 +1135,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const gone = _pkgsLoaded && !already;
         if(!gone && !confirm(`"${l.name||'This lead'}" already became ${(already && already.quoteNo) || l.quoteNo || 'a package'}.\n\nA second package splits their events and their payments across two records.\n\nTo add a date to the package they already have, tap Cancel and open it instead.\n\nCreate a separate package anyway?`)) return;
       }
-      $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l)); $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`; toast('Quote loaded — check rates, then Save');
+      const hadQuote = !!(l.quote && Array.isArray(l.quote.events) && l.quote.events.length);
+      $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l));
+      $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`;
+      /* the two cases leave the editor in genuinely different states, and the
+         owner's next action differs — check rates, or add services */
+      toast(hadQuote ? 'Quote loaded — check rates, then Save'
+                     : 'Started from the lead — add services, then Save');
       return;
     }
     if(e.target.closest('[data-savenotes]')){
@@ -3156,6 +3168,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       })
     /* a dated function with no services ticked is still a date to hold */
     })).filter(ev=>ev.items.length || ev.date);
+    /* No builder quote — but an enquiry still tells you what and when. Carry
+       the event type and the shoot date across so the editor opens with the
+       date already held, instead of a blank form and a retyped name.
+       "Nikah + Walima" is two functions: split on the separators people
+       actually use in a list, and give the date to the first, since the rest
+       fall on their own days. */
+    if(!events.length){
+      const types = String(l.eventType||'').split(/\s*[+,]\s*/).map(t=>t.trim()).filter(Boolean);
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(l.weddingDate||'') ? l.weddingDate : '';
+      (types.length ? types : ['']).forEach((t,i)=>{
+        events.push({ title: t ? t.toUpperCase() : '', date: i === 0 ? date : '', venue:'', items: [] });
+      });
+    }
     const sheets = Number(q.albumSheets)||0;
     return {
       leadId: l.id,
@@ -7568,7 +7593,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   if(DEMO){
     (async ()=>{
       try{
-        const d = await import('./_demo-data.js');
+        /* cache-busted on purpose: the whole point of the fixtures is editing
+           them, and a cached module means a change to the file silently does
+           not show up — which reads as "my code did not work" and costs a lot
+           of confusion before you think to check. Dev-only path, so the extra
+           request is free. */
+        const d = await import('./_demo-data.js?v=' + Date.now());
         LEADS   = d.leads.slice();
         PKGS    = d.packages.slice();
         TEAM    = d.team.slice();

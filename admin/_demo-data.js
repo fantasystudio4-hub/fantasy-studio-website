@@ -224,9 +224,22 @@ export const leads = [
   { id: 'ld07', name: 'Swathi Reddy', phone: '9866554433', phoneFull: '919866554433',
     source: 'contact_form', status: 'lost', createdAt: ts(70),
     eventType: 'Reception', weddingDate: iso(-20), grandTotal: 120000, message: '', notes: 'Went with another studio on price.' },
+  /* the ONE lead carrying a real builder quote — without it the
+     builder → package conversion path cannot be exercised at all, and it is a
+     different branch from a plain enquiry (services and rates already chosen,
+     so the editor opens priced rather than blank) */
   { id: 'ld08', name: 'Tarun Chowdary', phone: '9550066778', phoneFull: '919550066778',
     source: 'package_builder', status: 'new', createdAt: ts(4),
-    eventType: 'Pre-wedding', weddingDate: iso(60), grandTotal: 95000, message: '', notes: '' },
+    eventType: 'Pre-wedding', weddingDate: iso(60), grandTotal: 95000, message: '', notes: '',
+    quote: {
+      albumSheets: 20,
+      events: [
+        { type: 'Pre-wedding', date: iso(60),
+          services: { candidPhotography: 1, cinematography: 1 } },
+        { type: 'Reception', date: iso(62),
+          services: { traditionalPhoto: 2, traditionalVideo: 1, drone: 1 } },
+      ],
+    } },
   { id: 'ld09', name: 'Fatima Begum', phone: '9177788990', phoneFull: '919177788990',
     source: 'contact_form', status: 'delivered', createdAt: ts(210),
     eventType: 'Wedding', weddingDate: iso(-90), grandTotal: 265000, message: '', notes: '' },
