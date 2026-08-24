@@ -1236,3 +1236,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .festwarn.soon b{color:var(--state-pending)}
 .festwarn.out{border-left-color:var(--state-overdue);background:var(--state-overdue-bg)}
 .festwarn.out b{color:var(--state-overdue)}
+
+/* the "where did this come from" note on a payment row — secondary to the date
+   and mode it sits under, and it wraps rather than pushing the amount out */
+.paynote{
+  display:block;font-style:normal;font-size:var(--fs-xs);color:var(--mut);
+  margin-top:.1rem;line-height:1.35;overflow-wrap:anywhere;
+}
+.pay-hist > div > span:first-child{min-width:0;flex:1}

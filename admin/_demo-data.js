@@ -41,8 +41,9 @@ const money = (final, advance) => ({
   gross: final, discount: 0, finalPrice: final,
   advance, balance: final - advance
 });
-const pay = (amount, daysAgo, mode) => ({
-  id: 'pm' + amount + daysAgo, amount, date: iso(-daysAgo), mode
+const pay = (amount, daysAgo, mode, note) => ({
+  id: 'pm' + amount + daysAgo, amount, date: iso(-daysAgo), mode,
+  ...(note ? { note } : {})   /* only some payments carry a collection note */
 });
 const shoot = (services) => services.map(([service, qty, rate]) => ({ service, qty, rate }));
 
@@ -60,7 +61,8 @@ export const packages = [
         items: shoot([['Photography', 3, 18000], ['Cinematography', 2, 25000], ['Drone', 1, 22000]]) },
     ],
     totals: money(310000, 200000),
-    payments: [pay(150000, 44, 'UPI'), pay(50000, 6, 'Bank transfer')],
+    payments: [pay(150000, 44, 'UPI', 'advance on booking — GPay from her father'),
+               pay(50000, 6, 'Bank transfer')],   /* one with a note, one without */
     delivery: [{ step: 'RAW handover', date: iso(-2) }, { step: 'Photo selection', date: iso(-1) }],
   },
   {
@@ -128,7 +130,8 @@ export const packages = [
         items: shoot([['Photography', 2, 18000], ['Cinematography', 1, 25000]]) },
     ],
     totals: { gross: 145000, discount: 5000, finalPrice: 140000, advance: 145000, balance: -5000 },
-    payments: [pay(70000, 140, 'UPI'), pay(75000, 30, 'Cash')],
+    payments: [pay(70000, 140, 'UPI'),
+               pay(75000, 30, 'Cash', 'collected at the studio office, receipt 114 — this one is deliberately long enough to wrap')],
     delivery: [
       { step: 'RAW handover', date: iso(-40) }, { step: 'Photo selection', date: iso(-30) },
       { step: 'Album design', date: iso(-20) }, { step: 'Album print', date: iso(-14) },

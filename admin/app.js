@@ -4860,7 +4860,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _cpId = null; _cpAllMember = mid; _cpMode = 'online';
     $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on');
     $('#cpWho').textContent = `${name} — ${inr(total)} owed across ${rows.length} shoot${rows.length===1?'':'s'}`;
-    $('#cpAmt').value = '';
+    $('#cpAmt').value = ''; $('#cpNote').value = '';
     const quick = [['Everything owed', total]];
     const half = Math.round(total/2);
     if(half > 0 && half < total) quick.push(['Half', half]);
@@ -4921,7 +4921,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const fee = payFee(a), got = payGot(a), due = payDue(a);
     $('#cpWho').textContent = `${a.memberName||'—'} · ${a.eventTitle||'Event'} ${stepDate(a.date)||a.date||''} — `
       + (fee > 0 ? `${inr(due)} left of ${inr(fee)}` : 'no fee set on this assignment');
-    $('#cpAmt').value = '';
+    $('#cpAmt').value = ''; $('#cpNote').value = '';
     const quick = [];
     if(due > 0) quick.push(['Full balance', due]);
     const half = Math.round(due/2);
@@ -4942,7 +4942,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const el = $('#cpHist'); if(!el) return;
     el.innerHTML = list.length
       ? '<b style="color:var(--gold-b)">Payments so far</b>' + list.map(pm=>
-          `<div><span>${esc(dmy(pm.date) || 'date not recorded')}${pm.mode ? ' · ' + esc(pm.mode) : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-cprm data-pid="${esc(pm.id||'')}" title="Remove this payment">✕</button></span></div>`).join('')
+          `<div><span>${esc(dmy(pm.date) || 'date not recorded')}${pm.mode ? ' · ' + esc(pm.mode) : ''}${pm.note ? `<em class="paynote">${esc(pm.note)}</em>` : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-cprm data-pid="${esc(pm.id||'')}" title="Remove this payment">✕</button></span></div>`).join('')
       : '';
   }
   function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; _cpAllMember = null; }
@@ -5032,7 +5032,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!confirm(`That is ${inr(amount - due)} more than the ${inr(due)} still owed for this event. Record it anyway?`)){ $('#cpAmt').focus(); return; }
     }
     const mode = _cpMode;
-    const entry = { id: newPayId(), amount, date: $('#cpDate').value || todayISO(), mode };
+    const cnote = ($('#cpNote').value||'').trim().slice(0, 80);
+    const entry = { id: newPayId(), amount, date: $('#cpDate').value || todayISO(), mode,
+                    ...(cnote ? { note: cnote } : {}) };
     const btn = $('#cpSave'); btn.disabled = true;
     try{
       const { pay, queued } = await recordCrewPayment(a, entry);
@@ -5195,8 +5197,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       const { pkgs, partial } = await fetchAll();
       /* money records stay in the accounting export even if their package sits in Trash */
-      const rows = [['Date','Client','Mode','Amount','QuoteNo','PackageInTrash']];
-      pkgs.forEach(x=>(x.payments||[]).forEach(pm=>rows.push([pm.date||'', x.clientName||'', pm.mode||'', pm.amount||0, x.quoteNo||'', x.deleted ? 'yes' : ''])));
+      /* Note last: a collection note earns its keep at reconciliation time, and
+         that happens in a spreadsheet, not in the panel. */
+      const rows = [['Date','Client','Mode','Amount','QuoteNo','PackageInTrash','Note']];
+      pkgs.forEach(x=>(x.payments||[]).forEach(pm=>rows.push([pm.date||'', x.clientName||'', pm.mode||'', pm.amount||0, x.quoteNo||'', x.deleted ? 'yes' : '', pm.note||''])));
       dl(`payments-${stamp()}.csv`, csvEnc(rows), 'text/csv'); toast(`Payments CSV — ${rows.length-1} rows${partNote(partial)}`);
     }catch(err){ toast('Export failed: ' + (err.code||err.message)); }
   });
@@ -6108,6 +6112,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on');
     $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr(Math.max(0,(x.totals||{}).balance||0))} of ${inr((x.totals||{}).finalPrice||0)}`;
     $('#payAmt').value = '';
+    /* cleared every open — a note left over from the last payment would attach
+       itself to the next one silently */
+    $('#payNote').value = '';
     const bal = Number((x.totals||{}).balance)||0;
     const fin = Number((x.totals||{}).finalPrice)||0;
     const quick = [];
@@ -6122,7 +6129,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const hist = (x.payments||[]);
     $('#payHist').innerHTML = hist.length
       ? '<b style="color:var(--gold-b)">Previous payments</b>' + hist.map(pm=>
-          `<div><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(pm.id||'')}" data-amt="${Number(pm.amount)||0}" data-date="${esc(pm.date||'')}" data-mode="${esc(pm.mode||'')}" title="Remove this payment">✕</button></span></div>`).join('')
+          `<div><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}${pm.note ? `<em class="paynote">${esc(pm.note)}</em>` : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(pm.id||'')}" data-amt="${Number(pm.amount)||0}" data-date="${esc(pm.date||'')}" data-mode="${esc(pm.mode||'')}" title="Remove this payment">✕</button></span></div>`).join('')
       : '';
     const wasOpen = $('#payModal').classList.contains('open');
     $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
@@ -6205,8 +6212,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `${inr(amount)} is ${inr(over)} more than the ${inr(due)} still due on this package.\n\nRecord it anyway?`;
       if(!confirm(msg)){ $('#payAmt').focus(); return; }
     }
+    const note = ($('#payNote').value||'').trim().slice(0, 80);
     const payment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-                      amount, date: $('#payDate').value || todayISO(), mode: payMode };
+                      amount, date: $('#payDate').value || todayISO(), mode: payMode,
+                      /* only written when there IS one — an empty string on every
+                         payment row is noise in the doc and in every export */
+                      ...(note ? { note } : {}) };
     btn.disabled = true;
     try{
       /* arrayUnion + increment: safe against a stale list on another phone, and queues offline */
