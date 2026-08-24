@@ -192,6 +192,49 @@ const DEFAULTS = {
   deliverySteps: ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'],
   /* partner-studio jobs: they collect the footage and do their own post */
   b2bDeliverySteps: ['All events shot','Data ready to collect from office','Data delivered — job closed'],
+  /* Festivals shown on the calendar. "YYYY-MM-DD|Name", one per line, editable
+     in Site Config so a year can be pasted in without a deploy.
+
+     READ THIS BEFORE TRUSTING THE LUNAR ONES. The fixed-date entries below are
+     certain — they fall on the same date every year. Everything marked lunar is
+     NOT: Hindu festivals follow a lunisolar calendar and Islamic ones the
+     Hijri, whose observed date in India depends on a moon sighting and can move
+     by a day either way. They are seeded here so the feature is useful on day
+     one, not because they are authoritative. Check them against a panchang or
+     your local mosque's announcement and correct them in Site Config — that is
+     one pass through one text box, and it is why the box exists. */
+  festivals: [
+    /* fixed date — safe */
+    '2026-01-01|New Year',
+    '2026-01-14|Makar Sankranti / Pongal',
+    '2026-01-26|Republic Day',
+    '2026-06-02|Telangana Formation Day',
+    '2026-08-15|Independence Day',
+    '2026-10-02|Gandhi Jayanti',
+    '2026-12-25|Christmas',
+    '2027-01-01|New Year',
+    '2027-01-14|Makar Sankranti / Pongal',
+    '2027-01-26|Republic Day',
+    '2027-06-02|Telangana Formation Day',
+    '2027-08-15|Independence Day',
+    '2027-10-02|Gandhi Jayanti',
+    '2027-12-25|Christmas',
+    /* lunar — VERIFY EACH ONE, see the note above */
+    '2026-02-15|Maha Shivaratri',
+    '2026-03-04|Holi',
+    '2026-03-19|Ugadi',
+    '2026-03-21|Eid ul-Fitr',
+    '2026-03-26|Ram Navami',
+    '2026-04-03|Good Friday',
+    '2026-05-27|Bakrid (Eid ul-Adha)',
+    '2026-06-16|Muharram',
+    '2026-08-25|Milad un Nabi',
+    '2026-08-28|Raksha Bandhan',
+    '2026-09-04|Krishna Janmashtami',
+    '2026-09-14|Ganesh Chaturthi',
+    '2026-10-20|Dussehra',
+    '2026-11-08|Diwali',
+  ],
   quoteTerms: [
     '50% advance to confirm the booking, 40% on the event day and 10% at the time of delivery.',
     'Booking is confirmed and dates are blocked only once the advance is received.',
@@ -1178,6 +1221,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#termList').innerHTML = terms.map(termRow).join('');
     const dsteps = (CFG.deliverySteps && CFG.deliverySteps.length) ? CFG.deliverySteps : DEFAULTS.deliverySteps;
     $('#dstepList').innerHTML = dsteps.map(dstepRow).join('');
+    const fests = (CFG.festivals && CFG.festivals.length) ? CFG.festivals : DEFAULTS.festivals;
+    $('#cfgFestivals').value = fests.join('\n');
     const bsteps = (CFG.b2bDeliverySteps && CFG.b2bDeliverySteps.length) ? CFG.b2bDeliverySteps : DEFAULTS.b2bDeliverySteps;
     $('#bstepList').innerHTML = bsteps.map(bstepRow).join('');
     $('#pkgListRM').innerHTML = Object.keys(CFG.presets||{}).map(key=>pkgRow(key, CFG.presets[key])).join('');
@@ -1395,6 +1440,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the write below is a full overwrite, so this has to be in the payload
          or saving any other setting would silently wipe the B2B checklist */
       const b2bDeliverySteps = $$('[data-bstep]').map(r=>r.querySelector('[data-k="t"]').value.trim()).filter(Boolean);
+      /* keep only lines that actually parse — a typo silently dropping a
+         festival is better than one poisoning the map for every render */
+      const festivals = ($('#cfgFestivals').value||'').split('\n')
+        .map(l=>l.trim())
+        .filter(l=>/^\d{4}-\d{2}-\d{2}\s*\|\s*\S/.test(l));
       /* Remembered rates used to shadow this form forever: raise a rate here
          and every new quote still prefilled the old learned one, and a service
          deleted here kept showing in the builder chips. Saving the config is
@@ -1426,7 +1476,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const stamp = new Date().toISOString();
       const editDueDays = Math.min(365, Math.max(1, Number($('#cfgEditDue').value)||21));
       const payload = { prices, presets, testimonials, faqs, serviceRates, contact,
-                        quoteTerms, deliverySteps, b2bDeliverySteps, learnedRates, editDueDays, updatedAt: stamp };
+                        quoteTerms, deliverySteps, b2bDeliverySteps, festivals, learnedRates, editDueDays, updatedAt: stamp };
       /* settle() so an offline save answers instead of hanging forever, and a
          refused write is reported instead of pretending it published */
       const res = await settle(setDoc(doc(db,'config','site'), payload));
@@ -1434,7 +1484,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('NOT saved — the server refused the config write. Check your sign-in and try again.');
         return;
       }
-      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, b2bDeliverySteps, learnedRates, editDueDays, updatedAt: stamp };
+      CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, b2bDeliverySteps, festivals, learnedRates, editDueDays, updatedAt: stamp };
       _cfgLoadedAt = stamp;
       $('#saveMsg').style.color = '';
       $('#saveMsg').textContent = res === 'queued'
@@ -1562,6 +1612,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      editable in Site Config like the retail one. */
   const b2bSteps = () => (CFG && Array.isArray(CFG.b2bDeliverySteps) && CFG.b2bDeliverySteps.length
     ? CFG.b2bDeliverySteps : DEFAULTS.b2bDeliverySteps);
+  /* "YYYY-MM-DD|Name" lines -> { '2026-08-28': ['Raksha Bandhan'] }. Rebuilt
+     only when the underlying list changes, because the calendar asks for this
+     on every one of ~35 cells per render. */
+  let _festCache = null, _festSrc = null;
+  function festivalMap(){
+    const list = (CFG && Array.isArray(CFG.festivals)) ? CFG.festivals : DEFAULTS.festivals;
+    if(_festCache && _festSrc === list) return _festCache;
+    const m = {};
+    list.forEach(line=>{
+      const i = String(line||'').indexOf('|');
+      if(i < 1) return;
+      const d = String(line).slice(0, i).trim(), n = String(line).slice(i+1).trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d) || !n) return;
+      (m[d] = m[d] || []).push(n);
+    });
+    _festSrc = list; _festCache = m;
+    return m;
+  }
+  const festivalsOn = iso => festivalMap()[iso] || [];
+
   function stepsFor(x){
     /* the keyword filter below decides which RETAIL steps apply to a package;
        a studio job does not run that flow at all, so it never reaches it */
@@ -2525,7 +2595,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const evs = byDate[iso]||[];
       monthN += evs.length;
       const col = (startDow + d - 1) % 7;
-      h += `<div class="cal-cell ${col>4?'we':''} ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''}" data-date="${iso}" role="button" tabindex="0" aria-pressed="${iso===calSel}" aria-label="${d} — ${evs.length} event${evs.length===1?'':'s'}">
+      /* A festival name cannot fit a 48px cell, so the cell carries a marker
+         and the day box below spells it out — the same split a phone calendar
+         makes. The name still reaches a screen reader and a desktop hover
+         through the label and the title. */
+      const fest = festivalsOn(iso);
+      h += `<div class="cal-cell ${col>4?'we':''} ${iso===todayIso?'today':''} ${evs.length?'has':''} ${iso===calSel?'sel':''} ${fest.length?'fest':''}" data-date="${iso}" role="button" tabindex="0" aria-pressed="${iso===calSel}"${
+        fest.length?` title="${esc(fest.join(' · '))}"`:''} aria-label="${d} — ${evs.length} event${evs.length===1?'':'s'}${fest.length?' — '+esc(fest.join(', ')):''}">
         <span class="d">${d}</span>
         <div class="dots">${evs.slice(0,4).map(e=>`<i class="dot ${e.status}"></i>`).join('')}${evs.length>4?`<b>+${evs.length-4}</b>`:''}</div>
       </div>`;
@@ -2548,8 +2624,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     const isToday = calSel === new Date().toLocaleDateString('en-CA');
+    const fests = festivalsOn(calSel);
     box.innerHTML = `<div class="sec">
       <div class="cd-head"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></div>`
+      + (fests.length ? `<div class="festrow">${fests.map(f=>`<span class="fest">🪔 ${esc(f)}</span>`).join('')}</div>` : '')
       + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
       return `
@@ -7465,6 +7543,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */
         renderCalendar();
+        /* Config is filled from CFG on load in the real app; the demo sets CFG
+           directly, so paint the forms here too — otherwise the whole Site
+           Config tab is untestable without signing in. */
+        try{ buildConfigForms(); }catch(err){ console.warn('[demo] config forms', err); }
         toast('Demo data — nothing here is real, and nothing is saved');
       }catch(err){
         console.error('[demo] fixtures failed to load', err);

@@ -1195,3 +1195,22 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .dstep.auto.done i{border-style:solid}
 .dstep.auto em{color:var(--state-overdue)}
 .dstep.auto.done em{color:var(--mut)}
+
+/* ============================================================== FESTIVALS
+   A festival name cannot fit a 48px calendar cell, so the cell gets a marker
+   and the day box spells it out — the split a phone calendar makes.
+   ========================================================================= */
+.cal-cell.fest .d::after{
+  content:"";position:absolute;top:.28rem;right:.28rem;
+  width:5px;height:5px;border-radius:50%;background:var(--gold-b);opacity:.9;
+}
+.cal-cell.fest .d{position:relative}
+/* on the selected and today cells the dot would fight the gold fill */
+.cal-cell.sel.fest .d::after,.cal-cell.today.fest .d::after{background:var(--ink);opacity:.55}
+
+.festrow{display:flex;flex-wrap:wrap;gap:.35rem;margin:-.2rem 0 .7rem}
+.fest{
+  display:inline-flex;align-items:center;gap:.3rem;
+  background:var(--gold-t2);border:1px solid var(--line);border-radius:var(--r-pill);
+  padding:.24em .7em;font-size:var(--fs-sm);color:var(--gold-b);white-space:nowrap;
+}
