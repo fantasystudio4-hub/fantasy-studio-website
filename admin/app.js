@@ -195,31 +195,26 @@ const DEFAULTS = {
   /* Festivals shown on the calendar. "YYYY-MM-DD|Name", one per line, editable
      in Site Config so a year can be pasted in without a deploy.
 
-     READ THIS BEFORE TRUSTING THE LUNAR ONES. The fixed-date entries below are
-     certain — they fall on the same date every year. Everything marked lunar is
-     NOT: Hindu festivals follow a lunisolar calendar and Islamic ones the
-     Hijri, whose observed date in India depends on a moon sighting and can move
-     by a day either way. They are seeded here so the feature is useful on day
-     one, not because they are authoritative. Check them against a panchang or
-     your local mosque's announcement and correct them in Site Config — that is
-     one pass through one text box, and it is why the box exists. */
+     These were seeded from memory and have since been CHECKED against sources
+     — Drik Panchang for the Hindu dates, the Government of India gazetted
+     holiday list for the Islamic ones — and three were wrong:
+       Muharram 2026        16 Jun -> 26 Jun   (ten days out)
+       Milad un Nabi 2026   25 Aug -> 26 Aug   (the 25th is the eve; the
+                                                gazetted holiday is the 26th)
+       Makar Sankranti 2027 14 Jan -> 15 Jan   (it is solar, and it drifts)
+     Good Friday is not looked up at all — Easter is computable exactly, and
+     3 Apr 2026 / 26 Mar 2027 come from the Gregorian algorithm.
+
+     STILL WORTH YOUR EYE: every Islamic date depends on a moon sighting and
+     can move a day in either direction, and the 2027 ones are more than a year
+     out — Eid ul-Fitr 2027 especially, where sources give a 9-11 March window
+     and 10 Mar is the middle of it, not a confirmed date. Correct anything
+     that moves in Site Config; it is a text edit, not a deploy. */
   festivals: [
-    /* fixed date — safe */
+    /* ---- 2026 ---- */
     '2026-01-01|New Year',
     '2026-01-14|Makar Sankranti / Pongal',
     '2026-01-26|Republic Day',
-    '2026-06-02|Telangana Formation Day',
-    '2026-08-15|Independence Day',
-    '2026-10-02|Gandhi Jayanti',
-    '2026-12-25|Christmas',
-    '2027-01-01|New Year',
-    '2027-01-14|Makar Sankranti / Pongal',
-    '2027-01-26|Republic Day',
-    '2027-06-02|Telangana Formation Day',
-    '2027-08-15|Independence Day',
-    '2027-10-02|Gandhi Jayanti',
-    '2027-12-25|Christmas',
-    /* lunar — VERIFY EACH ONE, see the note above */
     '2026-02-15|Maha Shivaratri',
     '2026-03-04|Holi',
     '2026-03-19|Ugadi',
@@ -227,13 +222,38 @@ const DEFAULTS = {
     '2026-03-26|Ram Navami',
     '2026-04-03|Good Friday',
     '2026-05-27|Bakrid (Eid ul-Adha)',
-    '2026-06-16|Muharram',
-    '2026-08-25|Milad un Nabi',
+    '2026-06-02|Telangana Formation Day',
+    '2026-06-26|Muharram',
+    '2026-08-15|Independence Day',
+    '2026-08-26|Milad un Nabi',
     '2026-08-28|Raksha Bandhan',
     '2026-09-04|Krishna Janmashtami',
     '2026-09-14|Ganesh Chaturthi',
+    '2026-10-02|Gandhi Jayanti',
     '2026-10-20|Dussehra',
     '2026-11-08|Diwali',
+    '2026-12-25|Christmas',
+    /* ---- 2027 ---- */
+    '2027-01-01|New Year',
+    '2027-01-15|Makar Sankranti / Pongal',
+    '2027-01-26|Republic Day',
+    '2027-03-06|Maha Shivaratri',
+    '2027-03-10|Eid ul-Fitr',
+    '2027-03-22|Holi',
+    '2027-03-26|Good Friday',
+    '2027-04-07|Ugadi',
+    '2027-04-15|Ram Navami',
+    '2027-05-17|Bakrid (Eid ul-Adha)',
+    '2027-06-02|Telangana Formation Day',
+    '2027-06-16|Muharram',
+    '2027-08-15|Independence Day / Milad un Nabi',
+    '2027-08-17|Raksha Bandhan',
+    '2027-08-25|Krishna Janmashtami',
+    '2027-09-04|Ganesh Chaturthi',
+    '2027-10-02|Gandhi Jayanti',
+    '2027-10-09|Dussehra',
+    '2027-10-29|Diwali',
+    '2027-12-25|Christmas',
   ],
   quoteTerms: [
     '50% advance to confirm the booking, 40% on the event day and 10% at the time of delivery.',
