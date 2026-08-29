@@ -16,14 +16,27 @@
    Nothing here touches the DOM — pages own their own rendering.
    ============================================================ */
 
-/* ---- official pricing (single source of truth) ---- */
+/* ---- pricing floor ----
+   NOT the source of truth: config/site is, and the studio edits it in the admin
+   panel. These are the numbers a visitor is quoted when that document cannot be
+   read at all and nothing better has been cached (see LAST-KNOWN-GOOD below) —
+   which in practice means a first visit with no usable connection.
+
+   They had drifted a full price revision behind the live document, so an
+   offline first visit quoted ₹15,000 for cinematography against a real ₹14,000
+   and the studio was held to a package it does not sell. Synced 26 Aug 2026
+   with config/site as published on 13 Aug 2026.
+
+   If you change a price in the admin panel, change it here too. Nothing
+   enforces that, which is exactly why it drifted — the cache below is what
+   makes the drift survivable rather than a wrong quote. */
 var PRICES = {
-  cinematography:    15000,  // per event
-  candidPhotography: 10000,  // per event
-  traditionalVideo:  7000,   // per event
-  traditionalPhoto:  6000,   // per event
+  cinematography:    14000,  // per event
+  candidPhotography: 9000,   // per event
+  traditionalVideo:  6500,   // per event
+  traditionalPhoto:  5500,   // per event
   ladyShooter:       2000,   // per head
-  drone:             8000,   // per event
+  drone:             7000,   // per event
   ledScreen6x8:      7000,   // per event
   ledScreen8x12:     10000,  // per event
   liveStreaming:     6000,   // per event
@@ -555,6 +568,38 @@ function buildLeadDoc(st, name, phone, phoneFull){
    config lands (or immediately, if it already has). On any failure the
    hardcoded values above simply remain in force.
    ============================================================ */
+/* ---- LAST-KNOWN-GOOD ----
+   Updating the constants above fixes today's prices; it does nothing about the
+   next revision, because nobody is reminded to edit two files at once. So the
+   last config this browser actually read is kept, and a failed fetch falls back
+   to that before it falls back to the constants. A returning visitor — which is
+   most people building a package over a few evenings — is then quoted what they
+   were quoted last time, not whatever shipped with the code.
+
+   Only the four keys the public pages render are stored. The same document also
+   carries the studio's internal quoting rates, and there is no reason to copy
+   those onto every visitor's device. */
+var CFG_CACHE_KEY = 'fs_cfg_v1';
+var CFG_PUBLIC_KEYS = ['prices','presets','testimonials','faqs'];
+function publicConfigSubset(cfg){
+  if(!cfg) return null;
+  var out = {}, n = 0;
+  CFG_PUBLIC_KEYS.forEach(function(k){ if(cfg[k]){ out[k] = cfg[k]; n++; } });
+  return n ? out : null;
+}
+function cacheConfig(cfg){
+  try{
+    var pub = publicConfigSubset(cfg);
+    if(pub) localStorage.setItem(CFG_CACHE_KEY, JSON.stringify({ at: Date.now(), cfg: pub }));
+  }catch(e){ /* private mode / quota — the constants still cover us */ }
+}
+function cachedConfig(){
+  try{
+    var d = JSON.parse(localStorage.getItem(CFG_CACHE_KEY) || 'null');
+    return (d && d.cfg) ? d.cfg : null;
+  }catch(e){ return null; }
+}
+
 var _cfgSubs = [], _cfgDone = null;
 function onRemoteConfig(fn){
   if(typeof fn !== 'function') return;
@@ -622,8 +667,9 @@ function applyRemoteConfig(cfg){
 (function(){
   var CFG = window.FIREBASE_CONFIG;
   if(!CFG || !CFG.apiKey){
-    /* no backend configured — unblock anything waiting on the config */
-    applyRemoteConfig(null);
+    /* no backend configured — unblock anything waiting on the config, on the
+       freshest prices this browser has seen */
+    applyRemoteConfig(cachedConfig());
     window.__firebaseReady = false;
     return;
   }
@@ -663,9 +709,13 @@ function applyRemoteConfig(cfg){
   fetch(BASE + '/config/site?key=' + CFG.apiKey)
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
-      applyRemoteConfig(j && j.fields ? fsFields(j.fields) : null);
+      var live = (j && j.fields) ? fsFields(j.fields) : null;
+      /* a 5xx, a captive portal or a quota block lands here with live === null;
+         last-known-good beats the constants in every one of those cases */
+      if(live) cacheConfig(live);
+      applyRemoteConfig(live || cachedConfig());
     })
-    .catch(function(){ applyRemoteConfig(null); })
+    .catch(function(){ applyRemoteConfig(cachedConfig()); })
     .then(function(){
       window.__firebaseReady = true;
       document.dispatchEvent(new Event('firebase-ready'));

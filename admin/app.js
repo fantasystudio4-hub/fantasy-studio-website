@@ -156,8 +156,12 @@ const STATUSES = ['new','contacted','converted','booked','shot','delivered','los
 
 /* current live-site values — used to seed config/site the first time */
 const DEFAULTS = {
-  prices: { cinematography:15000, candidPhotography:10000, traditionalVideo:7000, traditionalPhoto:6000,
-    ladyShooter:2000, drone:8000, ledScreen6x8:7000, ledScreen8x12:10000, liveStreaming:6000,
+  /* The public site's prices, mirrored. Only reached when config/site could not
+     be read — leadServiceRate() prices a converted lead off these, so a stale
+     copy quoted a client the previous rate card. Synced 26 Aug 2026, the same
+     revision as the PRICES floor in catalog.js; keep the two together. */
+  prices: { cinematography:14000, candidPhotography:9000, traditionalVideo:6500, traditionalPhoto:5500,
+    ladyShooter:2000, drone:7000, ledScreen6x8:7000, ledScreen8x12:10000, liveStreaming:6000,
     extraShortVPShoot:3000, albumPerSheet:400, albumMinSheets:15, albumMaxSheets:100 },
   presets: {
     single:   { name:'Single-Day', tag:'', desc:'One function — engagement or birthday. Traditional photo & video coverage.', album:0,
