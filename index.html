@@ -1073,7 +1073,7 @@ section[id]{scroll-margin-top:84px}
     <div class="contact-grid">
       <form class="contact-form reveal d1" id="enquiryForm">
         <div class="form-row">
-          <div class="fg"><label for="cName">Your Name</label><input type="text" id="cName" required placeholder="Full name" autocomplete="name" /></div>
+          <div class="fg"><label for="cName">Your Name</label><input type="text" id="cName" required maxlength="120" placeholder="Full name" autocomplete="name" /></div>
           <div class="fg"><label for="cPhone">Phone</label><input type="tel" id="cPhone" required placeholder="+91 ..." autocomplete="tel" inputmode="numeric" /></div>
         </div>
         <div class="form-row">
@@ -1087,7 +1087,7 @@ section[id]{scroll-margin-top:84px}
             </select>
           </div>
         </div>
-        <div class="fg"><label for="cMsg">Tell us about your celebration</label><textarea id="cMsg" placeholder="Venue, number of events, what you're looking for…"></textarea></div>
+        <div class="fg"><label for="cMsg">Tell us about your celebration</label><textarea id="cMsg" maxlength="2000" placeholder="Venue, number of events, what you're looking for…"></textarea></div>
         <button type="submit" class="btn btn-gold" style="width:100%">Send Enquiry via WhatsApp</button>
       </form>
     </div>

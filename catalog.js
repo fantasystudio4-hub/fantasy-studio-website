@@ -235,17 +235,37 @@ function parsePhone(raw){
 var eid = 0;
 
 /* Every event that enters state — from a #q= share link, from localStorage, or
-   from a preset — goes through here first. Share links and localStorage are both
-   attacker-reachable, so the type is whitelisted against EVENT_TYPES, the date is
-   regex-checked, the id is forced numeric and quantities are clamped.
-   Presets come from the owner's own admin Config, where custom event names are a
-   feature, so they pass trustType=true and keep their name (still escaped at every
-   sink); only length is capped. */
-function normalizeEvent(raw, trustType){
+   from a preset — goes through here first. The date is regex-checked, the id is
+   forced numeric, quantities are clamped, and the type is sanitised.
+
+   The type used to be WHITELISTED against EVENT_TYPES for anything that did not
+   come straight from a preset, and that silently renamed the studio's own
+   functions. A preset named "Aqiqah" in admin Config kept its name right up
+   until the package was saved and reopened — or opened from a shared link — at
+   which point it came back as "Manje" and the quote described a different
+   wedding. Custom names in presets are a deliberate feature, and a preset is
+   the only way an event name enters state at all, so the name is now always
+   kept.
+
+   Keeping it is safe because the type is escaped at every sink it reaches (the
+   builder panels, the WhatsApp message, the PDF, the admin lead list). What the
+   cap and the control-character strip below are for is the one thing escaping
+   does not cover: a #q= link is opened by SOMEONE ELSE, so a crafted name must
+   not be long enough, or multi-line enough, to pass itself off as the studio's
+   own copy on their screen. */
+var EVENT_TYPE_MAX = 40;
+function cleanEventType(v){
+  var t = String(v == null ? '' : v)
+    .replace(/[\u0000-\u001F\u007F\u2028\u2029]+/g, ' ')   /* no newlines, no controls */
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, EVENT_TYPE_MAX)
+    .trim();
+  return t || EVENT_TYPES[0];
+}
+function normalizeEvent(raw){
   var r = raw || {};
-  var type = trustType
-    ? String(r.type||EVENT_TYPES[0]).slice(0,40)
-    : (EVENT_TYPES.indexOf(r.type) !== -1 ? r.type : EVENT_TYPES[0]);
+  var type = cleanEventType(r.type);
   var date = /^\d{4}-\d{2}-\d{2}$/.test(r.date||'') ? r.date : '';
   var services = {};
   Object.keys(r.services||{}).forEach(function(k){
@@ -397,7 +417,7 @@ function quoteHasContent(d){
 function restoreQuote(d){
   var st = { events: [], albumSheets: 0, promo: '' };
   if(!d || !Array.isArray(d.events)) return st;
-  st.events = d.events.slice(0,12).map(function(e){ return normalizeEvent(e, false); });
+  st.events = d.events.slice(0,12).map(function(e){ return normalizeEvent(e); });
   st.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(d.albumSheets,10)||0));
   st.promo = PROMO_CODES[d.promo] ? d.promo : '';
   return st;
@@ -429,10 +449,41 @@ function builderUrl(opts){
 var LEAD_KEY = 'fs_lead';
 var LEAD_QUEUE_KEY = 'fs_lead_queue_v1';
 
+/* The firestore rule that accepts a lead caps three of its fields, and the
+   forms had no matching limit. A message over 2000 characters — a long, careful
+   description of the wedding, i.e. exactly the enquiry worth having — was
+   accepted on screen, refused by the server, parked in the queue below and
+   retried on every future visit, failing every single time. The customer read
+   "Enquiry sent — we'll reply shortly"; the studio never saw it.
+
+   The inputs now carry maxlength, but that is only the first line: it does not
+   constrain a value set by script, an autofill, or a doc rebuilt from a queue
+   entry written before this existed. So the clamp is applied here too, at the
+   one point every lead passes through on its way to the server.
+
+   Cutting a long message is a real loss, but a truncated enquiry the studio can
+   read and call back on beats a perfect one nobody ever sees. */
+var LEAD_LIMITS = { name: 120, phone: 20, message: 2000 };
+function clampLead(doc){
+  var d = Object.assign({}, doc || {});
+  d.name    = String(d.name == null ? '' : d.name).trim().slice(0, LEAD_LIMITS.name);
+  d.phone   = String(d.phone == null ? '' : d.phone).slice(0, LEAD_LIMITS.phone);
+  d.message = String(d.message == null ? '' : d.message).slice(0, LEAD_LIMITS.message);
+  return d;
+}
+/* the rule also requires a non-empty name, so a doc without one can never land
+   however many times it is retried */
+function leadWritable(doc){ return !!(doc && String(doc.name||'').trim()); }
+
+/* A queued lead used to be retried forever. Give up eventually rather than
+   burning a request on every visit for the life of the browser profile. */
+var LEAD_QUEUE_MAX_TRIES = 5;
+var LEAD_QUEUE_MAX_AGE_MS = 30 * 864e5;   /* 30 days */
+
 function queueLead(doc){
   try{
     var q = JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY) || '[]');
-    q.push({ doc: doc, at: Date.now() });
+    q.push({ doc: doc, at: Date.now(), tries: 0 });
     localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(q.slice(-20)));
   }catch(e){}
 }
@@ -446,11 +497,12 @@ function firebaseReady(waitMs){
   });
 }
 async function saveLeadReliably(doc){
+  var lead = clampLead(doc);                    /* fits the rule, so it can land */
   var ready = await firebaseReady(4000);        /* the window that used to drop leads */
-  if(!ready || typeof window.__saveLead !== 'function'){ queueLead(doc); return false; }
+  if(!ready || typeof window.__saveLead !== 'function'){ queueLead(lead); return false; }
   var ok = false;
-  try{ ok = await window.__saveLead(doc); }catch(e){ ok = false; }
-  if(!ok) queueLead(doc);
+  try{ ok = await window.__saveLead(lead); }catch(e){ ok = false; }
+  if(!ok) queueLead(lead);
   return ok;
 }
 async function flushLeadQueue(){
@@ -458,11 +510,21 @@ async function flushLeadQueue(){
   try{ q = JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY) || '[]'); }catch(e){ return; }
   if(!q.length) return;
   if(!(await firebaseReady(8000)) || typeof window.__saveLead !== 'function') return;
-  var left = [];
+  var now = Date.now(), left = [];
   for(var i=0;i<q.length;i++){
+    var item = q[i] || {};
+    /* Entries queued before the clamp existed are precisely the ones the server
+       keeps refusing — re-clamp before retrying so they finally land instead of
+       failing for a sixth time and being dropped. */
+    var doc = clampLead(item.doc);
+    if(!leadWritable(doc)) continue;            /* nameless: it can never be accepted */
     var ok = false;
-    try{ ok = await window.__saveLead(q[i].doc); }catch(e){ ok = false; }
-    if(!ok) left.push(q[i]);
+    try{ ok = await window.__saveLead(doc); }catch(e){ ok = false; }
+    if(ok) continue;
+    var tries = (Number(item.tries) || 0) + 1;
+    var age = now - (Number(item.at) || now);
+    if(tries >= LEAD_QUEUE_MAX_TRIES || age > LEAD_QUEUE_MAX_AGE_MS) continue;
+    left.push({ doc: doc, at: item.at || now, tries: tries });
   }
   try{
     if(left.length) localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(left));

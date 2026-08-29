@@ -1040,7 +1040,7 @@ img{max-width:100%;display:block}
   <p>Share your details so our team can reserve your dates &amp; reply personally.</p>
   <div class="lead-sum"><span>Your package total</span><b id="leadTotal">₹0</b></div>
   <form id="leadForm" novalidate>
-    <div class="fg"><label for="leadName">Your Name</label><input type="text" id="leadName" required placeholder="Full name" autocomplete="name" /></div>
+    <div class="fg"><label for="leadName">Your Name</label><input type="text" id="leadName" required maxlength="120" placeholder="Full name" autocomplete="name" /></div>
     <div class="fg"><label for="leadPhone">Phone / WhatsApp</label><input type="tel" id="leadPhone" required placeholder="10-digit mobile" autocomplete="tel" inputmode="numeric" /></div>
     <div class="lead-err" id="leadErr" role="alert" hidden></div>
     <button type="submit" class="btn btn-wa" id="leadSubmit" style="width:100%">Send Quote on WhatsApp</button>
@@ -1187,7 +1187,7 @@ function renderDeals(){
 }
 function applyPreset(key, quiet){
   const p = PRESETS[key]; if(!p) return;
-  state.events = p.events.map(ev=>normalizeEvent(ev, true));
+  state.events = p.events.map(ev=>normalizeEvent(ev));
   state.albumSheets = p.album||0;
   activePresetKey = key;
   markBuilderStarted();
@@ -2478,7 +2478,7 @@ function loadWantedPreset(){
   const p = PRESETS[wantedPreset];
   if(!p || _presetLoaded) return false;
   _presetLoaded = true;
-  state.events = p.events.map(ev=>normalizeEvent(ev, true));
+  state.events = p.events.map(ev=>normalizeEvent(ev));
   state.albumSheets = p.album||0;
   activePresetKey = wantedPreset;
   markBuilderStarted();
