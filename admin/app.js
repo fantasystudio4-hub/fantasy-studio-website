@@ -68,7 +68,12 @@ on('#confirmNo', 'click', ()=>closeConfirm(false));
 on('#confirmBackdrop', 'click', ()=>closeConfirm(false));
 document.addEventListener('keydown', e=>{
   if(!_cfmResolve) return;
-  if(e.key === 'Escape'){ e.preventDefault(); closeConfirm(false); }
+  /* stopImmediatePropagation, not just preventDefault: the sheets underneath
+     (payment, status, money, studio…) each close themselves on Escape, and a
+     native confirm() used to swallow the key before they ever saw it. Without
+     this, dismissing "that is more than is due" also closes the payment sheet
+     behind it and throws away the amount that was typed. */
+  if(e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); closeConfirm(false); }
   /* the dialog is the only thing on screen while it is open — keep Tab inside
      it so the next Enter cannot land on a button behind the scrim */
   if(e.key === 'Tab'){
@@ -487,6 +492,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      navigates away from an open editor must ask FIRST. Several of them used to
      navigate and only then let the tab handler prompt, so answering Cancel
      still lost the quote. */
+  /* DELIBERATELY still native confirm(), unlike every other prompt in the panel.
+     confirmDialog() is async, and this is a synchronous gate: twelve callers do
+     `if(!canLeaveEditor()) return;` inside sync handlers, and showTab() below is
+     the same shape. Make it async without awaiting at all twelve and it returns
+     a Promise — always truthy — so `!canLeaveEditor()` is always false, the gate
+     silently stops gating, and unsaved quotations get discarded with no prompt
+     at all. That is a worse bug than the one converting it would fix.
+     Converting these three means making the navigation layer async first. */
   function canLeaveEditor(){
     if($('#pkgEditView').hidden) return true;
     if(typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')) return false;
@@ -1144,7 +1157,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(l.pkgId){
         const already = PKGS.find(p=>p.id===l.pkgId && !p.deleted);
         const gone = _pkgsLoaded && !already;
-        if(!gone && !confirm(`"${l.name||'This lead'}" already became ${(already && already.quoteNo) || l.quoteNo || 'a package'}.\n\nA second package splits their events and their payments across two records.\n\nTo add a date to the package they already have, tap Cancel and open it instead.\n\nCreate a separate package anyway?`)) return;
+        if(!gone && !await confirmDialog({
+          title:'Create a second package?',
+          body:`<p><b>${esc(l.name||'This lead')}</b> already became ${esc((already && already.quoteNo) || l.quoteNo || 'a package')}.</p>`
+             + `<p>A second one splits their events and their payments across two records.</p>`
+             + `<p>To add a date to the package they already have, cancel and open it instead.</p>`,
+          confirmText:'Create anyway', danger:false })) return;
       }
       const hadQuote = !!(l.quote && Array.isArray(l.quote.events) && l.quote.events.length);
       $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l));
@@ -3236,13 +3254,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          their money across two records — day 2 of a wedding belongs on the
          booking that already exists */
       const dup = livePkgs().filter(x=>!isStudioJob(x) && String(x.clientName||'').trim().toLowerCase() === name.toLowerCase());
-      if(dup.length && !confirm(`"${name}" already has ${dup.length} booking${dup.length>1?'s':''}${dup[0].quoteNo ? ' (' + dup[0].quoteNo + ')' : ''}.\n\nA separate booking splits their events and their payments across two records.\n\nTo add this date to the booking they already have, tap Cancel and use the 📋 Existing tab.\n\nCreate a separate booking anyway?`)) return;
+      if(dup.length && !await confirmDialog({
+        title:'Create a separate booking?',
+        body:`<p><b>${esc(name)}</b> already has ${dup.length} booking${dup.length>1?'s':''}${dup[0].quoteNo ? ' (' + esc(dup[0].quoteNo) + ')' : ''}.</p>`
+           + `<p>A separate one splits their events and their payments across two records.</p>`
+           + `<p>To add this date to the booking they already have, cancel and use the 📋 Existing tab.</p>`,
+        confirmText:'Create separate', danger:false })) return;
       rawPhone = $('#qePhone').value.trim();
       phone = normPhone(rawPhone);
       /* the portal matches on the LAST 10 DIGITS — a short number locks the
          client out of their own booking with no error anywhere */
       if(rawPhone && phone.length !== 10
-         && !confirm(`⚠ "${rawPhone}" doesn't look like a complete mobile number (${phone.length} digits).\n\nThe client portal finds bookings by the last 10 digits — with this one, the client will NOT be able to log in.\n\nSave anyway?`)){
+         && !await confirmDialog({
+           title:'That number looks incomplete',
+           body:`<p><b>${esc(rawPhone)}</b> is ${phone.length} digit${phone.length===1?'':'s'}.</p>`
+              + `<p>The client portal finds a booking by the last 10 digits of the client's number — with this one, they will <b>not</b> be able to log in.</p>`,
+           confirmText:'Save anyway' })){
         $('#qePhone').focus(); return;
       }
     }
@@ -3253,7 +3280,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                       .filter(r=>r.c.length >= DATE_EVENT_CAP);
       if(busy.length){
         const f = busy[0];
-        if(!confirm(`⚠ Heavy day: ${stepDate(f.d)} already has ${f.c.length} events booked (${f.c[0].title} — ${f.c[0].client}${f.c.length>1 ? ', +' + (f.c.length-1) + ' more' : ''})${busy.length>1 ? `, and ${busy.length-1} more of these dates ${busy.length===2?'is':'are'} full too` : ''}. Add anyway?`)) return;
+        if(!await confirmDialog({
+          title:'Heavy day',
+          body:`<p>${esc(stepDate(f.d))} already has <b>${f.c.length} events</b> booked — ${esc(f.c[0].title)} for ${esc(f.c[0].client)}${f.c.length>1 ? ', and ' + (f.c.length-1) + ' more' : ''}.</p>`
+             + (busy.length>1 ? `<p>${busy.length-1} more of these dates ${busy.length===2?'is':'are'} full too.</p>` : '')
+             + `<p>One more may stretch your crews.</p>`,
+          confirmText:'Add anyway', danger:false })) return;
       }
     }
 
@@ -3905,7 +3937,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           + (_edShowDone ? done.map(row).join('') : '') : '');
   }
   let _edShowDone = false;
-  on('#edList', 'click', e=>{
+  on('#edList', 'click', async e=>{
     if(e.target.closest('[data-edgrp]')){ _edShowDone = !_edShowDone; renderEditDesk(); return; }
     const nd = e.target.closest('[data-nudge]');
     if(nd){
@@ -3922,7 +3954,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const a = ASGS.find(v=>v.id===tk.dataset.tick); if(!a) return;
       const pk = PKGS.find(p=>p.id===a.pkgId); if(!pk) return;
       const step = stepForDeliver(pk, a.deliver); if(!step) return;
-      if(confirm(`Tick “${step}” as done on ${pk.clientName||'this package'}?`)) tickDeliveryStep(pk.id, step);
+      if(await confirmDialog({
+        title:'Tick this step as done?',
+        body:`<p><b>${esc(step)}</b> on ${esc(pk.clientName||'this package')}.</p>`,
+        confirmText:'Tick it', danger:false })) tickDeliveryStep(pk.id, step);
       return;
     }
     const r = e.target.closest('[data-asedit]'); if(!r) return;
@@ -4237,7 +4272,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(existing && existing.active === false){
         /* a returning member: reactivating is what the owner actually wants,
            not "this is a duplicate" */
-        if(!confirm(`${existing.name||'This person'} is on your team but marked inactive.\n\nReactivate them now?`)) return;
+        if(!await confirmDialog({
+          title:'Reactivate them?',
+          body:`<p><b>${esc(existing.name||'This person')}</b> is already on your team, but marked inactive.</p>`,
+          confirmText:'Reactivate', danger:false })) return;
         try{
           const res = await settle(updateDoc(doc(db,'team',existing.id), { active: true, updatedAt: serverTimestamp() }));
           const sm = settleMsg(res, `${existing.name||'Member'} reactivated ✓ — their crew page is unlocked`);
@@ -4250,7 +4288,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         return;
       }
       if(existing){
-        if(confirm(`${existing.name||'A member'} already has this number — this request is a duplicate. Remove it?`)){
+        if(await confirmDialog({
+          title:'Remove this request?',
+          body:`<p><b>${esc(existing.name||'A member')}</b> already has this number, so this request is a duplicate.</p>`,
+          confirmText:'Remove request' })){
           try{ toast(settleMsg(await settle(deleteDoc(doc(db,'teamRequests',r.id))), 'Duplicate request removed').msg); }
           catch(err){ toast('Could not remove the request'); }
         }
@@ -4586,9 +4627,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const phone = $('#tmPhone').value.trim();
     const p10 = phone10Of(phone);
     if(phone && p10.length < 10){ toast('That phone number looks too short'); $('#tmPhone').focus(); return; }
-    if(!phone && !confirm('No phone number — they will NOT be able to open the crew page (it signs in by phone OTP). Save anyway?')) return;
+    if(!phone && !await confirmDialog({
+      title:'Save without a phone number?',
+      body:'<p>The crew page signs in by phone OTP, so they will <b>not</b> be able to open it or see their assignments.</p>',
+      confirmText:'Save anyway' })) return;
     if(p10 && TEAM.some(m=>m.id !== _tmEditId && memberPhone10(m) === p10)
-       && !confirm('Another member already uses this number — both would share one crew login. Save anyway?')) return;
+       && !await confirmDialog({
+         title:'That number is already in use',
+         body:'<p>Another member has it, so the two would share one crew login and each see the other\u2019s assignments and pay.</p>',
+         confirmText:'Save anyway' })) return;
     const data = { name, cat: _tmCat, role: $('#tmRole').value, phone, phone10: p10,
                    defaultRate: Math.max(0, Math.round(Number($('#tmRate').value)||0)), updatedAt: serverTimestamp() };
     btn.disabled = true;
@@ -4936,7 +4983,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const clash = picked.filter(x=>asgConflicts(x.id, _asCtx.date, _asEditId).length);
     if(clash.length){
       const names = clash.map(x=>x.name||'a member').join(', ');
-      if(!confirm(`${names} ${clash.length>1?'are':'is'} already booked on ${stepDate(_asCtx.date)||_asCtx.date}. Assign anyway?`)) return;
+      if(!await confirmDialog({
+        title:'Already booked that day',
+        body:`<p><b>${esc(names)}</b> ${clash.length>1?'are':'is'} already on another event on ${esc(stepDate(_asCtx.date)||_asCtx.date)}.</p>`,
+        confirmText:'Assign anyway', danger:false })) return;
     }
     const typed = Math.max(0, Math.round(Number($('#asAmt').value)||0));
     const amt = typed;
@@ -5157,7 +5207,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const amount = Math.round(Number($('#cpAmt').value)||0);
     if(amount <= 0){ toast('Enter the amount you paid'); $('#cpAmt').focus(); return; }
     const total = rows.reduce((s,a)=>s + payDue(a), 0);
-    if(amount > total && !confirm(`That is ${inr(amount - total)} more than the ${inr(total)} owed across these shoots.\n\nOnly ${inr(total)} can be allocated — the rest would not be recorded anywhere. Continue with ${inr(total)}?`)){
+    if(amount > total && !await confirmDialog({
+      title:`Allocate only ${inr(total)}?`,
+      body:`<p>That is <b>${inr(amount - total)}</b> more than the <b>${inr(total)}</b> owed across these shoots.</p>`
+         + `<p>Only ${inr(total)} can be allocated — the rest would not be recorded anywhere.</p>`,
+      confirmText:`Continue with ${inr(total)}`, danger:false })){
       $('#cpAmt').focus(); return;
     }
     const date = $('#cpDate').value || todayISO(), mode = _cpMode;
@@ -5303,9 +5357,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(amount <= 0){ toast('Enter the amount you paid'); $('#cpAmt').focus(); return; }
     const fee = payFee(a), due = payDue(a);
     if(due <= 0 && fee > 0){
-      if(!confirm(`${a.memberName||'This member'} is already fully paid for this event. Record another ${inr(amount)} anyway?`)){ $('#cpAmt').focus(); return; }
+      if(!await confirmDialog({
+        title:'Already fully paid',
+        body:`<p><b>${esc(a.memberName||'This member')}</b> is already fully paid for this event.</p>`
+           + `<p>Recording another <b>${inr(amount)}</b> will overpay them and inflate your crew-cost reports.</p>`,
+        confirmText:'Record it anyway' })){ $('#cpAmt').focus(); return; }
     }else if(amount > due){
-      if(!confirm(`That is ${inr(amount - due)} more than the ${inr(due)} still owed for this event. Record it anyway?`)){ $('#cpAmt').focus(); return; }
+      if(!await confirmDialog({
+        title:'More than is owed',
+        body:`<p>That is <b>${inr(amount - due)}</b> more than the <b>${inr(due)}</b> still owed for this event.</p>`,
+        confirmText:'Record it anyway' })){ $('#cpAmt').focus(); return; }
     }
     const mode = _cpMode;
     const cnote = ($('#cpNote').value||'').trim().slice(0, 80);
@@ -6283,7 +6344,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }));
         const saved = Object.entries(s.rateCard || {}).map(([n,v])=>({ name:n, rate:String(Number(v)||0) }));
         if(JSON.stringify(draft) !== JSON.stringify(saved)
-           && !confirm('Close the rate card? The unsaved rate changes on it will be discarded.')) return;
+           && !await confirmDialog({
+             title:'Close the rate card?',
+             body:'<p>The unsaved rate changes on it will be discarded.</p>',
+             confirmText:'Discard changes' })) return;
         /* the render's own draft-capture would otherwise read these rows and
            faithfully restore the draft that was just discarded */
         $('#stuRateList').innerHTML = '';
@@ -6416,7 +6480,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         .filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
         .map(ev=>({ date: ev.date, n: dateConflicts(ev.date, x.id, x.clientName).length }))
         .filter(r=>r.n >= DATE_EVENT_CAP);
-      if(busy.length && !confirm(`⚠ Heavy day: ${stepDate(busy[0].date)} already has ${busy[0].n} events booked${busy.length>1 ? ' (+' + (busy.length-1) + ' more full dates)' : ''}. Booking this adds another on top. Book anyway?`)) return;
+      if(busy.length && !await confirmDialog({
+        title:'Heavy day',
+        body:`<p>${esc(stepDate(busy[0].date))} already has <b>${busy[0].n} events</b> booked${busy.length>1 ? `, and ${busy.length-1} more of these dates ${busy.length===2?'is':'are'} full too` : ''}.</p>`
+           + `<p>Booking this adds another on top.</p>`,
+        confirmText:'Book anyway', danger:false })) return;
     }
     const patch = { status: next, updatedAt: serverTimestamp() };
     if(next === 'delivered') patch.deliveredAt = todayISO();
@@ -6509,7 +6577,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   async function offerBookOnPayment(x, amount){
     if(!BOOKABLE_ON_PAYMENT.includes(x.status||'draft')) return;
     const nd = nextShootDate(x);
-    if(!confirm(`${inr(amount)} received on ${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||'this package'}.\n\nMark it as Booked? Your terms hold the dates only once the advance is in — booking blocks ${nd ? stepDate(nd) : 'the dates'} in the calendar, lets you assign crew, and stops the follow-up reminders.`)) return;
+    if(!await confirmDialog({
+      title:'Mark it as Booked?',
+      body:`<p><b>${inr(amount)}</b> received on ${esc(x.quoteNo ? x.quoteNo + ' · ' : '')}${esc(x.clientName||'this package')}.</p>`
+         + `<p>Your terms hold the dates only once the advance is in. Booking blocks ${esc(nd ? stepDate(nd) : 'the dates')} in the calendar, lets you assign crew, and stops the follow-up reminders.</p>`,
+      confirmText:'Mark as Booked', cancelText:'Leave as is', danger:false })) return;
     const patch = { status: 'booked', updatedAt: serverTimestamp() };
     if(x.deliveredAt) patch.deliveredAt = deleteField();
     try{
@@ -6541,10 +6613,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the `due > 0` version of this guard skipped the ONE case where every
          rupee is an overpayment: a package already fully paid */
       const over = amount - due;
+      /* paragraphs, not \n\n — this goes to the dialog as innerHTML */
       const msg = due === 0
-        ? `This package is already fully paid — nothing is due.\n\nRecording ${inr(amount)} will push it ${inr(over)} into overpayment (and inflate your money reports).\n\nRecord it anyway?`
-        : `${inr(amount)} is ${inr(over)} more than the ${inr(due)} still due on this package.\n\nRecord it anyway?`;
-      if(!confirm(msg)){ $('#payAmt').focus(); return; }
+        ? `<p>This package is already fully paid — nothing is due.</p>`
+          + `<p>Recording <b>${inr(amount)}</b> will push it <b>${inr(over)}</b> into overpayment, and inflate your money reports.</p>`
+        : `<p><b>${inr(amount)}</b> is <b>${inr(over)}</b> more than the <b>${inr(due)}</b> still due on this package.</p>`;
+      if(!await confirmDialog({
+        title: due === 0 ? 'This package is fully paid' : 'More than is due',
+        body: msg, confirmText:'Record it anyway' })){ $('#payAmt').focus(); return; }
     }
     const note = ($('#payNote').value||'').trim().slice(0, 80);
     const payment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
@@ -6583,7 +6659,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* status first, receipt second: the booking is the part that costs you a
          date if it is forgotten */
       await offerBookOnPayment(x, amount);
-      if(x.clientPhone && confirm('Send a WhatsApp receipt to the client?')){
+      if(x.clientPhone && await confirmDialog({
+        title:'Send a WhatsApp receipt?',
+        body:`<p>Opens WhatsApp with the amount, the mode and the remaining balance for <b>${esc(x.clientName||'this client')}</b>.</p>`,
+        confirmText:'Send receipt', cancelText:'Not now', danger:false })){
         openWa(waLink(x, waReceiptText(x, payment, Math.max(0,tt.balance))));
       }
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
@@ -7783,7 +7862,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        silently locks the client out of their booking with no error anywhere */
     const rawPhone = $('#pcPhone').value.trim();
     if(rawPhone && d.clientPhone.length !== 10
-       && !confirm(`⚠ "${rawPhone}" doesn't look like a complete mobile number (${d.clientPhone.length} digits).\n\nThe client portal finds bookings by the last 10 digits of the client's number — with this one, the client will NOT be able to log in.\n\nSave anyway?`)){
+       && !await confirmDialog({
+         title:'That number looks incomplete',
+         body:`<p><b>${esc(rawPhone)}</b> is ${d.clientPhone.length} digit${d.clientPhone.length===1?'':'s'}.</p>`
+            + `<p>The client portal finds a booking by the last 10 digits of the client's number — with this one, they will <b>not</b> be able to log in.</p>`,
+         confirmText:'Save anyway' })){
       $('#pcPhone').focus();
       return;
     }
@@ -7801,7 +7884,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           .filter(ev=>/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
           .map(ev=>({ date: ev.date, n: dateConflicts(ev.date, editingId, d.clientName).length }))
           .filter(r=>r.n >= DATE_EVENT_CAP);
-        if(busy.length && !confirm(`⚠ Heavy day: ${stepDate(busy[0].date)} already has ${busy[0].n} events booked${busy.length>1 ? ' (+' + (busy.length-1) + ' more full dates)' : ''}. Book anyway?`)) return;
+        if(busy.length && !await confirmDialog({
+          title:'Heavy day',
+          body:`<p>${esc(stepDate(busy[0].date))} already has <b>${busy[0].n} events</b> booked${busy.length>1 ? `, and ${busy.length-1} more of these dates ${busy.length===2?'is':'are'} full too` : ''}.</p>`
+             + `<p>One more may stretch your crews.</p>`,
+          confirmText:'Book anyway', danger:false })) return;
       }
       let res;
       if(editingId){
