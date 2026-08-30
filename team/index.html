@@ -146,8 +146,17 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .bars{display:flex;align-items:stretch;gap:8px;height:118px;margin:.5rem 0 .1rem}
 .bcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
 .bcol b{font-size:.6rem;color:var(--text);font-weight:500;white-space:nowrap}
-.bcol i{display:block;width:100%;max-width:34px;background:linear-gradient(180deg,#E2C275,#8E6E1E);border-radius:4px 4px 0 0}
+.bcol i{display:flex;align-items:flex-end;width:100%;max-width:34px;
+  background:rgba(226,194,117,.15);border-radius:4px 4px 0 0;overflow:hidden}
+/* the filled part is money that has actually arrived; the pale remainder is
+   what is still owed, so the chart cannot disagree with the tiles above it */
+.bcol i u{display:block;width:100%;background:linear-gradient(180deg,#E2C275,#8E6E1E);border-radius:4px 4px 0 0}
 .bcol.zero i{background:rgba(226,194,117,.12);border-radius:4px}
+.charthint{font-size:.66rem;color:var(--mut);margin:.15rem 0 0;display:flex;gap:.9rem;flex-wrap:wrap}
+.charthint span{display:inline-flex;align-items:center;gap:.32rem}
+.charthint i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.charthint .got{background:linear-gradient(180deg,#E2C275,#8E6E1E)}
+.charthint .owed{background:rgba(226,194,117,.15)}
 .bcol span{font-size:.62rem;color:var(--mut)}
 .rolechips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem}
 .rolechips b{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.72rem;font-weight:500}
@@ -417,6 +426,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         </span>
       </h3>
       <div class="bars" id="anaBars"></div>
+      <p class="charthint" id="chHint" hidden>
+        <span><i class="got"></i>received</span><span><i class="owed"></i>still to come</span></p>
       <div class="rolechips" id="anaRoles"></div>
       <div class="rolechips yrs" id="anaYears" title="Year-wise earnings"></div>
     </div>
@@ -1030,19 +1041,35 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push({ key: d.toLocaleDateString('en-CA').slice(0,7),
                     lab: d.toLocaleDateString('en-IN', { month:'short' }),
-                    yr: String(d.getFullYear()).slice(2), amt: 0, n: 0 });
+                    yr: String(d.getFullYear()).slice(2), fee: 0, got: 0, n: 0 });
     }
+    /* The two money tiles above this chart use payGot/payDue — what has
+       actually been received. This read a.pay.amount, the agreed FEE, so
+       switching the toggle to Earnings gave a crew member a second, larger
+       answer to "what have I earned" six centimetres below the first one.
+       Both numbers are worth seeing, so the bar now carries both: its height
+       is the fee, and the solid part is the money that has arrived. The solid
+       parts sum to exactly the "received" tile. */
     ASGS.forEach(a=>{
       const m = months.find(x=>x.key === (a.date||'').slice(0,7));
-      if(m){ m.amt += Number((a.pay||{}).amount)||0; m.n++; }
+      if(m){ m.fee += payFee(a); m.got += payGot(a); m.n++; }
     });
     const money = _series === 'amt';
-    const max = Math.max(...months.map(m=>money ? m.amt : m.n), 1);
+    /* paid against no agreed fee counts as fully settled, not as 120% of a bar */
+    const total  = m => money ? Math.max(m.fee, m.got) : m.n;
+    const filled = m => money ? Math.min(m.got, total(m)) : m.n;
+    const max = Math.max(...months.map(total), 1);
+    const hint = $('#chHint'); if(hint) hint.hidden = !money;
     $('#anaBars').innerHTML = months.map(m=>{
-      const v = money ? m.amt : m.n;
-      return `<div class="bcol ${v ? '' : 'zero'}" role="img" aria-label="${m.lab}: ${m.n} event${m.n===1?'':'s'}, ${inr(m.amt)}">
-        <b>${v ? (money ? shMoney(m.amt) : m.n) : ''}</b>
-        <i style="height:${v ? Math.max(6, Math.round(v / max * 68)) : 3}px"></i>
+      const t = total(m), f = filled(m);
+      const owed = Math.max(0, m.fee - m.got);
+      const label = money
+        ? `${m.lab}: ${inr(m.got)} received${owed ? ' of ' + inr(m.fee) + ', ' + inr(owed) + ' still to come' : m.fee ? ' — all of it' : ''}`
+        : `${m.lab}: ${m.n} event${m.n===1?'':'s'}, ${inr(m.got)} received`;
+      return `<div class="bcol ${t ? '' : 'zero'}" role="img" aria-label="${esc(label)}">
+        <b>${t ? (money ? shMoney(m.got) : m.n) : ''}</b>
+        <i style="height:${t ? Math.max(6, Math.round(t / max * 68)) : 3}px"
+           ><u style="height:${t ? Math.round(f / t * 100) : 0}%"></u></i>
         <span>${m.lab}${m.lab === 'Jan' ? "'" + m.yr : ''}</span>
       </div>`;
     }).join('');
@@ -1089,16 +1116,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#anaRoles').innerHTML = `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>`
       + Object.entries(roles).sort((a,b)=>b[1]-a[1])
           .map(([r,n])=>`<b>${esc(r.replace(/\b\w/g,c=>c.toUpperCase()))} × ${n}</b>`).join('');
-    /* year-wise earnings — every year the member has worked, newest first */
+    /* year-wise earnings — every year the member has worked, newest first.
+       Received, like the tiles and the chart; anything still owed is named
+       separately rather than folded into the same figure. */
     const byYr = {};
     ASGS.forEach(a=>{
       const y = (a.date||'').slice(0,4);
-      if(/^\d{4}$/.test(y)){ byYr[y] = byYr[y]||{ amt:0, n:0 }; byYr[y].amt += Number((a.pay||{}).amount)||0; byYr[y].n++; }
+      if(/^\d{4}$/.test(y)){
+        byYr[y] = byYr[y] || { got:0, due:0, n:0 };
+        byYr[y].got += payGot(a); byYr[y].due += payDue(a); byYr[y].n++;
+      }
     });
     const yrs = Object.keys(byYr).sort().reverse();
     $('#anaYears').hidden = yrs.length < 1;
     $('#anaYears').innerHTML = yrs
-      .map(y=>`<b>📆 ${y} · ${inr(byYr[y].amt)} · ${byYr[y].n} event${byYr[y].n===1?'':'s'}</b>`).join('');
+      .map(y=>`<b>📆 ${y} · ${inr(byYr[y].got)} · ${byYr[y].n} event${byYr[y].n===1?'':'s'}${
+        byYr[y].due ? ` · <em style="font-style:normal;opacity:.75">${inr(byYr[y].due)} to come</em>` : ''}</b>`).join('');
   }
 
   function render(){
