@@ -1209,6 +1209,43 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      testimonials, FAQs, presets, service rates and learned rates. */
   let _cfgLoadFailed = false;
   let _cfgLoadedAt = null;          // updatedAt seen at load, for the stale check
+
+  /* ---------- what is public and what is not ----------
+     config/site has to be world-readable — the builder reads prices and presets
+     from it anonymously, and the three portals read contact and the delivery
+     checklists. Everything else that was in there was the studio's own
+     business: what it quotes at, what it has learned to quote (album cost per
+     sheet included), its quotation terms and its editing deadline. The web API
+     key is public by design, so one URL read the lot.
+
+     CFG stays a single merged object in memory — every reader below is
+     unchanged — but it is now loaded from, and saved to, two documents. */
+  const CFG_PUBLIC  = ['prices','presets','testimonials','faqs','contact','deliverySteps','b2bDeliverySteps'];
+  const CFG_PRIVATE = ['serviceRates','learnedRates','quoteTerms','editDueDays','festivals'];
+  const pickKeys = (o, keys) => {
+    const out = {};
+    keys.forEach(k=>{ if(o && o[k] !== undefined) out[k] = o[k]; });
+    return out;
+  };
+
+  /* One-time move for a config written before the split. Order matters: the new
+     home is written and SERVER-CONFIRMED first, and only then are the keys
+     stripped from the public document. A queued (offline) write is not good
+     enough to strip on — it could still be refused when it replays, and the
+     values would be gone from both places. */
+  async function migratePrivateConfig(site){
+    const stray = CFG_PRIVATE.filter(k => site && site[k] !== undefined);
+    if(!stray.length) return false;
+    const moved = Object.assign(pickKeys(site, CFG_PRIVATE), { updatedAt: new Date().toISOString() });
+    const wrote = await settle(setDoc(doc(db,'config','internal'), moved, { merge: true }));
+    if(wrote !== 'ok') return false;
+    const strip = {};
+    stray.forEach(k=>{ strip[k] = deleteField(); });
+    const cleared = await settle(updateDoc(doc(db,'config','site'), strip));
+    if(cleared !== 'ok') return false;
+    console.info('[config] moved', stray.join(', '), 'out of the public document');
+    return true;
+  }
   function setCfgBlocked(blocked, msg){
     _cfgLoadFailed = blocked;
     const btn = $('#saveConfig'), m = $('#saveMsg');
@@ -1220,11 +1257,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        a fast first tap used to publish empty forms over the live config. */
     setCfgBlocked(true, 'Loading the live config…');
     try{
-      const snap = await getDoc(doc(db,'config','site'));
-      CFG = snap.exists() ? snap.data() : JSON.parse(JSON.stringify(DEFAULTS));
-      _cfgLoadedAt = snap.exists() ? (snap.data().updatedAt || null) : null;
+      /* two documents, one CFG. The private one may legitimately not exist yet
+         (nothing has been saved since the split), in which case the values are
+         still sitting in the public one and the migration below moves them. */
+      const [snap, isnap] = await Promise.all([
+        getDoc(doc(db,'config','site')),
+        getDoc(doc(db,'config','internal')).catch(()=>null)
+      ]);
+      const site = snap.exists() ? snap.data() : null;
+      const priv = (isnap && isnap.exists()) ? isnap.data() : null;
+      /* private wins where both have a key — the public copy is the stale one */
+      CFG = site ? Object.assign({}, site, priv || {}) : JSON.parse(JSON.stringify(DEFAULTS));
+      _cfgLoadedAt = site ? (site.updatedAt || null) : null;
       setCfgBlocked(false, snap.exists() ? '' :
         'No saved config yet — showing current site defaults. Save All to publish them.');
+      /* fire and forget: it must not hold up the panel, and it is safe to run
+         again on the next load if it does not complete */
+      if(site) migratePrivateConfig(site).catch(()=>{});
     }catch(err){
       CFG = JSON.parse(JSON.stringify(DEFAULTS));
       setCfgBlocked(true,
@@ -1521,11 +1570,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const editDueDays = Math.min(365, Math.max(1, Number($('#cfgEditDue').value)||21));
       const payload = { prices, presets, testimonials, faqs, serviceRates, contact,
                         quoteTerms, deliverySteps, b2bDeliverySteps, festivals, learnedRates, editDueDays, updatedAt: stamp };
+      /* Split across the two documents. Both writes stay full overwrites, which
+         is what makes a deleted preset or FAQ actually disappear — and, for the
+         public one, what sweeps out any private key left over from before the
+         split.
+
+         Private first. If the public write landed first and the private one
+         then failed, the overwrite would already have dropped serviceRates and
+         learnedRates from config/site with nowhere else holding them. */
+      const privPayload = Object.assign(pickKeys(payload, CFG_PRIVATE), { updatedAt: stamp });
+      const pubPayload  = Object.assign(pickKeys(payload, CFG_PUBLIC),  { updatedAt: stamp });
       /* settle() so an offline save answers instead of hanging forever, and a
          refused write is reported instead of pretending it published */
-      const res = await settle(setDoc(doc(db,'config','site'), payload));
+      const privRes = await settle(setDoc(doc(db,'config','internal'), privPayload));
+      if(privRes === 'denied'){
+        toast('NOT saved — the server refused the write. Check your sign-in and try again.');
+        return;
+      }
+      const res = await settle(setDoc(doc(db,'config','site'), pubPayload));
       if(res === 'denied'){
-        toast('NOT saved — the server refused the config write. Check your sign-in and try again.');
+        toast('Partly saved — your rates and terms went through, but the public settings (prices, packages, FAQs) were REFUSED. Try Save All again.');
         return;
       }
       CFG = { prices, presets, testimonials, faqs, serviceRates, contact, quoteTerms, deliverySteps, b2bDeliverySteps, festivals, learnedRates, editDueDays, updatedAt: stamp };
@@ -5237,7 +5301,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          failed, and a backup of defaults masquerading as the live config is
          worse than no config at all */
       let cfgOut = null, cfgNote = '';
-      try{ const cs = await getDoc(doc(db,'config','site')); cfgOut = cs.exists() ? cs.data() : null; }
+      try{
+        /* a backup missing the rate cards is not a backup — read both halves */
+        const [cs, ci] = await Promise.all([
+          getDoc(doc(db,'config','site')),
+          getDoc(doc(db,'config','internal')).catch(()=>null)
+        ]);
+        cfgOut = cs.exists() || (ci && ci.exists())
+          ? Object.assign({}, cs.exists() ? cs.data() : {}, (ci && ci.exists()) ? ci.data() : {})
+          : null;
+      }
       catch(e){
         if(_cfgLoadFailed){ cfgOut = null; cfgNote = 'live config unavailable at export time — NOT included; do not restore config from this file'; }
         else cfgOut = CFG;
@@ -7617,7 +7690,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         d.events.forEach(ev=>ev.items.forEach(it=>{ if(it.service && it.rate > 0) learned[it.service] = it.rate; }));
         if(d.album && d.album.perSheet > 0) learned['__albumPerSheet'] = d.album.perSheet;
         CFG = CFG || {}; CFG.learnedRates = learned;
-        setDoc(doc(db,'config','site'), { learnedRates: learned }, { merge: true });
+        /* learned rates are the studio's own numbers — config/internal, never
+           the world-readable document */
+        setDoc(doc(db,'config','internal'), { learnedRates: learned }, { merge: true });
       }catch(e){}
       loadPkgs();
       /* Don't offer to "add the missing payment" here: paySave INCREMENTS

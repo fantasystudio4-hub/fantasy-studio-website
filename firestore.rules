@@ -80,10 +80,31 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // visitors may READ the site config; only you may write it
+    // visitors may READ the site config; only you may write it.
+    //
+    // This document HAS to be world-readable: the public builder reads prices
+    // and presets from it before anyone signs in, and the client, crew and
+    // partner portals read contact and the delivery checklists. So it may only
+    // ever hold things you would print on the website.
+    //
+    // It used to hold rather more than that — serviceRates and learnedRates
+    // (what the studio actually quotes at, and the album cost per sheet), the
+    // quotation terms and the editing deadline. The web API key ships in
+    // firebase-config.js by design, so one URL read the studio's whole cost
+    // basis. Those live in config/internal now; keep this document to the
+    // seven public keys.
     match /config/site {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // the half of the config nobody outside the studio has any business seeing:
+    // serviceRates, learnedRates, quoteTerms, editDueDays, festivals. The
+    // default-deny match at the bottom already covers this, so the panel works
+    // whether or not this block is published; it is written out so the split is
+    // visible next to the document it was split from.
+    match /config/internal {
+      allow read, write: if isAdmin();
     }
 
     // quote-number counter — admin only
