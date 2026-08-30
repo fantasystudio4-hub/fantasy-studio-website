@@ -85,6 +85,7 @@
   --sans:        'Jost', system-ui, sans-serif;
   --maxw:        1320px;
   --hdr:         62px;
+  --mqbar:       84px;   /* the fixed quote bar, where it is shown */
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
@@ -103,7 +104,9 @@ body{
      which is exactly the cost a mid-range Android cannot afford here */
   background:transparent;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
-  padding-bottom:calc(104px + env(safe-area-inset-bottom));  /* mobile quote bar */
+  /* the quote bar is fixed only at 1080px and under; reserving its height at
+     every width left a dead strip below the desktop page too */
+  padding-bottom:0;
 }
 h1,h2,h3,h4{font-family:var(--serif);font-weight:600;line-height:1.15;letter-spacing:-.01em}
 a{color:inherit;text-decoration:none}
@@ -586,7 +589,7 @@ img{max-width:100%;display:block}
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
 .toast .t-close{border:0;background:none;color:#b3a98f;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;padding:.85em .4em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
-@media(max-width:1080px){.toast{bottom:calc(104px + env(safe-area-inset-bottom))}}
+@media(max-width:1080px){.toast{bottom:calc(var(--mqbar) + 14px + env(safe-area-inset-bottom))}}
 
 /* ---- date field painted as dd-mm-yyyy ---- */
 .dwrap{position:relative;display:block}
@@ -602,6 +605,10 @@ img{max-width:100%;display:block}
   .shop{grid-template-columns:minmax(0,1fr)}
   .cart{display:none}
   .mq-bar{display:flex}
+  /* the bar is fixed from here down, so this is where its height is owed —
+     and the page's own 60px tail sat on top of it as dead scroll */
+  body{padding-bottom:calc(var(--mqbar) + env(safe-area-inset-bottom))}
+  .shop{padding-bottom:18px}
   /* the sticky bar already carries Next at this width — an in-page copy of it
      is a second button for one action, sitting just above the first */
   .wiz-nav .wiz-next{display:none}
@@ -650,11 +657,13 @@ img{max-width:100%;display:block}
     display:flex;flex-direction:column;align-items:stretch;gap:.2rem;
     padding:.45rem .45rem .5rem;min-height:0;
   }
+  /* a banner, not an empty picture frame: 62px of beige around a 27px icon
+     was a third of every tile, and there are five rows of them */
   .prod-ic{
-    order:1;width:100%;height:62px;border-radius:8px;
+    order:1;width:100%;height:46px;border-radius:8px;
     background:linear-gradient(160deg,rgba(184,144,43,.14),rgba(184,144,43,.06));
   }
-  .prod-ic svg{width:27px;height:27px}
+  .prod-ic svg{width:24px;height:24px}
   .prod.on .prod-ic{background:linear-gradient(160deg,var(--gold),var(--gold-deep))}
   .prod h4{order:2;font-size:.8rem;line-height:1.25}
   .prod .svc-badge{display:none}            /* the blurb already says it */
@@ -680,9 +689,19 @@ img{max-width:100%;display:block}
     flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
     scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
     margin-left:-.9rem;margin-right:-.9rem;padding:0 .9rem .3rem;
+    /* the row is inset by its own padding — without this a snap lands 14px
+       short and shaves the first letter off against the screen edge */
+    scroll-padding-left:.9rem;
+    /* the last chip used to stop dead mid-price at the screen edge, which reads
+       as broken rather than as more of the row waiting sideways */
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
+    mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
   }
   .bundles::-webkit-scrollbar{display:none}
   .bundle{flex:0 0 auto;scroll-snap-align:start;min-height:40px;display:inline-flex;align-items:center}
+  /* the label had no snap point of its own, so proximity snapping pushed the
+     row to the first chip on layout and "Quick start" was never once seen */
+  .bundles .bl{scroll-snap-align:start}
 
   /* ---- 44px of thumb, everywhere it is tapped ---- */
   .alb-chip{min-height:42px;display:inline-flex;align-items:center}
@@ -697,6 +716,12 @@ img{max-width:100%;display:block}
   .ev-bar{padding:.75rem .8rem;gap:.6rem}
   .ev-body{padding:.8rem}
   .fld select,.fld input[type=date]{font-size:16px}
+  /* the 190px cap left a third of the row as empty cream; the input is the
+     only thing in it, so let it have the width (.dwrap is the painted-date
+     wrapper the script inserts around it) */
+  .date-fld{padding:.35rem .55rem;gap:.55rem}
+  .date-fld .dwrap{flex:1 1 auto;min-width:0}
+  .date-fld input[type=date]{max-width:none}
 
   .deal{padding:.75rem .8rem;gap:.7rem}
   .deal .dl b{font-size:1rem}
@@ -707,10 +732,14 @@ img{max-width:100%;display:block}
   .ev-tile svg{width:21px;height:21px}
   .ev-tile .tn{font-size:.83rem}
   .ev-tile .tt{font-size:.64rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .wiz-nav{margin-top:.9rem}
+  .wiz-nav{margin-top:.6rem;justify-content:center}
   .wiz-nav .btn{flex:1 1 100%;padding:1em 1.2em}
+  /* the bottom bar carries the step forward, so Back is a way out, not a
+     second primary button spanning the screen */
+  .wiz-nav .wiz-back{flex:0 0 auto;padding:.8em 1.8em;font-size:.78rem}
   .wiz-help{flex:1 1 100%;text-align:center;order:-1}
   .shop{padding-left:.9rem;padding-right:.9rem}
+  .review-actions{gap:.55rem}
   .review-actions .btn{flex:1 1 100%}
   .lead-modal{
     left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;
@@ -724,11 +753,25 @@ img{max-width:100%;display:block}
     padding:1.4rem .9rem calc(1.1rem + env(safe-area-inset-bottom));transform:translateY(106%);
   }
   .cmp-modal.open{transform:translateY(0)}
-  .toast{flex-wrap:wrap;border-radius:16px;max-width:94vw;justify-content:flex-end}
-  .toast #toastMsg{flex:1 1 100%;text-align:left}
+  /* The message took a whole row of its own, which left the tick sitting alone
+     in the top-right corner of a box the wrapping had shrunk to nothing. Tick
+     and message share the first row; the buttons wrap under them. */
+  .toast{flex-wrap:wrap;border-radius:16px;width:min(94vw,430px);max-width:94vw;justify-content:flex-end;gap:.6rem .8rem}
+  .toast .t-ic{flex:0 0 auto}
+  .toast #toastMsg{flex:1 1 calc(100% - 40px);min-width:0;text-align:left}
   /* Contact lives one tap away in the footer of the home page; the builder's
      header needs the width for the cart */
   .hdr-link.hide-sm{display:none}
+}
+
+/* WhatsApp is the ask; PDF and Share are the alternatives, so they take one
+   row under it rather than stacking three identical full-width pills. Their
+   labels are set in nowrap caps, so this only holds where the width is there —
+   under 361px they go back to a pill each. */
+@media(min-width:361px) and (max-width:560px){
+  .review-actions #pdfBtn,.review-actions #shareBtn{
+    flex:1 1 0;min-width:0;padding:.85em .5em;font-size:.72rem;letter-spacing:.01em;
+  }
 }
 
 /* very narrow phones (320-380px) */
@@ -737,7 +780,12 @@ img{max-width:100%;display:block}
   .hdr-in{gap:.5rem;padding:0 .7rem}
   .cart-btn{padding:.45em .8em .45em .7em;font-size:.78rem}
   .cart-btn .amt{font-size:.92rem}
-  .ev-tile .tt{display:none}   /* the note is a nicety; two columns is not */
+}
+/* Manje, Sanchak and Ruksati are the names a visitor may not know, and the note
+   is what tells them. It ellipses rather than wrapping, so it cannot cost the
+   second column — only below 360px is there too little left to say anything. */
+@media(max-width:360px){
+  .ev-tile .tt{display:none}
 }
 
 /* respect reduced-motion preferences */
