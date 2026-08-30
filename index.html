@@ -462,6 +462,22 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
 .foot-bottom .foot-legal{color:#a9a088;border-bottom:1px solid rgba(226,194,117,.28);transition:.25s}
 .foot-bottom .foot-legal:hover{color:var(--gold-bright);border-bottom-color:var(--gold-bright)}
 
+/* ---- no-JavaScript fallback ----
+   Only ever rendered inside <noscript>, so it costs a scripted visitor
+   nothing but the bytes. */
+.ns-card{
+  position:relative;z-index:2;max-width:760px;margin:0 auto;text-align:center;
+  background:linear-gradient(180deg,#FFFDF7,#FBF4E1);
+  border:1px solid var(--gold-bright);border-radius:14px;
+  padding:clamp(1.6rem,4vw,2.4rem);box-shadow:var(--shadow-sm);
+}
+.ns-card h3{font-size:clamp(1.25rem,3vw,1.6rem);color:var(--ink);margin-bottom:.6rem}
+.ns-card p{color:var(--ink-soft);font-size:.95rem;max-width:56ch;margin:0 auto .8rem}
+.ns-acts{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center;margin:1.4rem 0 1rem}
+.ns-acts .btn{flex:1 1 220px;max-width:280px}
+.ns-fine{font-size:.82rem;color:#8d846c}
+.ns-fine a{color:var(--gold-text);border-bottom:1px solid rgba(184,144,43,.4)}
+
 /* floating whatsapp */
 .wa-fab{
   position:fixed;right:22px;bottom:22px;z-index:950;width:50px;height:50px;border-radius:50%;
@@ -871,6 +887,31 @@ section[id]{scroll-margin-top:84px}
       </span>
       <span class="btn btn-gold rc-btn">Continue</span>
     </a>
+
+    <noscript>
+      <style>
+        /* Every section below the hero carries .reveal, which is opacity:0
+           until an IntersectionObserver adds .in. With scripting off nothing
+           ever does — the page was a hero followed by a blank screen: no
+           About, no Services, no Portfolio, no FAQ, no contact form. */
+        .reveal{opacity:1!important;transform:none!important}
+        /* these are painted by script, so without it they are empty boxes and
+           dead buttons that read as a broken page */
+        .pkg-showcase,.builder-cta,.rate-card,#resumeCard{display:none!important}
+        /* a burger that cannot open anything is worse than no burger */
+        .burger{display:none!important}
+      </style>
+      <div class="ns-card">
+        <h3>Our package builder needs JavaScript</h3>
+        <p>It prices your functions as you choose them, so it needs scripting switched on. Everything else on this page — what we cover, how delivery works, our terms — is right here below.</p>
+        <p>Or simply ask us, and we will send a full written quote the same day.</p>
+        <div class="ns-acts">
+          <a class="btn btn-gold" href="https://wa.me/918686868803?text=Hi%20Fantasy%20Studio%2C%20please%20send%20me%20your%20wedding%20package%20prices.">WhatsApp us for prices</a>
+          <a class="btn btn-outline-gold" href="tel:+918686868803">Call 8686868803</a>
+        </div>
+        <p class="ns-fine">Album pricing, female-shooter charges and our payment terms are all written out in the <a href="#faq">questions further down this page</a>.</p>
+      </div>
+    </noscript>
 
     <div class="pkg-showcase reveal d1">
       <div class="preset-grid" id="presetGrid"></div>

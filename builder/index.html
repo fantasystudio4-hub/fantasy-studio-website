@@ -817,6 +817,44 @@ img{max-width:100%;display:block}
   </div>
 </header>
 
+<noscript>
+  <style>
+    /* The builder is entirely script-driven: the package rows, the function
+       picker, every event panel and the running total are all painted at
+       runtime. With scripting off this was a header above an empty shell and
+       a bottom bar reading "₹0" — the page looked broken rather than
+       unavailable. Take it down and say so instead. */
+    .shop,.mq-bar,.wiz-bar,.cart{display:none!important}
+    .ns-card{
+      max-width:640px;margin:clamp(2rem,8vw,4.5rem) auto;text-align:center;
+      background:linear-gradient(180deg,#FFFDF7,#FBF4E1);
+      border:1px solid #E2C275;border-radius:14px;
+      padding:clamp(1.6rem,4vw,2.4rem);box-shadow:0 4px 18px rgba(40,34,18,.06);
+    }
+    .ns-card h1{font-family:var(--serif,'Playfair Display',Georgia,serif);
+      font-size:clamp(1.3rem,4vw,1.8rem);color:#1C1A16;margin-bottom:.6rem}
+    .ns-card p{color:#4A463E;font-size:.95rem;max-width:52ch;margin:0 auto .8rem}
+    .ns-acts{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center;margin-top:1.4rem}
+    .ns-acts a{
+      flex:1 1 210px;max-width:270px;text-decoration:none;border-radius:60px;
+      padding:.9em 1.4em;font-size:.9rem;min-height:48px;
+      display:inline-flex;align-items:center;justify-content:center;
+    }
+    .ns-go{background:linear-gradient(135deg,#8E6E1E,#7A5E19);color:#fff}
+    .ns-alt{border:1px solid #B8902B;color:#7A5E19}
+  </style>
+  <div class="ns-card">
+    <h1>The package builder needs JavaScript</h1>
+    <p>It adds up your functions and coverage as you pick them, so it cannot work with scripting switched off.</p>
+    <p>Tell us which functions you are having and we will send a full written quote the same day — usually within the hour.</p>
+    <div class="ns-acts">
+      <a class="ns-go" href="https://wa.me/918686868803?text=Hi%20Fantasy%20Studio%2C%20please%20send%20me%20a%20quote%20for%20my%20wedding.">WhatsApp us for a quote</a>
+      <a class="ns-alt" href="tel:+918686868803">Call 8686868803</a>
+    </div>
+    <p style="margin-top:1.3rem"><a class="ns-alt" style="border:0;text-decoration:underline;color:#7A5E19;display:inline" href="../">See our services and prices &rarr;</a></p>
+  </div>
+</noscript>
+
 <div class="shop" id="shop">
 <main class="shop-main">
 
