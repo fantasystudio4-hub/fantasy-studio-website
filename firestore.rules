@@ -33,6 +33,17 @@ service cloud.firestore {
     // visitors may only CREATE leads — never read, change or delete them.
     // Pinned to the exact fields the form sends, with size caps, so a stranger
     // cannot inject extra/oversized fields into your admin console.
+    //
+    // hasOnly() only says WHICH keys may appear. Five of them — phoneFull,
+    // eventType, weddingDate, quote, grandTotal — had no type or size check at
+    // all, so anyone holding the public web API key could put a megabyte of
+    // anything in them, or a string where the panel expected a number. That is
+    // how a lead field ended up rendering as markup in the signed-in admin
+    // session. Every field is now typed and bounded, and `quote` is pinned to
+    // its own three keys with a numeric sheet count.
+    function leadField(k, dflt) {
+      return request.resource.data.get(k, dflt);
+    }
     match /leads/{leadId} {
       allow create:
         if request.resource.data.keys().hasOnly(
@@ -47,7 +58,25 @@ service cloud.firestore {
         && request.resource.data.phone.size() <= 20
         && request.resource.data.message is string
         && request.resource.data.message.size() <= 2000
-        && request.resource.data.source in ['package_builder', 'contact_form'];
+        && request.resource.data.source in ['package_builder', 'contact_form']
+        // the five that used to be unchecked
+        && leadField('phoneFull', '') is string
+        && leadField('phoneFull', '').size() <= 20
+        && leadField('eventType', '') is string
+        && leadField('eventType', '').size() <= 200
+        && leadField('weddingDate', '') is string
+        && leadField('weddingDate', '').size() <= 10
+        && (leadField('grandTotal', 0) == null || leadField('grandTotal', 0) is number)
+        // the contact form sends quote: null; the builder sends this exact shape
+        && (leadField('quote', null) == null || (
+              leadField('quote', null) is map
+              && request.resource.data.quote.keys().hasOnly(['events','albumSheets','promo'])
+              && request.resource.data.quote.get('albumSheets', 0) is number
+              && request.resource.data.quote.get('promo', '') is string
+              && request.resource.data.quote.get('promo', '').size() <= 40
+              && request.resource.data.quote.get('events', []) is list
+              && request.resource.data.quote.get('events', []).size() <= 12
+           ));
       allow read, update, delete: if isAdmin();
     }
 

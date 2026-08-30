@@ -1028,7 +1028,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           .map(([k,q])=>`${SERVICE_LABELS[k]||k}${q>1?' ×'+q:''}`).join(', ');
         if(svcs) h += `<div class="ln"><span>${esc(ev.type)}${ev.date?' · '+esc(dmy(ev.date)):''}</span><span>${esc(svcs)}</span></div>`;
       });
-      if(l.quote.albumSheets) h += `<div class="ln"><span>Album</span><span>${l.quote.albumSheets} sheets</span></div>`;
+      /* Number(), not esc(): a lead is written by anyone holding the public web
+         API key, and the rule that accepts one never checked this field's type.
+         A string here went straight into innerHTML inside the signed-in admin
+         session. It is a sheet count, so coerce it to one — that leaves nothing
+         to escape rather than escaping it correctly and hoping the next edit
+         remembers to. */
+      const _albSheets = Math.max(0, Math.floor(Number(l.quote.albumSheets) || 0));
+      if(_albSheets) h += `<div class="ln"><span>Album</span><span>${_albSheets} sheets</span></div>`;
       if(l.quote.promo) h += `<div class="ln"><span>Promo</span><span>${esc(l.quote.promo)}</span></div>`;
       h += `<div class="ln"><span><b>Grand total</b></span><span><b>${inr(l.grandTotal)}</b></span></div>`;
     }
