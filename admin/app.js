@@ -5371,6 +5371,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---------- trash: restore or permanently clear deleted records ---------- */
+  /* A package's crew assignments are separate documents. Trashing a package
+     offers to free the crew; deleting one FOREVER used to leave them behind
+     with no package left to cancel them from, so the shoot stayed on the
+     crew's phones for good. Both permanent paths call this now. */
+  function dropAssignmentsFor(pkgId){
+    const orphans = ASGS.filter(a=>a.pkgId === pkgId);
+    if(!orphans.length) return [];
+    orphans.forEach(a=>{ deleteDoc(doc(db,'assignments',a.id)).catch(()=>{}); });
+    ASGS = ASGS.filter(a=>a.pkgId !== pkgId);
+    return orphans;
+  }
   let _purged = false;
   function renderTrash(){
     const el = $('#trashList'); if(!el) return;
@@ -5397,6 +5408,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            no prompt and no way back. Those are kept in Trash until the owner
            deletes them deliberately with the ✕ Forever button. */
         if(col === 'packages' && Array.isArray(it.payments) && it.payments.length) return;
+        /* Assignments live in their own collection and were left behind here.
+           The package is going for good, so the crew must stop seeing the job —
+           otherwise it sits on their phones with the call time and the venue,
+           and nothing left to cancel it from.
+
+           The package goes FIRST and the assignments only once it is actually
+           gone. The other order risks the worse failure: the assignment deletes
+           landing while the package delete is refused would strip a crew
+           member's real, still-live shoot off their phone. */
+        if(col === 'packages'){
+          deleteDoc(doc(db, col, it.id)).then(()=>{ dropAssignmentsFor(it.id); renderTeam(); }).catch(()=>{});
+          return;
+        }
         deleteDoc(doc(db, col, it.id)).catch(()=>{});
       });
     }
@@ -5418,12 +5442,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('Restored ✓');
       }catch(err){ toast('Restore failed — it may have been permanently deleted elsewhere'); }
     }else{
-      const paid = kind==='pkg' && Array.isArray(it.payments) && it.payments.length
-        ? `\n\nThis package has ${it.payments.length} recorded payment(s) totalling ${inr(it.payments.reduce((n,p)=>n+(Number(p.amount)||0),0))}. That payment history will be destroyed.`
-        : '';
+      const warn = [];
+      if(kind === 'pkg' && Array.isArray(it.payments) && it.payments.length){
+        warn.push(`<b>${it.payments.length} recorded payment${it.payments.length>1?'s':''}</b> totalling `
+          + `<b>${inr(it.payments.reduce((n,p)=>n+(Number(p.amount)||0),0))}</b> will be destroyed with it.`);
+      }
+      const crew = kind === 'pkg' ? ASGS.filter(a=>a.pkgId === id) : [];
+      if(crew.length){
+        /* one member can be on several of the package's events — name them once */
+        const who = [...new Set(crew.map(a=>a.memberName||'—'))];
+        warn.push(`${esc(who.join(', '))} ${who.length===1?'is':'are'} booked on it, across `
+          + `${crew.length} assignment${crew.length>1?'s':''}. Those go too — otherwise the job stays on `
+          + `${who.length===1?'their phone':'their phones'} with no package left to cancel it from.`);
+      }
       if(!await confirmDialog({
         title:'Delete forever?',
-        body:'This one really cannot be undone — it does not go back to Trash.' + esc(paid),
+        /* Separate paragraphs, not "\n\n": this is innerHTML, where newlines
+           collapse — the sentence about destroyed payments used to run straight
+           on from the one before it, in the one dialog where it has to stand
+           on its own. */
+        body: ['This one really cannot be undone — it does not go back to Trash.']
+                .concat(warn).map(t=>`<p>${t}</p>`).join(''),
         confirmText:'Delete forever'
       })) return;
       try{
@@ -5432,9 +5471,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            that could still be refused when it replays */
         const res = await settle(deleteDoc(doc(db,col,id)));
         if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
-        if(kind==='pkg') PKGS = PKGS.filter(v=>v.id!==id); else LEADS = LEADS.filter(v=>v.id!==id);
+        let freed = [];
+        if(kind==='pkg'){
+          freed = dropAssignmentsFor(id);
+          PKGS = PKGS.filter(v=>v.id!==id);
+          renderTeam();
+        } else LEADS = LEADS.filter(v=>v.id!==id);
         renderTrash();
-        toast(res === 'queued' ? 'Queued for permanent deletion — it clears when you are back online' : 'Deleted forever');
+        toast(res === 'queued'
+          ? 'Queued for permanent deletion — it clears when you are back online'
+          : (freed.length ? `Deleted forever — ${freed.length} crew assignment${freed.length>1?'s':''} freed` : 'Deleted forever'));
       }catch(err){ toast('Delete failed'); }
     }
   });

@@ -1239,7 +1239,7 @@ function renderPicker(){
     return `<button type="button" class="ev-tile ${n?'added':''}" data-addtype="${esc(t)}">
       ${icon(m.icon||'spark')}
       <span><span class="tn">${esc(t)}</span><span class="tt">${esc(m.note||'Add this function')}</span></span>
-      ${n?'<span class="tick">✓</span>':''}
+      ${n?`<span class="tick">${n>1?'✓ ×'+n:'✓'}</span>`:''}
     </button>`;
   }).join('');
   const hint = $('#pickerHintText');
@@ -1323,6 +1323,7 @@ function eventPanelHTML(ev, idx){
       ${showAllSvc[ev.id] && !hiddenCount?`<button type="button" class="more-btn" data-more="${ev.id}">− Fewer options</button>`:''}
       <div class="ev-tools">
         ${idx>0?`<button type="button" class="tool" data-copyprev="${ev.id}">&#10697; Same as ${esc(state.events[idx-1].type)}</button>`:''}
+        <button type="button" class="tool" data-dupev="${ev.id}">＋ Another ${esc(ev.type.replace(' / Reception',''))}</button>
         <button type="button" class="tool danger" data-remove>Remove this function</button>
       </div>
       ${nextEv?`<button type="button" class="done-btn" data-toggle="${nextEv.id}">Done &mdash; next: ${esc(nextEv.type)} &rarr;</button>`:''}
@@ -1337,7 +1338,7 @@ function renderEvents(){
   list.innerHTML = state.events.map(eventPanelHTML).join('') +
     (state.events.length ? `<button type="button" class="add-more" id="addMore">
        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-       Add the same function twice</button>` : '');
+       Add another function</button>` : '');
   checkDupDates(false);
   renderPicker();
 }
@@ -1427,19 +1428,27 @@ document.addEventListener('click', e=>{
     const type = tile.dataset.addtype;
     const existing = state.events.find(ev=>ev.type === type);
     /* a multi-select: tap to choose, tap again to unchoose. Unchoosing one
-       that already has coverage on it is undoable rather than blocked. */
+       that already has coverage on it is undoable rather than blocked.
+       This tile answers "am I having a Mehndi at all" — HOW MANY Mehndis is
+       asked on the function's own panel ("＋ Another Mehndi"), so untapping
+       here clears every one of them rather than picking one off arbitrarily. */
     if(existing){
-      const snapshot = JSON.parse(JSON.stringify(existing));
-      const had = chosenCount(existing);
-      state.events = state.events.filter(ev=>ev.id !== existing.id);
-      if(openEv === existing.id) openEv = null;
+      const dupes = state.events.filter(ev=>ev.type === type);
+      const snapshot = JSON.parse(JSON.stringify(dupes));
+      const had = dupes.reduce((n,ev)=>n + chosenCount(ev), 0);
+      state.events = state.events.filter(ev=>ev.type !== type);
+      if(dupes.some(ev=>ev.id === openEv)) openEv = null;
       markCustomised();
       renderAll();
-      if(had) showToast(`${type} removed — its ${had} ${had>1?'services':'service'} went with it.`, 'Undo', ()=>{
-        state.events.push(snapshot);
-        state.events.sort((a,b)=>a.id-b.id);
-        renderAll();
-      });
+      if(had) showToast(
+        `${type} removed${dupes.length>1?` — both of them, and their ${had} services`:` — its ${had} ${had>1?'services':'service'} went with it`}.`,
+        'Undo', ()=>{
+          snapshot.forEach(ev=>state.events.push(ev));
+          /* back into wedding order; the sort is stable, so two Mehndis keep
+             the order they were built in */
+          state.events.sort((a,b)=>EVENT_TYPES.indexOf(a.type) - EVENT_TYPES.indexOf(b.type));
+          renderAll();
+        });
     }else{
       addEvent(type, true);
       /* tap order is not wedding order — a Mehndi added after the Valima still
@@ -1521,6 +1530,27 @@ document.addEventListener('click', e=>{
       const again = document.querySelector(`.prod[data-ev="${ev.id}"][data-svc="${key}"] [data-act="${kind}"]`);
       if(again) again.focus({ preventScroll:true });
     }
+    return;
+  }
+
+  /* a second night of the same function — two Mehndis, two receptions.
+     This was impossible: the picker is a toggle, so the only control that
+     claimed to do it ("Add the same function twice") pointed at a tile that
+     DELETED the function instead. It goes on its own date, and starts empty
+     so nothing is silently added to the price — "Same as ..." is right there
+     to copy the first night's coverage across. */
+  const dup = e.target.closest('[data-dupev]');
+  if(dup){
+    const ev = findEvent(dup.dataset.dupev); if(!ev) return;
+    const copy = { id: ++eid, type: ev.type, date: '', services: {} };
+    state.events.splice(state.events.indexOf(ev) + 1, 0, copy);
+    openEv = copy.id;
+    markBuilderStarted();
+    markCustomised();
+    track('event_duplicated', { event_type: ev.type });
+    renderAll();
+    scrollToPanel(copy.id);
+    showToast(`A second ${ev.type} added — give it its own date and coverage.`);
     return;
   }
 
