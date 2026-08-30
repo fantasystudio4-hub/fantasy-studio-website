@@ -1248,19 +1248,39 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* One-time move for a config written before the split. Order matters: the new
      home is written and SERVER-CONFIRMED first, and only then are the keys
-     stripped from the public document. A queued (offline) write is not good
-     enough to strip on — it could still be refused when it replays, and the
-     values would be gone from both places. */
+     stripped from the public document. A write that has not actually landed is
+     not good enough to strip on — it could still be refused, and the values
+     would be gone from both places.
+
+     Deliberately NOT settle(). settle() answers 'queued' for anything slower
+     than 2.5s, which is the right call for a button the owner is waiting on
+     and the wrong one here: this fires at sign-in, alongside six collection
+     loads, where a write routinely takes longer than that. It reported
+     'queued', refused to strip, and did so silently on every single load —
+     the migration never ran once in production. await the real promise
+     instead: it resolves on server acknowledgement and rejects on refusal.
+     Offline it simply never settles, which is fine — this is fire-and-forget
+     and it is retried on the next load. */
   async function migratePrivateConfig(site){
     const stray = CFG_PRIVATE.filter(k => site && site[k] !== undefined);
     if(!stray.length) return false;
     const moved = Object.assign(pickKeys(site, CFG_PRIVATE), { updatedAt: new Date().toISOString() });
-    const wrote = await settle(setDoc(doc(db,'config','internal'), moved, { merge: true }));
-    if(wrote !== 'ok') return false;
+    try{
+      await setDoc(doc(db,'config','internal'), moved, { merge: true });
+    }catch(e){
+      /* and never silently again: the first version swallowed this, so a
+         migration that never ran looked exactly like one that had */
+      console.warn('[config] could not write config/internal — not stripping anything', e);
+      return false;
+    }
     const strip = {};
     stray.forEach(k=>{ strip[k] = deleteField(); });
-    const cleared = await settle(updateDoc(doc(db,'config','site'), strip));
-    if(cleared !== 'ok') return false;
+    try{
+      await updateDoc(doc(db,'config','site'), strip);
+    }catch(e){
+      console.warn('[config] config/internal is written, but config/site was not stripped', e);
+      return false;
+    }
     console.info('[config] moved', stray.join(', '), 'out of the public document');
     return true;
   }
@@ -1289,9 +1309,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _cfgLoadedAt = site ? (site.updatedAt || null) : null;
       setCfgBlocked(false, snap.exists() ? '' :
         'No saved config yet — showing current site defaults. Save All to publish them.');
-      /* fire and forget: it must not hold up the panel, and it is safe to run
-         again on the next load if it does not complete */
-      if(site) migratePrivateConfig(site).catch(()=>{});
+      /* Fire and forget, and deliberately late: at sign-in this would be the
+         seventh request racing six collection loads. It must not hold up the
+         panel, and it is safe to run again on the next load if it does not
+         complete. */
+      if(site) setTimeout(()=>{
+        migratePrivateConfig(site).catch(e=>console.warn('[config] migration failed', e));
+      }, 4000);
     }catch(err){
       CFG = JSON.parse(JSON.stringify(DEFAULTS));
       setCfgBlocked(true,
