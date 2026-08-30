@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Page not found — Fantasy Studio</title>
+<meta name="description" content="That page has moved or never existed. Find our wedding packages, prices and contact details here." />
+<!-- an error page must never be indexed, and must never be the thing that
+     ranks for the studio's own name -->
+<meta name="robots" content="noindex, follow" />
+<meta name="theme-color" content="#14110a" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* Deliberately self-contained: no shared stylesheet, no script, no Firebase.
+   This is the page that shows when something is already wrong, so it must not
+   depend on anything that could be the thing that is wrong. */
+:root{
+  --ink:#14110a; --gold:#B8902B; --gold-b:#E2C275; --paper:#f4ead2;
+  --line:rgba(184,144,43,.25); --mut:rgba(244,234,210,.62);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(184,144,43,.18), transparent 58%),
+    linear-gradient(180deg,#1a150c,#14110a 46%);
+  color:var(--paper);
+  font-family:'Jost',system-ui,sans-serif;
+  line-height:1.65;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(28px + env(safe-area-inset-top)) 1.2rem calc(36px + env(safe-area-inset-bottom));
+}
+main{max-width:560px;width:100%;text-align:center}
+.mark{width:66px;height:66px;margin:0 auto 1.6rem;display:block}
+.code{
+  font-family:'Jost',sans-serif;font-size:.72rem;letter-spacing:.42em;
+  text-transform:uppercase;color:var(--gold-b);margin-bottom:.9rem;
+}
+h1{
+  font-family:'Playfair Display',Georgia,serif;font-weight:600;
+  font-size:clamp(1.7rem,6vw,2.5rem);line-height:1.15;color:#fff;
+  letter-spacing:-.01em;margin-bottom:.7rem;text-wrap:balance;
+}
+p.lead{color:var(--mut);font-size:1rem;max-width:44ch;margin:0 auto 2rem}
+.acts{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center}
+.acts a{
+  flex:1 1 190px;max-width:250px;text-decoration:none;
+  border-radius:60px;padding:.85em 1.4em;font-size:.9rem;letter-spacing:.03em;
+  display:inline-flex;align-items:center;justify-content:center;gap:.5em;
+  min-height:48px;transition:.25s;
+}
+.primary{background:linear-gradient(135deg,#8E6E1E,#7A5E19);color:#fff;border:1px solid transparent}
+.primary:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(184,144,43,.32)}
+.ghost{border:1px solid var(--line);color:var(--gold-b)}
+.ghost:hover{border-color:var(--gold);background:rgba(184,144,43,.12)}
+.reach{
+  margin-top:2.4rem;padding-top:1.5rem;border-top:1px solid var(--line);
+  font-size:.9rem;color:var(--mut);
+}
+.reach a{color:var(--gold-b);text-decoration:none;border-bottom:1px solid rgba(226,194,117,.3)}
+.reach a:hover{border-bottom-color:var(--gold-b)}
+.reach .tel{
+  font-family:'Playfair Display',Georgia,serif;font-size:1.45rem;
+  display:inline-block;margin-top:.25rem;border:0;
+}
+a:focus-visible{outline:2px solid var(--gold-b);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Fantasy Studio">
+    <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+    <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+    <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+    <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+    <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+          font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
+  </svg>
+
+  <div class="code">Error 404</div>
+  <h1>This page isn't here</h1>
+  <p class="lead">It may have moved, or the link might have a typo in it. Everything else is where it was.</p>
+
+  <div class="acts">
+    <a class="primary" href="/builder/">Build your package</a>
+    <a class="ghost" href="/">Back to the studio</a>
+  </div>
+
+  <div class="reach">
+    Looking for something in particular? Call or WhatsApp us —<br>
+    <a class="tel" href="tel:+918686868803">8686868803</a><br>
+    Fantasy Studio · Malakpet, Hyderabad
+  </div>
+</main>
+</body>
+</html>
