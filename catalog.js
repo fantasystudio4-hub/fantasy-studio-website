@@ -180,6 +180,40 @@ var ALWAYS_INCLUDED = [
    HELPERS
    ============================================================ */
 var inr = function(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); };
+
+/* ---- price tokens in owner-written copy ----
+   FAQ answers quote real prices in prose, and prose does not update itself. The
+   lady-shooter answer read "₹8,000 per head per event (₹6,000 photography
+   charge + ₹2,000 premium)" for months after traditional photo dropped to
+   ₹5,500 — so the site, and the FAQPage structured data Google reads from it,
+   published a total that no longer added up from its own parts.
+
+   Writing {ladyShooterTotal} instead keeps it right through every future price
+   change, and removes the bit a human was getting wrong: the sum. Any token not
+   listed here is left exactly as typed, so ordinary prose containing braces is
+   untouched. */
+var COPY_TOKENS = {
+  traditionalPhoto:  { money:true,  get:function(){ return PRICES.traditionalPhoto; } },
+  traditionalVideo:  { money:true,  get:function(){ return PRICES.traditionalVideo; } },
+  cinematography:    { money:true,  get:function(){ return PRICES.cinematography; } },
+  candidPhotography: { money:true,  get:function(){ return PRICES.candidPhotography; } },
+  drone:             { money:true,  get:function(){ return PRICES.drone; } },
+  ladyShooter:       { money:true,  get:function(){ return PRICES.ladyShooter; } },
+  /* a lady shooter is the photography charge PLUS the pardah premium — the one
+     figure nobody can keep in step by hand */
+  ladyShooterTotal:  { money:true,  get:function(){ return PRICES.traditionalPhoto + PRICES.ladyShooter; } },
+  albumPerSheet:     { money:true,  get:function(){ return PRICES.albumPerSheet; } },
+  albumMinSheets:    { money:false, get:function(){ return PRICES.albumMinSheets; } },
+  albumMaxSheets:    { money:false, get:function(){ return PRICES.albumMaxSheets; } }
+};
+function fillCopyTokens(text){
+  return String(text == null ? '' : text).replace(/\{(\w+)\}/g, function(m, k){
+    var t = COPY_TOKENS[k];
+    if(!t) return m;
+    var v = t.get();
+    return t.money ? inr(v) : String(v);
+  });
+}
 /* the scope argument is ignored unless it can actually be queried — these get
    passed straight to Array.map in a few places, where the second argument is
    the index, and a bare `c || document` turned that index into a TypeError */

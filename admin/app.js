@@ -271,10 +271,10 @@ const DEFAULTS = {
   faqs: [
     { q:'How do I book Fantasy Studio for my wedding?', a:'Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery.' },
     { q:'What are the payment terms?', a:'50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF.' },
-    { q:'Do you have female photographers for the bridal side?', a:'Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are ₹8,000 per head per event (₹6,000 photography charge + ₹2,000 female shooter pardah coverage premium). You can add them to any event directly in the Package Builder.' },
+    { q:'Do you have female photographers for the bridal side?', a:'Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are {ladyShooterTotal} per head per event ({traditionalPhoto} photography charge + {ladyShooter} female shooter pardah coverage premium). You can add them to any event directly in the Package Builder.' },
     { q:'Will we get the raw photos too?', a:'Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package.' },
     { q:'Can I customise a ready-made package?', a:'Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things.' },
-    { q:'How does the premium album work?', a:'Albums are priced at ₹400 per sheet with a minimum of 15 sheets. Choose your sheet count in the builder and the album total is added to your quote instantly.' },
+    { q:'How does the premium album work?', a:'Albums are priced at {albumPerSheet} per sheet with a minimum of {albumMinSheets} sheets. Choose your sheet count in the builder and the album total is added to your quote instantly.' },
     { q:'Which events do you cover?', a:'Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage.' }
   ]
 };
