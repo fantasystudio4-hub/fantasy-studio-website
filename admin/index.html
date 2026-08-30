@@ -391,9 +391,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     </div>
     <div class="sec">
       <h3>Quotation Service Rates <span style="font-size:.7rem;color:var(--mut)">(admin package builder)</span></h3>
-      <p class="sub">These are what the builder prefills. As you quote, it also remembers any rate you actually charge and prefers that next time — pressing <b style="color:var(--gold-b)">Save All</b> clears those remembered rates so the values here win again.</p>
+      <p class="sub">Everything the builder prefills, including rates it picked up from quotations you have already saved. Edit any of them here; <b style="color:var(--gold-b)">Save All</b> makes this list the whole truth again, so what you see is exactly what the next quote will use.</p>
+      <p class="cfgnote" id="rateState"></p>
       <div id="rateList"></div>
       <button class="addrow" id="addRate">＋ Add service rate</button>
+      <button class="addrow" id="recoverRates">⟲ Fill ₹0 rates from past quotations</button>
     </div>
     <div class="sec">
       <h3>Contact &amp; Payment</h3>

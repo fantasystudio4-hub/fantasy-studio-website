@@ -1301,6 +1301,93 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      The test below is the portals' own VPA regex, deliberately: an indicator
      that said ON for something client/index.html would refuse to render would
      be worse than no indicator at all. */
+  /* ---------- the rates the builder actually prefills ----------
+     This form used to list CFG.serviceRates alone, which was half the picture.
+     allRates() layers learnedRates on top, so the builder was offering nine
+     services while the form showed six — and the two the studio quotes most,
+     cinematography and candid, sat at 0 here while the builder quietly used
+     14,000 and 8,000 that it had learned from saved quotations.
+
+     Saving then cleared the learned half (deliberately: the form is meant to be
+     the statement of intent) and the builder started prefilling 0 for both, and
+     dropped the learned-only services altogether. Nothing warned anyone.
+
+     Showing the effective set makes the form the single visible source it was
+     always supposed to be, which is what makes clearing the learned half on
+     save safe: everything worth keeping is now on screen and gets published. */
+  function effectiveRates(){
+    const base = (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length)
+      ? CFG.serviceRates : DEFAULTS.serviceRates;
+    const m = Object.assign({}, base, (CFG && CFG.learnedRates) || {});
+    delete m['__albumPerSheet'];        /* the album has its own field above */
+    return m;
+  }
+  /* a rate of 0 is not a price, it is a service the builder cannot quote */
+  function renderRateState(){
+    const el = $('#rateState'); if(!el) return;
+    const zero = $$('#rateList [data-rate]')
+      .map(r=>({ n: (r.querySelector('[data-k="name"]').value||'').trim(),
+                 v: Number(r.querySelector('[data-k="rate"]').value)||0 }))
+      .filter(x=>x.n && x.v <= 0);
+    if(!zero.length){
+      el.className = 'cfgnote';
+      el.innerHTML = 'Every service here has a rate — the builder can quote all of them.';
+      return;
+    }
+    el.className = 'cfgnote soon';
+    el.innerHTML = `<b>${zero.length} service${zero.length>1?'s are':' is'} set to ₹0</b> — `
+      + esc(zero.map(x=>x.n).join(', ')) + '. The builder will prefill nothing for '
+      + (zero.length>1?'them':'it') + ', so the rate has to be typed by hand on every quote.';
+  }
+  on('#rateList', 'input', renderRateState);
+  /* deferred: the handler that actually inserts the row is registered further
+     down the file, so it runs AFTER this one — counting here would miss the
+     row that was just added */
+  on('#addRate', 'click', ()=>setTimeout(renderRateState, 0));
+
+  /* ---------- get the rates back ----------
+     This has already happened once: a Save All cleared the learned rates and
+     the builder has been prefilling ₹0 for cinematography and candid ever
+     since. The numbers are not actually lost — every quotation that used a
+     service still carries the rate it was quoted at — so offer them back
+     rather than asking the studio to remember what it charged in March.
+
+     Fills the form and nothing else. Save All is still what publishes it, so
+     the form stays the statement of intent and a wrong guess can simply be
+     typed over before saving. */
+  on('#recoverRates', 'click', ()=>{
+    const at = x => (x.createdAt && x.createdAt.toMillis) ? x.createdAt.toMillis() : 0;
+    const seen = {};
+    livePkgs()
+      /* a partner studio's negotiated rates must never become the retail ones
+         offered to a wedding client — the same rule pkgSave learns by */
+      .filter(x=>!isStudioJob(x))
+      .slice().sort((a,b)=>at(b)-at(a))          /* newest first: first hit wins */
+      .forEach(x=>(x.events||[]).forEach(ev=>(ev.items||[]).forEach(it=>{
+        const n = String(it.service||'').trim(), r = Number(it.rate)||0;
+        if(n && r > 0 && !(n in seen)) seen[n] = r;
+      })));
+
+    let filled = 0, added = 0;
+    $$('#rateList [data-rate]').forEach(row=>{
+      const n = (row.querySelector('[data-k="name"]').value||'').trim();
+      const rateEl = row.querySelector('[data-k="rate"]');
+      if(n && (Number(rateEl.value)||0) <= 0 && seen[n]){ rateEl.value = seen[n]; filled++; }
+    });
+    const have = new Set($$('#rateList [data-rate]')
+      .map(r=>(r.querySelector('[data-k="name"]').value||'').trim()));
+    Object.keys(seen).forEach(n=>{
+      if(!have.has(n)){ $('#rateList').insertAdjacentHTML('beforeend', rateRow(n, seen[n])); added++; }
+    });
+    renderRateState();
+    if(filled || added) _cfgTouched = true;
+    toast(!filled && !added
+      ? 'Nothing to recover — no past quotation carries a rate these rows are missing'
+      : `Filled ${filled} rate${filled===1?'':'s'}`
+        + (added ? ` and added ${added} service${added===1?'':'s'}` : '')
+        + ' from past quotations — check them, then Save All');
+  });
+
   const VPA_RE = /^[\w.\-]+@[\w.\-]+$/;
   function renderPayState(){
     const el = $('#payState'); if(!el) return;
@@ -1333,8 +1420,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#albumMinSheets').value = Number(p.albumMinSheets)||15;
     $('#albumMaxSheets').value = Number(p.albumMaxSheets)||100;
 
-    const rates = CFG.serviceRates || DEFAULTS.serviceRates;
-    $('#rateList').innerHTML = Object.keys(rates).map(n=>rateRow(n, rates[n])).join('');
+    /* the configured rates first, in the order they were written, then any the
+       builder has learned since — so the familiar rows stay where they were and
+       the newly surfaced ones are visibly grouped at the end */
+    const rates = effectiveRates();
+    const base = (CFG && CFG.serviceRates && Object.keys(CFG.serviceRates).length)
+      ? CFG.serviceRates : DEFAULTS.serviceRates;
+    const ordered = Object.keys(base).filter(n=>n in rates)
+      .concat(Object.keys(rates).filter(n=>!(n in base)));
+    $('#rateList').innerHTML = ordered.map(n=>rateRow(n, rates[n])).join('');
+    renderRateState();
     const contact = CFG.contact || DEFAULTS.contact;
     $('#cfgPhone').value = contact.phone || '';
     $('#cfgWebsite').value = contact.website || '';
@@ -1575,7 +1670,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          and every new quote still prefilled the old learned one, and a service
          deleted here kept showing in the builder chips. Saving the config is
          an explicit statement of intent, so it resets what the builder
-         remembers (the album rate is kept — it is not in this form). */
+         remembers (the album rate is kept — it is not in this form).
+
+         This is only safe because the form is now populated from the EFFECTIVE
+         rates, learned ones included, so everything being cleared here was on
+         screen a moment ago and has just been written into serviceRates above.
+         Populate this form from serviceRates alone again and you reintroduce
+         ADM-18: cinematography and candid silently fall back to ₹0. */
       const _prevLearned = (CFG && CFG.learnedRates) || {};
       const learnedRates = _prevLearned['__albumPerSheet']
         ? { __albumPerSheet: _prevLearned['__albumPerSheet'] } : {};
