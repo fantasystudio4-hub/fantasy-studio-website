@@ -67,6 +67,26 @@ function freshOrCached(req, ms) {
   });
 }
 
+/* Warm the cache on demand.
+   A page can ask for a set of URLs to be stored — used by the crew page, whose
+   install card promises the last schedule opens with no signal. Its own first
+   load cannot deliver that: the worker registers on `load`, so the navigation,
+   firebase-config.js and the three Firebase modules have all already been
+   fetched outside the worker's reach. Fetching them again FROM THE PAGE does
+   not reliably help either, because the page may not be controlled yet and
+   waiting for that is a race (controllerchange often fires before a listener
+   can be attached). Going through the worker itself has no such window. */
+self.addEventListener('message', e => {
+  const d = e.data;
+  if(!d || d.type !== 'warm' || !Array.isArray(d.urls)) return;
+  e.waitUntil(
+    caches.open(CACHE).then(c =>
+      /* individually, and never fatally: one unreachable URL must not throw
+         away the rest, exactly as in install() above */
+      Promise.all(d.urls.slice(0, 12).map(u => c.add(u).catch(() => {}))))
+  );
+});
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;

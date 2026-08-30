@@ -451,7 +451,48 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
 <script>
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('../sw.js').catch(()=>{}); });
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('../sw.js').catch(()=>{});
+    /* Make sure this page can start with no signal.
+       Everything it needs was fetched during load, before the worker was
+       controlling anything, so none of it is in the cache — and the install
+       card promises the last schedule opens without signal.
+
+       Asking the worker (rather than re-fetching from here) is what makes it
+       reliable: postMessage to reg.active works whether or not THIS page is
+       controlled. But WHEN to ask is genuinely racy on a first-ever visit —
+       measured across cold runs, the same code cached everything one time and
+       nothing the next. So don't guess at the timing: check the cache, ask
+       again if something is missing, and stop as soon as it is all there.
+
+       URLs are resolved HERE, against the page. The worker lives at /sw.js, so
+       a relative one sent as-is resolves against the site root — './' cached
+       the home page instead of this one, the single thing the crew need. */
+    const NEED = [
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js',
+      /* without this the page loads from cache and then says "Not configured
+         yet" — the config is a separate <script src> */
+      '../firebase-config.js',
+      './'
+    ].map(u=>new URL(u, location.href).href);
+
+    async function offlineReady(){
+      for(const u of NEED){ if(!(await caches.match(u))) return false; }
+      return true;
+    }
+    async function ensureOfflineReady(tries){
+      try{
+        if(await offlineReady()) return;
+        const reg = await navigator.serviceWorker.ready;
+        const sw = reg.active || navigator.serviceWorker.controller;
+        if(sw) sw.postMessage({ type:'warm', urls: NEED });
+      }catch(e){ /* no worker, private mode — the page still works online */ }
+      if(tries > 0) setTimeout(()=>ensureOfflineReady(tries - 1), 1500);
+    }
+    ensureOfflineReady(6);
+  });
 }
 /* Android/Chrome fires this ONCE, early — before the module below has even
    loaded. Catch it here or the chance to offer the install is gone. */
@@ -520,7 +561,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, collection, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, serverTimestamp } =
+  const { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+          collection, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   /* a NAMED app gives the crew page its own session storage — signing in here
@@ -528,7 +570,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      the same phone */
   const app  = initializeApp(window.FIREBASE_CONFIG, 'crew');
   const auth = getAuth(app);
-  const db   = getFirestore(app);
+  /* The install card promises the last schedule opens with no signal. It could
+     not: this was a plain getFirestore(), whose cache is in-memory and dies
+     with the page, so offline there was no "last schedule" to open at all —
+     just a spinner, on a shoot day, at a venue with one bar. Persist it, the
+     way the admin panel already does. */
+  let db;
+  try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+  catch(e){ db = getFirestore(app); }
 
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
@@ -554,7 +603,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the card belongs on the dashboard only — never over the sign-in screen */
     $('#instCard').hidden = !ok || snoozed() || $('#appView').hidden;
     if(ok && isIOS() && !window.__bipEvent)
-      $('#instWhy').textContent = 'Tap Share ⬆ at the bottom of Safari, then “Add to Home Screen” — your schedule opens in one tap, even with no signal.';
+      $('#instWhy').textContent = 'Tap Share ⬆ at the bottom of Safari, then “Add to Home Screen” — your schedule opens in one tap, and the last one you loaded still opens with no signal.';
   }
   async function doInstall(){
     if(window.__bipEvent){
@@ -727,6 +776,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null;
   let _meLoaded = false, _asgsLoaded = false, _reqLoaded = false;
   let _meErr = null, _reqErr = null;
+  /* a SERVER-confirmed team snapshot has arrived — see route() */
+  let _meFresh = false, _meWatchdog = null;
   let _pastOpen = false, _phone10 = '', _pretty = '';
 
   function stopData(){
@@ -735,6 +786,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ME = null; ASGS = []; REQ = null;
     _meLoaded = _asgsLoaded = _reqLoaded = false;
     _meErr = _reqErr = null;
+    _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
   }
 
   function route(){
@@ -753,6 +805,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(REQ){
       $('#pendingWho').textContent = `${REQ.name||''} · ${_pretty}`;
       show('pendingView'); refreshInstall();
+      return;
+    }
+    /* "you are not on the team" is a hard thing to say to someone who is. Now
+       that the cache persists, an empty result can simply mean this phone has
+       not synced yet — so only say it once the SERVER has answered. */
+    if(!_meFresh){
+      show('loadingView'); refreshInstall();
+      clearTimeout(_meWatchdog);
+      _meWatchdog = setTimeout(()=>{
+        if(_meFresh || ME) return;
+        $('#errWhat').textContent = navigator.onLine
+          ? 'We could not reach the studio just now — check your connection and tap Try again.'
+          : 'You are offline, and this phone has not loaded your schedule yet. Open this once with signal and it will work without any afterwards.';
+        show('errorView'); refreshInstall();
+      }, 9000);
       return;
     }
     $('#reqPhone').textContent = _pretty;
@@ -774,8 +841,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     show('loadingView');
     /* all three are pinned to this verified phone / this uid — exactly what
        the Firestore rules require; anything broader is refused server-side */
-    _meUnsub = onSnapshot(query(collection(db,'team'), where('phone10','==',_phone10)), snap=>{
+    _meUnsub = onSnapshot(query(collection(db,'team'), where('phone10','==',_phone10)),
+        { includeMetadataChanges: true }, snap=>{
       _meLoaded = true; _meErr = null;
+      if(!snap.metadata.fromCache) _meFresh = true;
       const docs = snap.docs.filter(d=>d.data().active !== false);
       ME = docs.length ? { id: docs[0].id, ...docs[0].data() } : null;
       route();
