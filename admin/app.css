@@ -1234,18 +1234,19 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   white-space:normal;overflow-wrap:anywhere;line-height:1.35;
 }
 
-/* how far the festival list reaches — green while it is comfortable, amber
-   with a season to go, red once it has lapsed */
-.festwarn{
+/* Status strip for a config setting — green while it is healthy, amber with
+   a season to go, red once it has lapsed or switched something off. Shared by
+   the festival-list warning and the Pay-now state. */
+.festwarn,.cfgnote{
   display:block;margin:0 0 .7rem;padding:.55rem .75rem;
   border:1px solid var(--line);border-left:3px solid var(--state-confirmed);
   border-radius:var(--r-md);font-size:var(--fs-md);color:var(--mut);line-height:1.45;
 }
-.festwarn b{color:var(--text)}
-.festwarn.soon{border-left-color:var(--state-pending);background:var(--state-pending-bg)}
-.festwarn.soon b{color:var(--state-pending)}
-.festwarn.out{border-left-color:var(--state-overdue);background:var(--state-overdue-bg)}
-.festwarn.out b{color:var(--state-overdue)}
+.festwarn b,.cfgnote b{color:var(--text)}
+.festwarn.soon,.cfgnote.soon{border-left-color:var(--state-pending);background:var(--state-pending-bg)}
+.festwarn.soon b,.cfgnote.soon b{color:var(--state-pending)}
+.festwarn.out,.cfgnote.out{border-left-color:var(--state-overdue);background:var(--state-overdue-bg)}
+.festwarn.out b,.cfgnote.out b{color:var(--state-overdue)}
 
 /* the "where did this come from" note on a payment row — secondary to the date
    and mode it sits under, and it wraps rather than pushing the amount out */

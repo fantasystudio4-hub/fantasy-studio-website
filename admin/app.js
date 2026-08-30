@@ -1292,6 +1292,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     buildConfigForms();
   }
 
+  /* ---------- is "Pay now" actually on? ----------
+     It is a real switch with no indicator. Two blank UPI boxes look exactly
+     like two boxes nobody has scrolled down to yet, and the portals just quietly
+     do not draw the button — so the studio can have payments switched off for
+     every client and partner without ever being told.
+
+     The test below is the portals' own VPA regex, deliberately: an indicator
+     that said ON for something client/index.html would refuse to render would
+     be worse than no indicator at all. */
+  const VPA_RE = /^[\w.\-]+@[\w.\-]+$/;
+  function renderPayState(){
+    const el = $('#payState'); if(!el) return;
+    const typed = ['#cfgUpi','#cfgUpiAlt'].map(s=>$(s)).filter(Boolean).map(i=>i.value.trim());
+    const good = typed.filter(v=>VPA_RE.test(v));
+    const bad  = typed.filter(v=>v && !VPA_RE.test(v));
+    if(good.length){
+      el.className = 'cfgnote';
+      el.innerHTML = '<b>Pay now is ON.</b> A client or partner studio with a balance can pay to '
+        + good.map(esc).join(' or ') + ' from their portal.'
+        + (bad.length ? ' (' + esc(bad.join(', ')) + ' is not a valid UPI ID, so it is ignored.)' : '');
+    }else if(bad.length){
+      el.className = 'cfgnote out';
+      el.innerHTML = '<b>Pay now is OFF.</b> ' + esc(bad.join(', ')) + ' is not a UPI ID — it needs the '
+        + '<b>name@bank</b> form. Until one of these is valid, nobody sees a payment button.';
+    }else{
+      el.className = 'cfgnote soon';
+      el.innerHTML = '<b>Pay now is OFF.</b> Clients and partner studios see their balance but no way to '
+        + 'pay it — they have to call or WhatsApp. Add a UPI ID above to switch it on.';
+    }
+  }
+  ['#cfgUpi','#cfgUpiAlt'].forEach(sel=>on(sel, 'input', renderPayState));
+
   function buildConfigForms(){
     const p = CFG.prices || {};
     $('#priceGrid').innerHTML = Object.keys(SERVICE_LABELS).map(k=>`
@@ -1309,6 +1341,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cfgUpi').value = contact.upi || '';
     $('#cfgEditDue').value = Number(CFG.editDueDays) || 21;
     $('#cfgUpiAlt').value = contact.upiAlt || '';
+    renderPayState();
     const terms = CFG.quoteTerms || DEFAULTS.quoteTerms;
     $('#termList').innerHTML = terms.map(termRow).join('');
     const dsteps = (CFG.deliverySteps && CFG.deliverySteps.length) ? CFG.deliverySteps : DEFAULTS.deliverySteps;

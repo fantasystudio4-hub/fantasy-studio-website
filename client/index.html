@@ -411,10 +411,17 @@ const show = id => { ['loadingView','loginView','linkView','dashView','emptyView
 
 const DEFAULT_STEPS = ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'];
 const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in',
-  /* Site Config overrides these. A wrong VPA sends a client's money to a
-     stranger, so they are typed by the studio, never derived from the phone
-     number — a mobile number is not a UPI address. */
-  upi:'8686868803-3@ybl', upiAlt:'md.taha31786-3@oksbi' };
+  /* Deliberately blank — a UPI ID is not a sensible default.
+     These used to hold real VPAs as a fallback under Site Config. Site Config
+     currently sets both to '', so the fallback was dormant, but only by
+     accident of HOW it is switched off: Object.assign only overrides a key
+     that is PRESENT, so the day someone cleared the key rather than emptying
+     the value, a payment address baked into this public file would have gone
+     back to collecting clients' money with nobody deciding that.
+     A VPA is where real money physically lands. It comes from Site Config or
+     "Pay now" does not appear at all — which is what the partner portal has
+     always done. Set them in Site Config → Contact & Payment. */
+  upi:'', upiAlt:'' };
 
 if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   show('loginView'); $('#loginErr').textContent = 'Portal not configured yet.'; $('#loginErr').hidden = false;
