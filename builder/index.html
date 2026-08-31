@@ -626,6 +626,31 @@ img{max-width:100%;display:block}
   .stepper input{height:44px}
 }
 @media(max-width:560px){
+  /* The bar stacked "Your Live Quote" over the total over "tap for breakdown":
+     a label, the thing, and a second label for the same control, 80px of a
+     812px screen. The total speaks for itself and the hint below it already
+     names the control. */
+  :root{--mqbar:68px}
+  .mq-open .l{display:none}
+  .mq-total{font-size:1.5rem}
+  .mq-open .c{font-size:.58rem;margin-top:2px}
+  .mq-bar{padding-top:.5rem;padding-bottom:calc(.5rem + env(safe-area-inset-bottom))}
+
+  /* stripped of its pill this read as part of the sentence above it —
+     "change anything afterwards. OPTIONAL" */
+  .sec-head .opt{
+    display:inline-block;margin:.35rem 0 0;border:1px solid var(--line);
+    border-radius:30px;padding:.2em .7em;font-size:.6rem;letter-spacing:.12em;
+  }
+
+  /* three of the four packages cover the same functions, so the row now
+     carries the line that tells them apart — it needs a second line */
+  .deal .dn{
+    white-space:normal;line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .deal{align-items:flex-start}
+  .deal .dr{padding-top:.1rem}
   /* ---- flatten the chrome ----
      Only one step is on screen, so the section card was a box drawn inside a
      box: 60px of the 375 went to nested padding and the page opened with three
@@ -642,7 +667,6 @@ img{max-width:100%;display:block}
   .sec-head{background:none;border-bottom:0;padding:0 0 .7rem;display:block}
   .sec-head h2{font-size:1.3rem}
   .sec-head p{font-size:.79rem;margin-top:.15rem}
-  .sec-head .opt{border:0;padding:0;font-size:.64rem;letter-spacing:.08em}
   .sec-body{padding:0}
   .deals{gap:.45rem}
   .deal-foot{margin-top:.7rem;justify-content:center}
@@ -653,31 +677,47 @@ img{max-width:100%;display:block}
      layout go inert under flex, so the children stack in DOM order and `order`
      puts the blurb above the price. */
   .prods{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+  /* Two to a row, like a shelf — but the picture on top of each was a plate of
+     beige with an icon floating in it, because there is no product photo to put
+     there. An empty frame is not a picture. The icon becomes a chip beside the
+     name and the tile gives its height to the words instead: 170px rather than
+     the 209px it started at, so four services are on screen at once, not two. */
   .prod{
-    display:flex;flex-direction:column;align-items:stretch;gap:.2rem;
-    padding:.45rem .45rem .5rem;min-height:0;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    grid-template-rows:auto auto 1fr auto;
+    grid-template-areas:"ic name" "blurb blurb" "price price" "act act";
+    column-gap:.45rem;row-gap:.2rem;
+    padding:.6rem .6rem .65rem;min-height:0;
   }
-  /* a banner, not an empty picture frame: 62px of beige around a 27px icon
-     was a third of every tile, and there are five rows of them */
-  .prod-ic{
-    order:1;width:100%;height:46px;border-radius:8px;
-    background:linear-gradient(160deg,rgba(184,144,43,.14),rgba(184,144,43,.06));
+  /* 28px, not 30: at 360px the name column is only ~94px wide and
+     "Cinematography" is 93 of them */
+  .prod-ic{width:28px;height:28px;border-radius:8px;align-self:center}
+  .prod-ic svg{width:16px;height:16px}
+  /* "Traditional Video" and "Candid Photography" take two lines beside the
+     icon while "Traditional Photo" takes one, so blurbs and prices landed at
+     different heights across a row. Both tiles in a row are stretched to the
+     same height by the grid anyway — reserving the second line here costs
+     nothing and lines the two cards up. */
+  .prod h4{
+    align-self:center;font-size:.82rem;line-height:1.2;
+    /* 2.5em, not 2.4: two lines at this line-height measure a couple of pixels
+       over the arithmetic once the font's own metrics are in */
+    min-height:2.5em;display:flex;align-items:center;
+    min-width:0;overflow-wrap:anywhere;
   }
-  .prod-ic svg{width:24px;height:24px}
-  .prod.on .prod-ic{background:linear-gradient(160deg,var(--gold),var(--gold-deep))}
-  .prod h4{order:2;font-size:.8rem;line-height:1.25}
   .prod .svc-badge{display:none}            /* the blurb already says it */
   /* two lines: at 155px a single line cuts "Classic posed and stage…" off
      mid-phrase, which reads as broken rather than brief */
   .prod .blurb{
-    order:3;font-size:.65rem;line-height:1.3;margin-top:0;
+    font-size:.66rem;line-height:1.35;margin-top:.1rem;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
   /* price on one line: "₹5,500 per event" rather than stacked */
-  .prod-price{order:4;text-align:left;font-size:.62rem;margin-top:.15rem}
-  .prod-price b{display:inline;font-size:.95rem;line-height:1.2;margin-right:.2em}
+  .prod-price{text-align:left;align-self:end;font-size:.62rem;margin-top:.15rem}
+  .prod-price b{display:inline;font-size:.98rem;line-height:1.2;margin-right:.2em}
   .prod.on .unit{display:inline}
-  .prod-act{order:5;width:100%;margin-top:auto;padding-top:.35rem;justify-self:auto}
+  .prod-act{width:100%;justify-self:stretch;padding-top:.4rem}
   /* still 44px of thumb, inside a 140px tile */
   .add-pill{display:block;width:100%;text-align:center;padding:.75em .4em;font-size:.82rem;min-height:44px}
   .stepper{width:100%;justify-content:space-between}
@@ -774,8 +814,22 @@ img{max-width:100%;display:block}
   }
 }
 
+/* Below ~345px the panel's own padding has eaten so much that even a 22px chip
+   leaves the name under 90px, and "Cinematography" wraps mid-word. The chip is
+   decoration; the name is not. */
+@media(max-width:344px){
+  .prod{grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "blurb" "price" "act"}
+  .prod-ic{display:none}
+}
+
 /* very narrow phones (320-380px) */
 @media(max-width:380px){
+  /* Two tiles to a row leaves the name about 95px here, and
+     "Cinematography" is 93 of them — the chip gives back the difference
+     rather than the name breaking mid-word or running past the tile. */
+  .prod{column-gap:.35rem}
+  .prod-ic{width:22px;height:22px;border-radius:6px}
+  .prod-ic svg{width:13px;height:13px}
   .hdr-back .nm b{font-size:.9rem}
   .hdr-in{gap:.5rem;padding:0 .7rem}
   .cart-btn{padding:.45em .8em .45em .7em;font-size:.78rem}
@@ -1259,10 +1313,14 @@ function renderDeals(){
     const p = PRESETS[key];
     const fns = p.events.map(e=>e.type.replace(' / Reception','')).join(', ');
     const on = activePresetKey === key;
+    /* Essential, Premium and Royal cover the same three functions, so the
+       function list described all three identically and the price was the only
+       difference on screen. The preset's own line says what the coverage is. */
+    const sub = p.desc || fns;
     return `<button type="button" class="deal ${on?'active':''}" data-preset="${esc(key)}">
       <span class="dl">
         <b>${esc(p.name||'')}${p.tag?`<i class="pk-tag">${esc(p.tag)}</i>`:''}</b>
-        <span class="dn">${esc(fns)}</span>
+        <span class="dn">${esc(sub)}</span>
       </span>
       <span class="dr">
         <b>${inr(presetRawTotal(p))}</b>
