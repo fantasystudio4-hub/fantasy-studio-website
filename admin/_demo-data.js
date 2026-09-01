@@ -14,6 +14,8 @@
      · a package with six events spread across five months
      · ₹8,50,000 (seven glyphs before the decimal) and a ₹0 balance
      · an overpaid package, so the money tiles go negative somewhere
+     · a DELIVERED package still carrying a balance — the album is gone and the
+       money is not in, which is a different alarm from an unpaid booking
      · a B2B white-label job, and a B2B job with an end-client name
      · an event with no venue, and a lead with no wedding date
      · a shoot TODAY and one TOMORROW, so Home's next-shoot block populates
@@ -189,6 +191,24 @@ export const packages = [
       { step: 'RAW handover', date: iso(-80) }, { step: 'Photo selection', date: iso(-70) },
       { step: 'Album design', date: iso(-60) }, { step: 'Album print', date: iso(-50) },
       { step: 'Final delivery', date: iso(-45) },
+    ],
+  },
+  {
+    /* delivered AND still unpaid — the studio has handed over the album and has
+       nothing left to withhold, which is the worst debt it can hold. Without a
+       row in this state the "still owed" branch of the Home briefing cannot be
+       exercised at all: every other delivered fixture is paid in full, and the
+       one with a balance is deliberately OVERpaid. */
+    id: 'pk13', quoteNo: 'FS-2026-018', clientName: 'Ramesh Gollapudi', clientPhone: '9866112233',
+    clientType: 'direct', status: 'delivered', createdAt: ts(160), deliveredAt: iso(-20),
+    events: [{ date: iso(-52), title: 'Reception', slot: 'evening', venue: 'Park Hyatt',
+               items: shoot([['Photography', 2, 18000], ['Cinematography', 1, 25000]]) }],
+    totals: money(215000, 90000),
+    payments: [pay(90000, 150, 'Bank transfer')],
+    delivery: [
+      { step: 'RAW handover', date: iso(-44) }, { step: 'Photo selection', date: iso(-36) },
+      { step: 'Album design', date: iso(-28) }, { step: 'Album print', date: iso(-24) },
+      { step: 'Final delivery', date: iso(-20) },
     ],
   },
   {

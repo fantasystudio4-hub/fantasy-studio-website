@@ -108,6 +108,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="bulkbar" id="bulkBar" hidden role="region" aria-label="Bulk actions"></div>
 
   <div id="homeView">
+    <!-- Above the calendar on purpose, and hidden whenever every rule comes
+         back clean, so this is never a banner the eye learns to skip. -->
+    <div class="sec brief" id="brief" hidden></div>
     <div class="sec">
       <div class="cal-nav">
         <button id="calPrev" aria-label="Previous month">‹</button>
@@ -172,7 +175,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <p class="qe-note">Services are optional here — add them now, or any time from <b>Packages</b> along with the album, the discount and the PDF.</p>
     </div>
     <div class="sec upco" id="upcoming" hidden></div>
-    <div class="sec upco" id="followups" hidden></div>
     <div class="sec" id="bookingsSec">
       <h3>📸 Bookings <span class="swipehint">swipe</span></h3>
       <div class="fchips" id="homeTabs"></div>
@@ -575,6 +577,14 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
   <button class="btn btn--sm btn--ghost" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
+</div>
+
+<div class="pay-backdrop" id="insBackdrop"></div>
+<div class="pay-modal fin" id="insModal" role="dialog" aria-modal="true" aria-label="Business insights">
+  <button class="pay-close" id="insClose" type="button" aria-label="Close">&times;</button>
+  <h3>📊 Insights</h3>
+  <div class="who" id="insWho"></div>
+  <div id="insBody"></div>
 </div>
 
 <div class="pay-backdrop" id="finBackdrop"></div>

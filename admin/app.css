@@ -140,6 +140,49 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .up-ev .what{flex:1;min-width:0;font-size:var(--fs-base);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .up-ev .what span{color:var(--mut)}
 
+/* ---- needs attention -------------------------------------------------
+   The one block on Home that is not a list of what exists but a list of what
+   is wrong. It sits above the calendar, so it has to earn every pixel: no
+   heading decoration, three-line rows, and a left edge whose colour IS the
+   severity — read before any of the words are. */
+.brief{padding:.8rem 1rem;border-color:var(--line-2)}
+.brief.has-crit{border-color:var(--state-overdue-ln);background:linear-gradient(180deg,var(--state-overdue-bg),transparent 60%),var(--panel)}
+.brief h3{display:flex;align-items:center;gap:.5rem;font-size:var(--fs-lg);margin-bottom:.5rem}
+.bf-n{margin-left:auto;font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase;color:var(--mut);border:1px solid var(--line);background:var(--white-t3);border-radius:var(--r-pill);padding:.24em .7em;font-weight:600;white-space:nowrap}
+.bf-n.crit{color:var(--state-overdue);border-color:var(--state-overdue-ln);background:var(--state-overdue-bg)}
+/* the whole row is the tap target, so the row carries the 44px floor */
+.bf-row{display:flex;align-items:center;gap:.55rem;min-height:var(--tap);padding:.45rem .55rem;margin-bottom:.3rem;cursor:pointer;
+        border:1px solid var(--line);border-left:3px solid var(--state-neutral-d);border-radius:var(--r-sm);background:var(--white-t3)}
+.bf-row:last-of-type{margin-bottom:0}
+.bf-row.crit{border-left-color:var(--state-overdue);background:var(--state-overdue-bg)}
+.bf-row.warn{border-left-color:var(--state-pending);background:var(--state-pending-bg)}
+.bf-row.info{border-left-color:var(--state-info);background:var(--state-info-bg)}
+.bf-row:active{filter:brightness(1.25)}
+.bf-i{flex:0 0 auto;font-style:normal;font-size:var(--fs-xl);line-height:1}
+.bf-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
+/* The headline stays on one line — it is the verdict. The detail under it is
+   allowed two, because "nobody assigned to 3× Photography, 2× Cinematography"
+   truncated at the comma says nothing useful. */
+.bf-m b{display:flex;align-items:baseline;gap:.4rem;flex-wrap:wrap;font-size:var(--fs-base);font-weight:600;color:var(--text)}
+/* The timing is the word that decides whether this is a today problem or a
+   next-month one, so it gets its own chip rather than sharing an ellipsis
+   with the headline — on a 375px phone the headline always won and the
+   timing was always the half that got cut. */
+.bf-when{font-style:normal;flex:0 0 auto;font-size:var(--fs-2xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+         color:var(--mut);border:1px solid var(--line);border-radius:var(--r-pill);padding:.2em .55em;white-space:nowrap}
+.bf-row.crit .bf-when{color:var(--state-overdue);border-color:var(--state-overdue-ln)}
+.bf-row.warn .bf-when{color:var(--state-pending);border-color:var(--state-pending-ln)}
+.bf-m span{font-size:var(--fs-sm);color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.bf-cta{flex:0 0 auto;font-size:var(--fs-xs);letter-spacing:.05em;text-transform:uppercase;font-weight:600;color:var(--gold-b);
+        border:1px solid rgba(var(--gold-rgb),.5);background:rgba(var(--gold-rgb),.12);border-radius:var(--r-pill);padding:.32em .7em;white-space:nowrap}
+@media(hover:hover){ .bf-row:hover{border-color:var(--line-2)} .bf-row:hover .bf-cta{background:rgba(var(--gold-rgb),.22)} }
+/* On a narrow phone the CTA pill and a two-line detail fight for the same
+   row. The pill goes under the text rather than squeezing it to nothing. */
+@media(max-width:380px){
+  .bf-row{flex-wrap:wrap}
+  .bf-cta{margin-left:calc(var(--fs-xl) + .6rem)}
+}
+
 /* professional hover / focus states */
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--r-xs)}
 @media(hover:hover){
@@ -949,6 +992,42 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 }
 @media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
 .finh{color:var(--gold-b);font-size:var(--fs-xs);letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
+/* ---- insights ---------------------------------------------------------
+   .finnote has been rendering in the money sheet since it was written with
+   no rule anywhere — plain body text at full size, competing with the
+   figures it was meant to footnote. It and .insnote do the same job in the
+   two analytics sheets, so they share one. */
+.finnote,.insnote{font-size:var(--fs-sm);color:var(--mut);line-height:1.5;margin:.3rem 0 .8rem;overflow-wrap:anywhere}
+.finnote b,.insnote b{color:var(--gold-b);font-weight:600}
+.insper{margin-bottom:.5rem}
+/* "Still in play" is three tiles in a two-column grid, which left the third
+   stranded at half width beside a hole. Scoped to this sheet so the four-tile
+   rows here and the money sheet's own grid are untouched. */
+#insBody .fintiles .stat:last-child:nth-child(odd){grid-column:1 / -1}
+/* A labelled bar, scaled against the biggest row rather than a total: a job
+   buys several services at once, so shares of a total would not sum to
+   anything meaningful. Each row therefore prints its own absolute figure. */
+.ins-bar{display:flex;align-items:center;gap:.6rem;min-height:34px;padding:.2rem 0}
+.ib-l{flex:1 1 52%;min-width:0;font-size:var(--fs-base);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib-l em{font-style:normal;color:var(--mut);font-size:var(--fs-sm)}
+.ib-t{flex:0 1 24%;min-width:44px;height:6px;border-radius:var(--r-xs);background:var(--white-t4);overflow:hidden}
+.ib-t i{display:block;height:100%;border-radius:var(--r-xs);background:var(--state-info);transition:width .3s}
+.ins-bar.gold .ib-t i{background:linear-gradient(90deg,var(--gold-d),var(--gold-b))}
+.ib-r{flex:0 0 auto;font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-base);white-space:nowrap}
+/* Twelve months across a phone: the columns get whatever is left after the
+   month letter, so the shape is the message and the counts sit on top. */
+.ins-season{display:flex;align-items:flex-end;gap:.25rem;height:104px;margin:.2rem 0 .5rem}
+.is-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:.15rem}
+.is-col i{display:block;width:100%;min-height:3px;border-radius:2px 2px 0 0;background:rgba(var(--gold-rgb),.45)}
+/* An empty month must read as empty. The 3px floor that keeps a single
+   shoot visible turned every dead month into a stub of the same colour. */
+.is-col.zero i{min-height:0;height:1px !important;background:var(--white-t4)}
+.is-col.peak i{background:linear-gradient(180deg,var(--gold-b),var(--gold-d))}
+.is-n{font-size:var(--fs-2xs);color:var(--gold-b);line-height:1;min-height:.7em}
+.is-m{font-size:var(--fs-2xs);color:var(--mut);text-transform:uppercase;line-height:1}
+/* the Home entry point: an action, not a sixth number to compare */
+.insbtn{grid-column:1 / -1;font-size:var(--fs-md);text-align:center}
+
 .ev-nav{display:flex;align-items:center;gap:.6rem;margin:0 0 .7rem;padding-right:1.6rem}
 .ev-nav b{flex:1;text-align:center;font-size:var(--fs-sm);letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600}
 .ev-nav button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.32em .95em;font-size:var(--fs-xl);min-width:44px}

@@ -478,7 +478,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ev','uplist','qa','stusheet','jt','crewpay'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay'];
   function pushView(view, hash, replace){
     if(_navFromPop) return;
     try{
@@ -649,6 +649,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeTmUI === 'function') closeTmUI();
       if(typeof closeAsUI === 'function') closeAsUI();
       if(typeof closeFinUI === 'function') closeFinUI();
+      if(typeof closeInsUI === 'function') closeInsUI();
       if(typeof closeEvUI === 'function') closeEvUI();
       if(typeof closeUpUI === 'function') closeUpUI();
       if(typeof closeQaUI === 'function') closeQaUI();
@@ -2265,6 +2266,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#pkgStats', 'click', e=>{
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
+    if(e.target.closest('[data-ins]')){ openIns(); return; }
     /* the tile is a money figure, so land on the money section — not whichever
        part of Team was open last */
     if(e.target.closest('[data-goteam]')){ $('#tabTeam').click(); setTeamSeg('pay'); return; }
@@ -2297,7 +2299,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(bookedVal)} — open money analytics"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
       <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + ' — open the Team tab' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span></div>
       <div class="stat wide" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
-      <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>`;
+      <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>
+      <button class="upall insbtn" data-ins type="button">📊 Insights — what sells, what converts, when the season is</button>`;
   }
   /* one shoot at a time: the very next event as a single tappable card —
      tapping it opens the full event + package sheet, with ‹ › to browse
@@ -2384,42 +2387,324 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(open) openEv(Number(open.dataset.openEv)||0);
   });
 
-  /* sent quotes that have gone quiet — surfaced on Home every morning */
-  function renderFollowups(){
-    const el = $('#followups'); if(!el) return;
-    const list = livePkgs().filter(x=>(x.status||'draft')==='sent').map(x=>{
+  /* ============================================================
+     NEEDS ATTENTION — the panel's one proactive surface
+     ------------------------------------------------------------
+     Every other block on Home answers "what do I have?": a calendar, a next
+     shoot, a bookings list, money tiles. None of them answered "what is about
+     to go wrong?", so the answers were only ever found by remembering to look.
+     A wedding tomorrow with one photographer against three booked, ₹5.5L
+     uncollected on a shoot in twelve days, a job shot seven weeks ago with the
+     album never started — all of it was sitting in memory already, on three
+     different tabs, and nothing joined it up.
+
+     This does the join. Each rule reads the records the panel already holds
+     (no extra reads, no new fields) and returns rows with a severity, so the
+     screen opens on the shortlist rather than on the archive.
+
+     Two design rules, both learned the hard way elsewhere in this file:
+       · Nothing to say = nothing on screen. A permanent "all clear" banner
+         above the calendar would be a header everyone learns to scroll past,
+         and then a real alert in the same place is invisible too.
+       · One JOB, one row. A four-function wedding short of crew on every
+         function is ONE problem to solve; four alarms for it would bury the
+         other nine things that also need doing.
+     ============================================================ */
+  let _briefAll = false;
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  function briefItems(){
+    const out = [];
+    const today = todayISO();
+    /* days from today: negative = in the past. Whole days, off midnight, so
+       "tomorrow" means tomorrow's date and not 24 hours from now. */
+    const dOut = d => Math.round((new Date(d+'T00:00') - new Date(today+'T00:00')) / 864e5);
+    const when = n => n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? `in ${n} days`
+               : n === -1 ? 'yesterday' : `${-n} days ago`;
+    const booked = livePkgs().filter(x=>(x.status||'draft') === 'booked');
+    const dated  = pk => (pk.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+
+    /* ---- 1 & 2. crew: who is missing, and who has not confirmed ----
+       Both are per-event facts rolled up to the job. `sort` carries the
+       SOONEST affected date, so the job shooting first sits highest. */
+    if(_asgsLoaded){
+      const gaps = new Map(), pend = new Map();
+      booked.forEach(pk=>{
+        (pk.events||[]).forEach(ev=>{
+          const d = ev.date||'';
+          if(!ISO_RE.test(d)) return;
+          const n = dOut(d);
+          if(n < 0 || n > 21) return;          /* past, or too far out to act on */
+          const crew = evCrew(pk.id, d, ev.title);
+          const have = {};
+          crew.forEach(a=>{ have[a.role] = (have[a.role]||0) + 1; });
+          const short = Object.entries(neededRoles(ev))
+            .map(([r,q])=>[r, q - (have[r]||0)]).filter(([,q])=>q > 0);
+          if(short.length){
+            const g = gaps.get(pk.id) || { pk, n, evs:0, roles:{} };
+            g.n = Math.min(g.n, n); g.evs++;
+            short.forEach(([r,q])=>{ g.roles[r] = (g.roles[r]||0) + q; });
+            gaps.set(pk.id, g);
+          }
+          /* An unconfirmed shooter is only a problem once the shoot is close;
+             three weeks out, nobody has replied to anything yet. */
+          const un = crew.filter(a=>a.status !== 'acknowledged');
+          if(un.length && n <= 7){
+            const p = pend.get(pk.id) || { pk, n, who:new Set() };
+            p.n = Math.min(p.n, n);
+            un.forEach(a=>p.who.add(a.memberName || '—'));
+            pend.set(pk.id, p);
+          }
+        });
+      });
+      gaps.forEach(g=>{
+        const roles = Object.entries(g.roles).map(([r,q])=>`${q}× ${roleLabel(r)}`).join(', ');
+        out.push({ sev: g.n <= 3 ? 'crit' : g.n <= 14 ? 'warn' : 'info', icon:'🎬', sort: g.n,
+          head: 'Short of crew', when: when(g.n),
+          body: `${g.pk.clientName || '—'} — short ${roles}${g.evs > 1 ? ` across ${g.evs} functions` : ''}`,
+          cta: 'Assign', act: 'nocrew' });
+      });
+      pend.forEach(p=>{
+        const who = [...p.who];
+        out.push({ sev: p.n <= 2 ? 'crit' : 'warn', icon:'📣', sort: p.n,
+          head: `${who.length} crew yet to confirm`, when: when(p.n),
+          body: `${p.pk.clientName || '—'} — ${who.slice(0,3).join(', ')}${who.length > 3 ? ` +${who.length-3} more` : ''}`,
+          cta: 'Chase', act: 'unconf' });
+      });
+    }
+
+    /* ---- 3. money that is about to become hard to collect ----
+       Leverage runs out the moment the last frame is shot. Before the shoot
+       the balance is a request; a month after it, it is a debt.
+
+       DELIVERED jobs are in here too, not just booked ones. A delivered job
+       with a balance is the worst debt the studio can hold — the client has
+       the album and the studio has nothing left to withhold — and it was the
+       one kind that never appeared anywhere but inside the "left to collect"
+       tile, as a number with no name attached. */
+    livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft')).forEach(pk=>{
+      const bal = Math.max(0, (pk.totals||{}).balance || 0);
+      if(bal <= 0) return;
+      const ds = dated(pk); if(!ds.length) return;
+      const done = (pk.status||'draft') === 'delivered';
+      const next = done ? null : ds.find(d=>d >= today);
+      if(next){
+        const n = dOut(next);
+        if(n > 10) return;
+        out.push({ sev: n <= 3 ? 'crit' : 'warn', icon:'💰', sort: n,
+          head: `${inr(bal)} uncollected`, when: when(n),
+          body: `${pk.clientName || '—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''} — of ${inr((pk.totals||{}).finalPrice || 0)} billed`,
+          cta: 'Open', act: 'pkg:' + pk.id });
+      }else{
+        const age = -dOut(ds[ds.length-1]);
+        if(age < 7) return;
+        out.push({ sev: age >= 30 ? 'crit' : 'warn', icon:'💰', sort: -age,
+          head: `${inr(bal)} still owed`, when: when(-age),
+          body: `${pk.clientName || '—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''} — ${done ? 'delivered in full, and still unpaid' : 'every event was shot, nothing left to hold'}`,
+          cta: 'Open', act: 'pkg:' + pk.id });
+      }
+    });
+
+    /* ---- 4. crew pointing at a date the job no longer has ----
+       staleCrew() has always known this; it only ever said so inside the Team
+       tab's own list, which you reach by already suspecting something. */
+    if(_asgsLoaded){
+      /* staleCrew() re-filters the WHOLE assignments list per package, which is
+         fine on the Team tab (one screen, one visit) and not fine here: this
+         runs on every packages snapshot, so at the 1000/1000 caps it was a
+         million comparisons per render. Index once, then each package only
+         looks at its own rows. */
+      const asgByPkg = new Map();
+      ASGS.forEach(a=>{ const k = a.pkgId; if(!k) return; const v = asgByPkg.get(k); v ? v.push(a) : asgByPkg.set(k, [a]); });
+      booked.forEach(pk=>{
+        const mine = asgByPkg.get(pk.id);
+        if(!mine) return;
+        const dates = new Set((pk.events||[]).map(ev=>ev.date));
+        const st = mine.filter(a=>!dates.has(a.date));
+        if(!st.length) return;
+        out.push({ sev:'warn', icon:'⚠️', sort: 0,
+          head: `${st.length} crew on a dropped date`, when: '',
+          body: `${pk.clientName || '—'} — the event moved after they were assigned; they still hold ${[...new Set(st.map(a=>dmy(a.date)))].slice(0,2).join(', ')}`,
+          cta: 'Fix', act: 'pkg:' + pk.id });
+      });
+    }
+
+    /* ---- 5. jobs shot but not delivered ----
+       The bookings list shows "0/8 steps" without ever saying how long it has
+       read that. Age is the whole signal. */
+    booked.forEach(pk=>{
+      const ds = dated(pk); if(!ds.length) return;
+      const age = -dOut(ds[ds.length-1]);
+      if(age < 14) return;                       /* a fortnight is normal turnaround */
+      const di = deliveryInfo(pk);
+      if(di.doneCount >= di.total) return;
+      out.push({ sev: age >= 45 ? 'crit' : 'warn', icon:'📦', sort: -age,
+        head: 'Delivery stalled', when: when(-age),
+        body: `${pk.clientName || '—'} — ${di.doneCount}/${di.total} steps done${di.doneCount ? '' : ', nothing started'}`,
+        cta: 'Open', act: 'pkg:' + pk.id });
+    });
+
+    /* ---- 6. crew waiting on their money ----
+       One row, not one per shooter: this is a single trip to the Pay section. */
+    if(_asgsLoaded){
+      const owed = ASGS.filter(a=>payDue(a) > 0 && ISO_RE.test(a.date||'') && dOut(a.date) <= -30);
+      if(owed.length){
+        const tot = owed.reduce((s,a)=>s + payDue(a), 0);
+        const who = [...new Set(owed.map(a=>a.memberName || '—'))];
+        out.push({ sev:'warn', icon:'💸', sort: Math.min(...owed.map(a=>dOut(a.date))),
+          head: 'Crew pay overdue', when: when(Math.min(...owed.map(a=>dOut(a.date)))),
+          body: `${inr(tot)} to ${who.slice(0,3).join(', ')}${who.length > 3 ? ` +${who.length-3} more` : ''}`,
+          cta: 'Pay', act: 'pay' });
+      }
+    }
+
+    /* ---- 7. quotes that have gone quiet ----
+       Individual rows on purpose, each with its own WhatsApp: chasing four
+       quotes is four different conversations, not one errand. */
+    livePkgs().filter(x=>(x.status||'draft') === 'sent').map(x=>{
       const since = x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt);
       return { x, days: daysAgo(since) };
     }).filter(r=>r.days != null && r.days >= 3)
-      .sort((a,b)=>b.days-a.days).slice(0,6);
-    el.hidden = !list.length;
-    if(!list.length) return;
-    el.innerHTML = '<h3>📤 Quotes needing follow-up</h3>' + list.map(r=>`
-      <div class="up-ev" data-fu="${r.x.id}">
-        <span class="when">${r.days}d ago</span>
-        <span class="what">${esc(r.x.clientName||'—')} <span>· ${esc(r.x.quoteNo||'')} · ${inr((r.x.totals||{}).finalPrice||0)}</span></span>
-        ${r.x.clientPhone ? '<button class="btn btn--sm btn--ghost" data-funudge>WhatsApp</button>' : ''}
-        <button class="btn btn--sm btn--ghost" data-fudone title="Mark followed up">✓</button>
-      </div>`).join('');
+      .sort((a,b)=>b.days - a.days).slice(0, 6)
+      .forEach(r=>out.push({ sev: r.days >= 7 ? 'warn' : 'info', icon:'📤', sort: -r.days,
+        head: 'Quote sent, no reply', when: `${r.days} days ago`,
+        body: `${r.x.clientName || '—'}${r.x.quoteNo ? ' · ' + r.x.quoteNo : ''} — ${inr((r.x.totals||{}).finalPrice || 0)}`,
+        cta: r.x.clientPhone ? 'WhatsApp' : 'Open',
+        act: r.x.clientPhone ? 'wa:' + r.x.id : 'pkg:' + r.x.id }));
+
+    /* ---- 8. quotes parked "not confirmed" whose date is arriving ----
+       Parking one takes it out of the follow-up list by design. That is right
+       until the date is close enough that the answer can no longer wait. */
+    livePkgs().filter(x=>(x.status||'draft') === 'unconfirmed').forEach(pk=>{
+      const next = dated(pk).find(d=>d >= today); if(!next) return;
+      const n = dOut(next);
+      if(n > 21) return;
+      out.push({ sev: n <= 7 ? 'warn' : 'info', icon:'❓', sort: n,
+        head: 'On hold, date approaching', when: when(n),
+        body: `${pk.clientName || '—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''} — confirm it or release the date`,
+        cta: 'Decide', act: 'pkg:' + pk.id });
+    });
+
+    /* ---- 9. enquiries nobody has replied to ----
+       One row for the pile with the oldest named: the job is "work the new
+       list", and a row per lead would swamp everything above it. */
+    const cold = liveLeads().filter(l=>(l.status||'new') === 'new').map(l=>({
+      l, d: (l.createdAt && l.createdAt.toDate) ? Math.floor((Date.now() - l.createdAt.toDate().getTime()) / 864e5) : null
+    })).filter(r=>r.d != null && r.d >= 2).sort((a,b)=>b.d - a.d);
+    if(cold.length){
+      out.push({ sev: cold[0].d >= 5 ? 'warn' : 'info', icon:'👥', sort: -cold[0].d,
+        head: `${cold.length} enquir${cold.length === 1 ? 'y' : 'ies'} unanswered`, when: `${cold[0].d} days ago`,
+        body: `Oldest — ${cold[0].l.name || '—'}${cold[0].l.eventType ? ' · ' + cold[0].l.eventType : ''}`,
+        cta: 'Open', act: 'leads:new' });
+    }
+
+    /* ---- 10. the same person enquiring twice ----
+       The lead list marks these with a pill, which only helps once you are
+       already reading that card. Quoting a client you are mid-conversation
+       with — at a different price — is the expensive version of this mistake. */
+    const byPhone = {};
+    liveLeads().forEach(l=>{
+      const p = normPhone(l.phone);
+      if(p.length === 10) (byPhone[p] = byPhone[p] || []).push(l);
+    });
+    const dups = Object.values(byPhone).filter(g=>g.length > 1 && g.some(l=>(l.status||'new') === 'new'));
+    if(dups.length){
+      const names = dups.map(g=>g[0].name || '—');
+      out.push({ sev:'info', icon:'🔁', sort: 0,
+        head: `${dups.length} repeat enquir${dups.length === 1 ? 'y' : 'ies'}`, when: '',
+        body: `${names.slice(0,3).join(', ')}${names.length > 3 ? ` +${names.length-3} more` : ''} — a number you have quoted before; check the old price first`,
+        cta: 'Open', act: 'leads:' });
+    }
+
+    /* crit before warn before info; inside a band, whatever is furthest
+       overdue or soonest due comes first (overdue rows carry a negative
+       sort, so they lead their band). */
+    const RANK = { crit:0, warn:1, info:2 };
+    return out.sort((a,b)=>(RANK[a.sev] - RANK[b.sev]) || (a.sort - b.sort));
   }
-  on('#followups', 'click', async e=>{
-    const row = e.target.closest('[data-fu]'); if(!row) return;
-    const x = PKGS.find(p=>p.id===row.dataset.fu); if(!x) return;
-    const nudge = e.target.closest('[data-funudge]'), done = e.target.closest('[data-fudone]');
-    if(!nudge && !done) return;
-    if(nudge && !openWa(waLink(x, waFollowupText(x)))) return;   /* popup blocked → don't reset the counter */
-    try{
-      await settle(updateDoc(doc(db,'packages',x.id), { sentAt: todayISO() }));
-      x.sentAt = todayISO();
-      renderFollowups();
-      if(done) toast('Marked as followed up');
-    }catch(err){ toast('Update failed'); }
+
+  function renderBrief(){
+    const el = $('#brief'); if(!el) return;
+    /* Before the first snapshot lands every rule sees an empty studio and
+       finds nothing wrong — which is indistinguishable from a clean morning.
+       Say nothing until there is something to have judged. */
+    if(!_pkgsLoaded && !_leadsLoaded){ el.hidden = true; return; }
+    const items = briefItems();
+    el.hidden = !items.length;
+    if(!items.length) return;
+    const crit = items.filter(i=>i.sev === 'crit').length;
+    /* Three rows is about a thumb's worth before the calendar is pushed off
+       screen. The rest are one tap away and stay open once opened. */
+    const shown = _briefAll ? items : items.slice(0, 3);
+    const more = items.length - shown.length;
+    el.className = 'sec brief' + (crit ? ' has-crit' : '');
+    el.innerHTML = `
+      <h3>⚡ Needs attention
+        <b class="bf-n${crit ? ' crit' : ''}">${crit ? `${crit} urgent · ` : ''}${items.length}</b>
+      </h3>
+      ${shown.map(i=>`
+        <div class="bf-row ${i.sev}" data-bfact="${esc(i.act)}" role="button" tabindex="0">
+          <i class="bf-i">${i.icon}</i>
+          <div class="bf-m">
+            <b>${esc(i.head)}${i.when ? `<em class="bf-when">${esc(i.when)}</em>` : ''}</b>
+            <span>${esc(i.body)}</span>
+          </div>
+          <span class="bf-cta">${esc(i.cta)}</span>
+        </div>`).join('')}
+      ${more > 0 ? `<button class="upall" data-bfall type="button">＋ ${more} more to look at</button>` : ''}
+      ${_briefAll && items.length > 3 ? '<button class="upall" data-bfless type="button">− Show fewer</button>' : ''}`;
+  }
+
+  on('#brief', 'click', async e=>{
+    if(e.target.closest('[data-bfall]')){ _briefAll = true; renderBrief(); return; }
+    if(e.target.closest('[data-bfless]')){ _briefAll = false; renderBrief(); return; }
+    const row = e.target.closest('[data-bfact]'); if(!row) return;
+    const act = row.dataset.bfact || '';
+    const [kind, id] = [act.split(':')[0], act.slice(act.indexOf(':') + 1)];
+    buzz();
+    /* Every row lands on the screen that can actually fix it, with the filter
+       already set — a row that only says "something is wrong somewhere" costs
+       more attention than it saves. */
+    if(kind === 'nocrew' || kind === 'unconf'){
+      $('#tabTeam').click(); setTeamSeg('work');
+      _workFilter = kind; _teamTab = 'up';
+      viewSet('workTab', _teamTab);
+      renderTeamStats(); renderWorkTabs(); renderTeamEvents();
+      return;
+    }
+    if(kind === 'pay'){ $('#tabTeam').click(); setTeamSeg('pay'); return; }
+    if(kind === 'leads'){
+      $('#tabLeads').click();
+      leadFilterVal = id || '';
+      $('#leadSearch').value = '';
+      renderStats(); renderLeads();
+      return;
+    }
+    if(kind === 'pkg'){
+      const x = PKGS.find(p=>p.id === id); if(!x) return;
+      if(!canLeaveEditor()) return;
+      expandedPkg = x.id; pkgFilterVal = '';
+      $('#pkgSearch').value = x.quoteNo || x.clientName || '';
+      $('#tabPkgs').click(); renderPkgList();
+      return;
+    }
+    if(kind === 'wa'){
+      const x = PKGS.find(p=>p.id === id); if(!x) return;
+      /* the counter only resets if the message actually left — a blocked
+         popup used to look like a nudge sent */
+      if(!openWa(waLink(x, waFollowupText(x)))) return;
+      try{
+        await settle(updateDoc(doc(db,'packages',x.id), { sentAt: todayISO() }));
+        x.sentAt = todayISO();
+        renderBrief();
+      }catch(err){ toast('Update failed'); }
+    }
   });
 
   function renderHome(){
+    renderBrief();
     renderPkgStats();
     renderUpcoming();
-    renderFollowups();
     renderHomeBooked();
   }
 
@@ -3562,6 +3847,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           syncStudioCrew();   /* partner portal reads crew off the package doc */
           renderTeam();
           renderPkgStats();   /* the crew-pay tile on Home reads these */
+          renderBrief();      /* four of its rules read crew — assigning one must clear its row */
           if($('#finModal').classList.contains('open')) renderFin();
           if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
         }, err=>{
@@ -5256,7 +5542,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          summary would be a lie — the owner has handed over cash and needs to
          know which shoots it was recorded against. */
       if(!n){ toast('Nothing was recorded — ' + (failed ? 'the server refused the writes' : 'no shoot had a balance')); return; }
-      renderTeam(); renderPkgStats(); buzz();
+      renderTeam(); renderPkgStats(); renderBrief(); buzz();
       const stillOwed = dueRowsFor(mid).reduce((s,a)=>s + payDue(a), 0);
       toast(failed
         ? `${inr(paid)} recorded across ${n} shoot${n===1?'':'s'} — ${failed} could not be saved, ${inr(stillOwed)} still shows as owed`
@@ -5405,7 +5691,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `${inr(amount)} (${mode}) to ${a.memberName||'crew'} recorded — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`);
       a.pay = pay;
       buzz();
-      renderTeam(); renderPkgStats();
+      renderTeam(); renderPkgStats(); renderBrief();
       if(_cpId === id) closeCrewPay();   /* only close the sheet this write belongs to */
     }catch(err){ toast('Could not save that payment: ' + (err.message||err.code||'no signal')); }
     finally{ btn.disabled = false; }
@@ -5440,7 +5726,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* only refresh the sheet if it is still this assignment's — the snapshot
          may have re-rendered and the owner moved on while the write was away */
       if(_cpId === a.id) openCrewPay(a);
-      renderTeam(); renderPkgStats();
+      renderTeam(); renderPkgStats(); renderBrief();
       toast('Payment removed — balance updated');
     }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
   });
@@ -6778,6 +7064,287 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      finYear holds the FY START year (2026 = FY 2026-27). */
   const fyStartOf = ds => { const yy = Number(ds.slice(0,4)), mm = Number(ds.slice(5,7)); return mm >= 4 ? yy : yy - 1; };
   const fyLabel = yy => `FY ${yy}-${String((yy+1)%100).padStart(2,'0')}`;
+  /* ============================================================
+     INSIGHTS — the questions a ledger cannot answer
+     ------------------------------------------------------------
+     Money Analytics above is an accounts book: billed, collected, balance,
+     per period. It is complete and it is backward-looking, and it cannot tell
+     you a single thing about how the studio is actually doing:
+
+       · Which of the six services earns the money? Every package carries an
+         itemised items[] of service / qty / rate, and until now NOTHING in
+         the panel added them up — the studio priced its own catalogue on
+         instinct while the answer sat in every quote it had ever written.
+       · Do enquiries from the package builder book more often than the
+         contact form? Both write a `source`, and nothing read it.
+       · Is the season starting? The calendar shows one month at a time.
+       · What is the open pipeline worth, honestly — not the sticker total,
+         but the sticker total times the rate quotes actually convert at?
+
+     All of it comes off records already in memory. No extra reads, no new
+     fields, no writes: this sheet is pure arithmetic over what is loaded.
+     ============================================================ */
+  let _insAll = false;   /* false = last 12 months, true = everything */
+
+  function insData(){
+    const now = new Date();
+    const cutIso = new Date(now.getTime() - 365*864e5).toLocaleDateString('en-CA');
+    const inWin = iso => _insAll || (ISO_RE.test(iso||'') && iso >= cutIso);
+    const tsIso = t => (t && t.toDate) ? t.toDate().toLocaleDateString('en-CA') : '';
+    /* Packages are anchored to their FIRST event date, the same anchor the
+       money table uses — so a January enquiry for a November wedding counts
+       as November's work on both screens. */
+    const anchor = x => {
+      const ds = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+      return ds[0] || (ISO_RE.test(x.quoteDate||'') ? x.quoteDate : tsIso(x.createdAt));
+    };
+    const pkgs  = livePkgs().filter(x=>inWin(anchor(x)));
+    const leads = liveLeads().filter(l=>inWin(tsIso(l.createdAt)));
+    const won   = pkgs.filter(x=>['booked','delivered'].includes(x.status||'draft'));
+    const open  = pkgs.filter(x=>['sent','unconfirmed'].includes(x.status||'draft'));
+    const val   = x => Number((x.totals||{}).finalPrice) || 0;
+
+    /* ---- funnel ----
+       Leads and packages are two different records of the same journey, and
+       the honest funnel needs both: the website counts enquiries, the builder
+       counts quotes. A lead that was quoted carries pkgId. */
+    const byStatus = {};
+    leads.forEach(l=>{ const s = l.status||'new'; byStatus[s] = (byStatus[s]||0)+1; });
+    const quotedLeads = leads.filter(l=>l.pkgId || l.quote).length;
+    const wonLeads    = leads.filter(l=>['booked','converted'].includes(l.status||'new')).length;
+    const lostLeads   = byStatus.lost || 0;
+    const decided     = wonLeads + lostLeads;
+
+    /* Quote conversion is the number the pipeline forecast leans on, so it is
+       taken from QUOTES, not leads: of the quotes that left the studio, how
+       many were signed. Drafts never left, so they are not in the denominator. */
+    const sentEver = pkgs.filter(x=>['sent','unconfirmed','booked','delivered'].includes(x.status||'draft'));
+    const winRate  = sentEver.length ? won.length / sentEver.length : 0;
+
+    /* ---- where the work comes from ---- */
+    const SRC = { contact_form:'Contact form', package_builder:'Package builder', manual:'Added by hand' };
+    const src = {};
+    leads.forEach(l=>{
+      const k = String(l.source||'manual');
+      const o = src[k] = src[k] || { n:0, won:0, val:0 };
+      o.n++;
+      if(['booked','converted'].includes(l.status||'new')){
+        o.won++;
+        o.val += Number(l.grandTotal)||0;
+      }
+    });
+    const sources = Object.entries(src).map(([k,o])=>({ label: SRC[k] || k, ...o }))
+      .sort((a,b)=>b.n - a.n);
+
+    /* ---- what actually sells ----
+       qty × rate, straight off the line items of every won job. This is the
+       studio's own price list, scored by what clients actually bought. */
+    const svc = {};
+    won.forEach(x=>(x.events||[]).forEach(ev=>(ev.items||[]).forEach(it=>{
+      const name = String(it.service||'').trim(); if(!name) return;
+      const q = Number(it.qty)||0, r = Number(it.rate)||0;
+      const o = svc[name] = svc[name] || { qty:0, rev:0, jobs:new Set() };
+      o.qty += q; o.rev += q*r; o.jobs.add(x.id);
+    })));
+    const services = Object.entries(svc)
+      .map(([name,o])=>({ name, qty:o.qty, rev:o.rev, jobs:o.jobs.size }))
+      .sort((a,b)=>b.rev - a.rev);
+    const svcTop = services.length ? services[0].rev : 0;
+    /* Line items are priced before the package discount, so they sum higher
+       than the billed total. Saying so beats letting the two figures be
+       compared silently and one of them believed. */
+    const svcGross = services.reduce((s,r)=>s + r.rev, 0);
+    const wonBilled = won.reduce((s,x)=>s + val(x), 0);
+
+    /* ---- season: booked EVENTS by calendar month ----
+       Events, not packages: a four-function wedding is four shooting days,
+       and the question this answers is when the studio is busy. */
+    const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const season = MN.map(()=>0);
+    won.forEach(x=>(x.events||[]).forEach(ev=>{
+      if(ISO_RE.test(ev.date||'') && inWin(ev.date)) season[Number(ev.date.slice(5,7)) - 1]++;
+    }));
+    const seasonMax = Math.max(1, ...season);
+
+    /* ---- pipeline: what is genuinely still in play ---- */
+    const openVal = open.reduce((s,x)=>s + val(x), 0);
+
+    /* ---- job size and discount pressure ----
+       Discount is the gap between the rate card and what was signed. A studio
+       that is quietly discounting 15% on every job is running a different
+       price list from the one it publishes. */
+    const sizes = won.map(val).filter(v=>v > 0).sort((a,b)=>a - b);
+    const avgJob = sizes.length ? sizes.reduce((s,v)=>s+v,0) / sizes.length : 0;
+    const medJob = sizes.length ? sizes[Math.floor(sizes.length/2)] : 0;
+    const discounted = won.filter(x=>((x.totals||{}).gross||0) > 0 && ((x.totals||{}).discount||0) > 0);
+    const discPct = discounted.length
+      ? discounted.reduce((s,x)=>s + ((x.totals||{}).discount||0) / ((x.totals||{}).gross||1), 0) / discounted.length * 100
+      : 0;
+
+    /* ---- how fast an enquiry becomes a quote ----
+       No bookedAt is stored anywhere, so "time to book" cannot be measured
+       honestly. This measures what the records DO support: the gap between
+       the enquiry landing and a quote existing for it. */
+    const replyGaps = [];
+    leads.forEach(l=>{
+      if(!l.pkgId) return;
+      const pk = PKGS.find(p=>p.id === l.pkgId); if(!pk) return;
+      const a = tsIso(l.createdAt), b = tsIso(pk.createdAt);
+      if(!ISO_RE.test(a) || !ISO_RE.test(b)) return;
+      const d = Math.round((new Date(b+'T00:00') - new Date(a+'T00:00')) / 864e5);
+      if(d >= 0 && d < 365) replyGaps.push(d);
+    });
+    replyGaps.sort((a,b)=>a-b);
+    const medReply = replyGaps.length ? replyGaps[Math.floor(replyGaps.length/2)] : null;
+
+    /* ---- direct vs partner, and which partners ---- */
+    let direct = 0, partner = 0;
+    const byStudio = {};
+    won.forEach(x=>{
+      const v = val(x);
+      if(isStudioJob(x)){
+        partner += v;
+        const id = x.studioId || '_';
+        const o = byStudio[id] = byStudio[id] || { name: (studioById(id) || {}).name || x.studioName || 'Studio', n:0, val:0 };
+        o.n++; o.val += v;
+      }else direct += v;
+    });
+    const partners = Object.values(byStudio).sort((a,b)=>b.val - a.val);
+
+    /* ---- clients who came back ----
+       Matched on the last 10 digits, the same convention the duplicate-lead
+       check uses, so a +91 number and a bare one are one person. */
+    const byPhone = {};
+    livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft') && !isStudioJob(x)).forEach(x=>{
+      const p = normPhone(x.clientPhone); if(p.length !== 10) return;
+      (byPhone[p] = byPhone[p] || []).push(x);
+    });
+    const repeats = Object.values(byPhone).filter(g=>g.length > 1)
+      .map(g=>({ name: g[0].clientName || '—', n: g.length, val: g.reduce((s,x)=>s + val(x), 0) }))
+      .sort((a,b)=>b.val - a.val);
+
+    return { leads, byStatus, quotedLeads, wonLeads, lostLeads, decided, sentEver, won, open,
+             winRate, sources, services, svcTop, svcGross, wonBilled, season, seasonMax, MN,
+             openVal, avgJob, medJob, sizes, discPct, discounted, medReply, replyGaps,
+             direct, partner, partners, repeats };
+  }
+
+  function openIns(){
+    renderIns();
+    const wasOpen = $('#insModal').classList.contains('open');
+    $('#insModal').classList.add('open'); $('#insBackdrop').classList.add('open');
+    if(!wasOpen) pushView('ins', '#insights');
+  }
+  function closeInsUI(){ $('#insModal').classList.remove('open'); $('#insBackdrop').classList.remove('open'); }
+  function closeIns(){ backFrom('ins', closeInsUI); }
+
+  function renderIns(){
+    const d = insData();
+    const pc = (a,b) => b ? Math.round(100*a/b) + '%' : '—';
+    /* One bar component for the whole sheet: a labelled row whose fill is the
+       share of the biggest row. Percentages of a total are meaningless for
+       service mix (a job buys several), so every bar is relative to the
+       leader and says its own absolute figure. */
+    const bar = (label, right, frac, cls='') => `
+      <div class="ins-bar ${cls}">
+        <span class="ib-l">${label}</span>
+        <span class="ib-t"><i style="width:${Math.max(2, Math.round(100*(frac||0)))}%"></i></span>
+        <b class="ib-r">${right}</b>
+      </div>`;
+    const money = v => `<span title="${inr(v)}">${inrShort(v)}</span>`;
+
+    $('#insWho').textContent = _insAll
+      ? 'Everything on record — enquiries by the date they landed, jobs by their first event date'
+      : 'The last 12 months — enquiries by the date they landed, jobs by their first event date';
+
+    const nothing = !d.leads.length && !d.won.length && !d.open.length;
+    $('#insBody').innerHTML = `
+      <div class="mode-pills insper" id="insPer">
+        <button type="button" data-insp="12" class="${_insAll?'':'on'}">Last 12 months</button>
+        <button type="button" data-insp="all" class="${_insAll?'on':''}">All time</button>
+      </div>
+      ${nothing ? `<div class="empty" style="padding:1rem 0">Nothing in this window yet.${_insAll ? '' : ' Try <b>All time</b>.'}</div>` : `
+
+      <div class="finh">The funnel</div>
+      <div class="fintiles">
+        <div class="stat"><b>${d.leads.length}</b><span>enquiries</span></div>
+        <div class="stat"><b>${d.sentEver.length}</b><span>quotes sent</span></div>
+        <div class="stat"><b>${d.won.length}</b><span>booked</span></div>
+        <div class="stat"><b>${Math.round(100*d.winRate)}%</b><span>quote → booking</span></div>
+      </div>
+      <div class="insnote">
+        ${d.sentEver.length
+          ? `${d.won.length} of ${d.sentEver.length} quotes that left the studio were signed.`
+          : 'No quotes have been sent in this window.'}
+        ${d.decided ? ` Of the enquiries that reached a decision, ${pc(d.wonLeads, d.decided)} came good (${d.wonLeads} won, ${d.lostLeads} lost).` : ''}
+        ${d.byStatus.new ? ` <b style="color:var(--warn)">${d.byStatus.new} still unanswered.</b>` : ''}
+      </div>
+
+      <div class="finh">Where the work comes from</div>
+      ${d.sources.length ? d.sources.map(s=>
+        bar(`${esc(s.label)} <em>${s.n} enquir${s.n===1?'y':'ies'}</em>`,
+            `${s.won} booked · ${pc(s.won, s.n)}`,
+            s.n / Math.max(...d.sources.map(x=>x.n)))).join('')
+      : '<div class="empty" style="padding:.5rem 0">No enquiries in this window.</div>'}
+
+      <div class="finh">What actually sells</div>
+      ${d.services.length ? d.services.slice(0, 10).map(s=>
+        bar(`${esc(s.name)} <em>${s.qty}× across ${s.jobs} job${s.jobs===1?'':'s'}</em>`,
+            inrShort(s.rev), s.rev / (d.svcTop || 1), 'gold')).join('')
+        + `<div class="insnote">Line items are priced before any package discount, so these add to ${inrShort(d.svcGross)} against ${inrShort(d.wonBilled)} actually billed. Read them against each other, not as revenue.</div>`
+      : '<div class="empty" style="padding:.5rem 0">Nothing booked with itemised services yet.</div>'}
+
+      <div class="finh">When the studio is busy</div>
+      <div class="ins-season">
+        ${d.season.map((n,i)=>`
+          <div class="is-col${n === d.seasonMax && n ? ' peak' : ''}${n ? '' : ' zero'}" title="${d.MN[i]} — ${n} event${n===1?'':'s'}">
+            <span class="is-n">${n || ''}</span>
+            <i style="height:${n ? Math.round(100*n/d.seasonMax) : 0}%"></i>
+            <span class="is-m">${d.MN[i][0]}</span>
+          </div>`).join('')}
+      </div>
+      <div class="insnote">Shooting days on booked jobs, by month — a four-function wedding counts four times, because that is four days of crew to find.</div>
+
+      <div class="finh">Still in play</div>
+      <div class="fintiles">
+        <div class="stat"><b>${d.open.length}</b><span>open quotes</span></div>
+        <div class="stat" title="${inr(d.openVal)}"><b>${inrShort(d.openVal)}</b><span>at sticker price</span></div>
+        <div class="stat" title="${inr(Math.round(d.openVal * d.winRate))}"><b>${inrShort(Math.round(d.openVal * d.winRate))}</b><span>likely to land</span></div>
+      </div>
+      <div class="insnote">"Likely to land" is the open total at your own ${Math.round(100*d.winRate)}% conversion${d.sentEver.length < 8 ? ' — off only ' + d.sentEver.length + ' quotes so far, so treat it as a direction, not a forecast' : ''}.</div>
+
+      <div class="finh">The shape of a job</div>
+      <div class="fintiles">
+        <div class="stat" title="${inr(d.avgJob)}"><b>${inrShort(d.avgJob)}</b><span>average booking</span></div>
+        <div class="stat" title="${inr(d.medJob)}"><b>${inrShort(d.medJob)}</b><span>typical booking</span></div>
+        <div class="stat" title="${d.sizes.length ? inr(d.sizes[d.sizes.length-1]) : '—'}"><b>${d.sizes.length ? inrShort(d.sizes[d.sizes.length-1]) : '—'}</b><span>biggest</span></div>
+        <div class="stat"><b>${d.medReply == null ? '—' : d.medReply + 'd'}</b><span>enquiry → quote</span></div>
+      </div>
+      ${d.discounted.length ? `<div class="insnote">${d.discounted.length} of ${d.won.length} booked jobs carried a discount, averaging <b>${d.discPct.toFixed(1)}%</b> off the rate card.</div>` : ''}
+      ${d.medReply == null ? '<div class="insnote">Enquiry → quote needs leads that were converted from the panel; none in this window carry the link.</div>' : ''}
+
+      <div class="finh">Direct vs partner</div>
+      ${(d.direct + d.partner) ? bar('💍 Direct clients', money(d.direct), d.direct / Math.max(d.direct, d.partner), 'gold')
+        + bar('🏢 Partner studios', money(d.partner), d.partner / Math.max(d.direct, d.partner), 'gold')
+        + (d.partners.length ? d.partners.slice(0,5).map(p=>`
+            <div class="up-ev"><span class="what">${esc(p.name)} <span>· ${p.n} job${p.n===1?'':'s'}</span></span><b title="${inr(p.val)}">${inrShort(p.val)}</b></div>`).join('') : '')
+      : '<div class="empty" style="padding:.5rem 0">Nothing booked in this window.</div>'}
+
+      ${d.repeats.length ? `
+      <div class="finh">Clients who came back</div>
+      ${d.repeats.slice(0,6).map(r=>`
+        <div class="up-ev"><span class="what">${esc(r.name)} <span>· ${r.n} bookings</span></span><b title="${inr(r.val)}">${inrShort(r.val)}</b></div>`).join('')}
+      <div class="insnote">Matched on the last 10 digits of the phone number, across all time — a repeat client is the cheapest booking the studio ever makes.</div>` : ''}
+      `}`;
+  }
+  on('#insBody', 'click', e=>{
+    const p = e.target.closest('[data-insp]'); if(!p) return;
+    _insAll = p.dataset.insp === 'all';
+    buzz(); renderIns();
+  });
+  on('#insClose', 'click', closeIns);
+  on('#insBackdrop', 'click', closeIns);
+
   function openFin(){
     loadExps();   /* no-op when already listening; retries after an error */
     if(finYear == null){
