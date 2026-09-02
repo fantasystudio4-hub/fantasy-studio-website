@@ -108,9 +108,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="bulkbar" id="bulkBar" hidden role="region" aria-label="Bulk actions"></div>
 
   <div id="homeView">
-    <!-- Above the calendar on purpose, and hidden whenever every rule comes
-         back clean, so this is never a banner the eye learns to skip. -->
-    <div class="sec brief" id="brief" hidden></div>
     <div class="sec">
       <div class="cal-nav">
         <button id="calPrev" aria-label="Previous month">‹</button>
@@ -194,7 +191,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="listbar">
       <details class="howto">
         <summary>How this list works</summary>
-        <p>Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:var(--state-risk)">not confirmed</b> to park a quote whose event is on hold (it leaves the follow-up list).</p>
+        <p>Tap a section title (Booked, Sent, Drafts…) to open or close it. Tap a card to expand it — the status chip moves it <b style="color:var(--gold-b)">draft → sent → booked → delivered</b>, or <b style="color:var(--state-risk)">not confirmed</b> to park a quote whose event is on hold.</p>
+        <p><b style="color:var(--state-overdue)">⚠️ Work on these first</b> is worked out for you: money still owed, and records nothing has happened on lately. Each card says why it is there. They are <b>moved</b> into that group, not copied, so they will not also appear under their status below — the pill on the card still tells you what that status is. The <b style="color:var(--state-pending)">⏱ 12d</b> mark turns amber after 10 days without an update and <b style="color:var(--state-overdue)">red after 20</b>.</p>
       </details>
       <span class="swipehint">swipe</span>
       </div>

@@ -2387,322 +2387,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(open) openEv(Number(open.dataset.openEv)||0);
   });
 
-  /* ============================================================
-     NEEDS ATTENTION — the panel's one proactive surface
-     ------------------------------------------------------------
-     Every other block on Home answers "what do I have?": a calendar, a next
-     shoot, a bookings list, money tiles. None of them answered "what is about
-     to go wrong?", so the answers were only ever found by remembering to look.
-     A wedding tomorrow with one photographer against three booked, ₹5.5L
-     uncollected on a shoot in twelve days, a job shot seven weeks ago with the
-     album never started — all of it was sitting in memory already, on three
-     different tabs, and nothing joined it up.
-
-     This does the join. Each rule reads the records the panel already holds
-     (no extra reads, no new fields) and returns rows with a severity, so the
-     screen opens on the shortlist rather than on the archive.
-
-     Two design rules, both learned the hard way elsewhere in this file:
-       · Nothing to say = nothing on screen. A permanent "all clear" banner
-         above the calendar would be a header everyone learns to scroll past,
-         and then a real alert in the same place is invisible too.
-       · One JOB, one row. A four-function wedding short of crew on every
-         function is ONE problem to solve; four alarms for it would bury the
-         other nine things that also need doing.
-     ============================================================ */
-  let _briefAll = false;
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-  function briefItems(){
-    const out = [];
-    const today = todayISO();
-    /* days from today: negative = in the past. Whole days, off midnight, so
-       "tomorrow" means tomorrow's date and not 24 hours from now. */
-    const dOut = d => Math.round((new Date(d+'T00:00') - new Date(today+'T00:00')) / 864e5);
-    const when = n => n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 0 ? `in ${n} days`
-               : n === -1 ? 'yesterday' : `${-n} days ago`;
-    const booked = livePkgs().filter(x=>(x.status||'draft') === 'booked');
-    const dated  = pk => (pk.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
-
-    /* ---- 1 & 2. crew: who is missing, and who has not confirmed ----
-       Both are per-event facts rolled up to the job. `sort` carries the
-       SOONEST affected date, so the job shooting first sits highest. */
-    if(_asgsLoaded){
-      const gaps = new Map(), pend = new Map();
-      booked.forEach(pk=>{
-        (pk.events||[]).forEach(ev=>{
-          const d = ev.date||'';
-          if(!ISO_RE.test(d)) return;
-          const n = dOut(d);
-          if(n < 0 || n > 21) return;          /* past, or too far out to act on */
-          const crew = evCrew(pk.id, d, ev.title);
-          const have = {};
-          crew.forEach(a=>{ have[a.role] = (have[a.role]||0) + 1; });
-          const short = Object.entries(neededRoles(ev))
-            .map(([r,q])=>[r, q - (have[r]||0)]).filter(([,q])=>q > 0);
-          if(short.length){
-            const g = gaps.get(pk.id) || { pk, n, evs:0, roles:{} };
-            g.n = Math.min(g.n, n); g.evs++;
-            short.forEach(([r,q])=>{ g.roles[r] = (g.roles[r]||0) + q; });
-            gaps.set(pk.id, g);
-          }
-          /* An unconfirmed shooter is only a problem once the shoot is close;
-             three weeks out, nobody has replied to anything yet. */
-          const un = crew.filter(a=>a.status !== 'acknowledged');
-          if(un.length && n <= 7){
-            const p = pend.get(pk.id) || { pk, n, who:new Set() };
-            p.n = Math.min(p.n, n);
-            un.forEach(a=>p.who.add(a.memberName || '—'));
-            pend.set(pk.id, p);
-          }
-        });
-      });
-      gaps.forEach(g=>{
-        const roles = Object.entries(g.roles).map(([r,q])=>`${q}× ${roleLabel(r)}`).join(', ');
-        out.push({ sev: g.n <= 3 ? 'crit' : g.n <= 14 ? 'warn' : 'info', icon:'🎬', sort: g.n,
-          head: 'Short of crew', when: when(g.n),
-          body: `${g.pk.clientName || '—'} — short ${roles}${g.evs > 1 ? ` across ${g.evs} functions` : ''}`,
-          cta: 'Assign', act: 'nocrew' });
-      });
-      pend.forEach(p=>{
-        const who = [...p.who];
-        out.push({ sev: p.n <= 2 ? 'crit' : 'warn', icon:'📣', sort: p.n,
-          head: `${who.length} crew yet to confirm`, when: when(p.n),
-          body: `${p.pk.clientName || '—'} — ${who.slice(0,3).join(', ')}${who.length > 3 ? ` +${who.length-3} more` : ''}`,
-          cta: 'Chase', act: 'unconf' });
-      });
-    }
-
-    /* ---- 3. money that is about to become hard to collect ----
-       Leverage runs out the moment the last frame is shot. Before the shoot
-       the balance is a request; a month after it, it is a debt.
-
-       DELIVERED jobs are in here too, not just booked ones. A delivered job
-       with a balance is the worst debt the studio can hold — the client has
-       the album and the studio has nothing left to withhold — and it was the
-       one kind that never appeared anywhere but inside the "left to collect"
-       tile, as a number with no name attached. */
-    livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft')).forEach(pk=>{
-      const bal = Math.max(0, (pk.totals||{}).balance || 0);
-      if(bal <= 0) return;
-      const ds = dated(pk); if(!ds.length) return;
-      const done = (pk.status||'draft') === 'delivered';
-      const next = done ? null : ds.find(d=>d >= today);
-      if(next){
-        const n = dOut(next);
-        if(n > 10) return;
-        out.push({ sev: n <= 3 ? 'crit' : 'warn', icon:'💰', sort: n,
-          head: `${inr(bal)} uncollected`, when: when(n),
-          body: `${pk.clientName || '—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''} — of ${inr((pk.totals||{}).finalPrice || 0)} billed`,
-          cta: 'Open', act: 'pkg:' + pk.id });
-      }else{
-        const age = -dOut(ds[ds.length-1]);
-        if(age < 7) return;
-        out.push({ sev: age >= 30 ? 'crit' : 'warn', icon:'💰', sort: -age,
-          head: `${inr(bal)} still owed`, when: when(-age),
-          body: `${pk.clientName || '—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''} — ${done ? 'delivered in full, and still unpaid' : 'every event was shot, nothing left to hold'}`,
-          cta: 'Open', act: 'pkg:' + pk.id });
-      }
-    });
-
-    /* ---- 4. crew pointing at a date the job no longer has ----
-       staleCrew() has always known this; it only ever said so inside the Team
-       tab's own list, which you reach by already suspecting something. */
-    if(_asgsLoaded){
-      /* staleCrew() re-filters the WHOLE assignments list per package, which is
-         fine on the Team tab (one screen, one visit) and not fine here: this
-         runs on every packages snapshot, so at the 1000/1000 caps it was a
-         million comparisons per render. Index once, then each package only
-         looks at its own rows. */
-      const asgByPkg = new Map();
-      ASGS.forEach(a=>{ const k = a.pkgId; if(!k) return; const v = asgByPkg.get(k); v ? v.push(a) : asgByPkg.set(k, [a]); });
-      booked.forEach(pk=>{
-        const mine = asgByPkg.get(pk.id);
-        if(!mine) return;
-        const dates = new Set((pk.events||[]).map(ev=>ev.date));
-        const st = mine.filter(a=>!dates.has(a.date));
-        if(!st.length) return;
-        out.push({ sev:'warn', icon:'⚠️', sort: 0,
-          head: `${st.length} crew on a dropped date`, when: '',
-          body: `${pk.clientName || '—'} — the event moved after they were assigned; they still hold ${[...new Set(st.map(a=>dmy(a.date)))].slice(0,2).join(', ')}`,
-          cta: 'Fix', act: 'pkg:' + pk.id });
-      });
-    }
-
-    /* ---- 5. jobs shot but not delivered ----
-       The bookings list shows "0/8 steps" without ever saying how long it has
-       read that. Age is the whole signal. */
-    booked.forEach(pk=>{
-      const ds = dated(pk); if(!ds.length) return;
-      const age = -dOut(ds[ds.length-1]);
-      if(age < 14) return;                       /* a fortnight is normal turnaround */
-      const di = deliveryInfo(pk);
-      if(di.doneCount >= di.total) return;
-      out.push({ sev: age >= 45 ? 'crit' : 'warn', icon:'📦', sort: -age,
-        head: 'Delivery stalled', when: when(-age),
-        body: `${pk.clientName || '—'} — ${di.doneCount}/${di.total} steps done${di.doneCount ? '' : ', nothing started'}`,
-        cta: 'Open', act: 'pkg:' + pk.id });
-    });
-
-    /* ---- 6. crew waiting on their money ----
-       One row, not one per shooter: this is a single trip to the Pay section. */
-    if(_asgsLoaded){
-      const owed = ASGS.filter(a=>payDue(a) > 0 && ISO_RE.test(a.date||'') && dOut(a.date) <= -30);
-      if(owed.length){
-        const tot = owed.reduce((s,a)=>s + payDue(a), 0);
-        const who = [...new Set(owed.map(a=>a.memberName || '—'))];
-        out.push({ sev:'warn', icon:'💸', sort: Math.min(...owed.map(a=>dOut(a.date))),
-          head: 'Crew pay overdue', when: when(Math.min(...owed.map(a=>dOut(a.date)))),
-          body: `${inr(tot)} to ${who.slice(0,3).join(', ')}${who.length > 3 ? ` +${who.length-3} more` : ''}`,
-          cta: 'Pay', act: 'pay' });
-      }
-    }
-
-    /* ---- 7. quotes that have gone quiet ----
-       Individual rows on purpose, each with its own WhatsApp: chasing four
-       quotes is four different conversations, not one errand. */
-    livePkgs().filter(x=>(x.status||'draft') === 'sent').map(x=>{
-      const since = x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt);
-      return { x, days: daysAgo(since) };
-    }).filter(r=>r.days != null && r.days >= 3)
-      .sort((a,b)=>b.days - a.days).slice(0, 6)
-      .forEach(r=>out.push({ sev: r.days >= 7 ? 'warn' : 'info', icon:'📤', sort: -r.days,
-        head: 'Quote sent, no reply', when: `${r.days} days ago`,
-        body: `${r.x.clientName || '—'}${r.x.quoteNo ? ' · ' + r.x.quoteNo : ''} — ${inr((r.x.totals||{}).finalPrice || 0)}`,
-        cta: r.x.clientPhone ? 'WhatsApp' : 'Open',
-        act: r.x.clientPhone ? 'wa:' + r.x.id : 'pkg:' + r.x.id }));
-
-    /* ---- 8. quotes parked "not confirmed" whose date is arriving ----
-       Parking one takes it out of the follow-up list by design. That is right
-       until the date is close enough that the answer can no longer wait. */
-    livePkgs().filter(x=>(x.status||'draft') === 'unconfirmed').forEach(pk=>{
-      const next = dated(pk).find(d=>d >= today); if(!next) return;
-      const n = dOut(next);
-      if(n > 21) return;
-      out.push({ sev: n <= 7 ? 'warn' : 'info', icon:'❓', sort: n,
-        head: 'On hold, date approaching', when: when(n),
-        body: `${pk.clientName || '—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''} — confirm it or release the date`,
-        cta: 'Decide', act: 'pkg:' + pk.id });
-    });
-
-    /* ---- 9. enquiries nobody has replied to ----
-       One row for the pile with the oldest named: the job is "work the new
-       list", and a row per lead would swamp everything above it. */
-    const cold = liveLeads().filter(l=>(l.status||'new') === 'new').map(l=>({
-      l, d: (l.createdAt && l.createdAt.toDate) ? Math.floor((Date.now() - l.createdAt.toDate().getTime()) / 864e5) : null
-    })).filter(r=>r.d != null && r.d >= 2).sort((a,b)=>b.d - a.d);
-    if(cold.length){
-      out.push({ sev: cold[0].d >= 5 ? 'warn' : 'info', icon:'👥', sort: -cold[0].d,
-        head: `${cold.length} enquir${cold.length === 1 ? 'y' : 'ies'} unanswered`, when: `${cold[0].d} days ago`,
-        body: `Oldest — ${cold[0].l.name || '—'}${cold[0].l.eventType ? ' · ' + cold[0].l.eventType : ''}`,
-        cta: 'Open', act: 'leads:new' });
-    }
-
-    /* ---- 10. the same person enquiring twice ----
-       The lead list marks these with a pill, which only helps once you are
-       already reading that card. Quoting a client you are mid-conversation
-       with — at a different price — is the expensive version of this mistake. */
-    const byPhone = {};
-    liveLeads().forEach(l=>{
-      const p = normPhone(l.phone);
-      if(p.length === 10) (byPhone[p] = byPhone[p] || []).push(l);
-    });
-    const dups = Object.values(byPhone).filter(g=>g.length > 1 && g.some(l=>(l.status||'new') === 'new'));
-    if(dups.length){
-      const names = dups.map(g=>g[0].name || '—');
-      out.push({ sev:'info', icon:'🔁', sort: 0,
-        head: `${dups.length} repeat enquir${dups.length === 1 ? 'y' : 'ies'}`, when: '',
-        body: `${names.slice(0,3).join(', ')}${names.length > 3 ? ` +${names.length-3} more` : ''} — a number you have quoted before; check the old price first`,
-        cta: 'Open', act: 'leads:' });
-    }
-
-    /* crit before warn before info; inside a band, whatever is furthest
-       overdue or soonest due comes first (overdue rows carry a negative
-       sort, so they lead their band). */
-    const RANK = { crit:0, warn:1, info:2 };
-    return out.sort((a,b)=>(RANK[a.sev] - RANK[b.sev]) || (a.sort - b.sort));
-  }
-
-  function renderBrief(){
-    const el = $('#brief'); if(!el) return;
-    /* Before the first snapshot lands every rule sees an empty studio and
-       finds nothing wrong — which is indistinguishable from a clean morning.
-       Say nothing until there is something to have judged. */
-    if(!_pkgsLoaded && !_leadsLoaded){ el.hidden = true; return; }
-    const items = briefItems();
-    el.hidden = !items.length;
-    if(!items.length) return;
-    const crit = items.filter(i=>i.sev === 'crit').length;
-    /* Three rows is about a thumb's worth before the calendar is pushed off
-       screen. The rest are one tap away and stay open once opened. */
-    const shown = _briefAll ? items : items.slice(0, 3);
-    const more = items.length - shown.length;
-    el.className = 'sec brief' + (crit ? ' has-crit' : '');
-    el.innerHTML = `
-      <h3>⚡ Needs attention
-        <b class="bf-n${crit ? ' crit' : ''}">${crit ? `${crit} urgent · ` : ''}${items.length}</b>
-      </h3>
-      ${shown.map(i=>`
-        <div class="bf-row ${i.sev}" data-bfact="${esc(i.act)}" role="button" tabindex="0">
-          <i class="bf-i">${i.icon}</i>
-          <div class="bf-m">
-            <b>${esc(i.head)}${i.when ? `<em class="bf-when">${esc(i.when)}</em>` : ''}</b>
-            <span>${esc(i.body)}</span>
-          </div>
-          <span class="bf-cta">${esc(i.cta)}</span>
-        </div>`).join('')}
-      ${more > 0 ? `<button class="upall" data-bfall type="button">＋ ${more} more to look at</button>` : ''}
-      ${_briefAll && items.length > 3 ? '<button class="upall" data-bfless type="button">− Show fewer</button>' : ''}`;
-  }
-
-  on('#brief', 'click', async e=>{
-    if(e.target.closest('[data-bfall]')){ _briefAll = true; renderBrief(); return; }
-    if(e.target.closest('[data-bfless]')){ _briefAll = false; renderBrief(); return; }
-    const row = e.target.closest('[data-bfact]'); if(!row) return;
-    const act = row.dataset.bfact || '';
-    const [kind, id] = [act.split(':')[0], act.slice(act.indexOf(':') + 1)];
-    buzz();
-    /* Every row lands on the screen that can actually fix it, with the filter
-       already set — a row that only says "something is wrong somewhere" costs
-       more attention than it saves. */
-    if(kind === 'nocrew' || kind === 'unconf'){
-      $('#tabTeam').click(); setTeamSeg('work');
-      _workFilter = kind; _teamTab = 'up';
-      viewSet('workTab', _teamTab);
-      renderTeamStats(); renderWorkTabs(); renderTeamEvents();
-      return;
-    }
-    if(kind === 'pay'){ $('#tabTeam').click(); setTeamSeg('pay'); return; }
-    if(kind === 'leads'){
-      $('#tabLeads').click();
-      leadFilterVal = id || '';
-      $('#leadSearch').value = '';
-      renderStats(); renderLeads();
-      return;
-    }
-    if(kind === 'pkg'){
-      const x = PKGS.find(p=>p.id === id); if(!x) return;
-      if(!canLeaveEditor()) return;
-      expandedPkg = x.id; pkgFilterVal = '';
-      $('#pkgSearch').value = x.quoteNo || x.clientName || '';
-      $('#tabPkgs').click(); renderPkgList();
-      return;
-    }
-    if(kind === 'wa'){
-      const x = PKGS.find(p=>p.id === id); if(!x) return;
-      /* the counter only resets if the message actually left — a blocked
-         popup used to look like a nudge sent */
-      if(!openWa(waLink(x, waFollowupText(x)))) return;
-      try{
-        await settle(updateDoc(doc(db,'packages',x.id), { sentAt: todayISO() }));
-        x.sentAt = todayISO();
-        renderBrief();
-      }catch(err){ toast('Update failed'); }
-    }
-  });
-
   function renderHome(){
-    renderBrief();
     renderPkgStats();
     renderUpcoming();
     renderHomeBooked();
@@ -2822,6 +2509,119 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     box:  ()=>$('#homeBooked'),
   });
 
+  /* ============================================================
+     WHAT TO WORK ON FIRST — ranking inside the package list
+     ------------------------------------------------------------
+     The list was ordered by status and, inside Booked, by next shoot date.
+     That answers "what is coming up", never "what is going wrong", so the
+     two things that actually cost the studio money were invisible in it:
+     a balance nobody is chasing, and a record nobody has touched in weeks.
+
+     Both are already on the package doc. This scores them, prints the reason
+     on the card, and lifts the worst offenders into their own group at the
+     top of the list.
+
+     The score is in arbitrary units — only the ORDER means anything. Money
+     is weighted by size but capped, so a ₹5L balance outranks a ₹20k one
+     without letting size alone beat lateness: a small debt on a delivered
+     job is still worse than a large one on a shoot that has not happened.
+     ============================================================ */
+  /* When anything last happened on this record. A sent quote is measured
+     from when it was sent, everything else from its last write — which is
+     what "no update" has to mean if a payment, an edit or a status change
+     is to count as work having been done. */
+  function pkgIdleDays(x){
+    const st = x.status||'draft';
+    const since = st === 'sent'
+      ? (x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt))
+      : (tsDate(x.updatedAt) || tsDate(x.createdAt));
+    return daysAgo(since);
+  }
+  /* Amber at 10 days, red at 20 — the point the owner named as "long enough
+     that I should have done something by now". */
+  const idleSev = d => d == null ? '' : d >= 20 ? 'hot' : d >= 10 ? 'warm' : '';
+
+  const PKG_ATTN_MIN = 55;   /* score at which a package is lifted to the top */
+  function pkgAttention(x){
+    const st = x.status||'draft';
+    const bal = Math.max(0, Number((x.totals||{}).balance)||0);
+    const idle = pkgIdleDays(x);
+    const today = todayISO();
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+    const last = ds.length ? ds[ds.length-1] : '';
+    const next = ds.find(d=>d >= today) || '';
+    const shot = !!last && last < today;
+    const dOut = d => Math.round((new Date(d+'T00:00') - new Date(today+'T00:00')) / 864e5);
+    const di = (st === 'booked' || st === 'delivered') ? deliveryInfo(x) : null;
+    const undelivered = st === 'booked' && shot && !!di && di.doneCount < di.total;
+    const R = [];
+
+    /* ---- money ---- */
+    const w = Math.min(45, bal / 20000);
+    if(bal > 0){
+      if(st === 'delivered')
+        R.push({ n: 110 + w, txt: 'Delivered · still unpaid', sev:'hot' });
+      else if(st === 'booked' && shot && !next)
+        R.push({ n: 85 + w, txt: 'Shot · balance due', sev:'hot' });
+      else if(st === 'booked' && next){
+        const n = dOut(next);
+        R.push(n <= 7
+          ? { n: 60 + w, txt: n <= 0 ? 'Shooting today · balance due' : `Collect before the shoot · ${n}d`, sev:'hot' }
+          : { n: 25 + w, txt: 'Balance outstanding', sev:'warm' });
+      }
+    }
+
+    /* ---- silence ----
+       Nothing having happened is only a problem when something was supposed
+       to happen. A booked job paid in full, with its shoot still ahead and
+       nothing yet to deliver, is not stale — it is finished being worked on
+       for now, and flagging it would teach the owner to distrust the list.
+       So silence is a REASON of its own only for a draft nobody finished or a
+       hold nobody resolved; everywhere else it merely sharpens a problem that
+       already exists. */
+    const counts = bal > 0 || undelivered || st === 'draft' || st === 'unconfirmed' || st === 'sent';
+    if(idle != null){
+      if(st === 'draft' && idle >= 14)
+        R.push({ n: 30 + Math.min(30, idle/2), txt: `Draft untouched ${idle} days`, sev: idle >= 30 ? 'hot' : 'warm' });
+      else if(st === 'unconfirmed' && idle >= 21)
+        R.push({ n: 35, txt: `On hold, no update in ${idle} days`, sev:'warm' });
+      else if(st !== 'sent' && (bal > 0 || undelivered)){
+        if(idle >= 45)      R.push({ n: 45, txt: `No update in ${idle} days`, sev:'hot' });
+        else if(idle >= 20) R.push({ n: 28, txt: `No update in ${idle} days`, sev:'hot' });
+        else if(idle >= 10) R.push({ n: 12, txt: `No update in ${idle} days`, sev:'warm' });
+      }
+    }
+
+    /* ---- a quote nobody has answered ----
+       Deliberately steep once it passes a week: three days of silence is a
+       client thinking it over, ten is a client drifting. The step puts the
+       lift point at ~10 days, which is where the staleness mark turns amber,
+       so the card and the group agree about when it became a problem. */
+    if(st === 'sent' && idle != null && idle >= 3)
+      R.push({ n: idle >= 7 ? 45 + Math.min(35, idle) : 20 + idle,
+               txt: `Sent ${idle}d ago, no reply`, sev: idle >= 20 ? 'hot' : 'warm' });
+
+    /* ---- parked, but the date is arriving ---- */
+    if(st === 'unconfirmed' && next){
+      const n = dOut(next);
+      if(n <= 21) R.push({ n: 55, txt: `On hold · date in ${n}d`, sev: n <= 7 ? 'hot' : 'warm' });
+    }
+
+    /* ---- shot, but nothing delivered ---- */
+    if(undelivered){
+      const age = -dOut(last);
+      if(age >= 14)
+        R.push({ n: 30 + Math.min(40, age/2), txt: `${di.doneCount}/${di.total} delivered · shot ${age}d ago`,
+                 sev: age >= 45 ? 'hot' : 'warm' });
+    }
+
+    const score = Math.round(R.reduce((s,r)=>s + r.n, 0));
+    /* one reason on the card, the heaviest — a card carrying four badges is
+       a card nobody reads */
+    const top = R.sort((a,b)=>b.n - a.n)[0];
+    return { score, why: top ? top.txt : '', sev: top ? top.sev : '', idle, counts };
+  }
+
   function pkgCardHTML(x, open){
     const st = x.status||'draft';
     const evn = (x.events||[]).length;
@@ -2836,7 +2636,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           : `<span class="card__amt" title="${inr(_fin)} — paid in full">${inrShort(_fin)}<em class="paidlbl">PAID</em></span>`)
       : `<span class="card__amt" title="${inr(_fin)}">${inrShort(_fin)}</span>`;
     const nd = st === 'booked' ? nextShootDate(x) : '';
-    const sentDays = st === 'sent' ? daysAgo(x.sentAt || tsDate(x.updatedAt) || tsDate(x.createdAt)) : null;
+    const at = pkgAttention(x);
+    /* The staleness pill. A sent quote is dated from when it went out (📤),
+       anything else from its last write (⏱). Below a week it is not stale, so
+       it is not shown at all — except on sent quotes, where the count has
+       always been on the card. A finished, fully-paid job is never stale. */
+    const idleShown = at.idle != null && at.idle >= 0
+      && (st === 'sent' || (at.idle >= 7 && !(st === 'delivered' && Math.max(0,Number(tt.balance)||0) <= 0)));
+    /* Coloured only when the silence is actually a problem. A paid booking
+       whose shoot is still ahead can sit untouched for months and be
+       perfectly healthy; painting that red would make red mean nothing. */
+    const idlePill = idleShown
+      ? `<span class="idle ${at.counts ? idleSev(at.idle) : ''}" title="${st === 'sent' ? 'Sent' : 'Last updated'} ${at.idle} day${at.idle===1?'':'s'} ago${at.counts ? '' : ' — nothing outstanding on it'}">${st === 'sent' ? '📤' : '⏱'} ${at.idle}d</span>`
+      : '';
     const track = (st === 'booked' || st === 'delivered');
     let prog = '';
     if(track){
@@ -2865,7 +2677,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  its size, and the end client last. A B2B row with a long
                  end-client name used to push the DATE off the card. */
               nd ? `📅 ${stepDate(nd)}` : '',
-              sentDays != null && sentDays >= 0 ? `📤 ${sentDays}d` : '',
+              idlePill,
               x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
               `${evn} event${evn===1?'':'s'}`,
               isStudioJob(x) && x.endClientName ? `for ${esc(x.endClientName)}` : ''
@@ -2873,6 +2685,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             ${amt}
           </span>
           ${prog}
+          ${at.score >= PKG_ATTN_MIN && at.why ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : ''}
           <span class="chev" aria-hidden="true">›</span>
         </button>
         <span class="card__side">
@@ -2898,7 +2711,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function pkgGrpsOpen(){
     if(!_pkgGrpsOpen){
       try{ _pkgGrpsOpen = JSON.parse(localStorage.getItem('fs_pkg_grps')||'null'); }catch(err){}
-      if(!_pkgGrpsOpen || typeof _pkgGrpsOpen !== 'object') _pkgGrpsOpen = { booked:true, sent:false, unconfirmed:false, draft:false, delivered:false };
+      if(!_pkgGrpsOpen || typeof _pkgGrpsOpen !== 'object') _pkgGrpsOpen = { needs:true, booked:true, sent:false, unconfirmed:false, draft:false, delivered:false };
+      if(!('needs' in _pkgGrpsOpen)) _pkgGrpsOpen.needs = true;   /* devices that stored this map before the worklist existed */
     }
     return _pkgGrpsOpen;
   }
@@ -2967,14 +2781,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!f && !q){
       const GRPS = [['booked','Booked'], ['sent','Sent — awaiting reply'], ['unconfirmed','Not confirmed — on hold'], ['draft','Drafts'], ['delivered','Delivered']];
       const open = pkgGrpsOpen();
-      $('#pkgList').innerHTML = GRPS.map(([s, lab])=>{
-        let grp = list.filter(x=>(x.status||'draft')===s);
-        if(!grp.length) return '';
-        if(s === 'booked') grp = [...grp].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
-        const isOpen = !!open[s];
-        return `<div class="grp tog ${isOpen?'':'closed'}" data-grp="${s}" role="button" tabindex="0" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${grp.length}</b></div>`
-          + (isOpen ? grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '');
-      }).join('');
+      /* Anything scoring past the threshold is LIFTED OUT of its status group
+         rather than copied above it: the same package in two places is the
+         one thing guaranteed to make a list untrustworthy. Each card still
+         carries its own status pill, so nothing about where it sits in the
+         pipeline is lost, and the group counts below stay honest about what
+         is actually left under them. Capped, because a worklist of thirty is
+         not a worklist. */
+      const scored = new Map(list.map(x=>[x.id, pkgAttention(x)]));
+      const needs = list.filter(x=>scored.get(x.id).score >= PKG_ATTN_MIN)
+        .sort((a,b)=>scored.get(b.id).score - scored.get(a.id).score)
+        .slice(0, 8);
+      const lifted = new Set(needs.map(x=>x.id));
+      const nOpen = open.needs !== false;   /* the worklist defaults to open */
+      const head = (key, lab, n, isOpen, cls='') =>
+        `<div class="grp tog ${cls} ${isOpen?'':'closed'}" data-grp="${key}" role="button" tabindex="0" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${n}</b></div>`;
+      $('#pkgList').innerHTML =
+        (needs.length
+          ? head('needs', '⚠️ Work on these first', needs.length, nOpen, 'needs')
+            + (nOpen ? needs.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '')
+          : '')
+        + GRPS.map(([s, lab])=>{
+            let grp = list.filter(x=>(x.status||'draft')===s && !lifted.has(x.id));
+            if(!grp.length) return '';
+            if(s === 'booked') grp = [...grp].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+            const isOpen = !!open[s];
+            return head(s, lab, grp.length, isOpen)
+              + (isOpen ? grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '');
+          }).join('');
       return;
     }
     $('#pkgList').innerHTML = list.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('');
@@ -3847,7 +3681,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           syncStudioCrew();   /* partner portal reads crew off the package doc */
           renderTeam();
           renderPkgStats();   /* the crew-pay tile on Home reads these */
-          renderBrief();      /* four of its rules read crew — assigning one must clear its row */
           if($('#finModal').classList.contains('open')) renderFin();
           if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
         }, err=>{
@@ -5542,7 +5375,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          summary would be a lie — the owner has handed over cash and needs to
          know which shoots it was recorded against. */
       if(!n){ toast('Nothing was recorded — ' + (failed ? 'the server refused the writes' : 'no shoot had a balance')); return; }
-      renderTeam(); renderPkgStats(); renderBrief(); buzz();
+      renderTeam(); renderPkgStats(); buzz();
       const stillOwed = dueRowsFor(mid).reduce((s,a)=>s + payDue(a), 0);
       toast(failed
         ? `${inr(paid)} recorded across ${n} shoot${n===1?'':'s'} — ${failed} could not be saved, ${inr(stillOwed)} still shows as owed`
@@ -5691,7 +5524,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `${inr(amount)} (${mode}) to ${a.memberName||'crew'} recorded — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`);
       a.pay = pay;
       buzz();
-      renderTeam(); renderPkgStats(); renderBrief();
+      renderTeam(); renderPkgStats();
       if(_cpId === id) closeCrewPay();   /* only close the sheet this write belongs to */
     }catch(err){ toast('Could not save that payment: ' + (err.message||err.code||'no signal')); }
     finally{ btn.disabled = false; }
@@ -5726,7 +5559,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* only refresh the sheet if it is still this assignment's — the snapshot
          may have re-rendered and the owner moved on while the write was away */
       if(_cpId === a.id) openCrewPay(a);
-      renderTeam(); renderPkgStats(); renderBrief();
+      renderTeam(); renderPkgStats();
       toast('Payment removed — balance updated');
     }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
   });
