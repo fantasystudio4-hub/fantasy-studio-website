@@ -1984,13 +1984,55 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(pi.paid) done[B2B_PAID_STEP] = pi.date;
     }
     const doneCount = steps.filter(s=>s in done).length;
-    return { steps, done, doneCount, total: steps.length, pct: steps.length ? Math.round(100*doneCount/steps.length) : 0 };
+    /* ---- the workflow dimension ----
+       The tracker was eleven equal checkboxes: complete, and silent about the
+       only two questions the owner actually has in front of a booked job —
+       what do I do next, and how long has it been sitting there.
+
+       `now` is the first un-ticked step and `next` the one after it, which is
+       exactly the vocabulary the client portal already shows the client. The
+       two screens now say the same words about the same job, so "where are we?"
+       has one answer instead of two.
+
+       `since` is measured from the last thing that actually happened: the most
+       recent completed step, or the final shoot day when nothing has been
+       ticked yet. That is what makes a job stuck for six weeks look different
+       from one shot on Tuesday, which the bare "0/8" never could. */
+    const now  = steps.find(s=>!(s in done)) || '';
+    const nxt  = now ? steps[steps.indexOf(now) + 1] || '' : '';
+    const dates = Object.values(done).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    const lastDone = dates.length ? dates[dates.length - 1] : '';
+    const lastEvent = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort().pop() || '';
+    /* nothing to measure until the shoot has actually happened — a job booked
+       for November is not "stalled" in September */
+    const anchor = lastDone || (lastEvent && lastEvent < todayISO() ? lastEvent : '');
+    const since = anchor ? daysAgo(anchor) : null;
+    return { steps, done, doneCount, total: steps.length,
+             pct: steps.length ? Math.round(100*doneCount/steps.length) : 0,
+             now, next: nxt, lastDone, since };
   }
   function trackerHTML(x){
     const di = deliveryInfo(x);
+    const st = x.status||'draft';
+    /* The pipeline had no front. Eleven identical rows meant finding the next
+       job on a package was a scan every single time, and on a phone the step
+       you wanted was usually below the fold. The current step is lifted out,
+       named, timed and given the one button that moves the job along. */
+    const head = (st === 'booked' && di.now)
+      ? `<div class="dt-now${di.since != null && di.since >= 20 ? ' late' : di.since != null && di.since >= 10 ? ' slow' : ''}">
+           <div class="dtn-t">
+             <span class="dtn-k">Now</span>
+             <b>${esc(di.now)}</b>
+             ${di.since != null ? `<em>${di.since === 0 ? 'since today' : `${di.since} day${di.since===1?'':'s'} on this step`}</em>` : ''}
+           </div>
+           <button type="button" class="btn btn--sm btn--primary" data-tstep data-name="${esc(di.now)}">✓ Done</button>
+           ${di.next ? `<span class="dtn-n">Then: ${esc(di.next)}</span>` : '<span class="dtn-n">Last step — the package closes after this.</span>'}
+         </div>`
+      : '';
     return `
     <div class="dtrack">
       <div class="dt-head"><span>Delivery</span><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b></div>
+      ${head}
       ${di.steps.map(s=>{
         const d = (s in di.done);
         if(s === B2B_PAID_STEP){
@@ -2001,7 +2043,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                        title="Ticks itself when the balance reaches zero"><i>✓</i><span>${esc(s)}</span><em>${
             d ? stepDate(di.done[s]) : (bal ? inr(bal) + ' due' : '—')}</em></div>`;
         }
-        return `<div class="dstep ${d?'done':''}" data-tstep data-name="${esc(s)}"><i>✓</i><span>${esc(s)}</span><em>${d?stepDate(di.done[s]):''}</em></div>`;
+        /* Ahead of the current step, not blocked: a shoot where the album came
+           back before the video is perfectly normal, and a tracker that
+           refuses the tick would just get worked around. Dimmed, not disabled. */
+        const cur = !d && s === di.now && st === 'booked';
+        const ahead = !d && !cur;
+        return `<div class="dstep ${d?'done':''}${cur?' cur':''}${ahead?' ahead':''}" data-tstep data-name="${esc(s)}"><i>✓</i><span>${esc(s)}</span><em>${d?stepDate(di.done[s]):''}</em></div>`;
       }).join('')}
     </div>`;
   }
@@ -2650,12 +2697,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? `<span class="idle ${at.counts ? idleSev(at.idle) : ''}" title="${st === 'sent' ? 'Sent' : 'Last updated'} ${at.idle} day${at.idle===1?'':'s'} ago${at.counts ? '' : ' — nothing outstanding on it'}">${st === 'sent' ? '📤' : '⏱'} ${at.idle}d</span>`
       : '';
     const track = (st === 'booked' || st === 'delivered');
-    let prog = '';
+    let prog = '', nowLine = '';
     if(track){
       const di = deliveryInfo(x);
       prog = st === 'delivered'
         ? `<div class="dl3">${di.doneCount ? `<span class="dprog"><i style="width:${di.pct}%"></i></span>` : ''}<b class="dv">✓ Delivered${x.deliveredAt ? ' ' + stepDate(x.deliveredAt) : ''}</b></div>`
         : `<div class="dl3"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total} steps</b></div>`;
+      /* "0/8 steps" told the owner how much was left and never what it was.
+         Naming the next action turns the list into a to-do list — and the
+         days beside it are how long that action has been waiting, which is
+         the difference between a job in progress and a job forgotten. */
+      if(st === 'booked' && di.now)
+        nowLine = `<span class="dnow">Now: <b>${esc(di.now)}</b>${
+          di.since != null && di.since >= 7 ? `<em class="${idleSev(di.since)}">${di.since}d</em>` : ''}</span>`;
     }
     /* The status control moved out of .pkg-acts and into the card head, where
        Clients keeps it too. .pkg-acts is hidden until the card is expanded, so
@@ -2685,6 +2739,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             ${amt}
           </span>
           ${prog}
+          ${nowLine}
           ${at.score >= PKG_ATTN_MIN && at.why ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : ''}
           <span class="chev" aria-hidden="true">›</span>
         </button>
@@ -7062,6 +7117,36 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              direct, partner, partners, repeats };
   }
 
+  /* ---- how long delivery actually takes this studio ----
+     Every completed step already stores its date, and nothing had ever read
+     them back. Measured from the last shoot day to each step, across finished
+     jobs, this is the studio's real turnaround — the number to quote a client
+     asking "when will we get the album", instead of a guess.
+
+     Medians, not means: one job that sat for eight months while a client
+     never sent their album selection would drag an average into fiction.
+     Anything with fewer than three finished examples reports no figure at
+     all rather than a confident number drawn from one job. */
+  function deliveryPace(){
+    const per = {};
+    livePkgs().filter(x=>(x.status||'draft') === 'delivered' && !isStudioJob(x)).forEach(x=>{
+      const evs = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+      const shot = evs.length ? evs[evs.length - 1] : '';
+      if(!shot) return;
+      const done = {};
+      (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step && ISO_RE.test(d.date||'')) done[d.step] = d.date; });
+      Object.entries(done).forEach(([step, d])=>{
+        const days = Math.round((new Date(d+'T00:00') - new Date(shot+'T00:00')) / 864e5);
+        if(days >= 0 && days < 730) (per[step] = per[step] || []).push(days);
+      });
+    });
+    const med = a => { const v = [...a].sort((p,q)=>p-q); return v[Math.floor(v.length/2)]; };
+    /* reported in the configured step ORDER, because the useful reading is
+       where the pipeline slows down, not which step is slowest overall */
+    return dSteps().filter(st=>(per[st]||[]).length >= 3)
+      .map(st=>({ step: st, days: med(per[st]), n: per[st].length }));
+  }
+
   function openIns(){
     renderIns();
     const wasOpen = $('#insModal').classList.contains('open');
@@ -7155,6 +7240,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       ${d.discounted.length ? `<div class="insnote">${d.discounted.length} of ${d.won.length} booked jobs carried a discount, averaging <b>${d.discPct.toFixed(1)}%</b> off the rate card.</div>` : ''}
       ${d.medReply == null ? '<div class="insnote">Enquiry → quote needs leads that were converted from the panel; none in this window carry the link.</div>' : ''}
+
+      <div class="finh">How long delivery takes you</div>
+      ${(()=>{
+        const pace = deliveryPace();
+        if(!pace.length) return `<div class="empty" style="padding:.5rem 0">Not enough finished jobs yet — a step needs three completed examples before its typical time means anything.</div>`;
+        const mx = Math.max(...pace.map(p=>p.days), 1);
+        /* the gap between one step and the previous is where time actually
+           goes; the cumulative figure alone hides a stage that eats a month */
+        let prev = 0;
+        return pace.map(p=>{
+          const gap = Math.max(0, p.days - prev); prev = p.days;
+          return bar(`${esc(p.step)} <em>+${gap}d on this stage</em>`,
+                     `${p.days}d`, p.days / mx, 'gold');
+        }).join('')
+        + `<div class="insnote">Median days from the last shoot day, across ${_insAll ? 'every' : 'this window\u2019s'} finished job — so <b>${pace[pace.length-1].days} days</b> is what a client asking "when will it all be ready?" should actually be told. Steps with fewer than three finished examples are left out.</div>`;
+      })()}
 
       <div class="finh">Direct vs partner</div>
       ${(d.direct + d.partner) ? bar('💍 Direct clients', money(d.direct), d.direct / Math.max(d.direct, d.partner), 'gold')

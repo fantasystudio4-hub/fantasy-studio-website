@@ -220,6 +220,35 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dstep em{margin-left:auto;font-style:normal;font-size:var(--fs-sm);color:var(--mut);opacity:.85;white-space:nowrap}
 .dstep.done{color:var(--text)}
 .dstep.done i{background:var(--ok);border-color:var(--ok);color:var(--white)}
+/* ---- the current step, lifted out of the list ----------------------
+   Same "Now / Then" wording the client portal shows the client, so when they
+   ask where things are, the owner is reading the same two lines they are. */
+.dt-now{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem .7rem;
+        margin:.15rem 0 .55rem;padding:.55rem .7rem;border-radius:var(--r-md);
+        border:1px solid var(--line-2);background:var(--gold-t1)}
+.dt-now.slow{border-color:var(--state-pending-ln);background:var(--state-pending-bg)}
+.dt-now.late{border-color:var(--state-overdue-ln);background:var(--state-overdue-bg)}
+.dtn-t{grid-column:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .5rem}
+.dtn-k{font-size:var(--fs-2xs);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);
+       border:1px solid var(--line-2);border-radius:var(--r-pill);padding:.1em .5em}
+.dt-now.slow .dtn-k{color:var(--state-pending);border-color:var(--state-pending-ln)}
+.dt-now.late .dtn-k{color:var(--state-overdue);border-color:var(--state-overdue-ln)}
+.dtn-t b{font-size:var(--fs-base);color:var(--text);font-weight:600;overflow-wrap:anywhere}
+.dtn-t em{font-style:normal;font-size:var(--fs-sm);color:var(--mut);flex-basis:100%}
+.dt-now.late .dtn-t em{color:var(--state-overdue)}
+.dt-now .btn{grid-column:2;grid-row:1;margin-top:0;white-space:nowrap}
+.dtn-n{grid-column:1 / -1;font-size:var(--fs-sm);color:var(--mut)}
+/* Ahead of the current step — dimmed so the eye lands on what is actionable,
+   but still tappable: an album that comes back before the video is normal. */
+.dstep.ahead{opacity:.55}
+.dstep.cur{background:var(--gold-t1)}
+.dstep.cur i{border-color:var(--gold-b)}
+/* the card's one-line answer to "what happens next on this job" */
+.dnow{grid-column:1;display:flex;align-items:baseline;gap:.4rem;flex-wrap:wrap;margin-top:.2rem;font-size:var(--fs-sm);color:var(--mut)}
+.dnow b{color:var(--gold-b);font-weight:600}
+.dnow em{font-style:normal;font-weight:600;font-size:var(--fs-xs);border-radius:var(--r-pill);padding:.06em .5em}
+.dnow em.warm{color:var(--state-pending);background:var(--state-pending-bg);box-shadow:inset 0 0 0 1px var(--state-pending-ln)}
+.dnow em.hot{color:var(--state-overdue);background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln)}
 @media(hover:hover){ .dstep:hover{background:var(--white-t2)} .dstep:hover i{border-color:var(--gold)} }
 
 /* offline chip + forgot password + undo toast */
@@ -1180,6 +1209,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    for: the delivery progress bar. */
 #pkgList .card__toggle .l2 .card__amt,#homeBooked .card__toggle .l2 .card__amt{margin-left:auto}
 #pkgList .card__meta b.qno,#homeBooked .card__meta b.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em;white-space:nowrap}
+/* The staleness pill costs the meta about a pill's width, which pushed the
+   event count past a two-line clamp and left cards ending in "1…". A third
+   line only materialises on the cards that actually need one. */
+#pkgList .card__meta{-webkit-line-clamp:3}
 /* ---- what to work on first -------------------------------------------
    The staleness pill. It reads plainly under ten days, goes amber at ten and
    red at twenty — the point past which nothing having happened is itself the

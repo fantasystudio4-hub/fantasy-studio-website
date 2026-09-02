@@ -16,6 +16,7 @@
      · an overpaid package, so the money tiles go negative somewhere
      · a DELIVERED package still carrying a balance — the album is gone and the
        money is not in, which is a different alarm from an unpaid booking
+     · a job STALLED mid-delivery: all shot, part delivered, nothing moving
      · a B2B white-label job, and a B2B job with an end-client name
      · an event with no venue, and a lead with no wedding date
      · a shoot TODAY and one TOMORROW, so Home's next-shoot block populates
@@ -65,7 +66,9 @@ export const packages = [
     totals: money(310000, 200000),
     payments: [pay(150000, 44, 'UPI', 'advance on booking — GPay from her father'),
                pay(50000, 6, 'Bank transfer')],   /* one with a note, one without */
-    delivery: [{ step: 'RAW handover', date: iso(-2) }, { step: 'Photo selection', date: iso(-1) }],
+    /* nothing ticked: its last function is TOMORROW. "Now: All events shot" is
+       the correct next action and the tracker should say exactly that. */
+    delivery: [],
   },
   {
     /* the long-name case: 39 characters, and four functions on ONE date */
@@ -105,7 +108,10 @@ export const packages = [
     ],
     totals: money(495000, 495000),   /* fully paid: the PAID badge, ₹0 balance */
     payments: [pay(250000, 115, 'Bank transfer'), pay(245000, 21, 'UPI')],
-    delivery: [{ step: 'RAW handover', date: iso(-30) }],
+    /* five of its six functions are still ahead, so the pipeline has not
+       started and cannot have: a job whose events run to next year is not
+       "behind", and the workflow must not call it that */
+    delivery: [],
   },
   {
     /* B2B, white-label */
@@ -134,10 +140,12 @@ export const packages = [
     totals: { gross: 145000, discount: 5000, finalPrice: 140000, advance: 145000, balance: -5000 },
     payments: [pay(70000, 140, 'UPI'),
                pay(75000, 30, 'Cash', 'collected at the studio office, receipt 114 — this one is deliberately long enough to wrap')],
+    /* a studio job runs the SHORT b2b flow, not the retail one — three steps
+       plus the derived "Amount fully paid" */
     delivery: [
-      { step: 'RAW handover', date: iso(-40) }, { step: 'Photo selection', date: iso(-30) },
-      { step: 'Album design', date: iso(-20) }, { step: 'Album print', date: iso(-14) },
-      { step: 'Final delivery', date: iso(-12) },
+      { step: 'All events shot', date: iso(-58) },
+      { step: 'Data ready to collect from office', date: iso(-40) },
+      { step: 'Data delivered — job closed', date: iso(-12) },
     ],
   },
   {
@@ -187,10 +195,37 @@ export const packages = [
                items: shoot([['Photography', 2, 18000], ['Cinematography', 1, 25000]]) }],
     totals: money(265000, 265000),
     payments: [pay(130000, 195, 'Bank transfer'), pay(135000, 60, 'Bank transfer')],
+    /* a complete run in the panel's own step vocabulary — this is what the
+       turnaround maths reads to learn how long the studio actually takes */
     delivery: [
-      { step: 'RAW handover', date: iso(-80) }, { step: 'Photo selection', date: iso(-70) },
-      { step: 'Album design', date: iso(-60) }, { step: 'Album print', date: iso(-50) },
-      { step: 'Final delivery', date: iso(-45) },
+      { step: 'All events shot', date: iso(-90) }, { step: 'Photo pendrive ready', date: iso(-78) },
+      { step: 'Photo pendrive delivered', date: iso(-74) }, { step: 'Cinematic teasers ready', date: iso(-70) },
+      { step: 'Video editing details received', date: iso(-66) }, { step: 'Video edited', date: iso(-58) },
+      { step: 'Video delivered', date: iso(-54) }, { step: 'Album selection received', date: iso(-52) },
+      { step: 'Album designed', date: iso(-49) }, { step: 'Album delivered', date: iso(-46) },
+      { step: 'All delivered — package closed', date: iso(-45) },
+    ],
+  },
+  {
+    /* STALLED mid-pipeline: every event shot seven weeks ago, three steps done
+       and nothing since. This is the case the delivery workflow exists for —
+       and the one no fixture covered, so the "shot but nothing delivered"
+       scoring rule had never once fired. Paid in full on purpose: the only
+       thing wrong with this job is that it has stopped moving. */
+    id: 'pk14', quoteNo: 'FS-2026-033', clientName: 'Divya & Karthik', clientPhone: '9701445566',
+    clientType: 'direct', status: 'booked', createdAt: ts(140),
+    events: [
+      { date: iso(-50), title: 'Haldi', slot: 'morning', venue: 'Taj Deccan',
+        items: shoot([['Photography', 2, 18000]]) },
+      { date: iso(-49), title: 'Wedding', slot: 'morning', venue: 'Taj Deccan',
+        items: shoot([['Photography', 3, 18000], ['Cinematography', 2, 25000]]) },
+    ],
+    totals: money(285000, 285000),
+    payments: [pay(150000, 130, 'Bank transfer'), pay(135000, 55, 'UPI')],
+    delivery: [
+      { step: 'All events shot', date: iso(-49) },
+      { step: 'Photo pendrive ready', date: iso(-44) },
+      { step: 'Photo pendrive delivered', date: iso(-40) },
     ],
   },
   {
@@ -206,9 +241,35 @@ export const packages = [
     totals: money(215000, 90000),
     payments: [pay(90000, 150, 'Bank transfer')],
     delivery: [
-      { step: 'RAW handover', date: iso(-44) }, { step: 'Photo selection', date: iso(-36) },
-      { step: 'Album design', date: iso(-28) }, { step: 'Album print', date: iso(-24) },
-      { step: 'Final delivery', date: iso(-20) },
+      { step: 'All events shot', date: iso(-52) }, { step: 'Photo pendrive ready', date: iso(-42) },
+      { step: 'Photo pendrive delivered', date: iso(-38) }, { step: 'Cinematic teasers ready', date: iso(-34) },
+      { step: 'Video editing details received', date: iso(-31) }, { step: 'Video edited', date: iso(-25) },
+      { step: 'Video delivered', date: iso(-23) }, { step: 'Album selection received', date: iso(-22) },
+      { step: 'Album designed', date: iso(-21) }, { step: 'Album delivered', date: iso(-20) },
+      { step: 'All delivered — package closed', date: iso(-20) },
+    ],
+  },
+  {
+    /* The THIRD finished retail job, and the reason it exists: turnaround
+       medians need three completed examples per step before they mean
+       anything, so with only two the Insights pace section could never render
+       its bars. Deliberately slower than the other two — a median drawn from
+       three identical runs would prove nothing about the maths. */
+    id: 'pk15', quoteNo: 'FS-2026-012', clientName: 'Sruthi & Manoj', clientPhone: '9848778899',
+    clientType: 'direct', status: 'delivered', createdAt: ts(250), deliveredAt: iso(-70),
+    events: [
+      { date: iso(-150), title: 'Wedding', slot: 'morning', venue: 'Ramoji Film City',
+        items: shoot([['Photography', 3, 18000], ['Cinematography', 2, 25000]]) },
+    ],
+    totals: money(330000, 330000),
+    payments: [pay(180000, 240, 'Bank transfer'), pay(150000, 90, 'UPI')],
+    delivery: [
+      { step: 'All events shot', date: iso(-150) }, { step: 'Photo pendrive ready', date: iso(-132) },
+      { step: 'Photo pendrive delivered', date: iso(-128) }, { step: 'Cinematic teasers ready', date: iso(-120) },
+      { step: 'Video editing details received', date: iso(-104) }, { step: 'Video edited', date: iso(-92) },
+      { step: 'Video delivered', date: iso(-88) }, { step: 'Album selection received', date: iso(-80) },
+      { step: 'Album designed', date: iso(-74) }, { step: 'Album delivered', date: iso(-71) },
+      { step: 'All delivered — package closed', date: iso(-70) },
     ],
   },
   {
