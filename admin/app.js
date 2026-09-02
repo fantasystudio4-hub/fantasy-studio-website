@@ -2626,8 +2626,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        So silence is a REASON of its own only for a draft nobody finished or a
        hold nobody resolved; everywhere else it merely sharpens a problem that
        already exists. */
-    const counts = bal > 0 || undelivered || st === 'draft' || st === 'unconfirmed' || st === 'sent';
-    if(idle != null){
+    /* A booking whose shoot is TODAY or still ahead cannot be stale, whatever
+       its last-write date says. The record was made when the client booked and
+       has sat correctly ever since — "no update in 88 days" on a wedding two
+       weeks away describes the calendar, not a problem, and marking it red
+       spends the loudest colour on the one thing that is going fine. Money and
+       crew still raise their own flags on these jobs; silence does not. */
+    const preShoot = (st === 'booked' || st === 'delivered') && !!next;
+    const counts = !preShoot && (bal > 0 || undelivered || st === 'draft' || st === 'unconfirmed' || st === 'sent');
+    if(idle != null && !preShoot){
       if(st === 'draft' && idle >= 14)
         R.push({ n: 30 + Math.min(30, idle/2), txt: `Draft untouched ${idle} days`, sev: idle >= 30 ? 'hot' : 'warm' });
       else if(st === 'unconfirmed' && idle >= 21)
@@ -2666,7 +2673,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* one reason on the card, the heaviest — a card carrying four badges is
        a card nobody reads */
     const top = R.sort((a,b)=>b.n - a.n)[0];
-    return { score, why: top ? top.txt : '', sev: top ? top.sev : '', idle, counts };
+    return { score, why: top ? top.txt : '', sev: top ? top.sev : '', idle, counts, preShoot };
   }
 
   function pkgCardHTML(x, open){
@@ -2688,7 +2695,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        anything else from its last write (⏱). Below a week it is not stale, so
        it is not shown at all — except on sent quotes, where the count has
        always been on the card. A finished, fully-paid job is never stale. */
-    const idleShown = at.idle != null && at.idle >= 0
+    const idleShown = at.idle != null && at.idle >= 0 && !at.preShoot
       && (st === 'sent' || (at.idle >= 7 && !(st === 'delivered' && Math.max(0,Number(tt.balance)||0) <= 0)));
     /* Coloured only when the silence is actually a problem. A paid booking
        whose shoot is still ahead can sit untouched for months and be
