@@ -122,11 +122,62 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .pkg{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:.9rem;overflow:hidden}
 .pkg-h{display:flex;align-items:center;gap:.5rem;padding:.85rem 1rem;cursor:default;flex-wrap:wrap}
 .pkg.can-toggle .pkg-h{cursor:pointer}
-.pkg-h h3{font-family:var(--serif);font-size:1.02rem;flex:1;min-width:0;overflow-wrap:anywhere}
+.pkg-h .ph-t{flex:1;min-width:0}
+.pkg-h h3{font-family:var(--serif);font-size:1.02rem;min-width:0;overflow-wrap:anywhere}
+.ph-when{display:block;font-size:.74rem;color:var(--mut);margin-top:.12rem}
+.ph-n{display:inline-block;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+      color:var(--gold-b);border:1px solid rgba(226,194,117,.35);border-radius:20px;padding:.14em .58em;margin-bottom:.3rem}
+
+/* ---- where this job has got to ----------------------------------------
+   Confirmed · Shot · Ready to collect · Handed over. "Ready to collect" is
+   the one a partner is actually waiting on, so when a job reaches it the
+   whole block turns green rather than staying gold like every other state. */
+.stage{padding:.85rem 1rem;border-top:1px solid var(--line);background:linear-gradient(180deg,rgba(184,144,43,.07),transparent)}
+.stage.ready{background:linear-gradient(180deg,rgba(76,175,125,.14),transparent)}
+.stage-row{display:flex;align-items:flex-start}
+.stg{flex:1;min-width:0;position:relative;text-align:center}
+.stg i{display:block;width:12px;height:12px;margin:0 auto .35rem;border-radius:50%;
+       border:2px solid rgba(226,194,117,.3);background:var(--ink);position:relative;z-index:1}
+.stg::before{content:"";position:absolute;top:5px;left:-50%;width:100%;height:2px;background:rgba(226,194,117,.18)}
+.stg:first-child::before{display:none}
+.stg.past i,.stg.now i{border-color:var(--gold-b)}
+.stg.past i{background:var(--gold-b)}
+.stg.past::before,.stg.now::before{background:var(--gold-b)}
+.stg.now i{box-shadow:0 0 0 4px rgba(226,194,117,.16)}
+.stg.now i::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--gold-b);animation:pulse 1.6s infinite}
+.stage.ready .stg.past i,.stage.ready .stg.now i{border-color:var(--ok)}
+.stage.ready .stg.past i{background:var(--ok)}
+.stage.ready .stg.past::before,.stage.ready .stg.now::before{background:var(--ok)}
+.stage.ready .stg.now i{box-shadow:0 0 0 4px rgba(76,175,125,.18)}
+.stage.ready .stg.now i::after{background:var(--ok)}
+.stg span{font-size:.6rem;letter-spacing:.02em;color:var(--mut);display:block;line-height:1.25}
+.stg.now span{color:var(--gold-b);font-weight:600}
+.stage.ready .stg.now span{color:var(--ok)}
+.stg.past span{color:var(--text)}
+.stage-say{margin:.8rem 0 0;font-size:.84rem;color:var(--text);line-height:1.5}
+.stage-say b{color:var(--gold-b)}
+.stage.ready .stage-say b{color:var(--ok)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* one day on the ground, one call sheet, one drive out */
+.evday{display:inline-block;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+       color:var(--ink);background:var(--gold-b);border-radius:5px;padding:.12em .48em;margin-bottom:.28rem}
+.ev.past .evday{background:rgba(226,194,117,.35)}
+
+/* the itemisation and the receipts, out of the way until wanted */
+.brk{margin-top:.8rem;border-top:1px dashed var(--line);padding-top:.5rem}
+.brk summary{cursor:pointer;color:var(--gold-b);font-size:.78rem;list-style:none;min-height:44px;display:flex;align-items:center}
+.brk summary::-webkit-details-marker{display:none}
+.brk summary::before{content:"▾ ";display:inline-block;transition:transform .2s;margin-right:.35rem}
+.brk[open] summary::before{transform:rotate(180deg)}
+.brk-h{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin:.7rem 0 .25rem}
 .pkm{flex-basis:100%;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-width:0}
 .pkg-h .qno{font-size:.68rem;color:var(--mut);letter-spacing:.06em}
 .chev{color:var(--mut);transition:transform .2s;flex:none}
 .pkg.collapsed .chev{transform:rotate(-90deg)}
+/* Collapsing hides the .sec blocks and DELIBERATELY not the stage strip: a
+   partner with six jobs can then see which one is ready to collect without
+   opening a single card, which is the whole reason they open this page. */
 .pkg.collapsed .sec{display:none}
 .chip{font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:.16rem .55rem;border:1px solid;flex:none}
 .chip.sent{color:#7fb2e5;border-color:rgba(127,178,229,.45)}
@@ -134,8 +185,8 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .chip.booked{color:var(--ok);border-color:rgba(76,175,125,.45)}
 .chip.delivered{color:#9adbb2;border-color:rgba(154,219,178,.45)}
 .chip.wl{color:var(--gold-b);border-color:var(--line);text-transform:none;letter-spacing:.02em}
-.sums{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--line);cursor:pointer}
-.sums div{padding:.55rem .4rem;text-align:center}
+.sums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem;margin-bottom:.7rem}
+.sums div{padding:.5rem .3rem;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--ink)}
 .sums b{display:block;font-size:.92rem;color:var(--text);font-variant-numeric:tabular-nums}
 .sums span{font-size:.62rem;color:var(--mut);letter-spacing:.08em;text-transform:uppercase}
 .sums .due2 b{color:#e5b57f}
@@ -865,7 +916,46 @@ function deliverySection(x, st){
     </div>`;
 }
 
-function jobHTML(x, canToggle, collapsed){
+/* ---- where this job has got to, in the partner's own terms ----------------
+   Their three questions, in order: are the dates locked, has it been shot, and
+   IS THE DATA READY TO COLLECT. That last one is the whole reason the middle
+   delivery step exists — the comment on deliverySection() says partners used
+   to ring the office to ask it — and it was a tick in a list halfway down the
+   card. It gets a stage of its own and a sentence in plain words. */
+const B2B_STAGES = ['Confirmed', 'Shot', 'Ready to collect', 'Handed over'];
+function stageBlock(x, st, dayCount){
+  if(!CONFIRMED_ST.includes(st)) return '';
+  const done = {};
+  (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date || ''; });
+  const t = todayISO();
+  const ds = (x.events||[]).map(e=>e.date).filter(isDate).sort();
+  const shotAll = ds.length > 0 && ds[ds.length-1] < t;
+  /* the ticks are the authority where they exist; the calendar fills in before
+     anyone has ticked anything */
+  const idx = (st === 'delivered' || done[B2B_STEPS[2]]) ? 3
+            : done[B2B_STEPS[1]] ? 2
+            : (done[B2B_STEPS[0]] || shotAll) ? 1
+            : 0;
+  const next = ds.find(d=>d >= t) || '';
+  const days = next ? Math.round((new Date(next+'T00:00') - new Date(t+'T00:00'))/864e5) : null;
+  const say = idx === 3 ? 'Everything has been handed over. Thank you 🤝'
+    : idx === 2 ? '<b>Your data is ready to collect from our office.</b> Bring a drive, or call us to arrange it.'
+    : idx === 1 ? 'Shot and with our editors. We will tell you the moment the data is ready to collect.'
+    : days === 0 ? 'First shoot is today.'
+    /* "to the first shoot of 3" read as "shoot 1 of 3" — two separate facts,
+       so two separate sentences */
+    : days != null ? `Dates are locked in. ${days} day${days===1?'':'s'} to the first shoot.${dayCount > 1 ? ` It runs over ${dayCount} days.` : ''}`
+    : 'Confirmed. Dates to be finalised.';
+  return `<div class="stage${idx === 2 ? ' ready' : ''}">
+      <div class="stage-row">
+        ${B2B_STAGES.map((lab,i)=>`
+          <div class="stg ${i < idx ? 'past' : i === idx ? 'now' : ''}"><i></i><span>${lab}</span></div>`).join('')}
+      </div>
+      <p class="stage-say">${say}</p>
+    </div>`;
+}
+
+function jobHTML(x, canToggle, collapsed, idx, total){
   const st = x.status||'draft';
   const tt = x.totals||{};
   const paid = Math.max(0, Number(tt.advance)||0);
@@ -873,14 +963,31 @@ function jobHTML(x, canToggle, collapsed){
   const t = todayISO();
   const nextD = nextEventDate(x);
   const renderedCrew = new Set();
-  const evs = (x.events||[]).map(ev=>{
+  /* Events rendered in the order they happened to be typed into the panel, so
+     a three-day job whose reception was entered first listed 20 Dec above
+     18 Dec. A partner reads this as a schedule; a schedule out of order is
+     worse than no schedule. Sort by date, undated last. */
+  const _evsSorted = [...(x.events||[])].sort((a,b)=>{
+    const da = isDate(a.date) ? a.date : '9999-99-99';
+    const db = isDate(b.date) ? b.date : '9999-99-99';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+  /* Day numbers, shared by two functions on the same date — a morning wedding
+     and an evening reception are one day on the ground, one call sheet, one
+     drive out. */
+  const _dayNo = {};
+  [...new Set(_evsSorted.map(e=>e.date).filter(isDate))].sort().forEach((d,i)=>{ _dayNo[d] = i + 1; });
+  const _dayCount = Object.keys(_dayNo).length;
+  const evs = _evsSorted.map(ev=>{
     const dated = isDate(ev.date);
     const past = dated && ev.date < t;
     const isNext = dated && ev.date === nextD;
     const crew = crewFor(x, ev);
     crew.forEach(c=>renderedCrew.add(c));
+    const day = dated && _dayCount > 1 ? _dayNo[ev.date] : 0;
     return `
     <div class="ev ${past?'past':''} ${isNext?'next':''}">
+      ${day ? `<span class="evday">Day ${day}</span>` : ''}
       <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}${isNext ? `<span class="evtag">${ev.date === t ? 'today' : 'next up'}</span>` : ''}</b>
       <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
       ${(ev.items||[]).length ? `<ul>${(ev.items||[]).map(it=>`<li>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</li>`).join('')}</ul>` : ''}
@@ -889,45 +996,63 @@ function jobHTML(x, canToggle, collapsed){
   }).join('');
   const editors = (Array.isArray(x.crew) ? x.crew : []).filter(c=>c.kind === 'edit');
   const strays = (Array.isArray(x.crew) ? x.crew : []).filter(c=>c.kind !== 'edit' && !renderedCrew.has(c));
-  const pays = (x.payments||[]).length
-    ? `<div class="sec"><h4>Payments received</h4>${x.payments.map(pm=>
-        `<div class="payrow"><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
+  const _span = (()=>{
+    const ds = _evsSorted.map(e=>e.date).filter(isDate);
+    if(!ds.length) return 'Dates to be confirmed';
+    /* dmy() is 18-12-2026, which is a field in a form, not a date a person
+       reads across the top of a card */
+    const sh = d => new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    return ds[0] === ds[ds.length-1] ? human(ds[0])
+      : `${sh(ds[0])} – ${sh(ds[ds.length-1])} ${ds[ds.length-1].slice(0,4)}`;
+  })();
+  const pctPaid = Number(tt.finalPrice) > 0 ? Math.min(100, Math.round(100*paid/Number(tt.finalPrice))) : 0;
+  const hasBreak = Number(tt.gross) && Number(tt.discount);
   return `
   <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}" data-job="${esc(x.id)}">
     <div class="pkg-h" ${canToggle ? 'data-jobtoggle role="button" tabindex="0" aria-label="Show or hide this job"' : ''}>
-      <h3>${esc(jobLabel(x))}</h3>
+      <div class="ph-t">
+        ${total > 1 ? `<span class="ph-n">Job ${idx+1} of ${total}</span>` : ''}
+        <h3>${esc(jobLabel(x))}</h3>
+        <span class="ph-when">${esc(_span)}${_dayCount > 1 ? ` · ${_dayCount} days` : ''}</span>
+      </div>
       ${canToggle ? '<span class="chev">▾</span>' : ''}
       <span class="pkm">
-        <span class="qno">${esc(x.quoteNo||'')}</span>
         ${x.whiteLabel ? '<span class="chip wl" title="Delivered under your studio’s brand">🏷 white label</span>' : ''}
         <span class="chip ${esc(st)}">${esc(STATUS_LABEL(st))}</span>
       </span>
     </div>
-    <div class="sums" data-sums role="button" tabindex="0" aria-label="See pricing">
-      <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
-      <div><b>${inr(paid)}</b><span>paid</span></div>
-      <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0?'balance':'all clear'}</span></div>
-    </div>
-    <div class="sec"><h4>Events</h4>${evs || '<div class="evm">Details coming soon.</div>'}
+    ${stageBlock(x, st, _dayCount)}
+    <div class="sec"><h4>${_dayCount > 1 ? `Schedule · ${_dayCount} days` : 'Schedule'}</h4>${evs || '<div class="evm">Details coming soon.</div>'}
       ${editors.length ? `<div class="crewnote">🎬 Post-production: ${editors.map(c=>esc(c.name||'Editor')).join(', ')}</div>` : ''}
       ${strays.length ? `<div class="crewnote">Also on this job: ${strays.map(c=>esc(c.name) + (isDate(c.date) ? ' ('+dmy(c.date)+')' : '')).join(', ')}</div>` : ''}
     </div>
     ${deliverySection(x, st)}
     <div class="sec"><h4>Money</h4>
-      ${Number(tt.gross) && Number(tt.discount) ? `<div class="ln"><span>Job total</span><span>${inr(tt.gross)}</span></div>
-      <div class="ln"><span>Partner discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
-      <div class="ln big"><span>Final amount</span><span>${inr(tt.finalPrice||0)}</span></div>
-      <div class="ln"><span>Paid so far</span><span>${inr(paid)}</span></div>
-      <div class="ln due"><span>Balance</span><span>${inr(bal)}</span></div>
+      ${/* the three figures were printed as tiles, then again as a list, then
+            again as a percentage. Once, as tiles; the rest is in the fold. */''}
+      <div class="sums">
+        <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
+        <div><b>${inr(paid)}</b><span>paid</span></div>
+        <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0?'you owe':'all clear'}</span></div>
+      </div>
       ${Number(tt.finalPrice) > 0 ? `
-      <div class="paybar"><i style="width:${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}%"></i></div>
+      <div class="paybar"><i style="width:${pctPaid}%"></i></div>
       <div class="payleg">
-        <span><b>${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}% settled</b></span>
+        <span><b>${pctPaid}% settled</b></span>
         <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
       </div>` : ''}
       ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}">Pay ${inr(bal)} now</button>` : ''}
+      ${hasBreak || (x.payments||[]).length ? `
+      <details class="brk">
+        <summary>See the full breakdown</summary>
+        <div class="ln"><span>Quote</span><span>${esc(x.quoteNo||'—')}${x.quoteDate ? ' · ' + esc(dmy(x.quoteDate)) : ''}</span></div>
+        ${hasBreak ? `<div class="ln"><span>Job total</span><span>${inr(tt.gross)}</span></div>
+        <div class="ln"><span>Partner discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
+        <div class="ln big"><span>Final amount</span><span>${inr(tt.finalPrice||0)}</span></div>
+        ${(x.payments||[]).length ? `<div class="brk-h">Payments received</div>${x.payments.map(pm=>
+          `<div class="payrow"><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}` : ''}
+      </details>` : ''}
     </div>
-    ${pays}
   </div>`;
 }
 
@@ -956,9 +1081,9 @@ function renderJobs(jobs){
   const canToggle = ordered.length > 1;
   const multi = STUS.length > 1;
   box.innerHTML = warn + `<h2 class="secl">Your jobs <small>${ordered.length}</small></h2>` +
-    ordered.map(x=>{
+    ordered.map((x,i)=>{
       const head = multi ? `<div class="evm" style="margin-top:.7rem">${esc(x.studioName||'')}</div>` : '';
-      return head + jobHTML(x, canToggle, canToggle && !_openJobs.has(x.id));
+      return head + jobHTML(x, canToggle, canToggle && !_openJobs.has(x.id), i, ordered.length);
     }).join('');
 }
 
