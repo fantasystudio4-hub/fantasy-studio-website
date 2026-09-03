@@ -11,7 +11,20 @@ const WHITE = [255, 255, 255];
 const PAGE_W = 595.28, PAGE_H = 841.89;
 const OUTER = 28, INNER = 36;
 const ML = 52, MR = PAGE_W - 52;           // content margins
-const FOOTER_TOP = 758;                     // content must stay above this
+/* ---- the footer stack, derived from the frame ----
+   These were four hand-typed y values, and the last of them — the website —
+   sat at 808 while the inner frame's bottom rule runs at PAGE_H - INNER =
+   805.9. At 9pt the text's ink reached 809.9, so "www.fantasystudio.in"
+   printed straight THROUGH the border on every page of every quotation.
+   Positions now hang off the frame, so the two cannot drift into each other
+   again if either margin is ever touched. */
+const FRAME_BOT   = PAGE_H - INNER;         // 805.89 — inner frame's bottom rule
+const FOOT_BASE   = FRAME_BOT - 10;         // 795.89 — last baseline, clear of it
+const FOOT_PHONE  = FOOT_BASE - 12;
+const FOOT_NAME   = FOOT_BASE - 25;
+const FOOT_PAGENO = FOOT_BASE - 28;         // outer edges, beside the studio name
+const FOOT_FLOUR  = FOOT_BASE - 40;
+const FOOTER_TOP  = FOOT_FLOUR - 8;         // content must stay above this
 
 let jsPDFCtor = null;
 let fontsReady = null;                      // null=untried, true/false after attempt
@@ -134,14 +147,14 @@ export async function buildQuotePdf(pkg, contact, terms){
   };
 
   const footer = () => {
-    flourish(766);
+    flourish(FOOT_FLOUR);
     if (wl) return;                       // white-label: no studio identity at all
     doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...DARK);
-    doc.text('FANTASY STUDIO', PAGE_W/2, 782, { align: 'center' });
+    doc.text('FANTASY STUDIO', PAGE_W/2, FOOT_NAME, { align: 'center' });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...GOLD);
-    doc.text(String((contact && contact.phone) || '+91 86868 68803'), PAGE_W/2, 796, { align: 'center' });
+    doc.text(String((contact && contact.phone) || '+91 86868 68803'), PAGE_W/2, FOOT_PHONE, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GOLD);
-    doc.text(String((contact && contact.website) || 'www.fantasystudio.in'), PAGE_W/2, 808, { align: 'center' });
+    doc.text(String((contact && contact.website) || 'www.fantasystudio.in'), PAGE_W/2, FOOT_BASE, { align: 'center' });
   };
 
   const logo = (cy) => {
@@ -399,19 +412,58 @@ export async function buildQuotePdf(pkg, contact, terms){
   }
   y += boxH + 22;
 
-  /* ---------- terms ---------- */
-  let termList = (terms && terms.length ? terms : []).filter(Boolean).slice();
-  /* advance entered -> the generic payment term is replaced by the real split:
-     remaining on the event day + 10% of the final price at delivery */
+  /* ---------- payment schedule ----------
+     This used to be one sentence at the top of TERMS: "Advance received: X.
+     Balance Y payable on the event day and Z (10%) at the time of delivery."
+     Three amounts and three dates inside a single line of prose, and it is
+     the thing a couple most needs to be able to read at a glance — what is
+     left to pay, and when. Identical figures and identical rule, laid out as
+     a schedule instead of a paragraph.
+
+     B2B jobs run on the partner studio's own payment terms, so they never get
+     the retail split — printing it would contradict what was agreed. */
   const advAmt = Number(t.advance) || 0;
-  /* B2B jobs run on the partner studio's own payment terms — injecting the
-     retail "balance on event day + 10% at delivery" split contradicted them */
-  if (advAmt > 0 && !isB2B) {
+  const showSchedule = advAmt > 0 && !isB2B && fin > 0;
+  if (showSchedule) {
     const delivery = Math.round(fin * 0.10);
     const eventDay = Math.max(0, fin - advAmt - delivery);
-    termList = termList.filter(tm => !/^50% advance/i.test(String(tm)));
-    termList.unshift(`Advance received: ${money(advAmt)}. Balance ${money(eventDay)} payable on the event day and ${money(delivery)} (10%) at the time of delivery.`);
+    /* Two rows, not three. The box directly above already states the advance
+       and the balance, so repeating them here would be the same two figures
+       twice within an inch — and a third row pushed a one-page quotation onto
+       a second page. What is genuinely new is WHEN the balance falls due, and
+       these two add up to exactly the Balance Due printed above. */
+    ensure(16 + 2 * 18 + 14);
+    doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...GOLDD);
+    doc.text('PAYMENT SCHEDULE', ML, y + 4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GOLDD);
+    doc.text('when the balance falls due', ML + 132, y + 4);
+    y += 14;
+    const sched = [
+      ['On the event day', 'balance for the shoot', eventDay],
+      ['At delivery', '10% of the package', delivery],
+    ];
+    sched.forEach(([label, note, amt], i) => {
+      ensure(18);
+      if (i % 2 === 0) { doc.setFillColor(...CREAM); doc.rect(ML - 8, y, (MR - ML) + 16, 18, 'F'); }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...DARK);
+      doc.text(String(label), ML, y + 12.5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GOLDD);
+      doc.text(String(note), ML + 132, y + 12.5);
+      setMoneyFont('bold', 10.5); doc.setTextColor(...GOLD);
+      doc.text(money(amt), COL_AMT, y + 12.5, { align: 'right' });
+      y += 18;
+    });
+    doc.setDrawColor(...GOLD); doc.setLineWidth(0.7);
+    doc.line(ML - 8, y, MR + 8, y);
+    y += 14;
   }
+
+  /* ---------- terms ---------- */
+  let termList = (terms && terms.length ? terms : []).filter(Boolean).slice();
+  /* the schedule above states the split now; leaving the generic "50% advance"
+     line in as well would have the page describing the same money twice, in
+     two different shapes */
+  if (showSchedule) termList = termList.filter(tm => !/^50% advance/i.test(String(tm)));
   if (termList.length) {
     ensure(20 + termList.length * 26);
     doc.setFont('times', 'bold'); doc.setFontSize(12); doc.setTextColor(...GOLDD);
@@ -458,8 +510,8 @@ export async function buildQuotePdf(pkg, contact, terms){
     for (let p = 1; p <= pageCount; p++) {
       doc.setPage(p);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GOLDD);
-      doc.text('Page ' + p + ' of ' + pageCount, MR, 768, { align: 'right' });
-      if (pkg.quoteNo) doc.text(String(pkg.quoteNo), ML, 768);
+      doc.text('Page ' + p + ' of ' + pageCount, MR, FOOT_PAGENO, { align: 'right' });
+      if (pkg.quoteNo) doc.text(String(pkg.quoteNo), ML, FOOT_PAGENO);
     }
   }
 
