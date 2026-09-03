@@ -1232,6 +1232,16 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* A booking the client is locked out of. Not a workload item like .pk-why —
    this is a defect in the record, so it wraps to as many lines as it needs
    rather than being trimmed to fit. */
+/* stands in for the Save button while a booking has no usable number —
+   a button that is simply missing, with nothing saying why, reads as a bug */
+/* both containers are flex rows of buttons; the note must take the whole
+   width rather than squeezing in beside them */
+.qe-acts,.pkg-actions{flex-wrap:wrap}
+.qe-acts .savenote,.pkg-actions .savenote{flex:1 0 100%}
+.savenote{font-size:var(--fs-sm);line-height:1.5;color:var(--state-pending);background:var(--state-pending-bg);
+          box-shadow:inset 0 0 0 1px var(--state-pending-ln);border-radius:var(--r-sm);
+          padding:.6em .75em;margin:.2rem 0 .6rem;overflow-wrap:anywhere}
+.savenote b{color:var(--gold-b)}
 .pk-alert{grid-column:1;justify-self:stretch;margin-top:.3rem;font-size:var(--fs-sm);line-height:1.45;font-weight:600;
           border-radius:var(--r-sm);padding:.35em .6em;color:var(--state-overdue);
           background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln);overflow-wrap:anywhere}

@@ -166,6 +166,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         </div>
       </div>
       <div class="qe-acts">
+        <p class="savenote" id="qeSaveNote" hidden></p>
         <button type="button" class="gbtn" id="qeSave">Save event</button>
         <button type="button" class="btn btn--sm btn--ghost" id="qeCancel">Cancel</button>
       </div>
@@ -207,7 +208,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <div class="grid2">
           <div class="fld" data-direct-only><label>Client name</label><input id="pcName" /></div>
           <div class="fld" data-direct-only><label>C/o (optional)</label><input id="pcCareOf" /></div>
-          <div class="fld" data-direct-only><label>Client phone (optional) <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(10-digit mobile · +country code for NRI)</span></label><input id="pcPhone" inputmode="tel" /></div>
+          <div class="fld" data-direct-only><label>Client phone <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(10-digit mobile · +country code for NRI)</span></label><input id="pcPhone" inputmode="tel" /></div>
           <div class="fld"><label>Quote date</label><input id="pcDate" type="date" /></div>
         </div>
       </div>
@@ -263,6 +264,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <div class="mode-pills" id="bStatusPills"></div>
       </div>
       <div class="pkg-actions">
+        <p class="savenote" id="pkgSaveNote" hidden></p>
         <button class="gbtn" id="pkgSave">Save</button>
         <button class="btn btn--sm btn--ghost" id="pkgPdf">Download PDF</button>
         <button class="btn btn--sm btn--ghost" id="pkgBack">← Back</button>

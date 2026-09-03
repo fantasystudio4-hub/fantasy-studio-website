@@ -2600,6 +2600,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      A draft is invisible to clients by design, and a studio job is reached
      through the partner's own number rather than this field, so neither is a
      fault worth flagging. */
+  /* ---- the mobile number is not optional any more -----------------------
+     A booking saved without a working number is a client who signs in to
+     "no bookings found", and the panel had no way to find those afterwards
+     until the warning added alongside this. Better not to create them: the
+     Save button stays out of sight until the number can actually log the
+     client in, with a line in its place saying why.
+
+     Ten digits, because that is precisely what the portal matches on — the
+     last ten of the client's verified number. A partner studio job is exempt
+     and must stay exempt: it carries no clientPhone at all by design, and is
+     reached through the partner's own number instead. */
+  const phoneLoginOk = v => normPhone(v).length === 10;
+
   const LOCKED_TXT = 'Client is locked out of this';
   function portalIssue(x){
     const st = x.status||'draft';
@@ -3235,6 +3248,31 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the B2B page never starts a direct-client booking */
     $('#qeMode [data-qem="client"]').hidden = (_qeAnchor === 'b2b');
   }
+  /* Save stays hidden on a new CLIENT event until the number can log them in.
+     'studio' has no client phone by design and 'existing' is adding dates to a
+     booking that already carries one, so neither is gated. */
+  function syncQeSave(){
+    const btn = $('#qeSave'); if(!btn) return;
+    const note = $('#qeSaveNote');
+    const inp = $('#qePhone');
+    const ok = _qeMode !== 'client' || (inp && phoneLoginOk(inp.value));
+    btn.hidden = !ok;
+    if(note){
+      note.hidden = ok;
+      if(!ok){
+        const n = inp ? normPhone(inp.value).length : 0;
+        note.innerHTML = n
+          ? `📱 <b>${n} of 10 digits.</b> The client signs in with this number, so it has to be complete.`
+          : '📱 <b>A mobile number is required.</b> It is how the client signs in to see this booking.';
+      }
+    }
+  }
+  /* delegated from the static #qeFields, not bound to #qePhone: that input is
+     rebuilt by renderQeFields() every time the mode changes, so a direct
+     listener attaches to an element that does not exist yet and then to one
+     that has already been replaced. */
+  on('#qeFields', 'input', e=>{ if(e.target && e.target.id === 'qePhone') syncQeSave(); });
+
   function renderQeFields(){
     const el = $('#qeFields'); if(!el) return;
     if(_qeMode === 'client'){
@@ -3244,7 +3282,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <input id="qeName" list="qeNames" autocomplete="off" placeholder="e.g. Ayesha &amp; Faraz" />
           <datalist id="qeNames">${names.slice(0,200).map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
         </div>
-        <div class="fld"><label>Phone (optional)</label>
+        <div class="fld"><label>Phone</label>
           <input id="qePhone" type="tel" inputmode="tel" placeholder="10-digit mobile — this is the client's portal login" />
         </div>`;
     }else if(_qeMode === 'studio'){
@@ -3308,6 +3346,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qeChips').innerHTML = EVENT_NAMES.map(n=>`<button type="button" class="qchip" data-qename="${esc(n)}">${esc(n)}</button>`).join('');
     $('#qeSlot').innerHTML = SLOTS.map(([v,l])=>`<button type="button" data-sv="${v}">${l}</button>`).join('');
     renderQeFields();
+    syncQeSave();   /* the form opens on Client mode with an empty phone box */
     qeResetSvc();   /* never carry the last event's services into the next one */
     _qeQueue = []; renderQeQueue();
     node.hidden = false;
@@ -3322,7 +3361,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   on('#qeMode', 'click', e=>{
     const b = e.target.closest('[data-qem]'); if(!b || b.dataset.qem === _qeMode) return;
-    _qeMode = b.dataset.qem; renderQeFields();
+    _qeMode = b.dataset.qem; renderQeFields(); syncQeSave();
     qeRefreshSvc();   /* B2B ↔ client is a different rate card; typed rows stay */
   });
   on('#qeStatus', 'click', e=>{
@@ -3498,15 +3537,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         confirmText:'Create separate', danger:false })) return;
       rawPhone = $('#qePhone').value.trim();
       phone = normPhone(rawPhone);
-      /* the portal matches on the LAST 10 DIGITS — a short number locks the
-         client out of their own booking with no error anywhere */
-      if(rawPhone && phone.length !== 10
-         && !await confirmDialog({
-           title:'That number looks incomplete',
-           body:`<p><b>${esc(rawPhone)}</b> is ${phone.length} digit${phone.length===1?'':'s'}.</p>`
-              + `<p>The client portal finds a booking by the last 10 digits of the client's number — with this one, they will <b>not</b> be able to log in.</p>`,
-           confirmText:'Save anyway' })){
-        $('#qePhone').focus(); return;
+      /* Required now, not merely warned about: the portal matches on the last
+         ten digits, so anything shorter is a client locked out of their own
+         booking. Save is hidden without one — this catches a stray Enter. */
+      if(!phoneLoginOk(rawPhone)){
+        toast(rawPhone ? `That is ${phone.length} digit${phone.length===1?'':'s'} — a 10-digit mobile is required`
+                       : 'A mobile number is required — the client signs in with it');
+        $('#qePhone').focus(); syncQeSave(); return;
       }
     }
     const status = _qeMode === 'existing' ? (pk.status||'draft') : _qeStatus;
@@ -8225,6 +8262,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     scrollTopNow();
     pushView('pkgedit', '#packages/edit');
     _pkgBaseline = JSON.stringify(readForm());
+    /* last, not earlier: #pcPhone is filled in halfway down this function, so
+       anywhere above here it is still holding the PREVIOUS package's number
+       and Save would be shown or hidden on the strength of that. */
+    syncPkgSave();
   }
   let _pkgBaseline = '';
   let _advanceAtOpen = 0;
@@ -8417,21 +8458,36 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#pkgAddAddon', 'click', ()=>$('#pkgAddons').insertAdjacentHTML('beforeend', addonRowHTML('')));
 
+  /* Shows or hides Save, and says why when it is hidden. Called on every
+     keystroke in the phone box, whenever the editor opens, and whenever the
+     job switches between a direct client and a partner studio. */
+  function syncPkgSave(){
+    const btn = $('#pkgSave'); if(!btn) return;
+    const note = $('#pkgSaveNote');
+    const stu = !$('#stuJobSec').hidden;            /* a studio job needs no client phone */
+    const ok = stu || phoneLoginOk($('#pcPhone').value);
+    btn.hidden = !ok;
+    if(note){
+      note.hidden = ok;
+      if(!ok){
+        const n = normPhone($('#pcPhone').value).length;
+        note.innerHTML = n
+          ? `📱 <b>${n} of 10 digits.</b> The client signs in to their booking with this number, so it has to be complete before this can be saved.`
+          : '📱 <b>A mobile number is required.</b> It is how the client signs in to see this booking.';
+      }
+    }
+  }
+  on('#pcPhone', 'input', syncPkgSave);
+
   on('#pkgSave', 'click', async ()=>{
     const d = readForm();
     if(!d.clientName){ toast('Client name is required'); $('#pcName').focus(); return; }
     if(!d.events.length){ toast('Add at least one event with a service'); return; }
-    /* the client portal matches on the LAST 10 DIGITS — a one-digit typo here
-       silently locks the client out of their booking with no error anywhere */
-    const rawPhone = $('#pcPhone').value.trim();
-    if(rawPhone && d.clientPhone.length !== 10
-       && !await confirmDialog({
-         title:'That number looks incomplete',
-         body:`<p><b>${esc(rawPhone)}</b> is ${d.clientPhone.length} digit${d.clientPhone.length===1?'':'s'}.</p>`
-            + `<p>The client portal finds a booking by the last 10 digits of the client's number — with this one, they will <b>not</b> be able to log in.</p>`,
-         confirmText:'Save anyway' })){
-      $('#pcPhone').focus();
-      return;
+    /* the button is hidden without one, so this only catches a stray Enter or
+       a click that raced the sync */
+    if($('#stuJobSec').hidden && !phoneLoginOk($('#pcPhone').value)){
+      toast('A 10-digit mobile number is required — the client signs in with it');
+      $('#pcPhone').focus(); syncPkgSave(); return;
     }
     const btn = $('#pkgSave'); if(btn.disabled) return;
     btn.disabled = true;
