@@ -659,6 +659,7 @@ let _stuUnsub = null, _pkgUnsubs = new Map();
 let _stuLoaded = false, _stuErr = null;
 let _stuFresh = false;               // a SERVER-confirmed studios snapshot has arrived
 let _noAccessT = null;               // watchdog: never accuse a partner of having no account on a slow line
+let _jobsSig = '';                   // last rendered job data, so a no-op snapshot leaves the DOM alone
 let _pkgErrs = new Map();            // studio id -> its packages listener error (per-studio, so one studio's success never hides another's failure)
 let _pkgSeen = new Set();            // studio ids whose packages listener has delivered once
 let _openJobs = null;                // Set of expanded package ids (null = not initialised)
@@ -667,7 +668,7 @@ function stopData(){
   try{ if(_stuUnsub) _stuUnsub(); }catch(e){} _stuUnsub = null;
   _pkgUnsubs.forEach(u=>{ try{ u(); }catch(e){} }); _pkgUnsubs.clear();
   STUS = []; PKGMAP = new Map(); _stuLoaded = false; _stuErr = null; _stuFresh = false;
-  _pkgErrs = new Map(); _pkgSeen = new Set(); _openJobs = null;
+  _pkgErrs = new Map(); _pkgSeen = new Set(); _openJobs = null; _jobsSig = '';
   clearTimeout(_noAccessT); _noAccessT = null;
   clearInterval(_cdT);
 }
@@ -1041,7 +1042,7 @@ function jobHTML(x, canToggle, collapsed, idx, total){
         <span><b>${pctPaid}% settled</b></span>
         <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
       </div>` : ''}
-      ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}">Pay ${inr(bal)} now</button>` : ''}
+      ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-jid="${esc(x.id)}">Pay ${inr(bal)} now</button>` : ''}
       ${hasBreak || (x.payments||[]).length ? `
       <details class="brk">
         <summary>See the full breakdown</summary>
@@ -1080,11 +1081,50 @@ function renderJobs(jobs){
   if(_openJobs === null) _openJobs = new Set(ordered.length ? [ordered[0].id] : []);
   const canToggle = ordered.length > 1;
   const multi = STUS.length > 1;
+  /* This page is live: every packages snapshot lands here, and most of them
+     change nothing a partner can see. Rewriting the list anyway threw away
+     anything held in the DOM rather than in state — since the money breakdown
+     became a <details>, an unrelated snapshot would snap it shut under
+     someone reading it. Compare the DATA and skip the write when it matches.
+     Collapse state is safe either way (it lives in _openJobs), so this is
+     specifically about what the DOM alone remembers. */
+  const sig = JSON.stringify(ordered) + '|' + warn + '|' + multi;
+  if(sig === _jobsSig && box.childElementCount) return;
+  _jobsSig = sig;
+  /* which breakdowns are open right now, so a real change does not close them */
+  const openBrk = new Set([...box.querySelectorAll('.pkg')]
+    .filter(p=>p.querySelector('details.brk[open]')).map(p=>p.dataset.job));
   box.innerHTML = warn + `<h2 class="secl">Your jobs <small>${ordered.length}</small></h2>` +
     ordered.map((x,i)=>{
       const head = multi ? `<div class="evm" style="margin-top:.7rem">${esc(x.studioName||'')}</div>` : '';
       return head + jobHTML(x, canToggle, canToggle && !_openJobs.has(x.id), i, ordered.length);
     }).join('');
+  openBrk.forEach(id=>{
+    const d = box.querySelector(`.pkg[data-job="${CSS.escape(id)}"] details.brk`);
+    if(d) d.open = true;
+  });
+  syncOpenPaySheet(ordered);
+}
+
+/* The pay sheet lives outside #jobsBox, so a re-render leaves its prefilled
+   amount untouched — and on a live page that amount can go stale the moment
+   Fantasy Studio records a payment. It is the one number here that costs real
+   money to get wrong, so it follows the balance. */
+function syncOpenPaySheet(jobs){
+  if(!$('#paySheet').classList.contains('open') || !_payJobId) return;
+  const x = jobs.find(j=>j.id === _payJobId);
+  /* the job is gone from the list entirely — closed, or the studio switched
+     off. Shut the sheet, but do not claim it was paid. */
+  if(!x){ closePay(); return; }
+  const bal = Math.max(0, Number((x.totals||{}).balance)||0);
+  if(bal === _payFullAmt) return;
+  if(bal <= 0){ closePay(); toast('That job is now fully settled ✓'); return; }
+  const typed = Number($('#payAmt').value)||0;
+  const wasPrefill = typed === _payFullAmt;   /* untouched since it opened */
+  _payFullAmt = bal;
+  if(wasPrefill) $('#payAmt').value = bal;    /* a partner mid-way through typing keeps their figure */
+  renderPayApps();
+  toast('Balance updated to ' + inr(bal));
 }
 
 function renderLedger(jobs){
@@ -1147,7 +1187,7 @@ document.addEventListener('click', e=>{
     return;
   }
   const pay = e.target.closest('[data-pay]');
-  if(pay) openPay(Number(pay.dataset.pay)||0, pay.dataset.q||'');
+  if(pay) openPay(Number(pay.dataset.pay)||0, pay.dataset.q||'', pay.dataset.jid||'');
 });
 
 /* ---------- pay sheet (UPI) ---------- */
@@ -1183,9 +1223,9 @@ $('#payApps').addEventListener('click', e=>{
   if(!amt){ e.preventDefault(); toast('Enter how much you want to pay'); return; }
   try{ location.href = a.scheme(upiQuery(a.vpa, amt, _payQ)); }catch(err){}
 });
-let _payFullAmt = 0;
-function openPay(bal, q){
-  _payQ = q; _payFullAmt = bal;
+let _payFullAmt = 0, _payJobId = '';
+function openPay(bal, q, jobId){
+  _payQ = q; _payFullAmt = bal; _payJobId = jobId || '';
   $('#payAmt').value = bal || '';
   renderPayApps();
   $('#payBack').classList.add('open'); $('#paySheet').classList.add('open');
