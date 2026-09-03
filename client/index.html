@@ -171,6 +171,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .pkg.can-toggle .pkg-h{cursor:pointer}
 .pkg-h .chev{flex:0 0 auto;color:var(--mut);font-size:1.1rem;transition:transform .2s}
 .pkg.collapsed .pkg-h .chev{transform:rotate(-90deg)}
+/* the multi-booking index: one chip per booking, scrolls sideways rather than
+   stacking, so three bookings cost one line and not three */
+.jump{display:flex;gap:.5rem;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 1rem;padding-bottom:.2rem;scrollbar-width:none}
+.jump::-webkit-scrollbar{display:none}
+.jchip{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+       padding:.5rem .8rem;text-align:left;cursor:pointer;font:inherit;color:var(--text);min-height:44px}
+.jchip b{display:block;font-family:var(--serif);color:var(--gold-b);font-size:.95rem;line-height:1.2}
+.jchip span{display:block;font-size:.7rem;color:var(--mut);letter-spacing:.04em;margin-top:.1rem}
+.jchip:active{border-color:var(--gold);background:rgba(184,144,43,.12)}
 .pkg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:1.1rem;overflow:hidden}
 .pkg-h{padding:1rem 1.1rem .8rem;border-bottom:1px dashed var(--line);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .pkg-h h2{font-size:1.15rem;color:#fff;flex:1;min-width:0}
@@ -362,6 +371,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <h1 class="hello" id="hello">Hi!</h1>
     <p id="helloSub"></p>
     <div class="nextup" id="nextUp" hidden></div>
+    <!-- Only when there is more than one booking: every booking is open on
+         this page now, so a client with three of them needs a way to reach the
+         third without scrolling past the other two. -->
+    <div class="jump" id="pkgJump" hidden></div>
     <div id="pkgList"></div>
   </div>
 
@@ -825,7 +838,8 @@ function renderPackages(snap, user){
     || String(b.quoteNo||'').localeCompare(String(a.quoteNo||'')));
   const name = pkgs[0].clientName || user.displayName || '';
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
-  $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio.`;
+  $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio — all of them are below.`;
+  renderJump(pkgs);
   renderNextUp(pkgs);
   /* Which bookings are open right now. On the first paint there is nothing to
      remember, so it keeps the original behaviour: one booking opens as it
@@ -844,8 +858,14 @@ function renderPackages(snap, user){
       .filter(el=>!el.classList.contains('collapsed'))
       .map(el=>el.dataset.id));
     const y = window.scrollY;
-    $('#pkgList').innerHTML = pkgs.map((x,i)=>
-      pkgHTML(x, pkgs.length > 1, pkgs.length > 1 && (_pkgFirst ? i > 0 : !openIds.has(x.id)))).join('');
+    /* EVERY booking opens. A client with two bookings under one number used to
+       get the newest expanded and the rest collapsed to a single header line,
+       which reads as "I only have one booking" — the studio had clients
+       reporting exactly that about a second booking they had already paid for.
+       They can still fold one away by tapping its header; the page just never
+       decides for them that a booking is not worth showing. */
+    $('#pkgList').innerHTML = pkgs.map(x=>
+      pkgHTML(x, pkgs.length > 1, !_pkgFirst && !openIds.has(x.id))).join('');
     _pkgSig = sig;
     if(!_pkgFirst){
       window.scrollTo(0, y);
@@ -911,6 +931,33 @@ async function unregisterPush(){
 /* "when is my next event?" — the reason most clients open this page at all.
    A live countdown, and the day itself saved to their phone's calendar. */
 let _nuEvent = null, _nuTimer = null;
+/* One chip per booking, newest first, each jumping to its card. Only ever
+   drawn for a client who actually has more than one — a single booking needs
+   no index of itself. */
+function renderJump(pkgs){
+  const box = $('#pkgJump'); if(!box) return;
+  if(pkgs.length < 2){ box.hidden = true; box.innerHTML = ''; return; }
+  const today = new Date().toLocaleDateString('en-CA');
+  box.hidden = false;
+  box.innerHTML = pkgs.map(x=>{
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    /* the date a client recognises a booking by: the one still coming if there
+       is one, otherwise the day it happened */
+    const d = ds.find(v=>v >= today) || ds[ds.length-1] || '';
+    const when = d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : 'Date to come';
+    const ev = (x.events||[]).length;
+    return `<button type="button" class="jchip" data-jump="${esc(x.id||'')}">
+      <b>${esc(when)}</b><span>${esc(x.quoteNo||'Booking')}${ev > 1 ? ` · ${ev} events` : ''}</span></button>`;
+  }).join('');
+}
+$('#pkgJump').addEventListener('click', e=>{
+  const b = e.target.closest('[data-jump]'); if(!b) return;
+  const card = document.querySelector(`#pkgList .pkg[data-id="${CSS.escape(b.dataset.jump)}"]`);
+  if(!card) return;
+  card.classList.remove('collapsed');   /* jumping to a booking they folded away opens it */
+  card.scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
 function renderNextUp(pkgs){
   const box = $('#nextUp'); if(!box) return;
   const today = new Date().toLocaleDateString('en-CA');
