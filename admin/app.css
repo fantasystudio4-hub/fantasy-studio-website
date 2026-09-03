@@ -1229,6 +1229,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
         border-radius:var(--r-sm);padding:.28em .6em;color:var(--state-pending);background:var(--state-pending-bg);
         box-shadow:inset 0 0 0 1px var(--state-pending-ln)}
 .pk-why.hot{color:var(--state-overdue);background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln)}
+/* A booking the client is locked out of. Not a workload item like .pk-why —
+   this is a defect in the record, so it wraps to as many lines as it needs
+   rather than being trimmed to fit. */
+.pk-alert{grid-column:1;justify-self:stretch;margin-top:.3rem;font-size:var(--fs-sm);line-height:1.45;font-weight:600;
+          border-radius:var(--r-sm);padding:.35em .6em;color:var(--state-overdue);
+          background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln);overflow-wrap:anywhere}
 /* The worklist header earns a colour the five pipeline headers do not, because
    it is the only one that is not simply "where this package lives". */
 #pkgList .grp.needs{color:var(--state-overdue);letter-spacing:.1em}

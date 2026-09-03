@@ -2588,6 +2588,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      that I should have done something by now". */
   const idleSev = d => d == null ? '' : d >= 20 ? 'hot' : d >= 10 ? 'warm' : '';
 
+  /* ---- can the client actually open this? ----
+     The portal finds a booking with where('clientPhone','==', <the client's
+     verified last ten digits>), so a number that is not exactly ten digits
+     matches nothing and the client sits looking at "no bookings found" for a
+     job they have paid for. Both places that save a package warn about a short
+     number at the time — and both let you save anyway, which is right, because
+     sometimes you only have half a number when you take the booking. Nothing
+     ever mentioned it again. This does.
+
+     A draft is invisible to clients by design, and a studio job is reached
+     through the partner's own number rather than this field, so neither is a
+     fault worth flagging. */
+  const LOCKED_TXT = 'Client is locked out of this';
+  function portalIssue(x){
+    const st = x.status||'draft';
+    if(st === 'draft' || isStudioJob(x)) return '';
+    const p = normPhone(x.clientPhone);
+    if(!p)              return 'No phone number saved — the client cannot open this in the client area';
+    if(p.length !== 10) return `Phone is only ${p.length} digit${p.length===1?'':'s'} — the client cannot open this in the client area`;
+    return '';
+  }
+
   const PKG_ATTN_MIN = 55;   /* score at which a package is lifted to the top */
   function pkgAttention(x){
     const st = x.status||'draft';
@@ -2669,6 +2691,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  sev: age >= 45 ? 'hot' : 'warm' });
     }
 
+    /* enough on its own to reach the worklist — the client is locked out of a
+       booking they are paying for, and only the owner can fix it */
+    if(portalIssue(x)) R.push({ n: 70, txt: LOCKED_TXT, sev:'hot' });
     const score = Math.round(R.reduce((s,r)=>s + r.n, 0));
     /* one reason on the card, the heaviest — a card carrying four badges is
        a card nobody reads */
@@ -2747,7 +2772,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           </span>
           ${prog}
           ${nowLine}
-          ${at.score >= PKG_ATTN_MIN && at.why ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : ''}
+          ${(()=>{ const pi = portalIssue(x);
+            /* Its own line, always shown. .pk-why prints only the heaviest
+               reason, so on a job that also owes ₹2L this would never once
+               have been the sentence on screen. */
+            return pi ? `<span class="pk-alert">⚠️ ${esc(pi)}</span>` : ''; })()}
+          ${at.score >= PKG_ATTN_MIN && at.why && at.why !== LOCKED_TXT
+              ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : ''}
           <span class="chev" aria-hidden="true">›</span>
         </button>
         <span class="card__side">

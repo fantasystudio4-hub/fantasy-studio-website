@@ -17,6 +17,7 @@
      · a DELIVERED package still carrying a balance — the album is gone and the
        money is not in, which is a different alarm from an unpaid booking
      · a job STALLED mid-delivery: all shot, part delivered, nothing moving
+     · a booked job whose phone number is too short to open the client portal
      · a B2B white-label job, and a B2B job with an end-client name
      · an event with no venue, and a lead with no wedding date
      · a shoot TODAY and one TOMORROW, so Home's next-shoot block populates
@@ -271,6 +272,21 @@ export const packages = [
       { step: 'Album designed', date: iso(-74) }, { step: 'Album delivered', date: iso(-71) },
       { step: 'All delivered — package closed', date: iso(-70) },
     ],
+  },
+  {
+    /* BOOKED with half a phone number. Both save paths warn about a short
+       number and both let you save anyway — which is right, you often only
+       have part of a number when a booking is taken over the phone — so this
+       state exists in real data and nothing ever mentioned it again. The
+       client portal matches on exactly ten digits, so this couple cannot open
+       the booking they have paid ₹1,40,000 towards. */
+    id: 'pk16', quoteNo: 'FS-2026-050', clientName: 'Farhan & Zoya', clientPhone: '98480',
+    clientType: 'direct', status: 'booked', createdAt: ts(12),
+    events: [{ date: iso(38), title: 'Nikah', slot: 'evening', venue: 'Taj Krishna',
+               items: shoot([['Photography', 2, 18000], ['Cinematography', 1, 25000]]) }],
+    totals: money(240000, 100000),
+    payments: [pay(100000, 10, 'UPI')],
+    delivery: [],
   },
   {
     /* in the trash, so the Trash section is not empty */
