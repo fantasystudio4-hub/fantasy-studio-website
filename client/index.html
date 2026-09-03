@@ -182,7 +182,51 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .jchip:active{border-color:var(--gold);background:rgba(184,144,43,.12)}
 .pkg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:1.1rem;overflow:hidden}
 .pkg-h{padding:1rem 1.1rem .8rem;border-bottom:1px dashed var(--line);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
-.pkg-h h2{font-size:1.15rem;color:#fff;flex:1;min-width:0}
+.pkg-h .ph-t{flex:1;min-width:0}
+.pkg-h h2{font-size:1.15rem;color:#fff;min-width:0;line-height:1.25}
+/* the day, under the occasion — together they are what a client calls this
+   booking, which the quote number never was */
+.ph-when{display:block;font-size:.76rem;color:var(--mut);margin-top:.15rem}
+
+/* ---- where this booking has got to -------------------------------------
+   Four stages in the order a wedding happens. Everything behind the current
+   one is filled, the current one pulses, the rest are outlines — readable in
+   one glance without reading a word. */
+.stage{padding:.9rem 1.1rem 1rem;border-bottom:1px dashed var(--line);background:linear-gradient(180deg,rgba(184,144,43,.07),transparent)}
+.stage-row{display:flex;align-items:flex-start}
+.stg{flex:1;min-width:0;position:relative;text-align:center}
+.stg i{display:block;width:13px;height:13px;margin:0 auto .4rem;border-radius:50%;
+       border:2px solid rgba(226,194,117,.3);background:var(--ink);position:relative;z-index:1}
+/* the connecting rail sits behind the dots, drawn from each stage to the next */
+.stg::before{content:"";position:absolute;top:5.5px;left:-50%;width:100%;height:2px;background:rgba(226,194,117,.18)}
+.stg:first-child::before{display:none}
+.stg.past i,.stg.now i{border-color:var(--gold-b)}
+.stg.past i{background:var(--gold-b)}
+.stg.past::before,.stg.now::before{background:var(--gold-b)}
+.stg.now i{box-shadow:0 0 0 4px rgba(226,194,117,.16)}
+.stg.now i::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--gold-b);animation:pulse 1.6s infinite}
+.stg span{font-size:.63rem;letter-spacing:.03em;color:var(--mut);display:block;line-height:1.25}
+.stg.now span{color:var(--gold-b);font-weight:600}
+.stg.past span{color:var(--text)}
+.stage-say{margin:.85rem 0 0;font-size:.85rem;color:var(--text);line-height:1.5}
+.stage-say b{color:var(--gold-b)}
+
+/* steps still to come are hidden until asked for — a list where eleven rows
+   look alike tells a client nothing about which one is happening */
+.tstep.todo{display:none}
+.sec.all-steps .tstep.todo{display:flex}
+.tmore{width:100%;background:none;border:1px dashed var(--line);color:var(--gold-b);border-radius:10px;
+       padding:.6rem;font:inherit;font-size:.8rem;cursor:pointer;margin-top:.2rem;min-height:44px}
+.tmore:active{background:rgba(184,144,43,.12)}
+
+/* the itemisation and the receipts, for whoever wants them */
+.brk{margin-top:.9rem;border-top:1px dashed var(--line);padding-top:.6rem}
+.brk summary{cursor:pointer;color:var(--gold-b);font-size:.8rem;list-style:none;min-height:44px;display:flex;align-items:center}
+.brk summary::-webkit-details-marker{display:none}
+.brk summary::before{content:"▾ ";display:inline-block;transition:transform .2s;margin-right:.35rem}
+.brk[open] summary::before{transform:rotate(180deg)}
+.brk-h{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin:.8rem 0 .3rem}
+.qref{font-size:.76rem;color:var(--mut);margin:0 0 .7rem}
 .pkg-h .qno{color:var(--gold-b);font-size:.75rem;letter-spacing:.06em}
 .chip{border-radius:20px;padding:.22em .85em;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
 .chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
@@ -191,7 +235,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
 .chip.delivered{color:#9adbb2;background:rgba(154,219,178,.13)}
 /* one-line amount summary — package / paid / balance at a glance */
-.sums{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;padding:.8rem 1.1rem;border-bottom:1px dashed var(--line);cursor:pointer}
+.sums{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;padding:0 0 .8rem}
 .sums > div{background:#171309;border:1px solid var(--line);border-radius:10px;padding:.5rem .3rem;text-align:center}
 .sums b{display:block;font-family:var(--serif);font-size:.98rem;color:var(--gold-b);line-height:1.3}
 .sums span{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
@@ -1109,13 +1153,13 @@ $('#pkgList').addEventListener('click', e=>{
   /* a collapsed booking opens and closes from its header */
   const h = e.target.closest('[data-pkgtoggle]');
   if(h){ h.closest('.pkg').classList.toggle('collapsed'); return; }
-  /* tapping the amount summary jumps to that booking's full pricing —
-     opening it first, or the target would be display:none and nothing moved */
-  const s = e.target.closest('[data-sums]'); if(!s) return;
-  const pkg = s.closest('.pkg'); if(!pkg) return;
-  pkg.classList.remove('collapsed');
-  const sec = pkg.querySelector('.sec.pricing');
-  if(sec) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+  /* the remaining steps, folded away so the list shows what has happened and
+     what is happening rather than eleven identical rows */
+  const more = e.target.closest('[data-tmore]');
+  if(more){
+    const sec = more.closest('.sec');
+    if(sec){ sec.classList.add('all-steps'); more.remove(); }
+  }
 });
 /* the divs acting as buttons are focusable — give them a button's keys */
 document.addEventListener('keydown', e=>{
@@ -1132,6 +1176,9 @@ function fillEmpty(phone){
   $('#emptyWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! I cannot find my booking in the client area. My number: ' + (phone||''));
 }
 
+/* The status chip used to print the studio's own word for the state. "Booked"
+   is what the panel calls it; "Confirmed" is what a client understands. */
+const CLIENT_STATUS = { sent:'Quote', unconfirmed:'On hold', booked:'Confirmed', delivered:'Completed' };
 function pkgHTML(x, canToggle, collapsed){
   const st = x.status||'draft';
   const tt = x.totals||{};
@@ -1166,62 +1213,144 @@ function pkgHTML(x, canToggle, collapsed){
   const curStep = steps.find(s=>!(s in done));
   const _nextStep = steps[steps.indexOf(curStep) + 1];
   const RC = 169.6;   /* 2πr for r=27 */
+  /* ---- where this booking has got to ----
+     The one question a client opens this page to ask, and until now the page
+     answered it seventh, below three restatements of what they owe. Four
+     stages, in the order a wedding actually happens, and a plain sentence
+     saying what that means for them today. */
+  const _dates = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+  const _shotAll  = _dates.length > 0 && _dates[_dates.length-1] < _today;
+  const _shotSome = _dates.length > 0 && _dates[0] < _today;
+  const _allDone  = steps.length > 0 && doneCount >= steps.length;
+  const stageIdx = (st === 'delivered' || _allDone) ? 3 : _shotAll ? 2 : _shotSome ? 1 : 0;
+  const STAGES = ['Dates set', 'Shoot', 'Editing', 'Delivered'];
+  const _daysTo = _dates.find(d=>d >= _today)
+    ? Math.round((new Date(_dates.find(d=>d >= _today)+'T00:00') - new Date(_today+'T00:00'))/864e5) : null;
+  const stageLine =
+      stageIdx === 3 ? 'Everything has been delivered. Thank you for having us 🎉'
+    /* Only name the step once the studio has actually ticked something. With
+       nothing ticked, curStep is the first one — "All events shot" — and
+       telling a client whose wedding is over that we are working up to
+       shooting it is worse than saying nothing specific at all. */
+    : stageIdx === 2 ? (doneCount > 0 && curStep
+        ? `Your shoot is done and we are working on it. Up next in our studio: <b>${esc(curStep)}</b>.`
+        : 'Your shoot is done. We will start on your photos and films shortly.')
+    : stageIdx === 1 ? 'Your celebrations have started — we are with you for the rest of them.'
+    : _daysTo === 0 ? 'Today is the day. See you there!'
+    : _daysTo != null ? `Your dates are locked in. ${_daysTo} day${_daysTo===1?'':'s'} to go.`
+    : 'Your booking is confirmed. We will confirm the dates with you shortly.';
+  const stage = (st === 'booked' || st === 'delivered')
+    ? `<div class="stage">
+         <div class="stage-row">
+           ${STAGES.map((lab,i)=>`
+             <div class="stg ${i < stageIdx ? 'past' : i === stageIdx ? 'now' : ''}">
+               <i></i><span>${lab}</span>
+             </div>`).join('')}
+         </div>
+         <p class="stage-say">${stageLine}</p>
+       </div>` : '';
+  /* ---- the delivery list ----
+     Eleven rows, of which eight had not started, every one carrying a tick
+     glyph: a client scanning that cannot tell finished from not-yet. Show what
+     is done (with its date, which is the reassuring part), the step being
+     worked on, and fold the rest away behind a count. */
+  const _todoCount = steps.filter(s=>!(s in done) && s !== curStep).length;
+  /* A package the studio has marked Delivered is finished, whether or not
+     every box was ticked on the way — owners close a job without ticking the
+     last one or two all the time. The status is their decision and it wins:
+     showing "All delivered 🎉" beside a 0% ring and "1 step still to come"
+     makes the page argue with itself in front of the client. */
+  const _done = (st === 'delivered');
+  const pctShown = _done ? 100 : pct;
   const track = (st==='booked'||st==='delivered') && steps.length
-    ? `<div class="sec"><h3>Delivery journey · ${doneCount}/${steps.length}</h3>
+    ? `<div class="sec"><h3>Your photos &amp; films</h3>
         <div class="dring">
           <span class="rw">
             <svg viewBox="0 0 62 62" aria-hidden="true">
               <circle class="rbg" cx="31" cy="31" r="27"></circle>
-              <circle class="rfg" cx="31" cy="31" r="27" style="stroke-dashoffset:${RC - RC*pct/100}"></circle>
+              <circle class="rfg" cx="31" cy="31" r="27" style="stroke-dashoffset:${RC - RC*pctShown/100}"></circle>
             </svg>
-            <span class="rn">${pct}%</span>
+            <span class="rn">${pctShown}%</span>
           </span>
           <span class="dt">
-            <b>${st === 'delivered' ? 'All delivered 🎉' : (curStep ? 'Now: ' + esc(curStep) : 'Wrapping up')}</b>
-            <span>${st === 'delivered' ? 'Your package is complete.' : (_nextStep ? 'Next: ' + esc(_nextStep) : 'Almost there.')}</span>
+            <b>${_done || _allDone ? 'All delivered 🎉' : (curStep ? esc(curStep) : 'Wrapping up')}</b>
+            <span>${_done || _allDone ? 'Your package is complete.'
+                   : `${doneCount} of ${steps.length} done${_nextStep ? ' · then ' + esc(_nextStep) : ''}`}</span>
           </span>
         </div>
-        <div class="dprog"><i style="width:${pct}%"></i></div>
+        <div class="dprog"><i style="width:${pctShown}%"></i></div>
         ${steps.map(s=>{
           const d = s in done;
           const cur = !d && s === curStep && st === 'booked';
-          return `<div class="tstep ${d?'done':''} ${cur?'cur':''}"><i class="tnode">✓</i><div class="tbody"><b>${esc(s)}</b><em>${d ? 'Completed ' + shortD(done[s]) : (cur ? 'In progress' : '')}</em></div></div>`;
+          const todo = !d && !cur;
+          /* on a closed package an unticked step is not "to come", it is just
+             a box nobody ticked — leave it out rather than promise more */
+          if(_done && !d) return '';
+          return `<div class="tstep ${d?'done':''} ${cur?'cur':''} ${todo?'todo':''}"><i class="tnode">${d ? '✓' : ''}</i><div class="tbody"><b>${esc(s)}</b><em>${d ? 'Done ' + shortD(done[s]) : (cur ? 'Being worked on now' : '')}</em></div></div>`;
         }).join('')}
+        ${!_done && _todoCount ? `<button type="button" class="tmore" data-tmore>Show the ${_todoCount} step${_todoCount===1?'':'s'} still to come</button>` : ''}
       </div>` : '';
+  /* The card used to head itself with the client's own name — which they
+     already know, which the page has just greeted them by, and which tells
+     two bookings apart not at all. What identifies a booking to the person who
+     booked it is the occasion and the day. */
+  /* Naming a three-function wedding after whichever function happens to be
+     first ("Mehendi") describes a day, not the booking. Name it after all of
+     them, which is what the couple call it themselves. */
+  const _titles = [...new Set((x.events||[]).map(e=>String(e.title||'').trim()).filter(Boolean))];
+  const _title = !_titles.length ? 'Your booking'
+    : _titles.length === 1 ? _titles[0]
+    : _titles.length === 2 ? `${_titles[0]} & ${_titles[1]}`
+    : `${_titles[0]}, ${_titles[1]} +${_titles.length-2} more`;
+  const _span = !_dates.length ? 'Dates to be confirmed'
+    : _dates[0] === _dates[_dates.length-1] ? human(_dates[0])
+    : `${shortD(_dates[0])} – ${shortD(_dates[_dates.length-1])} ${_dates[_dates.length-1].slice(0,4)}`;
+  const pct2 = Number(tt.finalPrice) > 0 ? Math.min(100, Math.round(100*paid/Number(tt.finalPrice))) : 0;
+  const hasBreak = (Number(tt.gross) && Number(tt.discount)) || alb;
   return `
   <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}" data-id="${esc(x.id||'')}">
     <div class="pkg-h" ${canToggle ? 'data-pkgtoggle role="button" tabindex="0" aria-label="Show or hide this booking"' : ''}>
-      <h2>${esc(x.clientName||'Your package')}</h2>
-      <span class="qno">${esc(x.quoteNo||'')}</span>
-      <span class="chip ${st}">${st === 'unconfirmed' ? 'not confirmed' : st}</span>
+      <div class="ph-t">
+        <h2>${esc(_title)}</h2>
+        <span class="ph-when">${esc(_span)}</span>
+      </div>
+      <span class="chip ${st}">${esc(CLIENT_STATUS[st] || st)}</span>
       ${canToggle ? '<span class="chev">▾</span>' : ''}
     </div>
-    <div class="sums" data-sums role="button" tabindex="0" title="See full pricing" aria-label="See full pricing">
-      <div><b>${inr(tt.finalPrice||0)}</b><span>package</span></div>
-      <div><b>${inr(paid)}</b><span>paid</span></div>
-      <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0 ? 'balance' : 'all clear'}</span></div>
-    </div>
+    ${stage}
     <div class="sec"><h3>Your events</h3>${events || '<div class="evm">Details coming soon.</div>'}</div>
     ${addons}
-    <div class="sec pricing"><h3>Pricing</h3>
-      ${Number(tt.gross) && Number(tt.discount) ? `<div class="ln"><span>Package total</span><span>${inr(tt.gross)}</span></div>
-      <div class="ln"><span>Discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
-      ${alb}
-      <div class="ln big"><span>Final price</span><span>${inr(tt.finalPrice||0)}</span></div>
-      <div class="ln"><span>Paid so far</span><span>${inr(paid)}</span></div>
-      <div class="ln due"><span>Balance</span><span>${inr(bal)}</span></div>
+    ${track}
+    <div class="sec pricing"><h3>Payment</h3>
+      <div class="sums">
+        <div><b>${inr(tt.finalPrice||0)}</b><span>package</span></div>
+        <div><b>${inr(paid)}</b><span>paid</span></div>
+        <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0 ? 'still to pay' : 'all clear'}</span></div>
+      </div>
       ${Number(tt.finalPrice) > 0 ? `
-      <div class="paybar"><i style="width:${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}%"></i></div>
+      <div class="paybar"><i style="width:${pct2}%"></i></div>
       <div class="payleg">
-        <span><b>${Math.min(100, Math.round(100*paid/Number(tt.finalPrice)))}% settled</b></span>
+        <span><b>${pct2}% settled</b></span>
         <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
       </div>` : ''}
       ${bal > 0 && upiIds().length
         ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-pid="${esc(x.id||'')}">Pay ${inr(bal)} now</button>` : ''}
+      ${/* The same three figures were printed by the tiles above, then again as
+            a list, then again as a percentage. Once, in the tiles; the
+            itemisation and the receipts are here for whoever wants them. */''}
+      ${hasBreak || (x.payments||[]).length ? `
+      <details class="brk">
+        <summary>See the full breakdown</summary>
+        ${Number(tt.gross) && Number(tt.discount) ? `<div class="ln"><span>Package total</span><span>${inr(tt.gross)}</span></div>
+        <div class="ln"><span>Discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
+        ${alb}
+        <div class="ln big"><span>Final price</span><span>${inr(tt.finalPrice||0)}</span></div>
+        ${(x.payments||[]).length ? `<div class="brk-h">Payments received</div>${
+          x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}` : ''}
+      </details>` : ''}
     </div>
-    ${pays}
-    ${track}
     <div class="sec"><h3>Questions?</h3>
+      <p class="qref">Quote ${esc(x.quoteNo||'—')} — quote this if you message us.</p>
       <div class="contact">
         <a href="tel:+${ph}">📞 Call the studio</a>
         <a href="https://wa.me/${ph}?text=${encodeURIComponent('Salaam! About my booking ' + (x.quoteNo||''))}" target="_blank" rel="noopener">WhatsApp us</a>
