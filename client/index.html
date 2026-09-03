@@ -456,13 +456,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
    vanished" panic the portal exists to prevent. */
 let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
     getRedirectResult, linkWithPhoneNumber,
-    getFirestore, collection, doc, getDoc, getDocs, query, where, setDoc, deleteDoc, serverTimestamp;
+    getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, deleteDoc, serverTimestamp;
 try{
   ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
   ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
      getRedirectResult, linkWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ getFirestore, collection, doc, getDoc, getDocs, query, where, setDoc, deleteDoc, serverTimestamp } =
+  ({ getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, deleteDoc, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   const ph = (DEFAULT_CONTACT.phone||'').replace(/\D/g,'');
@@ -719,6 +719,10 @@ $('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); si
 onAuthStateChanged(auth, user=>{ route(user); });
 function route(user){
   $('#logoutBtn').hidden = !user;
+  /* Every path out of the dashboard drops the stream first. A shared family
+     phone signing out must not leave a live listener on the previous person's
+     booking, and re-routing while one is open would otherwise stack a second. */
+  stopPackages();
   if(!user){
     show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
     if(_redirectErr){ showErr('#loginErr', _redirectErr); _redirectErr = null; }
@@ -741,11 +745,64 @@ function showLoadError(err, user){
 }
 $('#retryBtn').addEventListener('click', ()=>{ if(auth.currentUser) route(auth.currentUser); });
 
-/* ---------- data ---------- */
-async function loadPackages(user){
-  await loadCfg();
-  const last10 = String(user.phoneNumber||'').replace(/\D/g,'').slice(-10);
-  const snap = await getDocs(query(collection(db,'packages'), where('clientPhone','==', last10)));
+/* ---------- data ----------
+   LIVE, not a one-shot read. This page was getDocs(): whatever the studio did
+   after it loaded — a payment recorded, a delivery step ticked, an event date
+   moved — the client sat looking at the old page until they thought to pull
+   down and refresh. The admin panel has been on onSnapshot from the start, so
+   the owner watched changes land in real time while the person the changes
+   were FOR had the stalest copy of them.
+
+   Same query, same rules, same filtering. The only additions are keeping the
+   client's place across a re-render and not tearing a working page down over
+   a listener that drops. */
+let _pkgUnsub = null, _pkgFirst = true, _pkgSig = '', _pkgDead = false;
+function stopPackages(){
+  if(_pkgUnsub){ try{ _pkgUnsub(); }catch(e){} _pkgUnsub = null; }
+}
+function loadPackages(user){
+  return loadCfg().then(()=>{
+    stopPackages();
+    _pkgFirst = true; _pkgSig = ''; _pkgDead = false;
+    const last10 = String(user.phoneNumber||'').replace(/\D/g,'').slice(-10);
+    return new Promise((resolve, reject)=>{
+      let settled = false;
+      _pkgUnsub = onSnapshot(
+        query(collection(db,'packages'), where('clientPhone','==', last10)),
+        snap=>{
+          try{
+            renderPackages(snap, user);
+            if(!settled){ settled = true; resolve(); }
+          }catch(e){
+            /* A first render that throws must not swallow itself: nothing has
+               called show() yet, so the client would sit on the spinner for
+               ever with no error and no retry. Surface it. A later one leaves
+               the good page that is already on screen alone. */
+            if(!settled){ settled = true; reject(e); }
+          }
+        },
+        err=>{
+          /* Firestore stops the listener on error, so mark it dead for the
+             visibility retry below. Before the first snapshot this is a genuine
+             load failure and belongs on the error screen; after it, the page on
+             screen is real and correct, and replacing a client's booking with
+             "we couldn't load this" because the tunnel dropped would be a lie. */
+          _pkgDead = true; stopPackages();
+          if(!settled){ settled = true; reject(err); }
+        });
+    });
+  });
+}
+/* Phones suspend background tabs and the installed app is backgrounded all
+   day, either of which can kill the stream quietly. Coming back to the page
+   is exactly when a client wants the truth, so reconnect then. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible' || !_pkgDead) return;
+  const u = auth.currentUser;
+  if(u && u.phoneNumber) loadPackages(u).catch(()=>{});
+});
+
+function renderPackages(snap, user){
   /* Drafts are the studio's working copy — half-built events, provisional
      prices and a "balance" nobody has agreed to. Showing them under the words
      "your booking" the moment a quote is saved against a phone number was
@@ -755,6 +812,12 @@ async function loadPackages(user){
     /* B2B studio jobs are admin-only — belt-and-braces on top of the rules,
        which already refuse them, and of studio jobs carrying no clientPhone */
     .filter(x=>!x.deleted && (x.status||'draft') !== 'draft' && (x.clientType||'direct') !== 'studio');
+  /* before the early return, so a pay sheet left open over a booking that has
+     just been withdrawn is closed rather than stranded on a dead amount.
+     It reports whether it said something, because "paid in full 🎉" is worth
+     more than "Updated just now" and the generic line would otherwise
+     overwrite it a few statements later. */
+  const said = syncOpenPaySheet(pkgs);
   if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
@@ -764,11 +827,53 @@ async function loadPackages(user){
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
   $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio.`;
   renderNextUp(pkgs);
-  /* one booking opens as it always did; a second and third open collapsed so
-     the page is not three weddings deep before the current one is read */
-  $('#pkgList').innerHTML = pkgs.map((x,i)=>pkgHTML(x, pkgs.length > 1, i > 0)).join('');
+  /* Which bookings are open right now. On the first paint there is nothing to
+     remember, so it keeps the original behaviour: one booking opens as it
+     always did, a second and third open collapsed so the page is not three
+     weddings deep before the current one is read. After that the client's own
+     choice wins — a snapshot arriving must never fold a booking shut under
+     someone who is reading it. */
+  /* Most snapshots carry no visible change — a metadata flip, a field this
+     page does not show. Compare the DATA, not the rendered HTML: the markup
+     carries which cards are open, so the moment a client collapsed one, every
+     later snapshot looked "different" and rewrote the list for nothing —
+     announcing "Updated just now" when nothing had. */
+  const sig = JSON.stringify(pkgs);
+  if(sig !== _pkgSig){
+    const openIds = new Set([...document.querySelectorAll('#pkgList .pkg')]
+      .filter(el=>!el.classList.contains('collapsed'))
+      .map(el=>el.dataset.id));
+    const y = window.scrollY;
+    $('#pkgList').innerHTML = pkgs.map((x,i)=>
+      pkgHTML(x, pkgs.length > 1, pkgs.length > 1 && (_pkgFirst ? i > 0 : !openIds.has(x.id)))).join('');
+    _pkgSig = sig;
+    if(!_pkgFirst){
+      window.scrollTo(0, y);
+      /* say it changed. A page that silently rewrites itself while someone is
+         reading it is unsettling; a page that says why is not. */
+      if(!said) toast('Updated just now');
+    }
+  }
   show('dashView');
-  registerPush(user);
+  if(_pkgFirst){ _pkgFirst = false; registerPush(user); }
+}
+/* The pay sheet lives outside #pkgList, so a re-render leaves it untouched —
+   including its prefilled amount. If the studio records a payment while the
+   client has it open, that figure is now wrong, and it is the one number on
+   this page that costs real money to get wrong. Follow the balance. */
+function syncOpenPaySheet(pkgs){
+  if(!$('#paySheet').classList.contains('open') || !_payCtx.pid) return false;
+  const x = pkgs.find(p=>p.id === _payCtx.pid);
+  const bal = x ? Math.max(0, Number((x.totals||{}).balance)||0) : 0;
+  if(bal === _payCtx.amount) return false;
+  if(bal <= 0){ closePay(); toast('That booking is now paid in full 🎉'); return true; }
+  const typed = Number($('#payAmt').value)||0;
+  const wasPrefill = typed === _payCtx.amount;   /* untouched since it opened */
+  openPay(bal, _payCtx.quoteNo, _payCtx.pid);
+  /* someone part-way through typing their own figure keeps it */
+  if(!wasPrefill){ $('#payAmt').value = typed; renderPayApps(); }
+  toast('Balance updated to ' + inr(bal));
+  return true;
 }
 
 /* ---------- push notifications (store app only) ----------
@@ -890,7 +995,7 @@ function upiIds(){
     { app:'Google Pay', vpa: String(c.upiAlt||'').trim(), scheme: v=>'tez://upi/pay?' + v },
   ].filter(x=>/^[\w.\-]+@[\w.\-]+$/.test(x.vpa));
 }
-let _payCtx = { amount:0, quoteNo:'' };
+let _payCtx = { amount:0, quoteNo:'', pid:'' };
 function upiQuery(vpa, amt, note){
   return 'pa=' + encodeURIComponent(vpa)
     + '&pn=' + encodeURIComponent('Fantasy Studio')
@@ -911,8 +1016,8 @@ function renderPayApps(){
   $('#paySent').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent(
     `Salaam! I've paid ${inr(amt)}${_payCtx.quoteNo ? ' for booking ' + _payCtx.quoteNo : ''}. Sending the screenshot now.`);
 }
-function openPay(bal, quoteNo){
-  _payCtx = { amount: bal, quoteNo };
+function openPay(bal, quoteNo, pid){
+  _payCtx = { amount: bal, quoteNo, pid: pid || '' };
   $('#payFor').textContent = (quoteNo ? quoteNo + ' · ' : '') + 'Balance ' + inr(bal);
   $('#payAmt').value = bal;
   const half = Math.round(bal/2);
@@ -953,7 +1058,7 @@ $('#payApps').addEventListener('click', e=>{
 
 $('#pkgList').addEventListener('click', e=>{
   const pay = e.target.closest('[data-pay]');
-  if(pay){ openPay(Number(pay.dataset.pay)||0, pay.dataset.q||''); return; }
+  if(pay){ openPay(Number(pay.dataset.pay)||0, pay.dataset.q||'', pay.dataset.pid||''); return; }
   /* a collapsed booking opens and closes from its header */
   const h = e.target.closest('[data-pkgtoggle]');
   if(h){ h.closest('.pkg').classList.toggle('collapsed'); return; }
@@ -1037,7 +1142,7 @@ function pkgHTML(x, canToggle, collapsed){
         }).join('')}
       </div>` : '';
   return `
-  <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}">
+  <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}" data-id="${esc(x.id||'')}">
     <div class="pkg-h" ${canToggle ? 'data-pkgtoggle role="button" tabindex="0" aria-label="Show or hide this booking"' : ''}>
       <h2>${esc(x.clientName||'Your package')}</h2>
       <span class="qno">${esc(x.quoteNo||'')}</span>
@@ -1065,7 +1170,7 @@ function pkgHTML(x, canToggle, collapsed){
         <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
       </div>` : ''}
       ${bal > 0 && upiIds().length
-        ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}">Pay ${inr(bal)} now</button>` : ''}
+        ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-pid="${esc(x.id||'')}">Pay ${inr(bal)} now</button>` : ''}
     </div>
     ${pays}
     ${track}
