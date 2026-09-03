@@ -187,6 +187,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* the day, under the occasion — together they are what a client calls this
    booking, which the quote number never was */
 .ph-when{display:block;font-size:.76rem;color:var(--mut);margin-top:.15rem}
+/* "Booking 1 of 2" — the only thing that makes two cards read as two bookings
+   rather than one page that keeps going */
+.ph-n{display:inline-block;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+      color:var(--gold-b);border:1px solid rgba(226,194,117,.35);border-radius:20px;padding:.16em .6em;margin-bottom:.35rem}
+/* the day badge on an event: what turns four blocks in a row into one
+   celebration spread across four days */
+.evday{display:inline-block;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+       color:var(--ink);background:var(--gold-b);border-radius:5px;padding:.14em .5em;margin-bottom:.3rem}
+.ev.past .evday{background:rgba(226,194,117,.35);color:var(--ink)}
 
 /* ---- where this booking has got to -------------------------------------
    Four stages in the order a wedding happens. Everything behind the current
@@ -908,8 +917,8 @@ function renderPackages(snap, user){
        reporting exactly that about a second booking they had already paid for.
        They can still fold one away by tapping its header; the page just never
        decides for them that a booking is not worth showing. */
-    $('#pkgList').innerHTML = pkgs.map(x=>
-      pkgHTML(x, pkgs.length > 1, !_pkgFirst && !openIds.has(x.id))).join('');
+    $('#pkgList').innerHTML = pkgs.map((x,i)=>
+      pkgHTML(x, pkgs.length > 1, !_pkgFirst && !openIds.has(x.id), i, pkgs.length)).join('');
     _pkgSig = sig;
     if(!_pkgFirst){
       window.scrollTo(0, y);
@@ -990,8 +999,14 @@ function renderJump(pkgs){
     const d = ds.find(v=>v >= today) || ds[ds.length-1] || '';
     const when = d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : 'Date to come';
     const ev = (x.events||[]).length;
+    /* named by the occasion, not the quote number: "FS-2026-041" identifies a
+       booking to the studio and to nobody else */
+    const names = [...new Set([...(x.events||[])]
+      .sort((p,q)=>String(p.date||'9999') < String(q.date||'9999') ? -1 : 1)
+      .map(e=>String(e.title||'').trim()).filter(Boolean))];
+    const label = !names.length ? 'Booking' : names.length === 1 ? names[0] : `${names[0]} +${names.length-1}`;
     return `<button type="button" class="jchip" data-jump="${esc(x.id||'')}">
-      <b>${esc(when)}</b><span>${esc(x.quoteNo||'Booking')}${ev > 1 ? ` · ${ev} events` : ''}</span></button>`;
+      <b>${esc(label)}</b><span>${esc(when)}</span></button>`;
   }).join('');
 }
 $('#pkgJump').addEventListener('click', e=>{
@@ -1179,7 +1194,7 @@ function fillEmpty(phone){
 /* The status chip used to print the studio's own word for the state. "Booked"
    is what the panel calls it; "Confirmed" is what a client understands. */
 const CLIENT_STATUS = { sent:'Quote', unconfirmed:'On hold', booked:'Confirmed', delivered:'Completed' };
-function pkgHTML(x, canToggle, collapsed){
+function pkgHTML(x, canToggle, collapsed, idx, total){
   const st = x.status||'draft';
   const tt = x.totals||{};
   const paid = Number(tt.advance)||0;
@@ -1193,12 +1208,29 @@ function pkgHTML(x, canToggle, collapsed){
      read as one undifferentiated list before */
   const _today = new Date().toLocaleDateString('en-CA');
   const _nextDate = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'') && d >= _today).sort()[0] || '';
-  const events = (x.events||[]).map(ev=>{
+  /* A four-function wedding was four equal blocks in a row, which reads as
+     four separate things booked rather than one celebration across four days.
+     Numbering the DAYS says what it is. Two functions on one date (a morning
+     nikah and an evening reception) share a day number, because to the people
+     living it that is one day. */
+  const _dayNo = {};
+  [...new Set((x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')))]
+    .sort().forEach((d,i)=>{ _dayNo[d] = i + 1; });
+  const _dayCount = Object.keys(_dayNo).length;
+  /* by date, so Day 1 is first on the page — whatever order they were typed in */
+  const _evs = [...(x.events||[])].sort((a,b)=>{
+    const da = /^\d{4}-\d{2}-\d{2}$/.test(a.date||'') ? a.date : '9999';
+    const db = /^\d{4}-\d{2}-\d{2}$/.test(b.date||'') ? b.date : '9999';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+  const events = _evs.map(ev=>{
     const dated = /^\d{4}-\d{2}-\d{2}$/.test(ev.date||'');
     const past = dated && ev.date < _today;
     const isNext = dated && ev.date === _nextDate;
+    const day = dated && _dayCount > 1 ? _dayNo[ev.date] : 0;
     return `
     <div class="ev ${past?'past':''} ${isNext?'next':''}">
+      ${day ? `<span class="evday">Day ${day}</span>` : ''}
       <b>${esc(ev.title||'Event')}${slotTag(ev.slot)}${isNext ? `<span class="evtag">${ev.date === _today ? 'today' : 'next up'}</span>` : ''}</b>
       <div class="evm">${human(ev.date)||'Date to be decided'}${ev.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(ev.venue)}" target="_blank" rel="noopener">📍 ${esc(ev.venue)}</a>` : ''}</div>
       ${(ev.items||[]).length ? `<ul>${(ev.items||[]).map(it=>`<li><span>${esc(it.service)}${Number(it.qty)>1 ? ' × '+Number(it.qty) : ''}</span></li>`).join('')}</ul>` : ''}
@@ -1297,11 +1329,13 @@ function pkgHTML(x, canToggle, collapsed){
   /* Naming a three-function wedding after whichever function happens to be
      first ("Mehendi") describes a day, not the booking. Name it after all of
      them, which is what the couple call it themselves. */
-  const _titles = [...new Set((x.events||[]).map(e=>String(e.title||'').trim()).filter(Boolean))];
+  const _titles = [...new Set(_evs.map(e=>String(e.title||'').trim()).filter(Boolean))];   /* date order, not entry order */
   const _title = !_titles.length ? 'Your booking'
     : _titles.length === 1 ? _titles[0]
     : _titles.length === 2 ? `${_titles[0]} & ${_titles[1]}`
-    : `${_titles[0]}, ${_titles[1]} +${_titles.length-2} more`;
+    /* "Mehendi, Nikah +2 more" wrapped to two lines on a phone and read like a
+       list that had been cut off. One name and a count does not. */
+    : `${_titles[0]} & ${_titles.length-1} more`;
   const _span = !_dates.length ? 'Dates to be confirmed'
     : _dates[0] === _dates[_dates.length-1] ? human(_dates[0])
     : `${shortD(_dates[0])} – ${shortD(_dates[_dates.length-1])} ${_dates[_dates.length-1].slice(0,4)}`;
@@ -1311,14 +1345,15 @@ function pkgHTML(x, canToggle, collapsed){
   <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}" data-id="${esc(x.id||'')}">
     <div class="pkg-h" ${canToggle ? 'data-pkgtoggle role="button" tabindex="0" aria-label="Show or hide this booking"' : ''}>
       <div class="ph-t">
+        ${total > 1 ? `<span class="ph-n">Booking ${idx+1} of ${total}</span>` : ''}
         <h2>${esc(_title)}</h2>
-        <span class="ph-when">${esc(_span)}</span>
+        <span class="ph-when">${esc(_span)}${_dayCount > 1 ? ` · ${_dayCount} days` : ''}</span>
       </div>
       <span class="chip ${st}">${esc(CLIENT_STATUS[st] || st)}</span>
       ${canToggle ? '<span class="chev">▾</span>' : ''}
     </div>
     ${stage}
-    <div class="sec"><h3>Your events</h3>${events || '<div class="evm">Details coming soon.</div>'}</div>
+    <div class="sec"><h3>${_dayCount > 1 ? `Your ${_dayCount} days` : 'Your event'}</h3>${events || '<div class="evm">Details coming soon.</div>'}</div>
     ${addons}
     ${track}
     <div class="sec pricing"><h3>Payment</h3>
