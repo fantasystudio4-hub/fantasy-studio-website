@@ -573,6 +573,7 @@ const hasAlbum  = x => !!(x && ((x.album && (Number(x.album.sheets)>0 || Number(
 const hasCinema = x => !!(x && ((x.events||[]).some(ev=>(ev.items||[]).some(it=>/cinema/i.test(it.service||''))) || (x.addons||[]).some(a=>/cinematic|teaser/i.test(a))));
 const hasPhoto  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/photo/i.test(it.service||''))));
 const hasVideo  = x => !!(x && (x.events||[]).some(ev=>(ev.items||[]).some(it=>/video|cinema/i.test(it.service||''))));
+const SHOT_STEP = 'All events shot';
 const stepsFor = x => dSteps().filter(s =>
   (!/album/i.test(s)            || hasAlbum(x)) &&
   (!/cinematic|teaser/i.test(s) || hasCinema(x)) &&
@@ -1201,6 +1202,18 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
   const bal = Math.max(0, Number(tt.balance)||0);
   const steps = stepsFor(x);
   const done = {}; (Array.isArray(x.delivery)?x.delivery:[]).forEach(d=>{ if(d && d.step) done[d.step]=d.date||''; });
+  /* "All events shot" ticks itself the day after the last function, exactly as
+     it does in the studio's own panel. A couple whose wedding is over should
+     never open this and read 0/8 with "All events shot" still outstanding —
+     and this page cannot write, so deriving it is the only way it can ever
+     agree with the calendar above it. A tick the studio made by hand wins. */
+  if(!(SHOT_STEP in done) && steps.includes(SHOT_STEP)){
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    const last = ds.length ? ds[ds.length-1] : '';
+    /* not _today: that const is declared further down this function, so
+       reading it here is a temporal dead zone throw, not a value */
+    if(last && last < new Date().toLocaleDateString('en-CA')) done[SHOT_STEP] = last;
+  }
   const doneCount = steps.filter(s=>s in done).length;
   const pct = steps.length ? Math.round(100*doneCount/steps.length) : 0;
   const ph = (contact().phone||'').replace(/\D/g,'');

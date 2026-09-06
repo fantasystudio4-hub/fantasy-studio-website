@@ -488,6 +488,7 @@ let CONTACT = { phone: DEFAULT_PHONE, upi: '', upiAlt: '' };
 /* The same checklist the admin panel ticks against a studio job, so the two
    can never show different progress. Kept in sync through config/site (which
    is world-readable); these are the built-in defaults it falls back to. */
+const SHOT_STEP = 'All events shot';
 let B2B_STEPS = ['All events shot','Data ready to collect from office','Data delivered — job closed'];
 const contactDigits = () => CONTACT.phone.replace(/\D/g,'');
 function applyContact(){
@@ -902,6 +903,17 @@ function deliverySection(x, st){
   const done = {};
   (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date || ''; });
   const steps = B2B_STEPS;
+  /* "All events shot" ticks itself the day after the last function, the same
+     way it does in the studio's own panel and on the client page. A partner
+     looking at a job that was shot last week should not be told the shoot is
+     still outstanding, and this page cannot write, so deriving it is the only
+     way it can agree with the schedule printed directly above it. Anything
+     Fantasy Studio ticked by hand wins. */
+  if(!(SHOT_STEP in done) && steps.includes(SHOT_STEP)){
+    const ds = (x.events||[]).map(e=>e.date).filter(isDate).sort();
+    const last = ds.length ? ds[ds.length-1] : '';
+    if(last && last < todayISO()) done[SHOT_STEP] = last;
+  }
   const n = steps.filter(s=>s in done).length;
   const pct = steps.length ? Math.round(100*n/steps.length) : 0;
   const next = steps.find(s=>!(s in done)) || '';

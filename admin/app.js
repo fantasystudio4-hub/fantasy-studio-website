@@ -1973,10 +1973,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const last = (x.payments||[]).reduce((m,p)=>{ const d = String((p||{}).date||''); return d > m ? d : m; }, '');
     return { paid, date: paid ? last : '' };
   }
+  /* ---- "All events shot" ticks itself ----
+     The calendar already knows whether the shoot has happened, so a checkbox
+     that only ever repeats it is one more thing to remember — and while it sat
+     unticked the job read as 0/8 with "Now: All events shot" for a wedding
+     that was over. Derived, exactly like B2B_PAID_STEP: the day after the last
+     event it is done, dated by that event.
+
+     A tick the owner made by hand always wins — it is only filled in when the
+     stored delivery has nothing for it — so finishing early, or a date that
+     turned out wrong, is still theirs to record. */
+  const SHOT_STEP = 'All events shot';
+  function shotDate(x){
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+    const last = ds.length ? ds[ds.length-1] : '';
+    /* strictly BEFORE today: an evening function on the 5th is not shot at
+       ten in the morning on the 5th, it is shot on the 6th */
+    return (last && last < todayISO()) ? last : '';
+  }
+
   function deliveryInfo(x){
     const steps = stepsFor(x).slice();
     const done = {};
     (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date||''; });
+    if(!(SHOT_STEP in done) && steps.includes(SHOT_STEP)){
+      const sd = shotDate(x);
+      if(sd) done[SHOT_STEP] = sd;
+    }
     if(isStudioJob(x)){
       steps.push(B2B_PAID_STEP);
       const pi = paidInfo(x);
@@ -2032,8 +2055,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     <div class="dtrack">
       <div class="dt-head"><span>Delivery</span><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b></div>
       ${head}
-      ${di.steps.map(s=>{
+      ${(()=>{ const stored = new Set((Array.isArray(x.delivery)?x.delivery:[]).map(d=>d && d.step).filter(Boolean));
+        return di.steps.map(s=>{
         const d = (s in di.done);
+        /* derived from the calendar, so it must not offer a tick that would be
+           undone by the next render — same treatment as the B2B paid step */
+        if(s === SHOT_STEP && d && !stored.has(s)){
+          return `<div class="dstep auto done" title="Ticks itself once the last event date has passed"><i>✓</i><span>${esc(s)}</span><em>${stepDate(di.done[s])}</em></div>`;
+        }
         if(s === B2B_PAID_STEP){
           const bal = Math.max(0, Number((x.totals||{}).balance)||0);
           /* tapping it opens the payment sheet — the only thing that can
@@ -2048,7 +2077,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const cur = !d && s === di.now && st === 'booked';
         const ahead = !d && !cur;
         return `<div class="dstep ${d?'done':''}${cur?' cur':''}${ahead?' ahead':''}" data-tstep data-name="${esc(s)}"><i>✓</i><span>${esc(s)}</span><em>${d?stepDate(di.done[s]):''}</em></div>`;
-      }).join('')}
+        }).join(''); })()}
     </div>`;
   }
 
@@ -2926,11 +2955,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   async function toggleDeliveryStep(x, name){
     if(!x || !name) return;
     if(name === B2B_PAID_STEP) return;   /* derived from the balance; never stored */
+    /* derived from the calendar while the last event is past — a tick here
+       would be undone by the next render. Once the date is still ahead it is
+       an ordinary step again, so this only guards the derived case. */
+    if(name === SHOT_STEP && shotDate(x) && !(Array.isArray(x.delivery) ? x.delivery : []).some(d=>d && d.step === SHOT_STEP)) return;
     const list = (Array.isArray(x.delivery) ? x.delivery : []).filter(d=>d && d.step);
     const had = list.some(d=>d.step === name);
     const delivery = had ? list.filter(d=>d.step !== name) : [...list, { step: name, date: todayISO() }];
     const steps = stepsFor(x);
-    const allDone = steps.length > 0 && steps.every(s=>delivery.some(d=>d.step === s));
+    /* the shot step is derived, not stored, so it has to be counted here too —
+       otherwise a fully delivered job never reaches "mark as Delivered" */
+    const allDone = steps.length > 0 && steps.every(s=>
+      delivery.some(d=>d.step === s) || (s === SHOT_STEP && !!shotDate(x)));
     const patch = { delivery, updatedAt: serverTimestamp() };
     let becameDelivered = false;
     if(!had && allDone && (x.status||'draft') === 'booked'
