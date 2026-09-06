@@ -1228,6 +1228,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    event count past a two-line clamp and left cards ending in "1…". A third
    line only materialises on the cards that actually need one. */
 #pkgList .card__meta{-webkit-line-clamp:3}
+/* money owed BACK to a client, after a package was reduced post-payment. Not
+   the gold of money coming in and not the red of money overdue — its own
+   colour, because it is neither. */
+.card__amt.over{color:var(--state-progress)}
+.card__amt .overlbl{font-size:var(--fs-2xs);letter-spacing:.1em;color:var(--state-progress);margin-right:.3em;font-style:normal;font-weight:600}
 /* ---- what to work on first -------------------------------------------
    The staleness pill. It reads plainly under ten days, goes amber at ten and
    red at twenty — the point past which nothing having happened is itself the

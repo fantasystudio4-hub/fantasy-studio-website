@@ -252,6 +252,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .sums .due2 b{color:#ffb054}
 .sums .ok2{border-color:rgba(76,175,125,.4)}
 .sums .ok2 b{color:var(--ok)}
+.sums .over2 b{color:#c99ae0}
 .sec{padding: .9rem 1.1rem;border-bottom:1px dashed var(--line)}
 .sec:last-child{border-bottom:0}
 .sec h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
@@ -1200,6 +1201,10 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
   const tt = x.totals||{};
   const paid = Number(tt.advance)||0;
   const bal = Math.max(0, Number(tt.balance)||0);
+  /* the other direction: if the studio reduced the package after this client
+     had paid, they are owed the difference. Telling them "all clear" while
+     holding their money is the worst version of that. */
+  const over = Math.max(0, -(Number(tt.balance)||0));
   const steps = stepsFor(x);
   const done = {}; (Array.isArray(x.delivery)?x.delivery:[]).forEach(d=>{ if(d && d.step) done[d.step]=d.date||''; });
   /* "All events shot" ticks itself the day after the last function, exactly as
@@ -1373,13 +1378,13 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
       <div class="sums">
         <div><b>${inr(tt.finalPrice||0)}</b><span>package</span></div>
         <div><b>${inr(paid)}</b><span>paid</span></div>
-        <div class="${bal>0?'due2':'ok2'}"><b>${bal>0 ? inr(bal) : '✓ Paid'}</b><span>${bal>0 ? 'still to pay' : 'all clear'}</span></div>
+        <div class="${bal>0?'due2':over>0?'over2':'ok2'}"><b>${bal>0 ? inr(bal) : over>0 ? inr(over) : '✓ Paid'}</b><span>${bal>0 ? 'still to pay' : over>0 ? 'due back to you' : 'all clear'}</span></div>
       </div>
       ${Number(tt.finalPrice) > 0 ? `
       <div class="paybar"><i style="width:${pct2}%"></i></div>
       <div class="payleg">
         <span><b>${pct2}% settled</b></span>
-        <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : 'Fully paid ✓'}</span>
+        <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : over > 0 ? inr(over) + ' to come back to you' : 'Fully paid ✓'}</span>
       </div>` : ''}
       ${bal > 0 && upiIds().length
         ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-pid="${esc(x.id||'')}">Pay ${inr(bal)} now</button>` : ''}

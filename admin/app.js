@@ -2735,6 +2735,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* enough on its own to reach the worklist — the client is locked out of a
        booking they are paying for, and only the owner can fix it */
     if(portalIssue(x)) R.push({ n: 70, txt: LOCKED_TXT, sev:'hot' });
+    /* money owed back after a price drop. Nothing chases this on the client's
+       behalf, so it sits unnoticed until they ask — which is the worst way for
+       it to come up. */
+    const over = Math.max(0, -(Number((x.totals||{}).balance)||0));
+    if(over > 0 && st !== 'draft')
+      R.push({ n: 60 + Math.min(30, over/5000), txt: `${inr(over)} to refund`, sev:'warn' });
     const score = Math.round(R.reduce((s,r)=>s + r.n, 0));
     /* one reason on the card, the heaviest — a card carrying four badges is
        a card nobody reads */
@@ -2747,12 +2753,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const evn = (x.events||[]).length;
     const tt = x.totals||{};
     const _paid = Number(tt.advance)||0, _bal = Math.max(0, Number(tt.balance)||0), _fin = Number(tt.finalPrice)||0;
+    /* Money owed BACK. Drop a package's price after the client has paid — the
+       album they decided against, a function that did not happen — and the
+       balance goes negative. Every figure in the panel was wrapped in
+       Math.max(0, …), so that money simply disappeared: the card said "PAID",
+       the tiles said nothing, and the only record that ₹10,000 was owed to a
+       client was the arithmetic nobody was doing. */
+    const _over = Math.max(0, -(Number(tt.balance)||0));
     /* Compact on the card, exact in the title and in the open package — the
        full "₹1,10,000/₹3,10,000" is 19 characters and at 375px it pushed the
        quote number off its own line. */
     const amt = _paid > 0
       ? (_bal > 0
           ? `<span class="card__amt" title="Balance due ${inr(_bal)} of ${inr(_fin)} total"><em class="duelbl">DUE</em>${inrShort(_bal)}<em class="oftot">/${inrShort(_fin)}</em></span>`
+          : _over > 0
+          ? `<span class="card__amt over" title="${inr(_paid)} received against ${inr(_fin)} billed — ${inr(_over)} is owed back to the client"><em class="overlbl">REFUND</em>${inrShort(_over)}</span>`
           : `<span class="card__amt" title="${inr(_fin)} — paid in full">${inrShort(_fin)}<em class="paidlbl">PAID</em></span>`)
       : `<span class="card__amt" title="${inr(_fin)}">${inrShort(_fin)}</span>`;
     const nd = st === 'booked' ? nextShootDate(x) : '';
@@ -7408,6 +7423,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pays = finPayments().filter(p=>/^\d{4}-\d{2}-\d{2}/.test(p.date));
     const confirmed = livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft'));
     const outstanding = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
+    /* The other direction. Reduce a package after the client has paid — the
+       album they decided against, a function that did not happen — and the
+       balance goes negative. "To collect" clamps at zero, so that money was
+       invisible in every figure on this sheet. */
+    const overpaid = confirmed.reduce((s,x)=>s+Math.max(0, -(Number((x.totals||{}).balance)||0)), 0);
+    const overpaidJobs = confirmed.filter(x=>(Number((x.totals||{}).balance)||0) < 0);
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     /* Same basis as the table's Collected column (totals.advance), so the
        tile and the rows can never disagree. An advance typed in the builder
@@ -7503,6 +7524,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="finsplit out"><span>🎬 Crew paid ${money(crewPaidFy)}</span><span>💸 Expenses ${money(expFy)}</span><span>🔻 Total out ${money(outFy)}</span><span>💼 In hand ${money(got - outFy)}</span></div>
       ${catRow ? `<div class="finsplit out cats">${catRow}</div>` : ''}
       <div class="finsplit"><span>⏳ Crew still owed ${money(crewDue)}</span>${expAll !== expFy ? `<span>🧾 ${inrShort(expAll)} spent all time</span>` : ''}</div>
+      ${overpaid > 0 ? `<div class="finsplit out"><span>↩️ To refund clients ${money(overpaid)}</span><span>${overpaidJobs.length} booking${overpaidJobs.length===1?'':'s'} paid above the billed figure</span></div>
+      <div class="finnote">Money you are holding rather than money you have earned — a package reduced after the client had paid. "Left to collect" stops at zero, so it cannot show this.</div>` : ''}
       ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — the expense figures above are incomplete. Close and reopen this sheet to retry.</div>` : ''}
       ${crewPaidUndated > 0 ? `<div class="finnote">${inr(crewPaidUndated)} of crew pay was marked paid before payment dates were kept, so it sits outside every financial year — it is still counted in "still owed" having left, just not in this FY's crew-paid line.</div>` : ''}
       ${allRows < allGot ? `<div class="finnote">Online/cash covers itemised payments only — ${inr(allGot - allRows)} was entered straight as an advance in the builder, so it is counted as received but has no mode.</div>` : ''}
