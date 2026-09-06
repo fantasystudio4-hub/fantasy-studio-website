@@ -265,7 +265,7 @@ const DEFAULTS = {
     '2027-12-25|Christmas',
   ],
   quoteTerms: [
-    '50% advance to confirm the booking, 40% on the event day and 10% at the time of delivery.',
+    '50% advance to confirm the booking, 40% after the event and before editing starts, and the final 10% at the time of delivery.',
     'Booking is confirmed and dates are blocked only once the advance is received.',
     'The advance is adjusted in the final bill and is non-refundable if the booking is cancelled after dates are blocked.',
     'Each service covers one visit of up to 5 hours per event; extended hours are charged extra.',
@@ -274,8 +274,8 @@ const DEFAULTS = {
     'Travel outside Hyderabad city limits charged extra, if applicable.'
   ],
   faqs: [
-    { q:'How do I book Fantasy Studio for my wedding?', a:'Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due on the event day and the final 10% at delivery.' },
-    { q:'What are the payment terms?', a:'50% advance to confirm your booking, 40% on the event day, and 10% at the time of delivery. These terms are printed on every quote and PDF.' },
+    { q:'How do I book Fantasy Studio for my wedding?', a:'Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due after the event — editing starts once it is cleared — and the final 10% at delivery.' },
+    { q:'What are the payment terms?', a:'50% advance to confirm your booking, 40% after the event — we begin editing once this is paid — and 10% at the time of delivery. These terms are printed on every quote and PDF.' },
     { q:'Do you have female photographers for the bridal side?', a:'Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are {ladyShooterTotal} per head per event ({traditionalPhoto} photography charge + {ladyShooter} female shooter pardah coverage premium). You can add them to any event directly in the Package Builder.' },
     { q:'Will we get the raw photos too?', a:'Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package.' },
     { q:'Can I customise a ready-made package?', a:'Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things.' },
@@ -2098,7 +2098,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function waQuoteText(x){
     const tt = x.totals||{};
     const evs = (x.events||[]).map(ev=>`• ${ev.title||'Event'}${ev.date?' — '+stepDate(ev.date):''}${slotSuffix(ev.slot)}`).join('\n');
-    return `*Fantasy Studio* — Quotation ${x.quoteNo||''}\n\n${evs}\n\nPackage total: ${inr(tt.finalPrice||0)}\n50% advance confirms your dates · 40% on event day · 10% at delivery.\n\n${pdfContact().phone||''} · ${pdfContact().website||''}`;
+    return `*Fantasy Studio* — Quotation ${x.quoteNo||''}\n\n${evs}\n\nPackage total: ${inr(tt.finalPrice||0)}\n50% advance confirms your dates · 40% after the event, before editing starts · 10% on delivery.\n\n${pdfContact().phone||''} · ${pdfContact().website||''}`;
   }
   function waReceiptText(x, pm, balance){
     return `*Fantasy Studio* — Payment received ✅\n\n${inr(pm.amount)} (${pm.mode}) on ${stepDate(pm.date)||pm.date}\nQuote ${x.quoteNo||''} — ${x.clientName||''}\nRemaining balance: ${inr(balance)}\n\nThank you!`;

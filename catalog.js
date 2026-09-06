@@ -57,7 +57,15 @@ var PROMO_CODES = {
   'SPECIAL10': { type:'percent', value:10, label:'10% special discount' },
 };
 
-var PAYMENT_TERMS = ['50% advance', '40% on event day', '10% at delivery'];
+/* The middle term used to read "40% on event day", which said when the money
+   was due but not what it unlocks. The balance has to be cleared before the
+   studio starts editing, and that is the part a client needs to know up front
+   — it is why the album and film do not begin the day after the wedding. */
+var PAYMENT_TERMS = [
+  '50% advance to confirm your dates',
+  '40% after the event, before editing starts',
+  '10% on delivery',
+];
 
 /* Google Analytics 4 — paste your Measurement ID (looks like 'G-XXXXXXXXXX') between the
    quotes to activate tracking. Leave empty to keep analytics off. */
@@ -392,7 +400,8 @@ function buildQuoteText(st, lead){
     L.push('Promo (' + st.promo + '): −' + inr(t.disc));
   }
   L.push('*Grand Total: ' + inr(t.grand) + '*');
-  L.push('Payment: ' + PAYMENT_TERMS.join(' · '));
+  L.push('*Payment terms*');
+  PAYMENT_TERMS.forEach(function(t){ L.push('• ' + t); });
   L.push('');
   L.push('Please confirm availability for my dates. Thank you!');
   return L.join('\n');

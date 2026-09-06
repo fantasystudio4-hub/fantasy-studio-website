@@ -1014,8 +1014,7 @@ img{max-width:100%;display:block}
       <div class="send-total" id="sendTotal"></div>
       <button type="button" class="linkish see-items" id="seeItems">See the full list &rarr;</button>
 
-      <p class="terms-line"><b>50%</b> advance to confirm your dates ·
-        <b>40%</b> on the event day · <b>10%</b> at delivery</p>
+      <p class="terms-line" id="termsLine"></p>
       <div class="incl" id="inclRow"></div>
 
       <div class="review-actions">
@@ -1060,7 +1059,7 @@ img{max-width:100%;display:block}
         <button class="btn btn-share" id="shareBtn2" type="button">Share quote link</button>
         <button class="btn-clear" id="clearBtn2" type="button" hidden>Clear package</button>
       </div>
-      <p class="pay-note">50% advance · 40% event day · 10% at delivery<br>Nothing is charged here — this only sends us your list.</p>
+      <p class="pay-note"><span id="payNote"></span><br>Nothing is charged here — this only sends us your list.</p>
     </div>
   </div>
 </aside>
@@ -2542,6 +2541,18 @@ syncPromoUI();
 /* a shared link, a saved package or a chosen preset all arrive with functions
    already on them — start on coverage rather than asking the question again */
 goStep(state.events.length ? 2 : 1, true);
+
+/* Payment terms are written once, in catalog.js, and printed here, in the
+   sidebar, in the WhatsApp message and in the PDF. They used to be retyped in
+   each place, which is how the page came to say "40% on the event day" while
+   meaning "the balance, before editing starts". */
+(function(){
+  const bold = t => esc(t).replace(/^(\d+%)/, '<b>$1</b>');
+  const tl = $('#termsLine');
+  if(tl) tl.innerHTML = PAYMENT_TERMS.map(bold).join(' &middot; ');
+  const pn = $('#payNote');
+  if(pn) pn.textContent = PAYMENT_TERMS.join(' · ');
+})();
 
 /* "what's always included" reassurance chips */
 $('#inclRow').innerHTML = ALWAYS_INCLUDED.map(t=>`<span>✓ ${esc(t)}</span>`).join('');

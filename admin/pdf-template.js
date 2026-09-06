@@ -438,9 +438,12 @@ export async function buildQuotePdf(pkg, contact, terms){
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GOLDD);
     doc.text('when the balance falls due', ML + 132, y + 4);
     y += 14;
+    /* "On the event day" said when the money was due but not what it buys.
+       The balance is what releases the edit, and that is the question a couple
+       actually asks after the wedding. */
     const sched = [
-      ['On the event day', 'balance for the shoot', eventDay],
-      ['At delivery', '10% of the package', delivery],
+      ['After the event', 'balance — editing starts once this is paid', eventDay],
+      ['At delivery', 'final 10% of the package', delivery],
     ];
     sched.forEach(([label, note, amt], i) => {
       ensure(18);
