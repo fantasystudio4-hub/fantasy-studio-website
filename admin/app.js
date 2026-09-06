@@ -279,7 +279,6 @@ const DEFAULTS = {
     { q:'Do you have female photographers for the bridal side?', a:'Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are {ladyShooterTotal} per head per event ({traditionalPhoto} photography charge + {ladyShooter} female shooter pardah coverage premium). You can add them to any event directly in the Package Builder.' },
     { q:'Will we get the raw photos too?', a:'Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package.' },
     { q:'Can I customise a ready-made package?', a:'Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things.' },
-    { q:'How does the premium album work?', a:'Albums are priced at {albumPerSheet} per sheet with a minimum of {albumMinSheets} sheets. Tell us you want one when you send your package and we will add it to your quote.' },
     { q:'Which events do you cover?', a:'Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage.' }
   ]
 };
