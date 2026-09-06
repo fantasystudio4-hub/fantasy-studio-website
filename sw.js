@@ -2,7 +2,9 @@
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets, and
    network-first-with-timeout for app code (see APP_CODE below). */
-const CACHE = 'fs-cache-v13';   // v13: catalog.js + the /builder/ page
+const CACHE = 'fs-cache-v14';   // v14: the album came out of the builder — a cached
+                                //      v13 catalog.js priced st.albumSheets (now absent)
+                                //      as undefined × 400 and rendered a NaN total
 const PREFIX = 'fs-cache-';
 // Only the public shell. The admin and client apps used to be precached here,
 // which cost every first-time visitor ~133 KB for two pages they will never

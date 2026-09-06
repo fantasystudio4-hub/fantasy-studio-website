@@ -402,28 +402,6 @@ img{max-width:100%;display:block}
 .hint-line{margin-top:.8rem;font-size:.78rem;color:#8d846c;text-align:center}
 
 /* ============================================================
-   STEP 3 — ALBUM
-   ============================================================ */
-.album-card{background:linear-gradient(160deg,#26200f,#171208);border-radius:12px;padding:1.1rem 1.15rem;color:#fff;border:1px solid rgba(184,144,43,.5)}
-.album-card h3{color:#fff;font-size:1.15rem}
-.album-card p{color:#b3a98f;font-size:.79rem;margin-top:.2rem}
-.alb-chips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.9rem 0 .8rem}
-.alb-chip{
-  cursor:pointer;border:1px solid rgba(226,194,117,.5);background:rgba(184,144,43,.16);color:var(--gold-bright);
-  border-radius:40px;padding:.45em 1em;font-family:var(--sans);font-size:.76rem;transition:.22s;
-}
-.alb-chip:hover{background:var(--gold);color:#fff;border-color:var(--gold)}
-.alb-chip.on{background:var(--gold);color:#fff;border-color:var(--gold)}
-.alb-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.9rem;margin-top:.4rem}
-.alb-row .stepper{border-color:var(--gold-bright);background:transparent}
-.alb-row .stepper input{color:#fff;font-size:1rem;width:56px;flex:0 0 56px}
-.alb-row .stepper button{background:rgba(184,144,43,.24);color:var(--gold-bright);width:44px;height:42px}
-.alb-row .stepper button:hover{background:var(--gold);color:#fff}
-.alb-total{font-family:var(--serif);font-size:1.5rem;color:var(--gold-bright)}
-.alb-lock{background:var(--cream);border:1px dashed var(--line);border-radius:12px;padding:1.05rem 1.1rem;text-align:center;color:var(--ink-soft);font-size:.85rem}
-.alb-lock b{display:block;font-family:var(--serif);font-size:1.05rem;color:var(--ink);margin-bottom:.25rem}
-
-/* ============================================================
    STEP 4 — REVIEW
    ============================================================ */
 .send-total{
@@ -744,9 +722,6 @@ img{max-width:100%;display:block}
   .bundles .bl{scroll-snap-align:start}
 
   /* ---- 44px of thumb, everywhere it is tapped ---- */
-  .alb-chip{min-height:42px;display:inline-flex;align-items:center}
-  .alb-row .stepper button{width:48px;height:48px}
-  .alb-row .stepper input{width:56px;height:48px}
   .ci-line .cl-x{width:34px;height:34px;font-size:1.15rem}
   .ci-line{padding:.3rem 0}
   .mq-bar .btn{padding:.9em 1.1em}
@@ -1022,48 +997,12 @@ img{max-width:100%;display:block}
 
     <div class="wiz-nav">
       <button type="button" class="btn wiz-back" data-goto-step="1">&larr; Back</button>
-      <button type="button" class="btn btn-gold wiz-next" data-goto-step="3">Next: album &rarr;</button>
+      <button type="button" class="btn btn-gold wiz-next" data-goto-step="3">Next: send &rarr;</button>
     </div>
   </div>
 
-  <!-- ============ STEP 3 — ALBUM ============ -->
+  <!-- ============ STEP 3 — SEND ============ -->
   <div class="wiz-step" data-step="3" hidden>
-  <section class="sec" id="secAlbum">
-    <div class="sec-head">
-      <div>
-        <h2>Add an album</h2>
-        <p><span id="albHeadNote">Printed, hand-finished sheets — minimum 15.</span> <span class="opt">Optional</span></p>
-      </div>
-    </div>
-    <div class="sec-body">
-      <div class="alb-lock" id="albLock" hidden>
-        <b>Album unlocks with photography</b>
-        Add Candid Photography or Traditional Photo to any function and the album appears here.
-      </div>
-      <div class="album-card" id="albCard" hidden>
-        <h3>Premium Album</h3>
-        <p id="albRate">₹400 per sheet · minimum 15 sheets</p>
-        <div class="alb-chips" id="albChips"></div>
-        <div class="alb-row">
-          <div class="stepper" style="max-width:180px">
-            <button type="button" id="albMinus" aria-label="Fewer sheets">−</button>
-            <input type="number" id="albInput" value="0" min="0" max="100" aria-label="Album sheets" />
-            <button type="button" id="albPlus" aria-label="More sheets">+</button>
-          </div>
-          <div class="alb-total" id="albTotal">₹0</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-    <div class="wiz-nav">
-      <button type="button" class="btn wiz-back" data-goto-step="2">&larr; Back</button>
-      <button type="button" class="btn btn-gold wiz-next" data-goto-step="4">Next: send &rarr;</button>
-    </div>
-  </div>
-
-  <!-- ============ STEP 4 — SEND ============ -->
-  <div class="wiz-step" data-step="4" hidden>
   <section class="sec" id="secReview">
     <div class="sec-head">
       <div>
@@ -1091,7 +1030,7 @@ img{max-width:100%;display:block}
     </div>
   </section>
     <div class="wiz-nav">
-      <button type="button" class="btn wiz-back" data-goto-step="3">&larr; Back</button>
+      <button type="button" class="btn wiz-back" data-goto-step="2">&larr; Back</button>
     </div>
   </div>
 
@@ -1107,8 +1046,6 @@ img{max-width:100%;display:block}
     </div>
     <div class="cart-body" id="cartBody"></div>
     <div class="cart-foot">
-      <div class="crow"><span>Functions subtotal</span><span id="evSubtotal">₹0</span></div>
-      <div class="crow"><span>Album subtotal</span><span id="albSubtotal">₹0</span></div>
       <div class="disc-field" id="promoField" hidden>
         <label for="promoInput">Promo</label>
         <input type="text" id="promoInput" placeholder="Enter code" autocomplete="off" autocapitalize="characters" />
@@ -1154,8 +1091,6 @@ img{max-width:100%;display:block}
   </div>
   <div class="sheet-scroll">
     <div id="sheetBody"></div>
-    <div class="crow"><span>Functions subtotal</span><span id="evSubtotalM">₹0</span></div>
-    <div class="crow"><span>Album subtotal</span><span id="albSubtotalM">₹0</span></div>
     <div class="disc-field" id="sheetPromoField" hidden>
       <label for="sheetPromoInput">Promo</label>
       <input type="text" id="sheetPromoInput" placeholder="Enter code" autocomplete="off" autocapitalize="characters" />
@@ -1235,7 +1170,7 @@ img{max-width:100%;display:block}
 const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const smooth = REDUCE_MOTION ? 'auto' : 'smooth';
 
-let state = { events: [], albumSheets: 0, promo: '' };
+let state = { events: [], promo: '' };
 let activePresetKey = null;
 let openEv = null;            // only one function is expanded at a time
 let showAllSvc = {};          // per-function: are the add-ons revealed?
@@ -1332,7 +1267,6 @@ function renderDeals(){
 function applyPreset(key, quiet){
   const p = PRESETS[key]; if(!p) return;
   state.events = p.events.map(ev=>normalizeEvent(ev));
-  state.albumSheets = p.album||0;
   activePresetKey = key;
   markBuilderStarted();
   track('preset_applied', { preset: key });
@@ -1645,7 +1579,7 @@ document.addEventListener('click', e=>{
     }
     markCustomised();
     renderEventPanel(ev.id);
-    renderAlbum(); renderQuote();
+    renderQuote();
     return;
   }
 
@@ -1668,7 +1602,7 @@ document.addEventListener('click', e=>{
     markCustomised();
     if((before === 0) !== (chosenCount(ev) === 0)) renderEventPanel(ev.id);
     else refreshProd(ev.id, key);
-    renderAlbum(); renderQuote();
+    renderQuote();
     /* keep the thumb on the same button after the stepper is rebuilt */
     if(kind !== 'add' && q > 0){
       const again = document.querySelector(`.prod[data-ev="${ev.id}"][data-svc="${key}"] [data-act="${kind}"]`);
@@ -1706,7 +1640,7 @@ document.addEventListener('click', e=>{
       state.events[idx].services = Object.assign({}, state.events[idx-1].services);
       markBuilderStarted(); markCustomised();
       renderEventPanel(state.events[idx].id);
-      renderAlbum(); renderQuote();
+      renderQuote();
       showToast('Copied the services from the previous function.');
     }
     return;
@@ -1740,13 +1674,10 @@ document.addEventListener('click', e=>{
       markCustomised();
       if((before === 0) !== (chosenCount(ev) === 0)) renderEventPanel(ev.id);
       else refreshProd(ev.id, cx.dataset.svc);
-      renderAlbum(); renderQuote();
+      renderQuote();
     }
     return;
   }
-  const ax = e.target.closest('[data-albx]');
-  if(ax){ setAlbum(0); return; }
-
   if(e.target.closest('.promo-remove')) removePromo();
 });
 
@@ -1774,7 +1705,6 @@ document.addEventListener('input', e=>{
   markCustomised();
   /* price only — never re-render the field the caret is sitting in */
   refreshEventChrome(ev);
-  renderAlbum();
   renderQuote();
 });
 /* blur doesn't bubble — capture phase; write the committed value back */
@@ -1822,58 +1752,6 @@ function checkDupDates(announce){
 }
 
 /* ============================================================
-   STEP 3 — ALBUM
-   ============================================================ */
-const ALBUM_QUICK = [15, 25, 40, 60];
-function setAlbum(n){
-  n = parseInt(n, 10) || 0;
-  if(n <= 0) n = 0;                                                // no album
-  else if(n < PRICES.albumMinSheets) n = PRICES.albumMinSheets;    // albums start at 15 sheets
-  state.albumSheets = Math.min(PRICES.albumMaxSheets, n);
-  markCustomised();
-  renderAlbum(); renderQuote();
-}
-function renderAlbum(){
-  const eligible = albumEligible(state);
-  $('#albLock').hidden = eligible;
-  $('#albCard').hidden = !eligible;
-  $('#albRate').textContent = `${inr(PRICES.albumPerSheet)} per sheet · minimum ${PRICES.albumMinSheets} sheets`;
-  $('#albHeadNote').textContent = `Printed, hand-finished sheets — minimum ${PRICES.albumMinSheets}.`;
-  $('#albChips').innerHTML = ALBUM_QUICK
-    .filter(n=>n >= PRICES.albumMinSheets && n <= PRICES.albumMaxSheets)
-    .map(n=>`<button type="button" class="alb-chip ${state.albumSheets===n?'on':''}" data-alb="${n}">${n} sheets · ${inr(n*PRICES.albumPerSheet)}</button>`)
-    .join('') + (state.albumSheets>0 ? `<button type="button" class="alb-chip" data-alb="0">Remove album</button>` : '');
-  const inp = $('#albInput');
-  if(inp && document.activeElement !== inp) inp.value = state.albumSheets;  // don't fight the user's caret
-  if(inp) inp.max = PRICES.albumMaxSheets;
-  $('#albTotal').textContent = inr((eligible ? state.albumSheets : 0) * PRICES.albumPerSheet);
-}
-$('#albChips').addEventListener('click', e=>{
-  const b = e.target.closest('[data-alb]'); if(!b) return;
-  setAlbum(b.dataset.alb);
-});
-$('#albPlus').addEventListener('click', ()=>setAlbum(state.albumSheets===0 ? PRICES.albumMinSheets : state.albumSheets+1));
-$('#albMinus').addEventListener('click', ()=>setAlbum(state.albumSheets<=PRICES.albumMinSheets ? 0 : state.albumSheets-1));
-/* typing: keep the raw string, allow empty/partial entry; live total updates
-   without min-snapping so intermediate values (like the "4" in "40") survive */
-$('#albInput').addEventListener('input', e=>{
-  const raw = e.target.value;
-  if(raw === '') return;
-  const n = parseInt(raw, 10);
-  if(isNaN(n) || n < 0) return;
-  state.albumSheets = Math.min(PRICES.albumMaxSheets, n);   // max-cap only; no snap
-  markCustomised();
-  $('#albTotal').textContent = inr(state.albumSheets * PRICES.albumPerSheet);
-  renderQuote();
-});
-/* committing: snap 1–14 → 15, clamp to bounds, and normalise the display */
-$('#albInput').addEventListener('blur', e=>{
-  setAlbum(e.target.value === '' ? 0 : parseInt(e.target.value, 10));
-  e.target.value = state.albumSheets;
-});
-$('#albInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') e.target.blur(); });
-
-/* ============================================================
    THE CART / QUOTE
    ============================================================ */
 const EMPTY_MSG = '<div class="cart-empty">Your quote is empty — add a function to begin ✦</div>';
@@ -1881,12 +1759,10 @@ const EMPTY_MSG = '<div class="cart-empty">Your quote is empty — add a functio
 function itemCount(){
   let n = 0;
   state.events.forEach(ev=>{ for(const k in ev.services) n += ev.services[k]; });
-  if(albumEligible(state) && state.albumSheets>0) n += 1;
   return n;
 }
 
 function buildBreakdownHTML(interactive){
-  const albSub = (albumEligible(state) ? state.albumSheets : 0) * PRICES.albumPerSheet;
   let html = '';
   state.events.forEach((ev,i)=>{
     const lines = SERVICES.filter(s=>(ev.services[s.key]||0)>0).map(s=>{
@@ -1906,16 +1782,6 @@ function buildBreakdownHTML(interactive){
       ${lines}
     </div>`;
   });
-  if(albumEligible(state) && state.albumSheets>0){
-    html += `<div class="ci-group">
-      <div class="ci-head"><span class="en">Album</span><span class="et">${inr(albSub)}</span></div>
-      <div class="ci-line">
-        <span class="cl-n">Sheets <span class="cl-q">×${state.albumSheets}</span></span>
-        <span class="cl-v">${inr(albSub)}</span>
-        ${interactive?`<button type="button" class="cl-x" data-albx aria-label="Remove the album">&times;</button>`:''}
-      </div>
-    </div>`;
-  }
   return html;
 }
 
@@ -1958,10 +1824,6 @@ function renderQuote(){
   $('#cartBody').innerHTML  = bd || EMPTY_MSG;
   $('#sheetBody').innerHTML = bd || EMPTY_MSG;
 
-  $('#evSubtotal').textContent   = inr(t.evSub);
-  $('#albSubtotal').textContent  = inr(t.albSub);
-  $('#evSubtotalM').textContent  = inr(t.evSub);
-  $('#albSubtotalM').textContent = inr(t.albSub);
   setGrand(t.grand);
 
   const gw = $('#grandWas');
@@ -1978,7 +1840,7 @@ function renderQuote(){
      links to the list instead. */
   const names = state.events.filter(e=>chosenCount(e)).map(e=>e.type);
   $('#sendTotal').innerHTML = n
-    ? `<span class="st-l">${esc(names.join(' · '))}${(albumEligible(state)&&state.albumSheets>0)?' · album':''}</span>
+    ? `<span class="st-l">${esc(names.join(' · '))}</span>
        <span class="st-v">${inr(t.grand)}</span>
        ${t.disc>0?`<span class="st-s">${inr(t.sub)} − ${esc(state.promo)} discount</span>`:''}`
     : '<span class="st-e">Nothing added yet — pick a package or a function above.</span>';
@@ -1997,7 +1859,7 @@ function renderQuote(){
   if(nx){
     nx.hidden = last;
     nx.disabled = !stepReachable(step + 1);
-    nx.textContent = step === 1 ? 'Next: coverage →' : step === 2 ? 'Next: album →' : 'Next: send →';
+    nx.textContent = step === 1 ? 'Next: coverage →' : 'Next: send →';
   }
   if(wa) wa.hidden = true;
   if(pf) pf.hidden = true;
@@ -2012,7 +1874,6 @@ function renderQuote(){
 
 function renderAll(){
   renderEvents();
-  renderAlbum();
   renderQuote();
   renderDeals();
 }
@@ -2041,8 +1902,7 @@ function markCustomised(){
 const WIZ = [
   { n:1, key:'start',    title:'Start',    label:'Start' },
   { n:2, key:'coverage', title:'Coverage', label:'Coverage' },
-  { n:3, key:'album',    title:'Album',    label:'Album' },
-  { n:4, key:'send',     title:'Send',     label:'Send' },
+  { n:3, key:'send',     title:'Send',     label:'Send' },
 ];
 let step = 1;
 
@@ -2261,7 +2121,7 @@ document.addEventListener('keydown', e=>{
    ============================================================ */
 function startFresh(){
   clearSavedQuote();
-  state = { events: [], albumSheets: 0, promo: '' };
+  state = { events: [], promo: '' };
   activePresetKey = null;
   openEv = null;
   showAllSvc = {};
@@ -2509,22 +2369,7 @@ function buildPdfDoc(){
     });
   });
   const t = calcQuote(state);
-  if(albumEligible(state) && state.albumSheets>0){
-    ensureSpace(rowH*2+2);
-    doc.setFillColor(...CREAM2); doc.rect(IL, y, IR-IL, rowH, 'F');
-    doc.setFont('times','bold'); doc.setFontSize(9.5); doc.setTextColor(...INK);
-    doc.text('ALBUM', IL+2, y+4.8);
-    doc.setTextColor(...DEEP); doc.text(rupee(t.albSub), colA, y+4.8, {align:'right'});
-    y += rowH;
-    doc.setFillColor(...CREAM); doc.rect(IL, y, IR-IL, rowH, 'F');
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,58,50);
-    doc.text('Album sheets', IL+5, y+4.7);
-    doc.text(String(state.albumSheets), colQ, y+4.7, {align:'right'});
-    doc.text(rupee(PRICES.albumPerSheet), colR, y+4.7, {align:'right'});
-    doc.text(rupee(t.albSub), colA, y+4.7, {align:'right'});
-    y += rowH;
-  }
-  if(!evs.length && !(albumEligible(state) && state.albumSheets>0)){
+  if(!evs.length){
     doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(150,150,150);
     doc.text('No services selected yet', 105, y+6, {align:'center'});
     y += 10;
@@ -2574,10 +2419,6 @@ function printQuoteFallback(){
       r++;
     });
   });
-  if(albumEligible(state) && state.albumSheets>0){
-    rows += `<tr class="pq-ev"><td colspan="3">ALBUM</td><td class="num pq-evtotal">${inr(t.albSub)}</td></tr>`;
-    rows += `<tr><td>Album sheets</td><td class="num">${state.albumSheets}</td><td class="num">${inr(PRICES.albumPerSheet)}</td><td class="num">${inr(t.albSub)}</td></tr>`;
-  }
   if(!rows) rows = `<tr><td colspan="4" style="text-align:center;color:#999;padding:18px">No services selected yet</td></tr>`;
 
   $('#print-quote').innerHTML = `
@@ -2653,7 +2494,6 @@ function loadWantedPreset(){
   if(!p || _presetLoaded) return false;
   _presetLoaded = true;
   state.events = p.events.map(ev=>normalizeEvent(ev));
-  state.albumSheets = p.album||0;
   activePresetKey = wantedPreset;
   markBuilderStarted();
   track('preset_applied', { preset: wantedPreset, from: 'home' });
@@ -2679,7 +2519,7 @@ const wantsAdd = location.hash === '#events' || params.get('add') === '1';
 
 if(_shared){
   state = restoreQuote({ events: _shared.e.map(ev=>({ type: ev.t, date: ev.d, services: ev.s })),
-                         albumSheets: _shared.a, promo: _shared.p });
+                         promo: _shared.p });
   history.replaceState(null, '', location.pathname + location.search);
   track('quote_link_opened');
   setTimeout(()=>showToast('Shared quote loaded — feel free to adjust it.'), 300);
@@ -2719,7 +2559,7 @@ onRemoteConfig(()=>{
      be typing a quantity or holding a date picker open — rebuild the prices
      around them rather than through them */
   const busy = document.activeElement && $('#eventsList').contains(document.activeElement);
-  if(busy){ renderAlbum(); renderQuote(); renderDeals(); }
+  if(busy){ renderQuote(); renderDeals(); }
   else renderAll();
   syncPromoUI();
 });

@@ -41,8 +41,12 @@ var PRICES = {
   ledScreen8x12:     10000,  // per event
   liveStreaming:     6000,   // per event
   extraShortVPShoot: 3000,   // per event
-  albumPerSheet:     400,    // album = sheets × 400
-  albumMinSheets:    15,     // albums start at 15 sheets (0 = no album)
+  /* Albums are no longer built here — the package builder dropped its album
+     step. These three stay because the home page's FAQ quotes them through
+     {albumPerSheet}/{albumMinSheets}, and admin still prices an album onto a
+     real booking. Nothing in the public quote reads them. */
+  albumPerSheet:     400,
+  albumMinSheets:    15,
   albumMaxSheets:    100,
 };
 // All per-service charges are per visit / per event / up to 5 hours.
@@ -133,8 +137,7 @@ var PRESETS = {
   single: {
     name:'Single-Day', tag:'',
     desc:'One function — engagement or birthday. Traditional photo & video coverage.',
-    events:[{type:'Engagement', services:{traditionalPhoto:1, traditionalVideo:1}}],
-    album:0
+    events:[{type:'Engagement', services:{traditionalPhoto:1, traditionalVideo:1}}]
   },
   essential: {
     name:'Essential', tag:'',
@@ -143,8 +146,7 @@ var PRESETS = {
       {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2}},
       {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2}}
-    ],
-    album:0
+    ]
   },
   premium: {
     name:'Premium', tag:'Popular',
@@ -153,8 +155,7 @@ var PRESETS = {
       {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}},
       {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1}}
-    ],
-    album:0
+    ]
   },
   royal: {
     name:'Royal', tag:'Signature',
@@ -163,8 +164,7 @@ var PRESETS = {
       {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}},
       {type:'Valima / Reception', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}}
-    ],
-    album:0
+    ]
   }
 };
 
@@ -329,19 +329,11 @@ function eventTotal(ev){
   return t;
 }
 function activePromo(st){ return PROMO_CODES[st.promo] || null; }
-/* album applies only when a photography service (candid / traditional photo) is chosen */
-function albumEligible(st){
-  return st.events.some(function(ev){
-    return (ev.services.candidPhotography||0) > 0 || (ev.services.traditionalPhoto||0) > 0;
-  });
-}
 function calcQuote(st){
-  var evSub = st.events.reduce(function(s,e){ return s + eventTotal(e); }, 0);
-  var albSub = (albumEligible(st) ? st.albumSheets : 0) * PRICES.albumPerSheet;
-  var sub = evSub + albSub;
+  var sub = st.events.reduce(function(s,e){ return s + eventTotal(e); }, 0);
   var p = activePromo(st);
   var disc = !p ? 0 : Math.min(sub, p.type==='percent' ? Math.round(sub*p.value/100) : p.value);
-  return { evSub: evSub, albSub: albSub, sub: sub, disc: disc, promo: p, grand: sub - disc };
+  return { evSub: sub, sub: sub, disc: disc, promo: p, grand: sub - disc };
 }
 /* only events with >=1 service count; date-sorted (undated last, builder order) */
 function sortedEvents(st){
@@ -356,7 +348,7 @@ function sortedEvents(st){
     });
 }
 function presetRawTotal(p){
-  var t = (p.album||0) * PRICES.albumPerSheet;
+  var t = 0;
   p.events.forEach(function(ev){ for(var k in ev.services) t += PRICES[k]*ev.services[k]; });
   return t;
 }
@@ -393,10 +385,6 @@ function buildQuoteText(st, lead){
     L.push('_' + ev.type + ' total: ' + inr(eventTotal(ev)) + '_');
   });
   if(!evs.length){ L.push(''); L.push('_(No services selected yet)_'); }
-  if(albumEligible(st) && st.albumSheets>0){
-    L.push('');
-    L.push('*Album:* ' + st.albumSheets + ' sheets × ' + inr(PRICES.albumPerSheet) + ' = ' + inr(t.albSub));
-  }
   L.push('');
   L.push('----------------');
   if(t.disc>0){
@@ -417,7 +405,7 @@ function waUrl(st, lead){
 function encodeQuote(st){
   var payload = {
     e: st.events.map(function(ev){ return { t: ev.type, d: ev.date||'', s: ev.services }; }),
-    a: st.albumSheets, p: st.promo
+    p: st.promo
   };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -438,7 +426,7 @@ var STORE_KEY = 'fs_quote_v1';
 function saveQuote(st){
   try{
     localStorage.setItem(STORE_KEY, JSON.stringify({
-      events: st.events, albumSheets: st.albumSheets, promo: st.promo
+      events: st.events, promo: st.promo
     }));
   }catch(e){ /* private mode / quota — persistence is best-effort */ }
 }
@@ -457,15 +445,16 @@ function quoteHasContent(d){
   var hasSvc = d.events.some(function(e){
     return Object.values(e.services||{}).some(function(q){ return q>0; });
   });
-  return hasSvc || d.albumSheets>0;
+  return hasSvc;
 }
 /* a saved package, normalised and ready to price — used by the home page to
    show "continue where you left off" without duplicating the sanitiser */
 function restoreQuote(d){
-  var st = { events: [], albumSheets: 0, promo: '' };
+  var st = { events: [], promo: '' };
   if(!d || !Array.isArray(d.events)) return st;
   st.events = d.events.slice(0,12).map(function(e){ return normalizeEvent(e); });
-  st.albumSheets = Math.max(0, Math.min(PRICES.albumMaxSheets, parseInt(d.albumSheets,10)||0));
+  /* a package saved or shared before the album step was removed still carries
+     its sheet count — it is read past, not restored */
   st.promo = PROMO_CODES[d.promo] ? d.promo : '';
   return st;
 }
@@ -588,7 +577,6 @@ function buildLeadDoc(st, name, phone, phoneFull){
     message: '',
     quote: {
       events: st.events.map(function(ev){ return { type: ev.type, date: ev.date||'', services: ev.services }; }),
-      albumSheets: st.albumSheets,
       promo: st.promo
     },
     grandTotal: calcQuote(st).grand,
@@ -669,14 +657,14 @@ function applyRemoteConfig(cfg){
           });
           events.push({ type: String(ev.type||'Event').slice(0,40), services: services });
         });
-        var album = Number(pr.album||0);
-        if(!ok || !isFinite(album) || album < 0) return;      // skip, keep the built-in
+        if(!ok) return;                                      // skip, keep the built-in
         /* a preset that ended up with nothing priceable would advertise
            "Package ₹0" — drop it rather than show a free package */
         var hasAny = events.some(function(ev){ return Object.keys(ev.services).length > 0; });
-        if(!hasAny && !album) return;
+        if(!hasAny) return;
+        /* pr.album is ignored: a package no longer carries an album */
         clean[k] = { name: String(pr.name||k), tag: String(pr.tag||''),
-                     desc: String(pr.desc||''), album: Math.floor(album), events: events };
+                     desc: String(pr.desc||''), events: events };
       });
       if(Object.keys(clean).length){
         Object.keys(PRESETS).forEach(function(k){ if(!clean[k]) delete PRESETS[k]; });
