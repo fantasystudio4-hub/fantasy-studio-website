@@ -360,13 +360,28 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 @media(hover:hover){ .stat[data-goto]:hover{border-color:var(--gold)} }
 
 /* status picker sheet */
-.st-opts{display:grid;gap:.5rem}
+/* minmax(0,1fr), not the implicit auto column: an auto grid track sizes to
+   max-content, so one long client name ("Lakshmi Priyanka & Venkata
+   Subrahmanyam") widened the whole column past the sheet and pushed the
+   amount off the right edge. Latent since the sheet was written; the payment
+   picker's two-line rows just made it impossible to miss. */
+.st-opts{display:grid;gap:.5rem;grid-template-columns:minmax(0,1fr)}
 /* flex-wrap so a quick-add's second line ("name + number, that is all") drops
    below the label instead of squeezing it */
 .st-opts button{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;background:var(--field);border:1px solid var(--line);border-radius:var(--r-md);padding:.85em 1em;color:var(--text);cursor:pointer;font-size:var(--fs-lg);text-transform:capitalize;text-align:left;min-height:var(--tap)}
 .st-opts button em{margin-left:auto;font-style:normal;font-size:var(--fs-xs);color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
 .st-opts button.on{border-color:var(--gold)}
 .st-opts .dot{width:9px;height:9px;flex:0 0 auto}
+/* the payment picker: a search box, and a second line on each row so two
+   clients with the same first name are told apart by quote number and date */
+.qapaysearch{margin-bottom:.15rem}
+/* the list is a grid item itself, so it needs the same no-blowout treatment */
+#qaPayList{display:grid;gap:.5rem;min-width:0;grid-template-columns:minmax(0,1fr)}
+.st-opts button{min-width:0}
+.st-opts button .qapayr1{flex:1 0 100%;display:flex;align-items:center;gap:.65rem;min-width:0}
+.st-opts button .qapayname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-opts button .qapayamt{flex:0 0 auto;margin-left:auto;font-size:var(--fs-xs);font-weight:600;color:var(--gold-b);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.st-opts button .qapaysub{flex:1 0 100%;font-size:var(--fs-xs);color:var(--mut);letter-spacing:.02em;text-transform:none;margin-top:-.15rem}
 @media(hover:hover){ .st-opts button:hover{border-color:var(--gold)} }
 
 /* payment quick amounts */

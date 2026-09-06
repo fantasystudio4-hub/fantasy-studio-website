@@ -7882,16 +7882,82 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast('Save failed');
     }
   }
+  /* ---- record a payment: pick the client ----
+     This used to end in .slice(0, 12). Past a dozen outstanding balances the
+     rest simply were not on the list — no count, no "more", nothing to say
+     anything was missing — so a studio with twenty debtors could not record a
+     payment against thirteen of them from here at all. That is the whole
+     point of the screen.
+
+     The cap is gone. In its place: the real count in the subtitle, a search
+     box (a name is faster to type than a long list is to scan), and a fold
+     that says exactly how many it is holding back rather than hiding them. */
+  let _qaPayQ = '', _qaPayAll = false;
+  const qaPayable = () => livePkgs()
+    .filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0)
+    /* oldest commitment first: nextShootDate() falls back to the LAST event,
+       so jobs already shot carry a past date and lead the list — which is the
+       money that has been owed longest */
+    .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+
   function renderQaPay(){
-    const list = livePkgs()
-      .filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0)
-      .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; })
-      .slice(0,12);
-    $('#qaWho').textContent = 'Who paid you? Tap the client to record it';
-    $('#qaOpts').innerHTML = (list.length
-      ? list.map(x=>`<button type="button" data-qa-pick="${x.id}"><i class="dot ${x.status||'draft'}"></i>${esc(x.clientName||'—')}<em>${inr(Math.max(0,(x.totals||{}).balance||0))} due</em></button>`).join('')
-      : '<div class="empty" style="padding:.6rem 0">Nothing is due — every balance is clear 🎉</div>')
-      + '<button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>';
+    _qaPayQ = ''; _qaPayAll = false;
+    $('#qaOpts').classList.remove('qa-form');
+    const n = qaPayable().length;
+    $('#qaWho').textContent = n
+      ? `Who paid you? ${n} booking${n === 1 ? '' : 's'} with a balance`
+      : 'Who paid you?';
+    /* the search box is rendered ONCE and the list refreshed inside it —-
+       rebuilding the whole sheet on each keystroke would take the caret with it */
+    $('#qaOpts').innerHTML = `
+      ${n > 6 ? '<input class="input qapaysearch" id="qaPaySearch" type="search" autocomplete="off" placeholder="Search name, phone or quote #…" />' : ''}
+      <div id="qaPayList"></div>
+      <button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>`;
+    renderQaPayList();
+  }
+
+  function renderQaPayList(){
+    const box = $('#qaPayList'); if(!box) return;
+    const q = _qaPayQ.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g,'');
+    const all = qaPayable().filter(x=>!q
+      || String(x.clientName||'').toLowerCase().includes(q)
+      || String(x.quoteNo||'').toLowerCase().includes(q)
+      || String(x.endClientName||'').toLowerCase().includes(q)
+      || (qDigits.length >= 3 && normPhone(x.clientPhone).includes(qDigits)));
+    if(!all.length){
+      box.innerHTML = `<div class="empty" style="padding:.6rem 0">${
+        q ? 'No booking matches “' + esc(_qaPayQ.trim()) + '”.'
+          : 'Nothing is due — every balance is clear 🎉'}</div>`;
+      return;
+    }
+    const CAP = 8;
+    const shown = _qaPayAll ? all : all.slice(0, CAP);
+    const more = all.length - shown.length;
+    const today = todayISO();
+    box.innerHTML = shown.map(x=>{
+      const bal = Math.max(0, (x.totals||{}).balance || 0);
+      const d = nextShootDate(x);
+      /* which job this is, for two clients with the same first name — and
+         whether the shoot has happened, which is what decides how hard the
+         money is to collect */
+      const when = d ? (d < today ? 'shot ' + stepDate(d) : stepDate(d)) : 'no date';
+      /* Two explicit lines rather than relying on the inherited wrap: as bare
+         children of .st-opts button the name grew to fill the row and pushed
+         the amount onto a line of its own, making every row three deep. */
+      return `<button type="button" data-qa-pick="${esc(x.id)}">
+        <span class="qapayr1">
+          <i class="dot ${x.status||'draft'}"></i>
+          <span class="qapayname">${esc(x.clientName||'—')}</span>
+          <b class="qapayamt">${inr(bal)} due</b>
+        </span>
+        <span class="qapaysub">${x.quoteNo ? esc(x.quoteNo) + ' · ' : ''}${esc(when)}</span>
+        ${/* deliberately NOT an <em>: ui.css makes every em inside .st-opts a
+             full-width block for the quick-add subtitles, which is right for
+             those and forces the amount onto a line of its own here */''}
+      </button>`;
+    }).join('')
+      + (more > 0 ? `<button type="button" data-qa-paymore style="justify-content:center;color:var(--gold-b)">＋ ${more} more with a balance</button>` : '');
   }
   on('#qaOpts', 'click', e=>{
     if(e.target.closest('[data-qa-lead]')){ renderQaLead(); return; }
@@ -7904,6 +7970,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-qa-new]')){ closeQaUI(); openJobType(); return; }
     if(e.target.closest('[data-qa-pay]')){ renderQaPay(); return; }
     if(e.target.closest('[data-qa-back]')){ renderQaMain(); return; }
+    if(e.target.closest('[data-qa-paymore]')){ _qaPayAll = true; renderQaPayList(); return; }
     const pick = e.target.closest('[data-qa-pick]');
     if(pick){ const x = PKGS.find(p=>p.id===pick.dataset.qaPick); closeQaUI(); if(x) openPay(x); return; }
     if(e.target.closest('[data-qa-today]')){
@@ -7913,8 +7980,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-qa-member]')){ closeQaUI(); $('#tabTeam').click(); openTm(null); return; }
   });
+  /* delegated: #qaPaySearch is created by renderQaPay, so a direct listener
+     would bind to nothing at load and then to a replaced element after */
+  on('#qaOpts', 'input', e=>{
+    if(e.target && e.target.id === 'qaPaySearch'){ _qaPayQ = e.target.value; _qaPayAll = false; renderQaPayList(); }
+  });
   on('#qaOpts', 'keydown', e=>{
     if(e.key === 'Enter' && e.target.matches('#qlName,#qlPhone,#qlType')){ e.preventDefault(); saveQaLead(); }
+    /* one match and Enter pressed — open it rather than making them aim */
+    if(e.key === 'Enter' && e.target && e.target.id === 'qaPaySearch'){
+      e.preventDefault();
+      const only = $$('#qaPayList [data-qa-pick]');
+      if(only.length === 1) only[0].click();
+    }
   });
   on('#fabBtn', 'click', openQa);
   on('#qaClose', 'click', closeQa);
