@@ -2042,7 +2042,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              pct: steps.length ? Math.round(100*doneCount/steps.length) : 0,
              now, next: nxt, lastDone, since };
   }
-  function trackerHTML(x){
+  /* Which packages have their step list open. Expanding a card printed all
+     eleven steps every time, which made one open card 740px of an 812px
+     phone — the card WAS the screen, and the buttons above it went with it.
+     The head already draws a progress bar and an n/total, so the list itself
+     is detail on demand. Session-only: a checklist you opened yesterday is
+     not a preference. */
+  let _dtOpen = new Set();
+  function trackerHTML(x, opts){
+    const foldable = !!(opts && opts.foldable);
+    const stepsOpen = !foldable || _dtOpen.has(x.id);
     const di = deliveryInfo(x);
     const st = x.status||'draft';
     /* The pipeline had no front. Eleven identical rows meant finding the next
@@ -2062,9 +2071,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : '';
     return `
     <div class="dtrack">
-      <div class="dt-head"><span>Delivery</span><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b></div>
+      ${/* The current step and its ✓ Done button come FIRST and never fold —
+           they are the one thing on this card worth acting on. The handle
+           then sits directly above the only thing it actually hides, rather
+           than above a block that stays put whichever way it is turned. */ ''}
       ${head}
-      ${(()=>{ const stored = new Set((Array.isArray(x.delivery)?x.delivery:[]).map(d=>d && d.step).filter(Boolean));
+      <div class="dt-head${foldable ? ' tog' : ''}${stepsOpen ? '' : ' closed'}"${
+        foldable ? ` data-dttog="${esc(x.id)}" role="button" tabindex="0" aria-expanded="${stepsOpen}"` : ''}><span>Delivery</span><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b>${
+        foldable ? '<span class="car">▾</span>' : ''}</div>
+      ${!stepsOpen ? '' : (()=>{ const stored = new Set((Array.isArray(x.delivery)?x.delivery:[]).map(d=>d && d.step).filter(Boolean));
         return di.steps.map(s=>{
         const d = (s in di.done);
         /* derived from the calendar, so it must not offer a tick that would be
@@ -2828,10 +2843,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  screen clips: when the shoot is, then which quote it is, then
                  its size, and the end client last. A B2B row with a long
                  end-client name used to push the DATE off the card. */
-              nd ? `📅 ${stepDate(nd)}` : '',
+              nd ? `<span class="mnb">📅 ${stepDate(nd)}</span>` : '',
               idlePill,
               x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
-              `${evn} event${evn===1?'':'s'}`,
+              /* the count and the date are single facts, and a line break
+                 through the middle of one left cards ending in a lone
+                 "event" or "Oct". Only the · separators may break. */
+              `<span class="mnb">${evn} event${evn===1?'':'s'}</span>`,
               isStudioJob(x) && x.endClientName ? `for ${esc(x.endClientName)}` : ''
             ].filter(Boolean).join(' · ')}</span>
             ${amt}
@@ -2861,7 +2879,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button type="button" class="btn btn--sm btn--ghost" data-wachat>💬 WhatsApp</button>` : ''}
         <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
       </div>
-      ${track && open ? trackerHTML(x) : ''}
+      ${track && open ? trackerHTML(x, { foldable: true }) : ''}
     </article>`;
   }
 
@@ -3032,6 +3050,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-expand]')){
       if(inHome){ expandedHome = (expandedHome === id) ? null : id; renderHomeBooked(); }
       else{ expandedPkg = (expandedPkg === id) ? null : id; renderPkgListOnly(); }
+      return;
+    }
+    /* the delivery step list, folded behind its own progress bar. Sits
+       outside the [data-expand] button, so it can never collapse the card
+       it lives in. */
+    const dtt = e.target.closest('[data-dttog]');
+    if(dtt){
+      const pid = dtt.dataset.dttog;
+      if(_dtOpen.has(pid)) _dtOpen.delete(pid); else _dtOpen.add(pid);
+      if(inHome) renderHomeBooked(); else renderPkgListOnly();
       return;
     }
     const x = PKGS.find(p=>p.id===id); if(!x) return;

@@ -213,6 +213,12 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dl3 b.dv{color:var(--state-done)}
 .dtrack{margin:0 1rem;padding:.6rem 0 .85rem;border-top:1px dashed var(--line)}
 .dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
+/* the head is the fold's handle when the step list is collapsible */
+.dt-head.tog{cursor:pointer;min-height:var(--tap);margin-bottom:0;margin-top:.15rem;-webkit-tap-highlight-color:transparent}
+.dt-head.tog .car{flex:0 0 auto;font-size:var(--fs-xs);transition:transform .15s}
+.dt-head.tog.closed .car{transform:rotate(-90deg)}
+.dt-head.tog:not(.closed){margin-bottom:.4rem}
+.dt-head.tog:active{opacity:.7}
 .dt-head .dprog{flex:1}
 .dt-head b{color:var(--mut);font-weight:600}
 .dstep{display:flex;align-items:center;gap:.55rem;padding:.36rem .15rem;cursor:pointer;border-radius:var(--r-sm);font-size:var(--fs-base);color:var(--mut)}
@@ -1306,12 +1312,31 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    meta row carries everything else and is the only thing allowed to give way,
    the money hugs the right. Packages adds a third row the lead card has no use
    for: the delivery progress bar. */
-#pkgList .card__toggle .l2 .card__amt,#homeBooked .card__toggle .l2 .card__amt{margin-left:auto}
+/* The meta and the money shared one flex row, so the meta was handed roughly
+   124px of a 215px column and broke into three fragments — "⏱ 160d ·" /
+   "FS-2026-018 ·" / "1 event" — for a sentence that fits one line in 173px.
+   The row becomes a block and the money floats out of the text flow, which
+   gives the meta the whole column. Most cards drop from three lines to one,
+   and the amount keeps the right edge it always had. */
+#pkgList .card__toggle .l2,#homeBooked .card__toggle .l2{display:block}
+#pkgList .card__toggle .l2 .card__amt,#homeBooked .card__toggle .l2 .card__amt{
+  float:right;margin-left:.5rem;
+}
+/* -webkit-line-clamp needs a -webkit-box, and a -webkit-box will not flow
+   around a float. A plain max-height caps a runaway meta just as well. */
+#pkgList .card__meta,#homeBooked .card__meta{
+  display:block;-webkit-line-clamp:none;
+  max-height:calc(3 * 1.45em);overflow:hidden;
+}
 #pkgList .card__meta b.qno,#homeBooked .card__meta b.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em;white-space:nowrap}
-/* The staleness pill costs the meta about a pill's width, which pushed the
-   event count past a two-line clamp and left cards ending in "1…". A third
-   line only materialises on the cards that actually need one. */
-#pkgList .card__meta{-webkit-line-clamp:3}
+/* A meta segment is one fact. Left to break anywhere, "1 event" and
+   "📅 15 Oct" split down the middle and the card ended on a lone "event".
+   Breaks belong at the · separators between segments, not inside them. */
+.card__meta .mnb{white-space:nowrap}
+/* The three-line clamp that used to be here is gone with the clamp itself:
+   the meta now gets the full column (see the float above) and a max-height
+   caps it instead. It only ever existed because the meta was squeezed into
+   half a column and ran past two lines. */
 /* money owed BACK to a client, after a package was reduced post-payment. Not
    the gold of money coming in and not the red of money overdue — its own
    colour, because it is neither. */
