@@ -1312,21 +1312,28 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    meta row carries everything else and is the only thing allowed to give way,
    the money hugs the right. Packages adds a third row the lead card has no use
    for: the delivery progress bar. */
-/* The meta and the money shared one flex row, so the meta was handed roughly
-   124px of a 215px column and broke into three fragments — "⏱ 160d ·" /
-   "FS-2026-018 ·" / "1 event" — for a sentence that fits one line in 173px.
-   The row becomes a block and the money floats out of the text flow, which
-   gives the meta the whole column. Most cards drop from three lines to one,
-   and the amount keeps the right edge it always had. */
-#pkgList .card__toggle .l2,#homeBooked .card__toggle .l2{display:block}
-#pkgList .card__toggle .l2 .card__amt,#homeBooked .card__toggle .l2 .card__amt{
-  float:right;margin-left:.5rem;
-}
-/* -webkit-line-clamp needs a -webkit-box, and a -webkit-box will not flow
-   around a float. A plain max-height caps a runaway meta just as well. */
+/* The meta and the money used to share one flex row, so a sentence needing
+   173px was handed 124px of a 215px column and broke into three fragments:
+   "⏱ 160d ·" / "FS-2026-018 ·" / "1 event". The money now lives in the right
+   rail above the status pill (see .card__side below), which leaves the meta
+   the whole column — one line on almost every card. */
 #pkgList .card__meta,#homeBooked .card__meta{
   display:block;-webkit-line-clamp:none;
   max-height:calc(3 * 1.45em);overflow:hidden;
+}
+/* Money above, status below, both hugging the right edge — what the rail was
+   always described as doing. The rail is as wide as the status pill with or
+   without the amount in it, so nothing is taken from the meta to do this. */
+#pkgList .card__head,#homeBooked .card__head{align-items:flex-start}
+#pkgList .card__side,#homeBooked .card__side{
+  flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:.35rem;
+  /* matches .card__toggle's own top padding, which is what puts the amount on
+     exactly the same baseline as the client name instead of floating the pair
+     down the middle of whatever height the card happens to be */
+  padding-top:.7rem;
+}
+#pkgList .card__side .card__amt,#homeBooked .card__side .card__amt{
+  margin-left:0;text-align:right;
 }
 #pkgList .card__meta b.qno,#homeBooked .card__meta b.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em;white-space:nowrap}
 /* A meta segment is one fact. Left to break anywhere, "1 event" and

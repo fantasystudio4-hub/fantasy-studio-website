@@ -2852,7 +2852,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               `<span class="mnb">${evn} event${evn===1?'':'s'}</span>`,
               isStudioJob(x) && x.endClientName ? `for ${esc(x.endClientName)}` : ''
             ].filter(Boolean).join(' · ')}</span>
-            ${amt}
           </span>
           ${prog}
           ${nowLine}
@@ -2866,6 +2865,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="chev" aria-hidden="true">›</span>
         </button>
         <span class="card__side">
+          ${/* Money above, status below — the arrangement .card__side was built
+               for and the one this card never used. Sitting in the meta row
+               instead, the amount both took a quarter of the line the meta
+               needed AND landed nowhere near the status pill it belongs
+               beside. The rail is as wide as the pill either way, so this
+               costs nothing and hands the width back to the meta. */ ''}
+          ${amt}
           <button type="button" class="chip-status no-dot" data-state="${stateOf(st)}" data-cycle
                   aria-label="Change status — currently ${STATUS_LABEL(st)}">${STATUS_LABEL(st)}</button>
         </span>
