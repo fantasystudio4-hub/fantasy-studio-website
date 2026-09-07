@@ -6831,6 +6831,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      rarely touched, but its open form is one input row per service and was
      parked between the profile and the money the owner actually came for */
   let _stuRateOpen = false;
+  /* The profile box sits above the job history and the ledger, which are the
+     reasons this page gets opened. Five buttons and six lines of reference
+     detail pushed both below the fold on a phone, so it opens collapsed to
+     the two things that identify the partner: who they are and where. */
+  let _stuProfOpen = false;
+  /* studioId -> the phone10 whose login key the server said was MISSING.
+     Collapsed, the "cannot sign in" warning has nowhere to render, and that
+     is not a thing to find out from the partner. It gets a chip on the
+     header instead. */
+  const _loginKeyBad = new Map();
   let _stuKeyFixed = false;
   const _loginKeyOk = new Map();   /* studioId -> the phone10 whose login key we confirmed on the server */
   const STUDIOS_CAP = 300;
@@ -7201,7 +7211,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        the new page renders, or its half-typed rates would be "restored" onto
        the wrong studio (a leak that predates the collapse). */
     if(_stuDetailId !== id){
-      _stuJobOpen = null; _stuRateOpen = false;
+      _stuJobOpen = null; _stuRateOpen = false; _stuProfOpen = false;
       /* The history tab and the shot list belong to the studio you were
          looking at, not the next one. Carrying "Closed" across meant opening a
          partner with live work on an empty tab that said nothing was
@@ -7220,7 +7230,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
-    _stuDetailId = null; _stuJobOpen = null; _stuRateOpen = false; _stuTab = 'open'; _stuEvOpen = false;
+    _stuDetailId = null; _stuJobOpen = null; _stuRateOpen = false; _stuProfOpen = false; _stuTab = 'open'; _stuEvOpen = false;
     closeCalAdd();   /* the quick-add form belongs to the studio page above it */
     syncFabs();
     const y = _stuListScrollY, token = ++_scrollToken;
@@ -7297,10 +7307,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rateOpen = !!(_stuRateOpen || _dirty);   /* _dirty is a count — 0 would render aria-expanded="0" */
     _stuRateOpen = rateOpen;   /* keep the toggle's own state in step when a draft forces it open */
     const rateN = Object.keys(rates).length;
+    const profOpen = !!_stuProfOpen;
+    const loginBad = _loginKeyBad.get(s.id) === s.phone10;
     el.innerHTML = `
       <button class="btn btn--sm btn--ghost" id="stuBack" style="margin:1rem 0 .6rem">← All studios</button>
       <div class="sec">
-        <h3>🏢 ${esc(s.name||'—')} ${s.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}</h3>
+        <h3 class="rc-tog stu-prof ${profOpen?'':'closed'}" data-stuprof role="button" tabindex="0" aria-expanded="${profOpen}">
+          <span class="sp-t">
+            <b>🏢 ${esc(s.name||'—')}</b>
+            <em>${esc(s.city || 'no area set')}</em>
+          </span>
+          ${s.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}
+          ${loginBad ? '<span class="chip-status no-dot" data-state="overdue" title="This partner cannot sign in to the portal">⚠ login</span>' : ''}
+          <span class="car">▾</span></h3>
+        ${profOpen ? `
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
         ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
         ${s.notes ? `<div class="ln2"><span>Notes</span><span>${esc(s.notes)}</span></div>` : ''}
@@ -7308,6 +7328,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           s.active === false ? 'off — studio is inactive'
           : !(s.phone10 && String(s.phone10).length === 10) ? 'no login yet — add a 10-digit mobile via Edit'
           : _loginKeyOk.get(s.id) === s.phone10 ? `✓ signs in at /studio/ with …${esc(String(s.phone10).slice(-4))}`
+          /* Both verdicts are rendered from state, not painted once by the
+             async check — that check now settles a number once, so a box
+             expanded AFTER it finished would otherwise sit on "checking…"
+             for good, with no Fix now button on a partner who cannot log in. */
+          : loginBad ? `⚠ login key missing — this partner cannot sign in <button class="btn btn--sm btn--ghost" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`
           : 'checking the login key…'}</span></div>
         <div class="ev-acts">
           ${s.phone ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
@@ -7315,7 +7340,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stuaddev>＋ Add event</button>
-        </div>
+        </div>` : ''}
       </div>
       <div class="sec">
         <h3>📦 Job history <span style="font-size:.7rem;color:var(--mut)">(${jobs.length})</span></h3>
@@ -7415,13 +7440,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const p10 = String((s && s.phone10) || '');
     if(!s || s.active === false || p10.length !== 10) return;
     /* this page re-renders on every packages/studios/assignments snapshot —
-       confirm the key once per number, not once per render */
+       settle the key once per number, not once per render. Both answers stop
+       it: without the second guard the repaint below (which exists so a
+       collapsed header can show the ⚠) would re-enter this function, fail
+       again, and repaint forever. */
     if(_loginKeyOk.get(s.id) === p10) return;
+    if(_loginKeyBad.get(s.id) === p10) return;
     const live = () => (_stuDetailId === s.id) ? $('#stuPortalStat') : null;
     try{
       const ok = await hasPhoneIndex(p10);
-      if(ok) _loginKeyOk.set(s.id, p10);
-      const el = live(); if(!el) return;
+      if(ok){ _loginKeyOk.set(s.id, p10); _loginKeyBad.delete(s.id); }
+      else _loginKeyBad.set(s.id, p10);
+      /* collapsed, there is no line to write into — but the header's ⚠ chip
+         reads _loginKeyBad, so repaint rather than dropping the result */
+      const el = live();
+      if(!el){ if(!ok) renderStudioDetail(); return; }
       el.innerHTML = ok
         ? `✓ signs in at /studio/ with …${esc(p10.slice(-4))}`
         : `⚠ login key missing — this partner cannot sign in <button class="btn btn--sm btn--ghost" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`;
@@ -7446,7 +7479,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast(ok ? 'Login key written — the partner can sign in now'
                : navigator.onLine ? 'Could not write the login key — try again'
                                   : 'Offline — reconnect and tap Fix now again');
-      if(ok) checkStudioLogin(s); else { fixLogin.disabled = false; fixLogin.textContent = 'Fix now'; }
+      if(ok){
+        _loginKeyBad.delete(s.id);   /* let the check run again on the new key */
+        checkStudioLogin(s);
+      }else{ fixLogin.disabled = false; fixLogin.textContent = 'Fix now'; }
       return;
     }
     if(e.target.closest('[data-stunewjob]')){
@@ -7460,6 +7496,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-stuaddev]')){
       const s = studioById(_stuDetailId); if(!s) return;
       openCalAdd({ studio: s });
+      return;
+    }
+    if(e.target.closest('[data-stuprof]')){
+      _stuProfOpen = !_stuProfOpen;
+      renderStudioDetail();
       return;
     }
     if(e.target.closest('[data-ratetog]')){

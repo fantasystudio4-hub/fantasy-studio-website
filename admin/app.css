@@ -668,6 +668,23 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .rc-tog.closed .car{transform:rotate(-90deg)}
 .rc-tog:active{opacity:.7}
 
+/* The studio profile header. Unlike the rate card, its TITLE is the variable
+   part — partner names run long — so the name gets the full width on its own
+   line and the area sits under it. Side by side, "Lumiere Weddi… / Hydera…"
+   was two truncations to show two short facts. */
+.sec h3.stu-prof{gap:.5rem;align-items:center}
+.stu-prof .sp-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
+.stu-prof .sp-t b{
+  font-weight:inherit;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.stu-prof .sp-t em{
+  font-style:normal;font-family:var(--sans);font-size:var(--fs-sm);
+  font-weight:400;color:var(--mut);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.stu-prof .chip-status{flex:0 0 auto;font-family:var(--sans);font-weight:400}
+
 /* a partner studio's job history: progress on the row, the tickable checklist
    one tap inside it */
 .stujob{border-radius:var(--r-md);transition:background .2s}
