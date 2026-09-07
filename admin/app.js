@@ -2708,7 +2708,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const n = dOut(next);
         R.push(n <= 7
           ? { n: 60 + w, txt: n <= 0 ? 'Shooting today · balance due' : `Collect before the shoot · ${n}d`,
-              sev:'hot', card: n <= 0 ? 'Shooting today' : `Shoot in ${n}d` }
+              sev:'hot', card: n <= 0 ? 'Shoot today' : `Shoot in ${n}d` }
           : { n: 25 + w, txt: 'Balance outstanding', sev:'warm', card: null });
       }
     }
@@ -2874,28 +2874,30 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             ].filter(Boolean).join(' · ')}</span>
           </span>
           ${prog}
-          ${nowLine}
+          ${/* ONE state row: what is being worked on now, and why this card
+               wants attention. They were two rows — "Now: …" above, the ⏱ and
+               the reason below — which on a stalled job made three stacked
+               lines out of one thought, with "waiting 40d" orphaned on a line
+               of its own between them. Together they fit a single line on
+               seven cards in eight; the busiest wraps to two rather than
+               clipping anything.
+
+               The staleness pill sits here rather than in the meta because
+               how long a record has been quiet is not part of what the
+               package IS, and at.why is only ever a reason with something
+               left to say — the lockout has the ⚠️ line above, and anything
+               the pill, the amount or the bar already covers is dropped. */ ''}
+          ${(() => {
+            const why = (at.score >= PKG_ATTN_MIN && at.why)
+              ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : '';
+            return (nowLine || idlePill || why)
+              ? `<span class="pk-state">${nowLine}${idlePill}${why}</span>` : '';
+          })()}
           ${(()=>{ const pi = portalIssue(x);
             /* Its own line, always shown. .pk-why prints only the heaviest
                reason, so on a job that also owes ₹2L this would never once
                have been the sentence on screen. */
             return pi ? `<span class="pk-alert">⚠️ ${esc(pi)}</span>` : ''; })()}
-          ${/* The state row. The staleness pill used to sit up in the meta
-               beside the quote number, where it was read as part of the
-               package's identity and — once it started saying what it was
-               counting — pushed the identity onto a second line. It belongs
-               here, with the other thing that says why this card wants
-               attention.
-
-               at.why is now only ever a reason with something left to say:
-               the lockout excludes itself (it has the ⚠️ line above) and so
-               does every reason the pill, the amount or the progress bar
-               already covers, so most cards carry no sentence at all. */ ''}
-          ${(() => {
-            const why = (at.score >= PKG_ATTN_MIN && at.why)
-              ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : '';
-            return (idlePill || why) ? `<span class="pk-state">${idlePill}${why}</span>` : '';
-          })()}
           <span class="chev" aria-hidden="true">›</span>
         </button>
         <span class="card__side">
