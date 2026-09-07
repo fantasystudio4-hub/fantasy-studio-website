@@ -1338,25 +1338,31 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    "⏱ 160d ·" / "FS-2026-018 ·" / "1 event". The money now lives in the right
    rail above the status pill (see .card__side below), which leaves the meta
    the whole column — one line on almost every card. */
-#pkgList .card__meta,#homeBooked .card__meta{
+/* ---- one card grammar, every list -------------------------------------
+   These were scoped to #pkgList/#homeBooked while the package card was being
+   worked on, which left the panel rendering .card three different ways: a
+   package with its money above the status and pinned to the top, a lead and a
+   studio with theirs beside it and centred. Same component, same markup,
+   three looks. They apply to .card now, so a client reads the same whether
+   you meet them as a lead, a booking or a partner. */
+.card__meta{
   display:block;-webkit-line-clamp:none;
   max-height:calc(3 * 1.45em);overflow:hidden;
 }
 /* Money above, status below, both hugging the right edge — what the rail was
-   always described as doing. The rail is as wide as the status pill with or
-   without the amount in it, so nothing is taken from the meta to do this. */
-#pkgList .card__head,#homeBooked .card__head{align-items:flex-start}
-#pkgList .card__side,#homeBooked .card__side{
+   always described as doing. The rail is as wide as the status control with
+   or without the amount in it, so nothing is taken from the meta to do this. */
+.card__head{align-items:flex-start}
+.card__side{
   flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:.35rem;
   /* matches .card__toggle's own top padding, which is what puts the amount on
-     exactly the same baseline as the client name instead of floating the pair
-     down the middle of whatever height the card happens to be */
+     exactly the same baseline as the title instead of floating the pair down
+     the middle of whatever height the card happens to be */
   padding-top:.7rem;
 }
-#pkgList .card__side .card__amt,#homeBooked .card__side .card__amt{
-  margin-left:0;text-align:right;
-}
-#pkgList .card__meta b.qno,#homeBooked .card__meta b.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em;white-space:nowrap}
+.card__side .card__amt{margin-left:0;text-align:right}
+/* the quote number reads the same in every list that prints one */
+.qno{color:var(--gold-b);font-weight:600;letter-spacing:.03em;white-space:nowrap}
 /* A meta segment is one fact. Left to break anywhere, "1 event" and
    "📅 15 Oct" split down the middle and the card ended on a lone "event".
    Breaks belong at the · separators between segments, not inside them. */
@@ -1419,7 +1425,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    screen. What is still owed is the actionable number; the total is context,
    and it is one tap away inside the card (and in the title attribute). */
 @media(max-width:480px){ .card__amt .oftot{display:none} }
-#pkgList .dl3,#homeBooked .dl3{grid-column:1}
+.dl3{grid-column:1}
 /* the status chip is the widest thing in the right rail — give it a floor so
    "new" and "delivered" do not make two different card widths */
 #leadList .chip-select{min-width:6.6rem}

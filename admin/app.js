@@ -899,11 +899,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             </span>
             <span class="l2">
               <span class="card__meta">${meta}</span>
-              ${l.grandTotal ? `<span class="card__amt" title="${inr(l.grandTotal)}">${inrShort(l.grandTotal)}</span>` : ''}
             </span>
             <span class="chev" aria-hidden="true">›</span>
           </button>
+          ${/* Money above status in the rail — the same arrangement the package
+               card uses, so a quote reads the same whether you meet it as a
+               lead or as a booking. In the meta row it took a quarter of the
+               line the meta needed and sat nowhere near the status. */ ''}
           <span class="card__side">
+            ${l.grandTotal ? `<span class="card__amt" title="${inr(l.grandTotal)}">${inrShort(l.grandTotal)}</span>` : ''}
             <select class="chip-select" data-status data-state="${state}" aria-label="Status for ${esc(l.name||'this lead')}">
               ${STATUSES.map(x=>`<option value="${x}" ${st===x?'selected':''}>${x}</option>`).join('')}
             </select>
@@ -1873,8 +1877,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      (sortable, what Firestore and the CSVs want); this is the one place that
      turns a stored date into the written form — 2026-08-02 → 02-08-2026 —
      for the few spots that print numbers instead of "2 Aug". */
+  /* "11 Dec 2026", not "11-12-2026". The lead card printed a numeric date
+     beside a written one — "💍 11-12-2026 · enquiry · 6 Sept 09:00 am" — two
+     date grammars in a single line. The numeric form was there because the
+     quote figure used to share that line and the year was what got clipped;
+     the figure has moved to the rail, so the room exists now. The year stays:
+     a wedding date is often next year, and stepDate() drops it. */
   const dmy = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'')
-    ? d.slice(8,10) + '-' + d.slice(5,7) + '-' + d.slice(0,4) : (d||'');
+    ? new Date(d + 'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})
+    : (d||'');
 
   /* Time of day on an event. Two functions on one date are the whole reason to
      ask: a morning Nikah and an evening Reception read as one blur on a
@@ -6788,13 +6799,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _purged = false;
   function renderTrash(){
     const el = $('#trashList'); if(!el) return;
+    /* Same identity grammar as every other list: the quote number in gold,
+       the date written the way the panel writes dates, and the status it was
+       deleted in. It used to print a raw "2026-08-28" and no status at all,
+       so the one screen you visit to undo a mistake told you least about what
+       you were undoing. */
     const items = [
-      ...PKGS.filter(x=>x.deleted).map(x=>({ kind:'pkg', id:x.id, label:`📦 ${x.clientName||'—'}${x.quoteNo ? ' · ' + x.quoteNo : ''}`, on:x.deletedAt||'' })),
-      ...LEADS.filter(l=>l.deleted).map(l=>({ kind:'lead', id:l.id, label:`👥 ${l.name||'—'}`, on:l.deletedAt||'' }))
+      ...PKGS.filter(x=>x.deleted).map(x=>({ kind:'pkg', id:x.id, icon:'📦',
+        title:x.clientName||'—', qno:x.quoteNo||'', on:x.deletedAt||'',
+        state:stateOf(x.status||'draft'), badge:STATUS_LABEL(x.status||'draft') })),
+      ...LEADS.filter(l=>l.deleted).map(l=>({ kind:'lead', id:l.id, icon:'👥',
+        title:l.name||'—', qno:'', on:l.deletedAt||'',
+        state:stateOf(l.status||'new'), badge:l.status||'new' }))
     ];
     el.innerHTML = items.length ? items.map(it=>`
       <div class="up-ev">
-        <span class="what">${esc(it.label)} <span>· deleted ${esc(it.on)}</span></span>
+        <span class="what">${it.icon} ${esc(it.title)}
+          <span>${it.qno ? `<b class="qno">${esc(it.qno)}</b> · ` : ''}deleted ${esc(stepDate(it.on) || it.on || '—')}</span></span>
+        <span class="chip-status no-dot" data-state="${esc(it.state)}">${esc(it.badge)}</span>
         <button class="btn btn--sm btn--ghost" data-restore="${it.kind}:${it.id}">Restore</button>
         <button class="icon-btn icon-btn--danger" data-purge="${it.kind}:${it.id}">✕ Forever</button>
       </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
@@ -7500,7 +7522,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <div class="stujob ${open?'open':''}">
             <div class="up-ev" data-stujob="${x.id}" role="button" tabindex="0" aria-expanded="${open}">
               <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
-              <span class="what">${esc(x.quoteNo||'—')} <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span>
+              <span class="what"><b class="qno">${esc(x.quoteNo||'—')}</b> <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span>
                 ${bal > 0 ? `<em class="sjdue">${inr(bal)} due</em>` : ''}
                 ${di && di.total ? `<em class="sjd"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b><span class="sjn">${
                   next ? esc(next) : 'handed over ✓'}</span></em>` : ''}
@@ -9085,6 +9107,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     livePkgs().forEach(x=>{
       if(hitTxt(x.clientName, x.quoteNo, x.endClientName) || hitTel(x.clientPhone))
         rows.push({ kind:'pkg', id:x.id, icon:'📦', title:x.clientName||'—',
+          /* metaHtml so the quote number can carry .qno like it does in every
+             other list; every other kind stays plain text and escaped */
+          metaHtml:[x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
+                    isStudioJob(x) ? 'B2B' : '', esc(inr((x.totals||{}).finalPrice||0))].filter(Boolean).join(' · '),
           meta:[x.quoteNo, isStudioJob(x)?'B2B':'', inr((x.totals||{}).finalPrice||0)].filter(Boolean).join(' · '),
           state:stateOf(x.status||'draft'), badge:STATUS_LABEL(x.status||'draft') });
     });
@@ -9141,7 +9167,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="gs-k" aria-hidden="true">${r.icon}</span>
         <span class="gs-t">
           <b>${esc(r.title)}</b>
-          <span>${esc(r.meta)}</span>
+          <span>${r.metaHtml || esc(r.meta)}</span>
         </span>
         <span class="chip-status no-dot" data-state="${r.state}">${esc(r.badge)}</span>
       </button>`).join('');
