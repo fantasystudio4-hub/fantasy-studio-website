@@ -2921,20 +2921,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                   aria-label="Change status — currently ${STATUS_LABEL(st)}">${STATUS_LABEL(st)}</button>
         </span>
       </div>
-      ${/* Four routine actions across, and Delete out of the row entirely.
-           Five buttons on a 380px card gave each one 58px with 4.8px between
-           them — a destructive control one thumb-width from ＋ Pay, on the
-           screen where money is recorded. It sits on its own line now, quiet
-           and right-aligned, a full row away from anything routine. It still
-           asks before it deletes. */ ''}
+      ${/* Five across, Delete among them — the owner's call after using both.
+           It keeps the danger outline so it does not read as a fifth routine
+           action, and confirmDialog still stands between the tap and the
+           deletion, which is what actually makes it safe. */ ''}
       <div class="pkg-acts" ${open?'':'hidden'}>
         <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
         <button type="button" class="btn btn--sm btn--ghost" data-wapdf>Send ▷</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pay>＋ Pay</button>
-      </div>
-      <div class="pkg-danger" ${open?'':'hidden'}>
-        <button type="button" class="btn btn--sm pkg-del" data-delpkg>Delete package</button>
+        <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
       </div>
       ${track && open ? trackerHTML(x, { foldable: true }) : ''}
     </article>`;

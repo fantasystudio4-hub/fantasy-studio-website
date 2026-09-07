@@ -204,26 +204,13 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
    buttons under every open card, with the last row holding one button and a
    gap. Five fit across a 375px card at .3em padding; the gap tightens rather
    than the tap target, which stays the full 44px. */
-/* Four across at 380px is ~76px a button instead of 58, and the row carries
-   the card's ONE rule — a low-opacity solid hairline where the card turns
-   from description into controls. The dashed borders that used to separate
-   every block from the next drew four lines of noise and no hierarchy;
-   spacing does that job everywhere else. */
-.pkg-acts{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:.25rem 1rem 0;padding:.8rem 0 0;border-top:1px solid var(--white-t3)}
-.pkg-acts .btn{width:100%;padding-inline:.3em;border-radius:var(--r-md);font-size:var(--fs-sm);white-space:nowrap}
-/* Destructive, so it is off the grid, on its own line, and wears none of the
-   weight the routine four carry. Still 44px, still asks first. */
-/* Bottom-LEFT, not bottom-right. Right-aligned it landed 9px directly under
-   ＋ Pay — off the grid but still the next thing under the thumb that had
-   just recorded a payment. Left puts it as far from ＋ Pay as the card
-   allows, in both directions, and the gap above it is a clear row. */
-.pkg-danger{display:flex;justify-content:flex-start;margin:0 1rem;padding:1rem 0 .9rem}
-.pkg-del{
-  background:none;border:1px solid transparent;color:var(--state-overdue);
-  font-size:var(--fs-sm);padding:.5em 1em;border-radius:var(--r-md);
-}
-.pkg-del:active{background:var(--state-overdue-bg);border-color:var(--state-overdue-ln)}
-@media(hover:hover){ .pkg-del:hover{background:var(--state-overdue-bg);border-color:var(--state-overdue-ln)} }
+/* Five across, on one line. The row still carries the card's ONE rule — a
+   low-opacity solid hairline where it turns from description into controls —
+   in place of the four dashed borders that used to fence off every block and
+   give no hierarchy for it. Delete sits in the grid at the owner's request;
+   its danger outline keeps it from reading as a fifth routine action. */
+.pkg-acts{display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin:.25rem 1rem 0;padding:.8rem 0 .9rem;border-top:1px solid var(--white-t3)}
+.pkg-acts .btn{width:100%;padding-inline:.2em;border-radius:var(--r-md);font-size:var(--fs-sm);white-space:nowrap}
 @media(min-width:700px){.pkg-acts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
 
 /* delivery tracker */
