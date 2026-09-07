@@ -1088,13 +1088,31 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* the two ways to start something on the B2B list, side by side */
 /* both actions sit above the list: a season's worth of studios used to bury
    them below the fold */
-.b2b-adds{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:0 0 .9rem}
+/* auto-fit rather than a hard 1fr 1fr: ＋ Add studio moved to the floating ＋,
+   and the one button left behind sat in half the row looking truncated */
+.b2b-adds{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin:0 0 .9rem}
 .b2b-adds .addrow{margin:0}
 /* the 🔍 / ＋ pair is fixed bottom-right and sat on top of that add row once
    the studio list was long enough to scroll (Home clears its own the same way) */
 #studioListView > .sec:last-child{margin-bottom:78px}
-.stu-chips{display:flex;gap:.4rem;flex-wrap:wrap;padding:0 1rem .85rem;cursor:pointer}
-.stu-chips b{border-radius:var(--r-lg);padding:.24em .75em;font-weight:600;font-size:var(--fs-xs);letter-spacing:.04em}
+.stu-chips{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:0 1rem .85rem;cursor:pointer}
+/* One 44px row. The due chip has to carry a real tap target, and a single
+   tall pill beside two short ones read as a mistake — so they all share the
+   height and centre their text in it. */
+.stu-chips b,.stu-chips .duenudge{
+  border-radius:var(--r-lg);padding:.24em .75em;font-weight:600;
+  font-size:var(--fs-xs);letter-spacing:.04em;
+  min-height:var(--tap);display:inline-flex;align-items:center;
+}
+/* The amount owed is the one chip worth acting on, so it IS the action —
+   tapping it opens the partner's statement on WhatsApp. Bordered so it reads
+   as pressable next to two chips that are not. */
+.stu-chips .duenudge{
+  border:1px solid var(--state-pending-ln);background:var(--state-pending-bg);
+  color:var(--warn);font-family:inherit;cursor:pointer;
+}
+.stu-chips .duenudge:active{background:rgba(var(--state-pending-rgb),.28)}
+@media(hover:hover){ .stu-chips .duenudge:hover{border-color:var(--warn)} }
 .stu-chips .c1{color:var(--gold-b);background:rgba(var(--gold-rgb),.13)}
 .stu-chips .c2{color:var(--warn);background:var(--state-pending-bg)}
 .stu-chips .c3{color:var(--ok);background:var(--state-confirmed-bg)}
@@ -1106,6 +1124,40 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ledrow .l-ev span{color:var(--mut)}
 .ledrow b{flex:0 0 72px;text-align:right;font-family:var(--serif);font-weight:600;white-space:nowrap;font-size:var(--fs-md)}
 .ledrow .neg{color:var(--warn)}
+/* A studio's ledger row identifies itself by its quote number, so that gets
+   its own line and the supporting detail goes under it. The shared one-line
+   .l-ev ellipsised the quote number away — "FS-2026-0…" on every row. */
+.ledrow.stuled{cursor:pointer;padding:.5rem 0;min-height:var(--tap)}
+.ledrow.stuled .l-ev{white-space:normal;overflow:visible;display:flex;flex-direction:column;gap:.1rem}
+.ledrow.stuled .l-ev .lq{
+  font-style:normal;font-weight:600;color:var(--text);
+  display:flex;align-items:center;gap:.2rem;
+}
+.ledrow.stuled .l-ev .chev{color:var(--gold-b);font-size:var(--fs-sm);line-height:1}
+.ledrow.stuled .l-ev > span{
+  font-size:var(--fs-xs);color:var(--mut);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ledrow.stuled:active{background:rgba(var(--gold-rgb),.1)}
+@media(hover:hover){ .ledrow.stuled:hover .lq{color:var(--gold-b)} }
+/* Four columns do not fit a phone. Three fixed money columns left ~95px for
+   the job, so "FS-2026-044" broke across two lines and the date under it was
+   ellipsised to "9 Sept · Wedd…" — a table that had stopped being readable to
+   stay a table. Below 560px it stacks: the job on its own full-width line,
+   the three figures in a labelled strip beneath it. The header row carries
+   the labels on wider screens and is redundant once each cell has its own. */
+@media(max-width:559px){
+  .ledrow.stuled{flex-wrap:wrap;gap:.35rem .5rem}
+  .ledrow.stuled .l-ev{flex:1 1 100%}
+  .ledrow.stuled .l-ev .lq{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ledrow.stuled b{flex:1 1 0;min-width:0;text-align:left}
+  .ledrow.stuled b::before{
+    content:attr(data-l);display:block;
+    font-family:var(--sans);font-size:var(--fs-2xs);font-weight:400;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--mut);
+  }
+  .ledrow.hd.stuled-hd{display:none}
+}
 .ledrow.hd{color:var(--mut);border-bottom:1px solid var(--line)}
 .ledrow.hd b,.ledrow.hd .l-ev{font-family:var(--sans);font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
 /* ==== phone pass: everything you actually hit with a thumb ====

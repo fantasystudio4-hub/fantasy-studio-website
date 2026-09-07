@@ -282,13 +282,19 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
            it used to be revealed by a floating button that is now gone -->
       <div class="bar" id="stuSearchBar">
         <input id="stuSearch" type="search" placeholder="Studio, owner, city or phone…" />
+        <button id="stuSort" type="button" title="Change the order">↕ Most due</button>
       </div>
       <div class="stats" id="b2bStats"></div>
       <div class="sec">
         <h3>🏢 Partner studios</h3>
-        <p class="sub">Studios that hire Fantasy Studio — crew on hire, editing, full coverage. Tap a studio for its rate card, jobs &amp; ledger. Strictly admin-only: nothing here ever appears on the website or client pages.</p>
+        <!-- The explainer here ran to five lines about what a partner studio is
+             and where the data does not go — read once on the first visit, then
+             pushed the list down the screen every visit after. The one line
+             that is still worth saying is the one nobody can check for
+             themselves; ＋ Add studio went with it, because the floating ＋ on
+             this screen already does exactly that. -->
+        <p class="sub">Admin-only — none of this reaches the website or a client page.</p>
         <div class="b2b-adds">
-          <button class="addrow" id="stuAdd">＋ Add studio</button>
           <button class="addrow" id="b2bAddEv">＋ Add event</button>
         </div>
         <div id="studioList"><div class="skeleton"></div></div>

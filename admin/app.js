@@ -6949,12 +6949,40 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(out)}"><b>${inrShort(out)}</b><span>to collect</span></div>
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(life)}"><b>${inrShort(life)}</b><span>lifetime b2b</span></div>`;
   }
-  function stuCardHTML(s){
+  /* One place works out what a partner is worth and what they owe, so the
+     card, the sort order and the WhatsApp statement can never disagree. */
+  function stuMetrics(s){
     const jobs = studioJobs(s.id);
-    const open = jobs.filter(x=>['sent','unconfirmed','booked'].includes(x.status||'draft')).length;
     const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
-    const due = conf.reduce((n,x)=>n+Math.max(0,(x.totals||{}).balance||0),0);
-    const life = conf.reduce((n,x)=>n+((x.totals||{}).finalPrice||0),0);
+    const dates = jobs.map(x=>nextShootDate(x) || x.quoteDate || '')
+      .filter(d=>ISO_RE.test(d)).sort();
+    return {
+      open: jobs.filter(x=>['sent','unconfirmed','booked'].includes(x.status||'draft')).length,
+      due:  conf.reduce((n,x)=>n+Math.max(0,(x.totals||{}).balance||0),0),
+      life: conf.reduce((n,x)=>n+((x.totals||{}).finalPrice||0),0),
+      last: dates.length ? dates[dates.length-1] : '',
+    };
+  }
+  /* The tiles said ₹90K was out there without ever saying whose it was —
+     finding that meant opening partners one at a time. Most due first. */
+  const STU_SORTS = [['due','↕ Most due'],['recent','↕ Recent job'],
+                     ['life','↕ Lifetime'],['name','↕ Name A–Z']];
+  let _stuSort = viewGet('stuSort','due');
+  function sortStudios(list, met){
+    const nm = x => String(x.name||'').toLowerCase();
+    const byName = (a,b)=>nm(a).localeCompare(nm(b));
+    /* every order falls back to the name, so two partners owing nothing keep
+       a stable place in the list instead of shuffling on each snapshot */
+    const byNum = k => (a,b)=>(met.get(b.id)[k] - met.get(a.id)[k]) || byName(a,b);
+    const cmp = {
+      due: byNum('due'), life: byNum('life'), name: byName,
+      recent: (a,b)=>{ const x = met.get(a.id).last, y = met.get(b.id).last;
+                       return x === y ? byName(a,b) : (x < y ? 1 : -1); },
+    }[_stuSort] || byNum('due');
+    return [...list].sort(cmp);
+  }
+  function stuCardHTML(s, met){
+    const { open, due, life } = met || stuMetrics(s);
     const inactive = s.active === false;
     /* The whole card opens the studio (the [data-stu] handler), so the head is
        a role=button region rather than a real <button> — a <button> here would
@@ -6975,7 +7003,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <div class="stu-chips">
         <b class="c1">${open} open job${open===1?'':'s'}</b>
-        <b class="c2">${inr(due)} due</b>
+        ${due > 0 && s.phone
+          ? `<button type="button" class="c2 duenudge" data-studue="${esc(s.id)}"
+               title="Send ${esc(s.name||'this studio')} their statement on WhatsApp">${inr(due)} due</button>`
+          : `<b class="c2">${inr(due)} due</b>`}
         <b class="c3">${inr(life)} lifetime</b>
       </div>
     </article>`;
@@ -6996,7 +7027,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const q = ($('#stuSearch').value||'').trim().toLowerCase();
     const hit = s => !q || [s.name, s.ownerName, s.city, s.phone].some(v=>String(v||'').toLowerCase().includes(q));
-    const act = STUDIOS.filter(s=>s.active !== false && hit(s)), inact = STUDIOS.filter(s=>s.active === false && hit(s));
+    const met = new Map(STUDIOS.map(s=>[s.id, stuMetrics(s)]));
+    const act = sortStudios(STUDIOS.filter(s=>s.active !== false && hit(s)), met);
+    const inact = sortStudios(STUDIOS.filter(s=>s.active === false && hit(s)), met);
     if(!act.length && !inact.length){
       el.innerHTML = `<div class="empty-state">
           <span class="empty-state__icon">🔍</span>
@@ -7006,8 +7039,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>`;
       return;
     }
-    el.innerHTML = act.map(stuCardHTML).join('')
-      + (inact.length ? `<div class="grp">Inactive<b>${inact.length}</b></div>` + inact.map(stuCardHTML).join('') : '');
+    el.innerHTML = act.map(s=>stuCardHTML(s, met.get(s.id))).join('')
+      + (inact.length ? `<div class="grp">Inactive<b>${inact.length}</b></div>`
+          + inact.map(s=>stuCardHTML(s, met.get(s.id))).join('') : '');
+    const btn = $('#stuSort');
+    if(btn) btn.textContent = (STU_SORTS.find(o=>o[0] === _stuSort) || STU_SORTS[0])[1];
   }
   /* Two floating pairs — 🔍+⚡ on Home, 🔍+＋ on the B2B studio LIST (a studio's
      own page has its own actions). One place decides who is on screen, because
@@ -7070,8 +7106,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* A statement the studio can read in WhatsApp. Figures only — no client
      names and no venues, because a partner's chat is not the place for another
      client's details. */
-  function sendStudioStatement(){
-    const s2 = studioById(_stuDetailId); if(!s2 || !s2.phone) return;
+  /* Takes a studio so the LIST can send one too — the detail page still calls
+     it with nothing and gets the partner whose page is open. */
+  function sendStudioStatement(who){
+    const s2 = who || studioById(_stuDetailId); if(!s2 || !s2.phone) return;
     const conf = studioJobs(s2.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
     const billed = conf.reduce((n,x)=>n + (Number((x.totals||{}).finalPrice)||0), 0);
     const paid   = conf.reduce((n,x)=>n + Math.max(0,Number((x.totals||{}).advance)||0), 0);
@@ -7098,13 +7136,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-retry]')){ loadStudios(); toast('Reconnecting…'); return; }
     if(e.target.closest('[data-stu-add]')){ openStu(null); return; }
     if(e.target.closest('[data-stu-clear]')){ $('#stuSearch').value=''; renderStudioList(); return; }
+    /* caught BEFORE the card, which would otherwise swallow it and open the
+       studio — the chip sits inside the article that opens on tap */
+    const nudge = e.target.closest('[data-studue]');
+    if(nudge){
+      const s = studioById(nudge.dataset.studue);
+      if(s) sendStudioStatement(s);
+      return;
+    }
     const card = e.target.closest('[data-stu]'); if(!card) return;
     openStudioDetail(card.dataset.stu);
+  });
+  on('#stuSort', 'click', ()=>{
+    const i = STU_SORTS.findIndex(o=>o[0] === _stuSort);
+    _stuSort = STU_SORTS[(i + 1) % STU_SORTS.length][0];
+    viewSet('stuSort', _stuSort);
+    renderStudioList();
   });
   /* the short ₹8.4L form has no tooltip on a phone — the tile opens the
      analytics sheet, where the exact figures live */
   on('#b2bStats', 'click', e=>{ if(e.target.closest('[data-fin]')) openFin(); });
-  on('#stuAdd', 'click', ()=>openStu(null));
   /* same quick-add form as a studio's own page, with the studio still to pick */
   on('#b2bAddEv', 'click', ()=>openCalAdd({ b2b: true }));
 
@@ -7387,9 +7438,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <div class="stat"><b style="color:var(--ok)" title="${inr(totPaid)}">${inrShort(totPaid)}</b><span>paid</span></div>
             <div class="stat ${run>0?'warn':''}"><b title="${inr(run)}">${inrShort(run)}</b><span>outstanding</span></div>
           </div>
-          <div class="ledrow hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
+          <div class="ledrow hd stuled-hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
+          <!-- The job column used to be one nowrap line, so the quote number —
+               the only thing that identifies the row — was what got ellipsised
+               away: "FS-2026-0…". It gets its own line now, with the date and
+               the end client under it, and the row opens the job. -->
           ${led.map(r=>`
-          <div class="ledrow"><span class="l-ev">${esc(r.x.quoteNo||'—')} <span>· ${esc(((r.x.events||[])[0]||{}).title||'Job')}${r.x.endClientName ? ' · ' + esc(r.x.endClientName) : ''}</span></span><b title="${inr(r.billed)}">${inrShort(r.billed)}</b><b style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
+          <div class="ledrow stuled" data-ledjob="${esc(r.x.id)}" role="button" tabindex="0"
+               aria-label="Open ${esc(r.x.quoteNo||'this job')}">
+            <span class="l-ev">
+              <i class="lq">${esc(r.x.quoteNo||'—')}<span class="chev" aria-hidden="true">›</span></i>
+              <span>${esc([stepDate(nextShootDate(r.x) || r.x.quoteDate),
+                           ((r.x.events||[])[0]||{}).title || 'Job',
+                           r.x.endClientName].filter(Boolean).join(' · '))}</span>
+            </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
           <div class="ev-acts" style="margin-top:.7rem">
             <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
@@ -7483,6 +7545,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         _loginKeyBad.delete(s.id);   /* let the check run again on the new key */
         checkStudioLogin(s);
       }else{ fixLogin.disabled = false; fixLogin.textContent = 'Fix now'; }
+      return;
+    }
+    const lj = e.target.closest('[data-ledjob]');
+    if(lj){
+      const x = livePkgs().find(p=>p.id === lj.dataset.ledjob);
+      if(!x){ toast('That job is not here any more — it may have been deleted'); return; }
+      if(!canLeaveEditor()) return;
+      $('#tabPkgs').click();
+      openPkgEdit(x);
       return;
     }
     if(e.target.closest('[data-stunewjob]')){
