@@ -2914,9 +2914,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
         <button type="button" class="btn btn--sm btn--ghost" data-wapdf>Send ▷</button>
-        <button type="button" class="btn btn--sm btn--ghost" data-pay>＋ Payment</button>
-        ${x.clientPhone ? `<button type="button" class="btn btn--sm btn--ghost" data-call>📞 Call</button>
-        <button type="button" class="btn btn--sm btn--ghost" data-wachat>💬 WhatsApp</button>` : ''}
+        ${/* "＋ Payment" at five-across is wider than its column. The row is
+             five fixed actions now — no client-phone branch — so every card
+             carries the same five in the same places and the eye can learn
+             where Delete is. */ ''}
+        <button type="button" class="btn btn--sm btn--ghost" data-pay>＋ Pay</button>
         <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
       </div>
       ${track && open ? trackerHTML(x, { foldable: true }) : ''}
@@ -3118,8 +3120,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
     if(e.target.closest('[data-wapdf]')){ await makePdf(x, true); return; }
     if(e.target.closest('[data-pay]')){ openPay(x); return; }
-    if(e.target.closest('[data-call]')){ location.href = 'tel:+' + waNumberFor(x); return; }
-    if(e.target.closest('[data-wachat]')){ openWa('https://wa.me/' + waNumberFor(x)); return; }
     if(e.target.closest('[data-delpkg]')){
       if(!await confirmDialog({
         title:'Move this package to Trash?',
