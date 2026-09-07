@@ -421,7 +421,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#loginView').hidden = !!user;
     $('#appView').hidden = !user;
     $('#hdr').hidden = !user;
-    syncHdrH();   /* the header has no height until it is on screen */
+    syncBars();   /* neither bar has a height until it is on screen */
     if(user){
       if(!ADMIN_EMAILS.length){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
@@ -464,9 +464,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const px = Math.round(h.getBoundingClientRect().height);
     if(px > 0) document.documentElement.style.setProperty('--hdr-h', px + 'px');
   }
-  addEventListener('resize', syncHdrH);
-  addEventListener('orientationchange', syncHdrH);
-  syncHdrH();
+  /* The same measurement for the bottom bar. The ⚡ button and the tail
+     padding under the last card in every list both have to clear the tab bar,
+     and both carried their own guess at how tall it is — 64px, against a bar
+     that measures 60 here and more on a phone with a larger system font or a
+     wrapped label. Too small a guess hides a record behind the nav; too large
+     leaves a band of nothing at the end of every list. Phones only: above
+     700px the bar is in the page flow and nothing is positioned against it. */
+  function syncNavH(){
+    const t = $('.tabs'); if(!t) return;
+    if(!matchMedia('(max-width:699px)').matches){
+      document.documentElement.style.removeProperty('--nav-h'); return;
+    }
+    const px = Math.round(t.getBoundingClientRect().height);
+    if(px > 0) document.documentElement.style.setProperty('--nav-h', px + 'px');
+  }
+  function syncBars(){ syncHdrH(); syncNavH(); }
+  addEventListener('resize', syncBars);
+  addEventListener('orientationchange', syncBars);
+  syncBars();
 
   /* ---------- tabs ---------- */
   const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabEdit:'editView', tabConfig:'configView' };
@@ -6818,7 +6834,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span>${it.qno ? `<b class="qno">${esc(it.qno)}</b> · ` : ''}deleted ${esc(stepDate(it.on) || it.on || '—')}</span></span>
         <span class="chip-status no-dot" data-state="${esc(it.state)}">${esc(it.badge)}</span>
         <button class="btn btn--sm btn--ghost" data-restore="${it.kind}:${it.id}">Restore</button>
-        <button class="icon-btn icon-btn--danger" data-purge="${it.kind}:${it.id}">✕ Forever</button>
+        <button class="btn btn--sm btn--danger" data-purge="${it.kind}:${it.id}" title="Delete permanently">✕ Forever</button>
       </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
     /* silent 30-day cleanup — only once BOTH lists have arrived fresh from the server,
        never from a stale cache image (it could hard-delete something restored elsewhere) */
@@ -9840,7 +9856,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         $('#loginView').hidden = true;
         $('#appView').hidden = false;
         $('#hdr').hidden = false;
-        syncHdrH();
+        syncBars();
         showTab('tabHome');
 
         renderStats(); renderLeads();

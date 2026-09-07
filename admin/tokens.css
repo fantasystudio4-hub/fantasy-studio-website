@@ -211,3 +211,17 @@
 @media (prefers-reduced-motion: reduce){
   :root{--t-fast:0s; --t-med:0s; --t-slow:0s}
 }
+
+/* ---- the phone gutter --------------------------------------------------
+   The panel is used on a phone, in a hand, essentially always. At 375px the
+   page gutter and the section padding inside it stacked to 30px a side, and
+   a card's own padding put a client's NAME 46px from the glass — the name
+   column came out at 181px, under half the screen, so ordinary names wrapped
+   to two lines and the meta row broke mid-fact ("· 6 / Sept 09:00 am").
+   Ten is what a phone actually wants; every rule that draws the page edge
+   reads this one value (.wrap, .hd, .savebar, .pkg-actions, #cfgJump), so a
+   full-bleed sticky bar cannot drift out of step with the column it covers.
+   Desktop keeps 14. */
+@media(max-width:699px){
+  :root{--gut:10px}
+}

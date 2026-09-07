@@ -26,11 +26,11 @@ button,[role="button"],select,.qchip,a{touch-action:manipulation}
    "this opens a picker". One gold chevron, drawn inline. */
 select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23E2C275' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65em center;padding-right:2em}
 textarea{resize:vertical}
-.wrap{max-width:860px;margin:0 auto;padding:0 14px 90px}
+.wrap{max-width:860px;margin:0 auto;padding:0 var(--gut) 90px}
 
 /* header */
 header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.hd{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.7rem 14px}
+.hd{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:.5rem;padding:.7rem var(--gut)}
 .hd svg{width:34px;height:34px;flex:0 0 auto}
 .hd .ttl{flex:1;min-width:0}
 /* the FS mark draws with currentColor so it takes the gold from the token,
@@ -553,7 +553,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .termrow span{flex:1;min-width:0}
 .termrow input:not(:checked) + span{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--line-3)}
 /* the Save button must not be the thing the keyboard covers */
-.savebar{position:fixed;left:0;right:0;bottom:var(--kb);background:var(--bar);border-top:1px solid var(--line);padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+.savebar{position:fixed;left:0;right:0;bottom:var(--kb);background:var(--bar);border-top:1px solid var(--line);padding:.7rem var(--gut) calc(.7rem + env(safe-area-inset-bottom))}
 .savebar .in{max-width:860px;margin:0 auto;display:flex;gap:.6rem;align-items:center}
 .savebar .msg{font-size:var(--fs-md);color:var(--mut);flex:1}
 .savebar .gbtn{width:auto;padding:.75em 1.8em}
@@ -606,7 +606,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .mini-f{display:flex;flex-direction:column;gap:.25rem}
 .mini-f > label{font-size:var(--fs-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
 .mini-f.amtf{margin-left:auto;text-align:right}
-.pkg-actions{position:sticky;bottom:0;z-index:var(--z-subnav);background:var(--bar);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 -14px;padding:.7rem 14px calc(.7rem + env(safe-area-inset-bottom))}
+.pkg-actions{position:sticky;bottom:0;z-index:var(--z-subnav);background:var(--bar);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 calc(var(--gut) * -1);padding:.7rem var(--gut) calc(.7rem + env(safe-area-inset-bottom))}
 /* ---- tap targets & minimum readable size (audit) ----
    Destructive x controls measured 11-21px wide with no padding, and several
    labels rendered below 10px on a phone the owner uses one-handed. */
@@ -1033,11 +1033,19 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    builder's action bar slid underneath it. Same-property overrides have to
    come last. */
 @media(max-width:699px){
-  /* the bottom nav measures ~63px tall (52px tap target + padding), so 64px
-     is the real clearance — 52px still left an 11px overlap */
-  .savebar{bottom:calc(64px + env(safe-area-inset-bottom))}
-  .pkg-actions{bottom:calc(64px + env(safe-area-inset-bottom))}
-  .toast{bottom:calc(132px + env(safe-area-inset-bottom) + var(--kb))}
+  /* The clearance is the bar's MEASURED height (--nav-h, published from
+     app.js) rather than the 64px these carried — a guess that was right for
+     this phone and wrong for one with a larger system font, where it puts
+     the Save All bar back over the nav it is meant to clear. */
+  .savebar{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom))}
+  .pkg-actions{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(var(--nav-h,64px) + 68px + env(safe-area-inset-bottom) + var(--kb))}
+  /* With the keyboard up the nav has slid off the screen (see :root.kb-up
+     .tabs), so there is no bar left to clear — and holding the old offset
+     parked Save All behind the keyboard on the one screen where you are
+     always typing when you need it. It rides the top of the keyboard
+     instead, which is what the base rule does and what this override lost. */
+  :root.kb-up .savebar{bottom:var(--kb)}
   /* the ⚡ FAB is fixed bottom-right and was covering the last stat tile
      once Home is scrolled to the end — give the tile row room to clear it */
   #homeView > .stats:last-child{margin-bottom:72px}
@@ -1112,7 +1120,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    gold one stays the primary action */
 #homeResults{padding:.8rem 1rem}
 #homeResults .up-ev .when{min-width:var(--tap);font-size:var(--fs-xl)}
-#cfgJump{position:sticky;top:var(--hdr-h,56px);z-index:var(--z-sticky);background:var(--bar-2);backdrop-filter:blur(8px);margin:0 -14px .8rem;padding:.75rem 14px .55rem}
+#cfgJump{position:sticky;top:var(--hdr-h,56px);z-index:var(--z-sticky);background:var(--bar-2);backdrop-filter:blur(8px);margin:0 calc(var(--gut) * -1) .8rem;padding:.75rem var(--gut) .55rem}
 #configView .sec{scroll-margin-top:calc(var(--hdr-h,56px) + 62px)}
 
 /* ==== B2B partner studios ==== */
@@ -1711,4 +1719,118 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(max-width:400px){
   .eja-row{flex-direction:column;gap:.1rem}
   .eja-row em{align-self:flex-start}
+}
+
+/* ==========================================================================
+   PHONE DENSITY PASS
+   Measured at 375×812 across all six tabs, both sticky bars and every list.
+
+   The panel is used on a phone essentially always, and the space it was
+   losing was not in any one component — it was in the FRAME. Three boxes each
+   drew their own comfortable inset (.wrap 14 → .sec 16 → .card__toggle 16),
+   which is right at 860px and is 46px of a 375px screen: the name column came
+   out at 181px, so ordinary client names wrapped to two lines and the meta row
+   split mid-fact. Add the sticky header (66px), the tab bar (63px) and a
+   96px tail below the last card, and a phone was drawing ~225px of chrome and
+   padding before it drew a single record.
+
+   This block does three things and nothing else:
+     1. collapses the nested frame to ONE inset (--gut, set to 10 in tokens)
+     2. measures the two fixed bars instead of guessing at them, so the FAB
+        and the end of every list sit exactly clear of the tab bar
+     3. tightens the gaps BETWEEN blocks — never a tap target. Every
+        min-height:var(--tap) in this stylesheet still stands; a control that
+        was 44px is still 44px. Only air moved.
+
+   It is last in the file on purpose: most of these override an earlier rule
+   for the same property at equal specificity and would lose anywhere else.
+   ========================================================================== */
+@media(max-width:699px){
+
+  /* ---- 1. sticky chrome ------------------------------------------------
+     The header carries a 44px row of buttons and 22px of padding around it.
+     The buttons keep their 44 — the padding is what a phone can spare. The
+     mark comes down with it so the wordmark stays optically centred. */
+  .hd{padding-block:.4rem}
+  .hd svg{width:30px;height:30px}
+
+  /* The tab bar's height is now MEASURED (--nav-h, published from app.js
+     beside --hdr-h) rather than assumed. Both of the things that have to sit
+     clear of it read that measurement, so a wrapped label or a larger system
+     font can no longer put the ⚡ button on top of the nav — or leave a
+     33px band of nothing under the last card, which is what a hardcoded
+     96px tail was doing against a 63px bar. */
+  .wrap{padding-bottom:calc(var(--nav-h,64px) + 12px + env(safe-area-inset-bottom))}
+  .fab{bottom:calc(var(--nav-h,64px) + 12px + env(safe-area-inset-bottom))}
+  .tabs{padding-top:.22rem;padding-bottom:calc(.22rem + env(safe-area-inset-bottom))}
+  .tabs button i{line-height:1.15}
+
+  /* ---- 2. one frame, not three ----------------------------------------
+     .sec is the panel's only surface: home, B2B, team, config, the editor.
+     Its 16px was the second of the three insets. 11 leaves a card breathing
+     inside it while handing ~40px back to the column that holds the words. */
+  .sec{padding:.7rem;margin-bottom:.55rem}
+  .sec h3{margin-bottom:.5rem}
+  .row{padding:.6rem}
+  .hint{padding:.5rem .65rem;margin-bottom:.6rem}
+
+  /* ---- 3. the card, which is every record in the panel -----------------
+     The left inset is the third of the three, and the one directly in front
+     of the client's name. .card__side's top padding moves with the toggle's
+     by design — it is what puts the money on the title's baseline instead of
+     floating it down the middle of the card (see the rule it mirrors). */
+  .card{margin-bottom:.45rem}
+  .card__head{padding-right:.55rem}
+  .card__toggle{padding:.55rem .1rem .55rem .7rem}
+  .card__side{padding-top:.55rem}
+  .card__actions{padding:0 .7rem .55rem}
+  .card__body{padding:.7rem}
+
+  /* ---- 4. rhythm between blocks ---------------------------------------
+     Stats, then a search bar, then a filter strip, then the list — four
+     blocks stacked before the first record, each with ~14px under it. Half
+     of that reads the same and costs a third of a card. */
+  .stats{margin-bottom:.55rem}
+  .stat{padding:.45rem .35rem}
+  .bar{margin-bottom:.55rem}
+  .fchips{margin-bottom:.55rem}
+  .grp{margin:.7rem 0 .35rem}
+  .evchips,.svcchips{margin-bottom:.6rem}
+
+  /* ---- 5. the calendar ------------------------------------------------
+     Six rows of 56px cells is 350px — nearly half the screen — and an empty
+     week is as tall as a full one. 48 still clears the date and two rows of
+     dots, and gives back a whole card's worth of screen above the day list. */
+  .cal-cell{min-height:48px}
+  .cal-grid{gap:.25rem}
+  .cal-nav{margin-bottom:.55rem}
+  .cal-legend{margin-top:.5rem}
+  .cal-jump{margin-bottom:.55rem}
+
+  /* ---- 6. inside an open card -----------------------------------------
+     The five-button action row and the delivery track set their own 16px
+     side inset. That was in step with .card__toggle's 16 and is now 5px out
+     of it, so Edit/PDF/Send started further in than the name above them.
+     They follow the toggle, because a card has one left edge. */
+  .pkg-acts{margin-inline:.7rem;padding:.6rem 0 .65rem}
+  .dtrack{margin-inline:.7rem;padding-bottom:.6rem}
+  #homeResults{padding:.7rem}
+
+  /* ---- 7. sheets -------------------------------------------------------
+     A sheet is full-width on a phone, so its own padding is the only thing
+     between a field and the glass — and 1.4rem was drawn for the 420px
+     dialog this becomes on a desktop. The vertical padding and the
+     safe-area inset at the foot are untouched; only the sides come in. */
+  .modal{padding-inline:1.05rem}
+  .pay-modal{padding-inline:1.05rem}
+
+  /* ---- 8. the trash row -----------------------------------------------
+     Four things on one line — the record, the status it was deleted in,
+     Restore and ✕ Forever — leave ~80px for the name at 375px, which is
+     "Cancelled Bookin…". Deleting the WRONG record forever is the one
+     mistake on this screen that cannot be undone, so the name gets its own
+     line and the two buttons sit under it, Restore first. */
+  #trashList .up-ev{flex-wrap:wrap;row-gap:.4rem;padding-block:.5rem}
+  #trashList .up-ev .what{flex:1 0 100%;white-space:normal}
+  #trashList .up-ev .chip-status{margin-right:auto}
 }
