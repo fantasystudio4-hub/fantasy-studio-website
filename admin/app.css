@@ -204,19 +204,44 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
    buttons under every open card, with the last row holding one button and a
    gap. Five fit across a 375px card at .3em padding; the gap tightens rather
    than the tap target, which stays the full 44px. */
-.pkg-acts{display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin:0 1rem;padding:.75rem 0 .9rem;border-top:1px dashed var(--line)}
-.pkg-acts .btn{width:100%;padding-inline:.2em;border-radius:var(--r-md);font-size:var(--fs-sm);white-space:nowrap}
+/* Four across at 380px is ~76px a button instead of 58, and the row carries
+   the card's ONE rule — a low-opacity solid hairline where the card turns
+   from description into controls. The dashed borders that used to separate
+   every block from the next drew four lines of noise and no hierarchy;
+   spacing does that job everywhere else. */
+.pkg-acts{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:.25rem 1rem 0;padding:.8rem 0 0;border-top:1px solid var(--white-t3)}
+.pkg-acts .btn{width:100%;padding-inline:.3em;border-radius:var(--r-md);font-size:var(--fs-sm);white-space:nowrap}
+/* Destructive, so it is off the grid, on its own line, and wears none of the
+   weight the routine four carry. Still 44px, still asks first. */
+/* Bottom-LEFT, not bottom-right. Right-aligned it landed 9px directly under
+   ＋ Pay — off the grid but still the next thing under the thumb that had
+   just recorded a payment. Left puts it as far from ＋ Pay as the card
+   allows, in both directions, and the gap above it is a clear row. */
+.pkg-danger{display:flex;justify-content:flex-start;margin:0 1rem;padding:1rem 0 .9rem}
+.pkg-del{
+  background:none;border:1px solid transparent;color:var(--state-overdue);
+  font-size:var(--fs-sm);padding:.5em 1em;border-radius:var(--r-md);
+}
+.pkg-del:active{background:var(--state-overdue-bg);border-color:var(--state-overdue-ln)}
+@media(hover:hover){ .pkg-del:hover{background:var(--state-overdue-bg);border-color:var(--state-overdue-ln)} }
 @media(min-width:700px){.pkg-acts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}}
 
 /* delivery tracker */
 .dprog{height:4px;border-radius:var(--r-xs);background:var(--white-t4);overflow:hidden}
 .dprog i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--state-done));border-radius:var(--r-xs);transition:width .3s}
-.dl3{display:flex;align-items:center;gap:.5rem;margin-top:.1rem}
-.dl3 .dprog{flex:1}
-.dl3 b{font-size:var(--fs-xs);color:var(--mut);font-weight:600;letter-spacing:.04em;white-space:nowrap;margin-left:auto}
-.dl3 b.dv{color:var(--state-done)}
-.dtrack{margin:0 1rem;padding:.6rem 0 .85rem;border-top:1px dashed var(--line)}
-.dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
+/* The bar no longer stretches: it is a fixed gauge, then the count, then the
+   name of the step that count is waiting on. "3/8" says how much is left and
+   never what it is. */
+.dl3{display:flex;align-items:center;gap:.45rem;margin-top:.25rem;min-width:0}
+.dl3 .dprog{flex:0 0 56px}
+.dl3 b{font-size:var(--fs-sm);color:var(--mut);font-weight:600;letter-spacing:.04em;white-space:nowrap}
+.dl3 b.dv{color:var(--state-done);font-size:var(--fs-sm)}
+.dl3-now{
+  min-width:0;flex:1;font-size:var(--fs-sm);color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.dtrack{margin:0 1rem;padding:.2rem 0 .85rem}
+.dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:var(--fs-sm);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
 /* the head is the fold's handle when the step list is collapsible */
 .dt-head.tog{cursor:pointer;min-height:var(--tap);margin-bottom:0;margin-top:.15rem;-webkit-tap-highlight-color:transparent}
 .dt-head.tog .car{flex:0 0 auto;font-size:var(--fs-xs);transition:transform .15s}
@@ -233,11 +258,15 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 /* ---- the current step, lifted out of the list ----------------------
    Same "Now / Then" wording the client portal shows the client, so when they
    ask where things are, the owner is reading the same two lines they are. */
+/* A bordered box inside a bordered card read as a second card. The tint and
+   a left accent set it apart with no outline of its own — same separation,
+   one less frame. */
 .dt-now{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem .7rem;
-        margin:.15rem 0 .55rem;padding:.55rem .7rem;border-radius:var(--r-md);
-        border:1px solid var(--line-2);background:var(--gold-t1)}
-.dt-now.slow{border-color:var(--state-pending-ln);background:var(--state-pending-bg)}
-.dt-now.late{border-color:var(--state-overdue-ln);background:var(--state-overdue-bg)}
+        margin:.15rem 0 .55rem;padding:.55rem .7rem;
+        border-radius:0 var(--r-md) var(--r-md) 0;
+        border:0;border-left:3px solid var(--gold);background:var(--gold-t1)}
+.dt-now.slow{border-left-color:var(--state-pending);background:var(--state-pending-bg)}
+.dt-now.late{border-left-color:var(--state-overdue);background:var(--state-overdue-bg)}
 .dtn-t{grid-column:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .5rem}
 .dtn-k{font-size:var(--fs-2xs);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);
        border:1px solid var(--line-2);border-radius:var(--r-pill);padding:.1em .5em}
@@ -1363,7 +1392,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    pills, both are optional, and the row disappears when neither applies. */
 .pk-state{grid-column:1;justify-self:start;display:flex;align-items:center;gap:.4rem .5rem;flex-wrap:wrap;margin-top:.3rem}
 .pk-state .pk-why{margin-top:0}
-.idle{display:inline-block;border-radius:var(--r-pill);padding:.28em .6em;white-space:nowrap;font-weight:600;font-size:var(--fs-xs);letter-spacing:.05em;color:var(--mut);background:var(--white-t3)}
+.idle{display:inline-block;border-radius:var(--r-pill);padding:.28em .6em;white-space:nowrap;font-weight:600;font-size:var(--fs-sm);letter-spacing:.04em;color:var(--mut);background:var(--white-t3)}
 .idle.warm{color:var(--state-pending);background:var(--state-pending-bg);box-shadow:inset 0 0 0 1px var(--state-pending-ln)}
 .idle.hot{color:var(--state-overdue);background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln)}
 /* Why this card is near the top, in its own words. Full width under the meta
@@ -1371,7 +1400,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* grid-column:1 is not optional — .card__toggle is a two-column grid whose
    second column is the chevron spanning every row. Without it this auto-places
    into that column, collapses the text column and breaks names mid-word. */
-.pk-why{grid-column:1;justify-self:start;margin-top:.3rem;font-size:var(--fs-xs);font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+.pk-why{grid-column:1;justify-self:start;margin-top:.3rem;font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;
         border-radius:var(--r-sm);padding:.28em .6em;color:var(--state-pending);background:var(--state-pending-bg);
         box-shadow:inset 0 0 0 1px var(--state-pending-ln)}
 .pk-why.hot{color:var(--state-overdue);background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln)}

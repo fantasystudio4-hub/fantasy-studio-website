@@ -2834,21 +2834,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     let prog = '', nowLine = '';
     if(track){
       const di = deliveryInfo(x);
-      prog = st === 'delivered'
+      /* ONE progress element per card. This bar and the tracker's own
+         "DELIVERY n/total" were the same two numbers from the same
+         deliveryInfo() call, drawn twice on an open card — which reads as a
+         bug, not as two scopes. The tracker's version is also the fold
+         handle, so it wins when the card is open and this one stands down.
+         Closed, this is the only one, and it carries the current step's NAME
+         beside the count: a bar that says 3/8 tells you how much is left and
+         never what it is. */
+      prog = open ? '' : (st === 'delivered'
         ? `<div class="dl3">${di.doneCount ? `<span class="dprog"><i style="width:${di.pct}%"></i></span>` : ''}<b class="dv">✓ Delivered${x.deliveredAt ? ' ' + stepDate(x.deliveredAt) : ''}</b></div>`
-        : `<div class="dl3"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total} steps</b></div>`;
-      /* "0/8 steps" told the owner how much was left and never what it was.
-         Naming the next action turns the list into a to-do list — and the
-         days beside it are how long that action has been waiting, which is
-         the difference between a job in progress and a job forgotten.
-
-         Only while the card is CLOSED. Open it and the tracker below prints
-         the same step again in its NOW block — with the ✓ Done button and
-         its own count of days on that step — so the head was saying it a
-         second time, higher up, with less to offer. */
-      if(st === 'booked' && di.now && !open)
-        nowLine = `<span class="dnow">Now: <b>${esc(di.now)}</b>${
-          di.since != null && di.since >= 7 ? `<em class="${idleSev(di.since)}" title="This step has been the current one for ${di.since} days">waiting ${di.since}d</em>` : ''}</span>`;
+        : `<div class="dl3"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b>${
+            di.now ? `<span class="dl3-now">${esc(di.now)}</span>` : ''}</div>`);
+      /* How long the current step has been current — the difference between a
+         job in progress and a job forgotten. The step's NAME now rides on the
+         progress bar above, so this is only the duration, as a pill among the
+         other pills. Closed cards only: the tracker's NOW block carries both
+         on an open one, with the ✓ Done button beside them. */
+      if(st === 'booked' && di.now && !open && di.since != null && di.since >= 7)
+        nowLine = `<span class="idle ${idleSev(di.since)}" title="“${esc(di.now)}” has been the current step for ${di.since} days">waiting ${di.since}d</span>`;
     }
     /* The status control moved out of .pkg-acts and into the card head, where
        Clients keeps it too. .pkg-acts is hidden until the card is expanded, so
@@ -2917,16 +2921,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                   aria-label="Change status — currently ${STATUS_LABEL(st)}">${STATUS_LABEL(st)}</button>
         </span>
       </div>
+      ${/* Four routine actions across, and Delete out of the row entirely.
+           Five buttons on a 380px card gave each one 58px with 4.8px between
+           them — a destructive control one thumb-width from ＋ Pay, on the
+           screen where money is recorded. It sits on its own line now, quiet
+           and right-aligned, a full row away from anything routine. It still
+           asks before it deletes. */ ''}
       <div class="pkg-acts" ${open?'':'hidden'}>
         <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
         <button type="button" class="btn btn--sm btn--ghost" data-wapdf>Send ▷</button>
-        ${/* "＋ Payment" at five-across is wider than its column. The row is
-             five fixed actions now — no client-phone branch — so every card
-             carries the same five in the same places and the eye can learn
-             where Delete is. */ ''}
         <button type="button" class="btn btn--sm btn--ghost" data-pay>＋ Pay</button>
-        <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
+      </div>
+      <div class="pkg-danger" ${open?'':'hidden'}>
+        <button type="button" class="btn btn--sm pkg-del" data-delpkg>Delete package</button>
       </div>
       ${track && open ? trackerHTML(x, { foldable: true }) : ''}
     </article>`;
