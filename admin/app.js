@@ -2840,8 +2840,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* "0/8 steps" told the owner how much was left and never what it was.
          Naming the next action turns the list into a to-do list — and the
          days beside it are how long that action has been waiting, which is
-         the difference between a job in progress and a job forgotten. */
-      if(st === 'booked' && di.now)
+         the difference between a job in progress and a job forgotten.
+
+         Only while the card is CLOSED. Open it and the tracker below prints
+         the same step again in its NOW block — with the ✓ Done button and
+         its own count of days on that step — so the head was saying it a
+         second time, higher up, with less to offer. */
+      if(st === 'booked' && di.now && !open)
         nowLine = `<span class="dnow">Now: <b>${esc(di.now)}</b>${
           di.since != null && di.since >= 7 ? `<em class="${idleSev(di.since)}" title="This step has been the current one for ${di.since} days">waiting ${di.since}d</em>` : ''}</span>`;
     }
