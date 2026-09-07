@@ -2694,15 +2694,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* ---- money ---- */
     const w = Math.min(45, bal / 20000);
     if(bal > 0){
+      /* `card` is what this reason is worth SAYING on the card, and null when
+         the card already says it somewhere better. The status pill, the
+         amount and the progress bar are each a fact's proper home; a sentence
+         repeating one of them is a fourth thing to read that carries no
+         fourth thing to know. `txt` still drives nothing but this, so the
+         scores below are untouched. */
       if(st === 'delivered')
-        R.push({ n: 110 + w, txt: 'Delivered · still unpaid', sev:'hot' });
+        R.push({ n: 110 + w, txt: 'Delivered · still unpaid', sev:'hot', card: null });
       else if(st === 'booked' && shot && !next)
-        R.push({ n: 85 + w, txt: 'Shot · balance due', sev:'hot' });
+        R.push({ n: 85 + w, txt: 'Shot · balance due', sev:'hot', card: 'All events shot' });
       else if(st === 'booked' && next){
         const n = dOut(next);
         R.push(n <= 7
-          ? { n: 60 + w, txt: n <= 0 ? 'Shooting today · balance due' : `Collect before the shoot · ${n}d`, sev:'hot' }
-          : { n: 25 + w, txt: 'Balance outstanding', sev:'warm' });
+          ? { n: 60 + w, txt: n <= 0 ? 'Shooting today · balance due' : `Collect before the shoot · ${n}d`,
+              sev:'hot', card: n <= 0 ? 'Shooting today' : `Shoot in ${n}d` }
+          : { n: 25 + w, txt: 'Balance outstanding', sev:'warm', card: null });
       }
     }
 
@@ -2723,14 +2730,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const preShoot = (st === 'booked' || st === 'delivered') && !!next;
     const counts = !preShoot && (bal > 0 || undelivered || st === 'draft' || st === 'unconfirmed' || st === 'sent');
     if(idle != null && !preShoot){
+      /* every one of these is the ⏱ pill on the meta row, spelled out again */
       if(st === 'draft' && idle >= 14)
-        R.push({ n: 30 + Math.min(30, idle/2), txt: `Draft untouched ${idle} days`, sev: idle >= 30 ? 'hot' : 'warm' });
+        R.push({ n: 30 + Math.min(30, idle/2), txt: `Draft untouched ${idle} days`, sev: idle >= 30 ? 'hot' : 'warm', card: null });
       else if(st === 'unconfirmed' && idle >= 21)
-        R.push({ n: 35, txt: `On hold, no update in ${idle} days`, sev:'warm' });
+        R.push({ n: 35, txt: `On hold, no update in ${idle} days`, sev:'warm', card: null });
       else if(st !== 'sent' && (bal > 0 || undelivered)){
-        if(idle >= 45)      R.push({ n: 45, txt: `No update in ${idle} days`, sev:'hot' });
-        else if(idle >= 20) R.push({ n: 28, txt: `No update in ${idle} days`, sev:'hot' });
-        else if(idle >= 10) R.push({ n: 12, txt: `No update in ${idle} days`, sev:'warm' });
+        if(idle >= 45)      R.push({ n: 45, txt: `No update in ${idle} days`, sev:'hot', card: null });
+        else if(idle >= 20) R.push({ n: 28, txt: `No update in ${idle} days`, sev:'hot', card: null });
+        else if(idle >= 10) R.push({ n: 12, txt: `No update in ${idle} days`, sev:'warm', card: null });
       }
     }
 
@@ -2741,12 +2749,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        so the card and the group agree about when it became a problem. */
     if(st === 'sent' && idle != null && idle >= 3)
       R.push({ n: idle >= 7 ? 45 + Math.min(35, idle) : 20 + idle,
-               txt: `Sent ${idle}d ago, no reply`, sev: idle >= 20 ? 'hot' : 'warm' });
+               txt: `Sent ${idle}d ago, no reply`, sev: idle >= 20 ? 'hot' : 'warm',
+               card: 'No reply yet' });
 
     /* ---- parked, but the date is arriving ---- */
     if(st === 'unconfirmed' && next){
       const n = dOut(next);
-      if(n <= 21) R.push({ n: 55, txt: `On hold · date in ${n}d`, sev: n <= 7 ? 'hot' : 'warm' });
+      if(n <= 21) R.push({ n: 55, txt: `On hold · date in ${n}d`, sev: n <= 7 ? 'hot' : 'warm',
+                           card: `Date in ${n}d` });
     }
 
     /* ---- shot, but nothing delivered ---- */
@@ -2754,23 +2764,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const age = -dOut(last);
       if(age >= 14)
         R.push({ n: 30 + Math.min(40, age/2), txt: `${di.doneCount}/${di.total} delivered · shot ${age}d ago`,
-                 sev: age >= 45 ? 'hot' : 'warm' });
+                 sev: age >= 45 ? 'hot' : 'warm', card: `Shot ${age}d ago` });
     }
 
     /* enough on its own to reach the worklist — the client is locked out of a
        booking they are paying for, and only the owner can fix it */
-    if(portalIssue(x)) R.push({ n: 70, txt: LOCKED_TXT, sev:'hot' });
+    /* rendered as its own ⚠️ line on every card that has it, so it must not
+       also be a candidate for the reason line underneath */
+    if(portalIssue(x)) R.push({ n: 70, txt: LOCKED_TXT, sev:'hot', card: null });
     /* money owed back after a price drop. Nothing chases this on the client's
        behalf, so it sits unnoticed until they ask — which is the worst way for
        it to come up. */
     const over = Math.max(0, -(Number((x.totals||{}).balance)||0));
     if(over > 0 && st !== 'draft')
-      R.push({ n: 60 + Math.min(30, over/5000), txt: `${inr(over)} to refund`, sev:'warn' });
+      R.push({ n: 60 + Math.min(30, over/5000), txt: `${inr(over)} to refund`, sev:'warn', card: null });
     const score = Math.round(R.reduce((s,r)=>s + r.n, 0));
-    /* one reason on the card, the heaviest — a card carrying four badges is
-       a card nobody reads */
-    const top = R.sort((a,b)=>b.n - a.n)[0];
-    return { score, why: top ? top.txt : '', sev: top ? top.sev : '', idle, counts, preShoot };
+    /* The score still counts every reason — what lands a package in the
+       worklist has not changed. Only the LABEL is filtered: the heaviest
+       reason that still has something the card does not already show. When
+       every reason is one the pill, the amount or the bar already covers,
+       the card simply does not carry a sentence, which is right — it was
+       never adding a fact, only a fourth place to read one. */
+    const top = R.filter(r=>r.card).sort((a,b)=>b.n - a.n)[0];
+    return { score, why: top ? top.card : '', sev: top ? top.sev : '', idle, counts, preShoot };
   }
 
   function pkgCardHTML(x, open){
@@ -2806,8 +2822,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* Coloured only when the silence is actually a problem. A paid booking
        whose shoot is still ahead can sit untouched for months and be
        perfectly healthy; painting that red would make red mean nothing. */
+    /* A card could show three bare day-counts at once — "⏱ 140d" here, "40d"
+       on the Now line and "shot 49d ago" underneath — measuring the record's
+       silence, the current step's age and the time since the shoot. Three
+       different questions, one indistinguishable format. Each one says what
+       it is counting now. */
     const idlePill = idleShown
-      ? `<span class="idle ${at.counts ? idleSev(at.idle) : ''}" title="${st === 'sent' ? 'Sent' : 'Last updated'} ${at.idle} day${at.idle===1?'':'s'} ago${at.counts ? '' : ' — nothing outstanding on it'}">${st === 'sent' ? '📤' : '⏱'} ${at.idle}d</span>`
+      ? `<span class="idle ${at.counts ? idleSev(at.idle) : ''}" title="${st === 'sent' ? 'Sent' : 'Last updated'} ${at.idle} day${at.idle===1?'':'s'} ago${at.counts ? '' : ' — nothing outstanding on it'}">${st === 'sent' ? `📤 sent ${at.idle}d` : `⏱ idle ${at.idle}d`}</span>`
       : '';
     const track = (st === 'booked' || st === 'delivered');
     let prog = '', nowLine = '';
@@ -2822,7 +2843,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          the difference between a job in progress and a job forgotten. */
       if(st === 'booked' && di.now)
         nowLine = `<span class="dnow">Now: <b>${esc(di.now)}</b>${
-          di.since != null && di.since >= 7 ? `<em class="${idleSev(di.since)}">${di.since}d</em>` : ''}</span>`;
+          di.since != null && di.since >= 7 ? `<em class="${idleSev(di.since)}" title="This step has been the current one for ${di.since} days">waiting ${di.since}d</em>` : ''}</span>`;
     }
     /* The status control moved out of .pkg-acts and into the card head, where
        Clients keeps it too. .pkg-acts is hidden until the card is expanded, so
@@ -2844,7 +2865,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                  its size, and the end client last. A B2B row with a long
                  end-client name used to push the DATE off the card. */
               nd ? `<span class="mnb">📅 ${stepDate(nd)}</span>` : '',
-              idlePill,
               x.quoteNo ? `<b class="qno">${esc(x.quoteNo)}</b>` : '',
               /* the count and the date are single facts, and a line break
                  through the middle of one left cards ending in a lone
@@ -2860,8 +2880,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                reason, so on a job that also owes ₹2L this would never once
                have been the sentence on screen. */
             return pi ? `<span class="pk-alert">⚠️ ${esc(pi)}</span>` : ''; })()}
-          ${at.score >= PKG_ATTN_MIN && at.why && at.why !== LOCKED_TXT
-              ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : ''}
+          ${/* The state row. The staleness pill used to sit up in the meta
+               beside the quote number, where it was read as part of the
+               package's identity and — once it started saying what it was
+               counting — pushed the identity onto a second line. It belongs
+               here, with the other thing that says why this card wants
+               attention.
+
+               at.why is now only ever a reason with something left to say:
+               the lockout excludes itself (it has the ⚠️ line above) and so
+               does every reason the pill, the amount or the progress bar
+               already covers, so most cards carry no sentence at all. */ ''}
+          ${(() => {
+            const why = (at.score >= PKG_ATTN_MIN && at.why)
+              ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : '';
+            return (idlePill || why) ? `<span class="pk-state">${idlePill}${why}</span>` : '';
+          })()}
           <span class="chev" aria-hidden="true">›</span>
         </button>
         <span class="card__side">
