@@ -426,7 +426,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!ADMIN_EMAILS.length){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
       }
-      loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps();
+      loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
       showTab(fromHash);
@@ -469,9 +469,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   syncHdrH();
 
   /* ---------- tabs ---------- */
-  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView' };
-  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'b2b', tabTeam:'team', tabConfig:'config' };
-  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', config:'tabConfig' };
+  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabEdit:'editView', tabConfig:'configView' };
+  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'b2b', tabTeam:'team', tabEdit:'editing', tabConfig:'config' };
+  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabEdit', config:'tabConfig' };
   let _navFromPop = false;
   /* Sheet/modal history states. Pushing a new state while one of these is
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
@@ -590,6 +590,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
+    if(id === 'tabEdit' && typeof renderEditTab === 'function') renderEditTab();
     if(id === 'tabHome'){
       if(typeof renderHome === 'function') renderHome();
       if(typeof renderCalendar === 'function') renderCalendar();   /* the calendar lives on Home now */
@@ -621,9 +622,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* tapping B2B while a studio detail is open = back to the studio list */
       const leavingStudio = !$('#studioDetailView').hidden;
       if(id === 'tabCal' && leavingStudio && typeof closeStudioDetail === 'function') closeStudioDetail();
+      /* same for an editing job's work page */
+      const leavingJob = !$('#ejDetailView').hidden;
+      if(id === 'tabEdit' && leavingJob && typeof closeEjDetail === 'function') closeEjDetail();
       /* re-tapping the tab you are on = back to its top — the pattern every
          phone app uses; there was no other way up a long list one-handed */
-      if(id === _curTab && !leavingEditor && !leavingStudio){
+      if(id === _curTab && !leavingEditor && !leavingStudio && !leavingJob){
         _tabScroll[id] = 0;
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -632,7 +636,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the editor / studio detail we just closed owns the current history
          entry — REPLACE it, or the back button resurrects a closed page */
       const cur = history.state && history.state.view;
-      const replace = (leavingEditor && cur === 'pkgedit') || (leavingStudio && cur === 'studio');
+      const replace = (leavingEditor && cur === 'pkgedit') || (leavingStudio && cur === 'studio')
+                   || (leavingJob && cur === 'ejob');
       pushView(VIEW_OF_TAB[id], '#' + VIEW_OF_TAB[id], replace);
     });
   });
@@ -678,11 +683,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }else if(v === 'studio'){
         showTab('tabCal');
         if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
+      }else if(v === 'ejob'){
+        showTab('tabEdit');
+        if(_ejOpenId){ $('#ejListView').hidden = true; $('#ejDetailView').hidden = false; }
       }else{
         const tab = TAB_OF_VIEW[v] || 'tabHome';
         showTab(tab);
         if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; syncFabs(); }
         if(tab === 'tabCal' && typeof closeStudioDetail === 'function') closeStudioDetail();
+        if(typeof closeEjDetail === 'function') closeEjDetail();
       }
     }finally{ _navFromPop = false; }
   });
@@ -2269,6 +2278,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         syncStudioCrew();   /* partner portal reads crew off the package doc */
         renderPkgList();
         renderCalendar();
+        renderEditTab();    /* the editing list is derived from these packages */
         /* one-time backfill: number packages created before quote numbers existed.
            Only from a SERVER snapshot — a stale cache image must never renumber docs. */
         if(!_pkgsBackfilled && !snap.metadata.fromCache){
@@ -3115,6 +3125,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     else if(what === 'team'){ loadTeam(); }
     else if(what === 'studios'){ loadStudios(); }
     else if(what === 'leads'){ loadLeads(); }
+    else if(what === 'ejobs'){ loadEJobs(); }
     toast('Reconnecting…');
   });
 
@@ -3843,6 +3854,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           warnIfCapped('team members', snap.size, TEAM_CAP);
           _teamLoaded = true;
           renderTeam();
+          renderEditTab();    /* editor names and the editor filter chips */
         }, err=>{
           try{ if(_teamUnsub) _teamUnsub(); }catch(e){} _teamUnsub = null;
           _teamErr = 'Could not load the team (' + (err.code||err.message) + ')';
@@ -3860,6 +3872,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           if(!snap.metadata.fromCache) _asgsFresh = true;
           syncStudioCrew();   /* partner portal reads crew off the package doc */
           renderTeam();
+          renderEditTab();    /* who is on an edit, and whether they signed off */
           renderPkgStats();   /* the crew-pay tile on Home reads these */
           if($('#finModal').classList.contains('open')) renderFin();
           if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
@@ -4899,6 +4912,672 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     applyTeamSeg();
   }
 
+  /* ============================================================
+     EDITING TAB — post-production, one row per BOOKING
+
+     The Team tab's ✂️ Editing section already lists editing work, and it
+     stays: it is the per-PERSON view — one row per editor per job — which
+     is the right shape for chasing a deadline and paying somebody. This
+     tab is the per-BOOKING view: one row per wedding sold with video,
+     however many editors end up on it, with the workflow that a single
+     assignment row has nowhere to keep.
+
+     WHAT IS STORED, AND WHERE
+       packages/{id}          the booking. Client, dates, events[].services.
+                              Read live — nothing is copied out of it.
+       assignments (kind:edit) WHO is on the job. One doc per editor, which
+                              is what the crew portal reads and what the pay
+                              ledger settles. Several of them per booking =
+                              several assignees, each with their own role.
+       editingJobs/{pkgId}    NEW, and only what has no home in either of the
+                              above: stage, deadline, drive link, footage
+                              volume, the client's editing brief, the comment
+                              thread and the audit trail. Doc id IS the
+                              package id, so there can never be two jobs for
+                              one booking and nothing has to be queried to
+                              find it.
+
+     The comment thread is the reason this is not a field on the package:
+     packages/{id} is readable by the client and by the partner studio
+     (see firestore.rules), and admin↔editor notes are neither's business.
+     editingJobs has no rule of its own, so it falls to the catch-all
+     admin-only match at the bottom of the rules — no rules change needed,
+     and it is private by construction.
+
+     The doc is written LAZILY. A booking with no editing job yet has no
+     document; everything on its row is derived from the package and its
+     assignments. The first stage change, deadline or comment creates it.
+     ============================================================ */
+
+  /* There is no "Video Editing" line item to look for. A booking's events
+     carry items:[{service, qty, rate}] where `service` is the free text the
+     quotation was written with — 'Cinematography', 'Traditional Video',
+     'LED Wall' — so what a booking was sold is matched, not looked up. This
+     is the same test hasVideo() above already uses to decide whether the
+     delivery tracker shows the video steps, deliberately: a booking whose
+     package promises a film is exactly the set of bookings that owe one.
+     LED, streaming and drone are excluded — a drone is a camera on the
+     video shoot, never an edit of its own. */
+  const EJ_VIDEO_RE = /video|cinema/i;
+  const ejIsVideoItem = it => EJ_VIDEO_RE.test(String((it||{}).service || ''));
+
+  const EJ_STAGES = [
+    { k:'unassigned', label:'Unassigned',   short:'Unassigned' },
+    { k:'assigned',   label:'Assigned',     short:'Assigned'   },
+    { k:'progress',   label:'In Progress',  short:'Editing'    },
+    { k:'review',     label:'Under Review', short:'Review'     },
+    { k:'delivered',  label:'Delivered',    short:'Delivered'  },
+  ];
+  const EJ_IDX = Object.fromEntries(EJ_STAGES.map((s,i)=>[s.k,i]));
+  const ejStageLabel = k => (EJ_STAGES.find(s=>s.k===k) || EJ_STAGES[0]).label;
+
+  const EJOBS_CAP = 1000;
+  let EJOBS = [], _ejUnsub = null, _ejLoaded = false, _ejErr = '';
+
+  function loadEJobs(){
+    _ejErr = _ejUnsub ? _ejErr : '';
+    if(_ejUnsub){ renderEditTab(); return; }
+    try{
+      _ejUnsub = onSnapshot(query(collection(db,'editingJobs'), limit(EJOBS_CAP)), snap=>{
+        EJOBS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        warnIfCapped('editing jobs', snap.size, EJOBS_CAP);
+        _ejLoaded = true; _ejErr = '';
+        renderEditTab();
+      }, err=>{
+        try{ if(_ejUnsub) _ejUnsub(); }catch(e){} _ejUnsub = null;
+        _ejErr = 'Could not load editing jobs (' + (err.code||err.message) + ')';
+        renderEditTab();
+      });
+    }catch(err){
+      _ejErr = 'Could not load editing jobs (' + (err.code||err.message) + ')';
+      renderEditTab();
+    }
+  }
+
+  const ejPkg   = id => livePkgs().find(p=>p.id===id);
+  const ejDoc   = id => EJOBS.find(j=>j.id===id) || null;
+  const ejCrew  = id => ASGS.filter(a=>a.kind === 'edit' && a.pkgId === id);
+  const ejWho   = () => { try{ return (auth.currentUser && auth.currentUser.email) || 'admin'; }catch(e){ return 'admin'; } };
+  /* array entries cannot carry serverTimestamp(), so the thread and the audit
+     trail are stamped by the device that wrote them */
+  const ejNow   = () => new Date().toISOString();
+  let _ejIdN = 0;
+  const ejId = () => Date.now().toString(36) + (_ejIdN++).toString(36) + Math.random().toString(36).slice(2,5);
+  const ejWhen = t => {
+    const d = new Date(t||''); if(isNaN(d)) return '';
+    return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' · ' +
+           d.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
+  };
+  /* the email is the audit record; the panel shows the part before the @ */
+  const ejWhoShort = w => String(w||'').split('@')[0] || 'admin';
+
+  /* ---- the video half of a booking, and nothing else ----
+     Every field this tab shows about the WORK comes through here, which is
+     what keeps the detail page a single-service work page: photography
+     counts, album sheets, totals and payments are never read. */
+  function ejScope(pk){
+    const out = [];
+    ((pk && pk.events) || []).forEach(ev=>{
+      const svc = [];
+      let n = 0;
+      (ev.items||[]).filter(ejIsVideoItem).forEach(it=>{
+        const q = Math.max(1, Number(it.qty) || 1);
+        svc.push({ service: String(it.service||'Video'), qty: q });
+        n += q;
+      });
+      if(svc.length) out.push({ date: ev.date||'', title: ev.title || ev.type || 'Event', svc, n });
+    });
+    return out;
+  }
+  const ejHasVideo = pk => ejScope(pk).length > 0;
+  /* how many camera-days of footage this edit is built from — the closest
+     thing to a deliverable count the booking actually states */
+  const ejUnits = scope => scope.reduce((s,e)=>s + e.n, 0);
+  const ejSvcText = svc => svc.map(v=>`${v.service}${v.qty>1?' ×'+v.qty:''}`).join(' · ');
+
+  /* Stage: an explicit one on the job doc wins, EXCEPT that a job whose
+     editors have all been removed cannot go on claiming somebody has it.
+     With no doc at all, reality decides — which is why a booking shows up
+     here correctly before anything has ever been written for it. */
+  function ejStageOf(job, crew){
+    const st = job && job.stage;
+    if(EJ_IDX[st] !== undefined){
+      if(st !== 'unassigned' && st !== 'delivered' && !crew.length) return 'unassigned';
+      return st;
+    }
+    if(crew.length && crew.every(a=>a.workDone)) return 'delivered';
+    return crew.length ? 'assigned' : 'unassigned';
+  }
+
+  function ejRowOf(pk){
+    const job = ejDoc(pk.id), crew = ejCrew(pk.id), scope = ejScope(pk);
+    const dates = scope.map(e=>e.date).filter(d=>ISO_RE.test(d)).sort();
+    const last = dates.length ? dates[dates.length-1] : '';
+    /* the job's own deadline, else the soonest an assigned editor was given,
+       else nothing — this tab never invents a date the studio did not set */
+    const deadline = (job && ISO_RE.test(job.deadline||'') ? job.deadline : '')
+      || crew.map(a=>a.dueDate).filter(d=>ISO_RE.test(d||'')).sort()[0] || '';
+    const stage = ejStageOf(job, crew);
+    const overdue = stage !== 'delivered' && ISO_RE.test(deadline) && deadline < todayISO();
+    return { pk, job, crew, scope, last, deadline, stage, overdue };
+  }
+  function ejAllRows(){
+    return livePkgs()
+      .filter(x=>['booked','delivered'].includes(x.status||'draft'))
+      .filter(ejHasVideo)
+      .map(ejRowOf);
+  }
+
+  /* ---- filters, search, sort ---- */
+  let _ejQ      = viewGet('ejQ',''),
+      _ejStageF = viewGet('ejStageF',''),
+      _ejEditorF= viewGet('ejEditorF',''),
+      _ejSort   = viewGet('ejSort','deadline');
+  const EJ_SORTS = [
+    ['deadline','↕ Deadline'],
+    ['event',   '↕ Event date'],
+    ['client',  '↕ Client A–Z'],
+  ];
+  function ejVisibleRows(){
+    const q = _ejQ.trim().toLowerCase();
+    let rows = ejAllRows();
+    if(q) rows = rows.filter(r=>
+      String(r.pk.clientName||'').toLowerCase().includes(q) ||
+      String(r.pk.quoteNo||'').toLowerCase().includes(q));
+    if(_ejStageF) rows = rows.filter(r=>_ejStageF === 'overdue' ? r.overdue : r.stage === _ejStageF);
+    if(_ejEditorF) rows = rows.filter(r=>r.crew.some(a=>a.memberId === _ejEditorF));
+    const byDeadline = (a,b)=>{
+      /* Delivered work sinks, whatever its date. Sorting purely by deadline
+         put a film delivered in August above one four days overdue, because
+         its deadline was earlier — true, and the exact opposite of what a
+         list ordered by urgency is for. */
+      if((a.stage === 'delivered') !== (b.stage === 'delivered')) return a.stage === 'delivered' ? 1 : -1;
+      /* no deadline sorts last, not first — an empty string beats every real
+         date as text, and undated jobs would have buried the urgent ones */
+      const x = a.deadline || '9999-99-99', y = b.deadline || '9999-99-99';
+      return x < y ? -1 : x > y ? 1 : 0;
+    };
+    const cmp = {
+      deadline: byDeadline,
+      event: (a,b)=>(a.last > b.last ? -1 : a.last < b.last ? 1 : 0),
+      client: (a,b)=>String(a.pk.clientName||'').localeCompare(String(b.pk.clientName||'')),
+    }[_ejSort] || byDeadline;
+    return rows.sort(cmp);
+  }
+
+  /* ---- list view ---- */
+  const ejDueChip = r => {
+    if(!ISO_RE.test(r.deadline||'')) return '<span class="duetag">no deadline</span>';
+    if(r.stage === 'delivered') return `<span class="duetag ok">✓ ${esc(stepDate(r.deadline))}</span>`;
+    const d = Math.round((new Date(r.deadline+'T00:00') - new Date(todayISO()+'T00:00'))/864e5);
+    const cls = d < 0 ? 'late' : d <= 3 ? 'soon' : '';
+    const txt = d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'in ' + d + 'd';
+    return `<span class="duetag ${cls}">${txt}</span>`;
+  };
+  const ejBadge = r => `<span class="ejb ejb--${r.overdue ? 'overdue' : r.stage}">${
+    r.overdue ? 'Overdue' : ejStageLabel(r.stage)}</span>`;
+  const ejEditorNames = r => r.crew.length
+    ? r.crew.map(a=>esc((memberById(a.memberId) || {}).name || a.memberName || '—')).join(', ')
+    : '<i>Unassigned</i>';
+  const ejSvcLine = scope => {
+    const tot = new Map();
+    scope.forEach(e=>e.svc.forEach(v=>tot.set(v.service, (tot.get(v.service)||0) + v.qty)));
+    return ejSvcText([...tot.entries()].map(([service,qty])=>({ service, qty })));
+  };
+
+  function renderEjStats(){
+    const el = $('#ejStats'); if(!el) return;
+    const rows = ejAllRows();
+    const open = rows.filter(r=>r.stage !== 'delivered').length;
+    const late = rows.filter(r=>r.overdue).length;
+    const done = rows.filter(r=>r.stage === 'delivered').length;
+    el.innerHTML = `
+      <div class="stat"><b>${open}</b><span>In hand</span></div>
+      <div class="stat"><b style="${late?'color:var(--err)':''}">${late}</b><span>Overdue</span></div>
+      <div class="stat"><b>${done}</b><span>Delivered</span></div>`;
+  }
+  function renderEjChips(){
+    const rows = ejAllRows();
+    const n = k => k === 'overdue' ? rows.filter(r=>r.overdue).length : rows.filter(r=>r.stage === k).length;
+    const stg = $('#ejStageChips');
+    if(stg) stg.innerHTML = [['','All', rows.length]]
+      .concat(EJ_STAGES.map(s=>[s.k, s.short, n(s.k)]))
+      .concat([['overdue','⚠ Overdue', n('overdue')]])
+      .map(([k,l,c])=>`<button type="button" data-ejstage="${esc(k)}" class="${_ejStageF===k?'on':''}">${esc(l)}<b>${c}</b></button>`)
+      .join('');
+    /* only the people who actually have editing work — a full roster of chips
+       here would be a list of everyone who has never touched an edit */
+    const el = $('#ejEditorChips'); if(!el) return;
+    const seen = new Map();
+    rows.forEach(r=>r.crew.forEach(a=>{
+      if(!a.memberId) return;
+      seen.set(a.memberId, (seen.get(a.memberId)||0) + 1);
+    }));
+    el.hidden = seen.size < 2;
+    if(el.hidden){ el.innerHTML = ''; return; }
+    el.innerHTML = [`<button type="button" data-ejeditor="" class="${_ejEditorF?'':'on'}">Everyone</button>`]
+      .concat([...seen.entries()]
+        .map(([id,c])=>[id, (memberById(id)||{}).name || '—', c])
+        .sort((a,b)=>String(a[1]).localeCompare(String(b[1])))
+        .map(([id,name,c])=>`<button type="button" data-ejeditor="${esc(id)}" class="${_ejEditorF===id?'on':''}">${esc(name)}<b>${c}</b></button>`))
+      .join('');
+  }
+  function renderEjList(){
+    const el = $('#ejList'); if(!el) return;
+    if(_ejErr){ el.innerHTML = errBox(_ejErr, 'ejobs'); return; }
+    if(!(_pkgsLoaded && _asgsLoaded && _ejLoaded)){
+      el.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+      return;
+    }
+    const all = ejAllRows();
+    if(!all.length){
+      el.innerHTML = `<div class="empty-state">
+        <span class="empty-state__icon">✂️</span>
+        <p class="empty-state__title">No editing jobs yet</p>
+        <p class="empty-state__text">A booking appears here once its package is <b style="color:var(--ok)">booked</b> and one of its functions was quoted a service that produces a film — anything with <b>video</b> or <b>cinema</b> in its name.</p>
+      </div>`;
+      return;
+    }
+    const rows = ejVisibleRows();
+    if(!rows.length){
+      el.innerHTML = `<div class="empty" style="padding:.6rem 0">Nothing matches this filter.
+        <button type="button" class="linky" data-ejclear>Clear it</button></div>`;
+      return;
+    }
+    el.innerHTML = rows.map(r=>`
+      <div class="ej-row${r.stage === 'delivered' ? ' ok' : ''}" data-ejopen="${esc(r.pk.id)}" role="button" tabindex="0">
+        <div class="ej-top">
+          <b>${esc(r.pk.clientName || '—')}</b>${qnoTag(r.pk.quoteNo)}
+          ${ejBadge(r)}
+        </div>
+        <div class="ej-meta">
+          <span>🎬 ${esc(stepDate(r.last) || 'no date')}</span>
+          <span>✂️ ${ejEditorNames(r)}</span>
+        </div>
+        <div class="ej-foot">
+          ${ejDueChip(r)}
+          <span class="ej-svc">${esc(ejSvcLine(r.scope))}</span>
+        </div>
+      </div>`).join('');
+  }
+  function renderEditTab(){
+    if(!$('#editView')) return;
+    renderEjStats();
+    renderEjChips();
+    renderEjList();
+    if(!$('#ejDetailView').hidden) renderEjDetail();
+    const srt = $('#ejSort');
+    if(srt) srt.textContent = (EJ_SORTS.find(s=>s[0] === _ejSort) || EJ_SORTS[0])[1];
+    const q = $('#ejSearch');
+    if(q && q.value !== _ejQ && document.activeElement !== q) q.value = _ejQ;
+    /* the badge is overdue work only — a count of everything open would be
+       permanently lit and stop meaning anything */
+    const late = ejAllRows().filter(r=>r.overdue).length;
+    const b = $('#editBadge');
+    if(b){ b.hidden = !late; b.textContent = late || ''; }
+  }
+
+  on('#ejSearch', 'input', debounce(e=>{ _ejQ = e.target.value; viewSet('ejQ', _ejQ); renderEditTab(); }));
+  on('#ejSearch', 'keydown', e=>{
+    if(e.key !== 'Escape') return;
+    e.stopPropagation();
+    _ejQ = ''; e.target.value = ''; viewSet('ejQ',''); renderEditTab();
+  });
+  on('#ejSort', 'click', ()=>{
+    const i = EJ_SORTS.findIndex(s=>s[0] === _ejSort);
+    _ejSort = EJ_SORTS[(i + 1) % EJ_SORTS.length][0];
+    viewSet('ejSort', _ejSort);
+    renderEditTab();
+  });
+  on('#ejStageChips', 'click', e=>{
+    const b = e.target.closest('[data-ejstage]'); if(!b) return;
+    _ejStageF = b.dataset.ejstage; viewSet('ejStageF', _ejStageF); renderEditTab();
+  });
+  on('#ejEditorChips', 'click', e=>{
+    const b = e.target.closest('[data-ejeditor]'); if(!b) return;
+    _ejEditorF = b.dataset.ejeditor; viewSet('ejEditorF', _ejEditorF); renderEditTab();
+  });
+  on('#ejList', 'click', e=>{
+    if(e.target.closest('[data-ejclear]')){
+      _ejQ = _ejStageF = _ejEditorF = '';
+      viewSet('ejQ',''); viewSet('ejStageF',''); viewSet('ejEditorF','');
+      const q = $('#ejSearch'); if(q) q.value = '';
+      renderEditTab(); return;
+    }
+    const r = e.target.closest('[data-ejopen]'); if(!r) return;
+    openEjDetail(r.dataset.ejopen);
+  });
+  on('#ejList', 'keydown', e=>{
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    const r = e.target.closest('[data-ejopen]'); if(!r) return;
+    e.preventDefault(); openEjDetail(r.dataset.ejopen);
+  });
+
+  /* ---- detail: ONE booking's video edit, and nothing else ---- */
+  let _ejOpenId = null, _ejListScrollY = 0, _ejAuditOpen = false;
+  function openEjDetail(id){
+    if(_ejOpenId !== id) _ejAuditOpen = false;
+    _ejListScrollY = (!$('#editView').hidden && !$('#ejListView').hidden) ? window.scrollY : 0;
+    _ejOpenId = id;
+    renderEjDetail();
+    $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
+    scrollTopNow();
+    pushView('ejob', '#editing/job');
+  }
+  function closeEjDetail(){
+    if($('#ejDetailView').hidden) return;
+    $('#ejDetailView').hidden = true; $('#ejListView').hidden = false;
+    _ejOpenId = null; _ejAuditOpen = false;
+    const y = _ejListScrollY, token = ++_scrollToken;
+    requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
+  }
+
+  function renderEjDetail(){
+    const el = $('#ejDetailView'); if(!el) return;
+    const pk = ejPkg(_ejOpenId);
+    if(!pk){
+      el.innerHTML = `<button class="btn btn--sm btn--ghost ejback" data-ejback>← All editing</button>
+        <div class="empty-state">
+          <span class="empty-state__icon">⚠️</span>
+          <p class="empty-state__title">Booking not found</p>
+          <p class="empty-state__text">It may have been deleted. Its editing job is still on record and will reappear if the booking is restored from Trash.</p>
+        </div>`;
+      return;
+    }
+    const r = ejRowOf(pk);
+    const job = r.job || {};
+    /* the page is rebuilt on every snapshot — anything half-typed has to
+       survive that, or a comment written while an editor ticks a box on
+       their phone disappears mid-sentence */
+    const draft = {
+      comment: (el.querySelector('#ejComment') || {}).value,
+      footage: (el.querySelector('#ejFootage') || {}).value,
+      link:    (el.querySelector('#ejLink') || {}).value,
+      brief:   (el.querySelector('#ejBrief') || {}).value,
+    };
+    const focusId = document.activeElement && el.contains(document.activeElement)
+      ? document.activeElement.id : '';
+    const selEnd = focusId ? document.activeElement.selectionEnd : null;
+
+    const stageIdx = EJ_IDX[r.stage];
+    const pipeline = EJ_STAGES.map((s,i)=>{
+      const cur = i === stageIdx;
+      const step = Math.abs(i - stageIdx) === 1;
+      return `<button type="button" class="ejp${cur?' on':''}${i < stageIdx ? ' done':''}"
+        data-ejstageset="${s.k}" ${cur || step ? '' : 'disabled'}
+        title="${cur ? 'Current stage' : step ? (i < stageIdx ? 'Send back to ' : 'Move to ') + s.label : 'One stage at a time'}">
+        <i>${i < stageIdx ? '✓' : i + 1}</i><span>${esc(s.short)}</span></button>`;
+    }).join('<span class="ejp-arw">›</span>');
+
+    const scopeRows = r.scope.map(e=>`
+      <div class="ejs-row">
+        <span class="w">${esc(stepDate(e.date) || '—')}</span>
+        <span class="t"><b>${esc(e.title)}</b><span>${esc(ejSvcText(e.svc))}</span></span>
+        <span class="ejs-n">${e.n}</span>
+      </div>`).join('');
+
+    const crewRows = r.crew.length ? r.crew.map(a=>{
+      const m = memberById(a.memberId);
+      return `<div class="ejc-row" data-ejcrew="${esc(a.id)}" role="button" tabindex="0">
+        <span class="ejc-av">${esc(initials((m&&m.name) || a.memberName))}</span>
+        <span class="t">
+          <b>${esc((m&&m.name) || a.memberName || '—')}</b>
+          <span>${esc(roleLabel(a.role) || 'Editor')}${a.deliver ? ' · ' + esc(a.deliver) : ''}${
+            ejAssignedAt(a) ? ' · assigned ' + esc(ejAssignedAt(a)) : ''}</span>
+        </span>
+        ${a.workDone ? '<span class="duetag ok">✓ signed off</span>'
+                     : a.status === 'acknowledged' ? '<span class="duetag">seen</span>'
+                     : '<span class="duetag soon">not seen</span>'}
+      </div>`;
+    }).join('') : `<div class="empty" style="padding:.5rem 0">Nobody is on this edit yet.</div>`;
+
+    const thread = (Array.isArray(job.comments) ? job.comments : [])
+      .slice().sort((a,b)=>String(a.at||'') < String(b.at||'') ? 1 : -1);
+    const audit = (Array.isArray(job.audit) ? job.audit : [])
+      .slice().sort((a,b)=>String(a.at||'') < String(b.at||'') ? 1 : -1);
+
+    /* the one place this page reaches outside the video service: signing the
+       edit off can tick the package's own delivery step, so the owner does
+       not have to go and find it. It writes nothing else on the package. */
+    const dstep = r.stage === 'delivered' ? stepForDeliver(pk, 'video') : '';
+    const dstepDone = dstep && (Array.isArray(pk.delivery) ? pk.delivery : []).some(d=>d && d.step === dstep);
+
+    el.innerHTML = `
+      <button class="btn btn--sm btn--ghost ejback" data-ejback>← All editing</button>
+      <div class="ejh">
+        <div class="ejh-t">
+          <h2>${esc(pk.clientName || '—')}</h2>
+          <p>${qnoTag(pk.quoteNo)}<span>Video edit${r.last
+            ? (r.last < todayISO() ? ' · shot ' : ' · last function ') + esc(stepDate(r.last))
+            : ''}</span></p>
+        </div>
+        ${ejBadge(r)}
+      </div>
+
+      <div class="sec">
+        <h3>Stage</h3>
+        <p class="sub">One step at a time, forwards or back — a revision moves it from Under Review to In Progress.</p>
+        <div class="ejp-wrap">${pipeline}</div>
+        ${dstep && !dstepDone ? `<button class="addrow" data-ejtick style="margin-top:.7rem">✓ Tick “${esc(dstep)}” on the package</button>` : ''}
+      </div>
+
+      <div class="sec">
+        <h3>Scope of work</h3>
+        <p class="sub">The video services this booking was sold — ${ejUnits(r.scope)} camera-day${ejUnits(r.scope)===1?'':'s'} of footage across ${r.scope.length} function${r.scope.length===1?'':'s'}. Photography, album and everything else on the package are deliberately not shown here.</p>
+        <div class="ejs">${scopeRows}</div>
+      </div>
+
+      <div class="sec">
+        <h3>Editors <span class="ejn">${r.crew.length}</span></h3>
+        <p class="sub">Tap anyone to change their role, deadline or fee. Several can be on one edit — a rough-cut editor and a colourist are two rows, each with their own pay.</p>
+        <div class="ejc">${crewRows}</div>
+        <button class="addrow" data-ejassign style="margin-top:.6rem">＋ Assign editor</button>
+      </div>
+
+      <div class="sec">
+        <h3>The job</h3>
+        <div class="grid2">
+          <div class="fld"><label>Deadline</label>
+            <input type="date" id="ejDeadline" value="${esc(ISO_RE.test(job.deadline||'') ? job.deadline : '')}" /></div>
+          <div class="fld"><label>Raw footage</label>
+            <input type="text" id="ejFootage" placeholder="e.g. 640 GB · 2 drives" maxlength="80" value="${esc(job.footage||'')}" /></div>
+        </div>
+        <div class="fld"><label>Raw footage / drive link</label>
+          <input type="url" id="ejLink" inputmode="url" placeholder="https://…" maxlength="500" value="${esc(job.driveLink||'')}" /></div>
+        ${job.driveLink ? `<a class="ejlink" href="${esc(job.driveLink)}" target="_blank" rel="noopener noreferrer">↗ Open the footage</a>` : ''}
+        <div class="fld"><label>What the client asked for</label>
+          <textarea id="ejBrief" rows="3" maxlength="1000" placeholder="Song choices, must-have moments, anything they said about the film…">${esc(job.brief||'')}</textarea></div>
+      </div>
+
+      <div class="sec">
+        <h3>Notes <span class="ejn">${thread.length}</span></h3>
+        <p class="sub">Between you and the editor. Nothing here reaches the client or a partner studio.</p>
+        <div class="ejt-new">
+          <textarea id="ejComment" rows="2" maxlength="1000" placeholder="Add a note…"></textarea>
+          <button class="btn btn--sm btn--primary" data-ejpost type="button">Post</button>
+        </div>
+        <div class="ejt">${thread.length ? thread.map(c=>`
+          <div class="ejt-row">
+            <span class="ejt-who">${esc(ejWhoShort(c.by))}<em>${esc(ejWhen(c.at))}</em></span>
+            <p>${esc(c.text||'')}</p>
+          </div>`).join('') : '<div class="empty" style="padding:.4rem 0">No notes yet.</div>'}</div>
+      </div>
+
+      <div class="sec">
+        <div class="grp tog ${_ejAuditOpen?'':'closed'}" data-ejaudit role="button" tabindex="0" aria-expanded="${_ejAuditOpen}">
+          <span class="car">▾</span>Activity<b>${audit.length}</b></div>
+        ${_ejAuditOpen ? `<div class="eja">${audit.length ? audit.map(a=>`
+          <div class="eja-row"><span>${esc(a.what||'')}</span><em>${esc(ejWhoShort(a.by))} · ${esc(ejWhen(a.at))}</em></div>`).join('')
+          : '<div class="empty" style="padding:.4rem 0">Nothing recorded yet.</div>'}</div>` : ''}
+      </div>`;
+
+    /* put back whatever was being typed, and the caret with it */
+    Object.entries({ ejComment:draft.comment, ejFootage:draft.footage, ejLink:draft.link, ejBrief:draft.brief })
+      .forEach(([id,v])=>{
+        if(v === undefined || v === null) return;
+        const f = el.querySelector('#' + id); if(!f || f.value === v) return;
+        f.value = v;
+      });
+    if(focusId){
+      const f = el.querySelector('#' + focusId);
+      if(f){ try{ f.focus({ preventScroll:true }); if(selEnd != null) f.setSelectionRange(selEnd, selEnd); }catch(e){} }
+    }
+  }
+  /* an assignment's createdAt is the moment the editor was put on the job.
+     Rows written before that field existed fall back to their due date. */
+  function ejAssignedAt(a){
+    const t = a && a.createdAt;
+    const d = t && typeof t.toDate === 'function' ? t.toDate() : (t ? new Date(t) : null);
+    if(d && !isNaN(d)) return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    if(stepDate(a && a.dueDate)) return 'for ' + stepDate(a.dueDate);
+    /* rows written before createdAt existed know neither — say nothing rather
+       than printing "assigned —", which reads like a missing value */
+    return '';
+  }
+
+  /* ---- writes ----
+     One door for every change, so nothing can move without an audit line.
+     setDoc(merge) rather than updateDoc: the first write on a booking is
+     also the write that creates its job document. */
+  async function ejWrite(pkgId, patch, what){
+    const now = ejNow(), by = ejWho();
+    const entry = what ? { id: ejId(), at: now, by, what } : null;
+    const body = { ...patch, pkgId, updatedAt: serverTimestamp() };
+    if(entry) body.audit = arrayUnion(entry);
+    let cur = ejDoc(pkgId);
+    const isNew = !cur;
+    if(isNew){ cur = { id: pkgId, pkgId }; EJOBS = [...EJOBS, cur]; body.createdAt = serverTimestamp(); }
+    /* Paint it now — a stage that only moves once the server answers feels
+       broken on a phone. Everything being overwritten is kept, because an
+       optimistic paint that is never taken back is how a panel comes to show
+       a stage the server refused: the listener would correct it eventually,
+       but not while the listener is the thing that is down. */
+    const before = {};
+    Object.keys(patch).forEach(k=>{ before[k] = cur[k]; });
+    const auditBefore = cur.audit;
+    Object.assign(cur, patch);
+    if(entry) cur.audit = [...(Array.isArray(cur.audit) ? cur.audit : []), entry];
+    renderEditTab();
+    const res = await settle(setDoc(doc(db,'editingJobs',pkgId), body, { merge: true }));
+    if(res === 'denied'){
+      if(isNew) EJOBS = EJOBS.filter(j=>j !== cur);
+      else{
+        Object.entries(before).forEach(([k,v])=>{
+          if(v === undefined) delete cur[k]; else cur[k] = v;
+        });
+        if(auditBefore === undefined) delete cur.audit; else cur.audit = auditBefore;
+      }
+      renderEditTab();
+    }
+    return settleMsg(res, 'Saved ✓');
+  }
+  /* audit-only write, for the assignment changes that happen in the assign
+     sheet — a reassignment must leave a trace even though the assignment
+     itself lives in another collection */
+  function ejAudit(pkgId, what){
+    if(!pkgId || !what) return;
+    ejWrite(pkgId, {}, what).catch(()=>{});
+  }
+
+  async function ejSetStage(pkgId, to){
+    const pk = ejPkg(pkgId); if(!pk) return;
+    const r = ejRowOf(pk), from = r.stage;
+    if(from === to) return;
+    if(Math.abs(EJ_IDX[from] - EJ_IDX[to]) !== 1){ toast('Move it one stage at a time'); return; }
+    if(EJ_IDX[to] > EJ_IDX[from] && from === 'unassigned' && !r.crew.length){
+      toast('Assign an editor before moving this on'); return;
+    }
+    if(from === 'delivered' && !await confirmDialog({
+      title:'Reopen a delivered edit?',
+      body:`<p>This film is marked delivered. Sending it back to <b>${esc(ejStageLabel(to))}</b> says it is being worked on again.</p>`,
+      confirmText:'Send it back', danger:false })) return;
+    const patch = { stage: to };
+    if(to === 'delivered') patch.deliveredAt = todayISO();
+    const sm = await ejWrite(pkgId, patch, `Stage ${ejStageLabel(from)} → ${ejStageLabel(to)}`);
+    toast(sm.ok ? `Moved to ${ejStageLabel(to)} ✓` : sm.msg);
+    buzz();
+  }
+
+  on('#ejDetailView', 'click', async e=>{
+    if(e.target.closest('[data-ejback]')){ backFrom('ejob', closeEjDetail); return; }
+    if(e.target.closest('[data-ejaudit]')){ _ejAuditOpen = !_ejAuditOpen; renderEjDetail(); return; }
+    const st = e.target.closest('[data-ejstageset]');
+    if(st){ if(!st.disabled) ejSetStage(_ejOpenId, st.dataset.ejstageset); return; }
+    if(e.target.closest('[data-ejassign]')){
+      const pk = ejPkg(_ejOpenId); if(!pk) return;
+      const evs = (pk.events||[]).filter(x=>ISO_RE.test(x.date||'')).sort((a,b)=>a.date < b.date ? -1 : 1);
+      const ev = evs[evs.length - 1] || {};
+      /* the existing assign sheet, in its editing mode — the crew list, the
+         roles and the pay it writes are the panel's one and only ones */
+      openAs({ pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+               eventTitle: ev.title||'', slot: ev.slot||'', date: ev.date||'', venue: ev.venue||'' },
+             null, { forceEdit: true, whole: true });
+      return;
+    }
+    const cr = e.target.closest('[data-ejcrew]');
+    if(cr){
+      const a = ASGS.find(v=>v.id === cr.dataset.ejcrew); if(!a) return;
+      openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
+               eventTitle: a.eventTitle||'', slot: a.slot||'', date: a.date||'', venue: a.venue||'' }, a);
+      return;
+    }
+    if(e.target.closest('[data-ejtick]')){
+      const pk = ejPkg(_ejOpenId); if(!pk) return;
+      const step = stepForDeliver(pk, 'video'); if(!step) return;
+      if(await confirmDialog({
+        title:'Tick this step as done?',
+        body:`<p><b>${esc(step)}</b> on ${esc(pk.clientName||'this package')}.</p>`,
+        confirmText:'Tick it', danger:false })) tickDeliveryStep(pk.id, step);
+      return;
+    }
+    if(e.target.closest('[data-ejpost]')){
+      const box = $('#ejComment'); if(!box) return;
+      const text = box.value.trim();
+      if(!text){ toast('Type a note first'); box.focus(); return; }
+      const entry = { id: ejId(), at: ejNow(), by: ejWho(), text: text.slice(0, 1000) };
+      const cur = ejDoc(_ejOpenId);
+      const had = cur && Array.isArray(cur.comments) ? cur.comments : [];
+      box.value = '';
+      const sm = await ejWrite(_ejOpenId, { comments: [...had, entry] }, 'Added a note');
+      toast(sm.ok ? 'Note added ✓' : sm.msg);
+      /* the page has been rebuilt at least once while that was in flight, so
+         `box` is a detached node by now — putting the text back on it would
+         drop a refused note on the floor. Ask for the live one. */
+      if(!sm.ok){
+        const fresh = $('#ejComment');
+        if(fresh){ fresh.value = text; try{ fresh.focus({ preventScroll:true }); }catch(e2){} }
+      }
+      return;
+    }
+  });
+  on('#ejDetailView', 'keydown', e=>{
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    const t = e.target.closest('[data-ejcrew],[data-ejaudit]'); if(!t) return;
+    e.preventDefault(); t.click();
+  });
+  /* the three stored fields save themselves when you leave them — this page
+     has no save bar, and one that appeared for a date picker would be worse */
+  on('#ejDetailView', 'change', async e=>{
+    if(!_ejOpenId) return;
+    const id = e.target.id;
+    if(id === 'ejDeadline'){
+      const v = e.target.value;
+      if(v && !ISO_RE.test(v)) return;
+      const old = (ejDoc(_ejOpenId)||{}).deadline || '';
+      if(v === old) return;
+      const sm = await ejWrite(_ejOpenId, { deadline: v },
+        v ? `Deadline ${old ? 'moved to' : 'set to'} ${stepDate(v)}` : 'Deadline cleared');
+      toast(sm.ok ? (v ? `Deadline ${stepDate(v)} ✓` : 'Deadline cleared') : sm.msg);
+    }else if(id === 'ejFootage' || id === 'ejLink' || id === 'ejBrief'){
+      const key = id === 'ejFootage' ? 'footage' : id === 'ejLink' ? 'driveLink' : 'brief';
+      const label = { footage:'Raw footage', driveLink:'Drive link', brief:'Client brief' }[key];
+      const v = e.target.value.trim().slice(0, key === 'brief' ? 1000 : key === 'driveLink' ? 500 : 80);
+      if(v === ((ejDoc(_ejOpenId)||{})[key] || '')) return;
+      const sm = await ejWrite(_ejOpenId, { [key]: v }, v ? `${label} updated` : `${label} cleared`);
+      toast(sm.ok ? `${label} saved ✓` : sm.msg);
+    }
+  });
+
   /* ---------- member add / edit sheet ---------- */
   let _tmEditId = null, _tmFromReq = null;
   /* Two kinds of people on the payroll: the ones who go out to shoots and the
@@ -5351,6 +6030,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           if(res === 'denied'){ failed++; continue; }
           ok++;
           ASGS.unshift({ id: ref.id, ...b, pay: { amount: pay, paid: false, paidDate: '', mode: '' }, status: 'assigned' });
+          /* an editing job's assignments live here, but its history lives on
+             the job document — so the Editing tab can say who was put on it
+             and when, long after the roster has changed */
+          if(b.kind === 'edit') ejAudit(b.pkgId, `Assigned ${x.name || 'a member'} as ${roleLabel(b.role) || 'editor'}`);
         }
         toast(failed ? `${ok} assigned — ${failed} refused by the server` : `${ok} crew assigned ✓`);
         if(!ok) return;
@@ -5374,6 +6057,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const sm = settleMsg(res, reset ? 'Saved — the member will be asked to confirm again' : 'Assignment saved ✓');
         toast(sm.msg);
         if(!sm.ok) return;
+        /* Reassignment must not read as if nothing happened. The assignment
+           doc itself is overwritten — it carries the pay ledger and the crew
+           portal's key, so it cannot be forked per assignee — and the name
+           that was on it, the time, and who changed it are recorded on the
+           editing job instead. */
+        if(old && (base.kind === 'edit' || old.kind === 'edit')){
+          const was = old.memberName || 'somebody';
+          ejAudit(base.pkgId || old.pkgId,
+            old.memberId !== base.memberId
+              ? `Reassigned ${was} → ${m.name || 'a member'}`
+              : `Updated ${m.name || 'the editor'}’s assignment`);
+        }
         if(old){
           Object.assign(old, base, { updatedAt: null });
           old.pay = { ...(old.pay||{}), amount: amt,
@@ -5389,8 +6084,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast(sm.msg);
         if(!sm.ok) return;
         ASGS.unshift({ id: ref.id, ...base, pay: { amount: amt, paid: false, paidDate: '', mode: '' }, status: 'assigned' });
+        if(base.kind === 'edit') ejAudit(base.pkgId, `Assigned ${m.name || 'a member'} as ${roleLabel(base.role) || 'editor'}`);
       }
-      buzz(); renderTeam();
+      buzz(); renderTeam(); renderEditTab();
       closeAs();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
@@ -5408,7 +6104,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const res = await settle(deleteDoc(doc(db,'assignments',a.id)));
       if(res === 'denied'){ toast('NOT removed — the server refused the write.'); return; }
       ASGS = ASGS.filter(v=>v.id!==a.id);
-      renderTeam();
+      if(a.kind === 'edit') ejAudit(a.pkgId, `Removed ${a.memberName || 'a member'} from the edit`);
+      renderTeam(); renderEditTab();
       closeAs();
       toastUndo('Assignment removed', async ()=>{
         try{
@@ -8794,12 +9491,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ASGS    = d.assignments.slice();
         STUDIOS = d.studios.slice();
         EXPS    = d.expenses.slice();
+        EJOBS   = (d.editingJobs || []).slice();
         REQS    = [];
         CFG     = d.config;
         /* every "have we heard from the server yet" flag, or the panel paints
            skeletons and "nothing yet" over perfectly good fixtures */
         _leadsLoaded = _pkgsLoaded = _teamLoaded = _asgsLoaded = true;
-        _studiosLoaded = _expsLoaded = true;
+        _studiosLoaded = _expsLoaded = _ejLoaded = true;
         _leadsFresh = _pkgsFresh = _asgsFresh = true;
 
         $('#loginView').hidden = true;
@@ -8811,6 +9509,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */
         renderCalendar();
+        renderEditTab();
         /* Config is filled from CFG on load in the real app; the demo sets CFG
            directly, so paint the forms here too — otherwise the whole Site
            Config tab is untestable without signing in. */

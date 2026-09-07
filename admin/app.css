@@ -1381,3 +1381,171 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   margin-top:.1rem;line-height:1.35;overflow-wrap:anywhere;
 }
 .pay-hist > div > span:first-child{min-width:0;flex:1}
+
+/* ================================================================
+   EDITING TAB
+   The list is cards rather than the flat .ed-row the Team tab uses:
+   a booking's row carries a client name, a stage, a deadline AND a
+   service line, and four things on one line on a phone is how a row
+   stops being readable. The detail page below it reuses .sec, .fld
+   and .grid2 like every other screen — only the pipeline, the crew
+   rows and the note thread are new shapes.
+   ================================================================ */
+
+/* six tabs across a phone: the labels are what has to give, not the
+   tap target. Icons and the 52px minimum are untouched. */
+@media(max-width:699px){
+  .tabs button span{font-size:var(--fs-2xs);letter-spacing:0}
+}
+@media(max-width:359px){
+  .tabs button span{font-size:9px}
+  .tabs button i{font-size:var(--fs-lg)}
+}
+
+/* ---- stage badge. The five stages plus overdue, which overrides
+   whatever stage a job is in — a late edit is a late edit. ---- */
+.ejb{
+  flex:0 0 auto;margin-left:auto;font-size:var(--fs-xs);letter-spacing:.08em;
+  text-transform:uppercase;font-weight:600;border-radius:var(--r-pill);
+  padding:.26em .7em;white-space:nowrap;
+  color:var(--state-neutral);background:var(--state-neutral-bg);
+}
+.ejb--assigned {color:var(--state-new);       background:var(--state-new-bg)}
+.ejb--progress {color:var(--state-pending);   background:var(--state-pending-bg)}
+.ejb--review   {color:var(--state-info);      background:var(--state-info-bg)}
+.ejb--delivered{color:var(--state-confirmed); background:var(--state-confirmed-bg)}
+.ejb--overdue  {color:var(--state-overdue);   background:rgba(var(--state-overdue-rgb),.16)}
+
+/* ---- list row ---- */
+.ej-row{
+  display:flex;flex-direction:column;gap:.35rem;
+  border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--white-t1);padding:.7rem .8rem;margin-bottom:.6rem;
+  cursor:pointer;min-height:var(--tap);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.ej-row:active{border-color:var(--gold);background:var(--gold-t3)}
+.ej-row.ok{opacity:.62}
+.ej-top{display:flex;align-items:center;gap:.4rem;min-width:0}
+.ej-top b{
+  font-size:var(--fs-lg);color:var(--text);font-weight:500;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ej-meta{display:flex;flex-wrap:wrap;gap:.15rem .8rem;font-size:var(--fs-sm);color:var(--mut)}
+.ej-meta span{min-width:0;overflow-wrap:anywhere}
+.ej-meta i{font-style:normal;color:var(--state-neutral)}
+.ej-foot{display:flex;align-items:center;gap:.5rem;min-width:0}
+.ej-svc{
+  font-size:var(--fs-xs);color:var(--mut);min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media(hover:hover){ .ej-row:hover{border-color:var(--gold)} .ej-row:hover .ej-top b{color:var(--gold-b)} }
+
+/* ---- detail page ---- */
+.ejback{margin:1rem 0 .7rem}
+.ejh{display:flex;align-items:flex-start;gap:.6rem;margin:0 0 .9rem}
+.ejh-t{min-width:0;flex:1}
+.ejh-t h2{
+  font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-2xl);
+  line-height:1.2;overflow-wrap:anywhere;
+}
+.ejh-t p{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.25rem}
+.ejh-t p span{font-size:var(--fs-sm);color:var(--mut)}
+.ejh .ejb{margin-left:0;margin-top:.3rem}
+.ejn{
+  font-family:var(--sans);font-size:var(--fs-sm);color:var(--mut);
+  background:var(--white-t3);border-radius:var(--r-pill);padding:.05em .55em;margin-left:.35em;
+}
+
+/* pipeline — five steps, and only the two beside the current one are
+   live. A disabled step still reads as part of the run rather than
+   vanishing, so the shape of the workflow stays visible. */
+.ejp-wrap{display:flex;align-items:stretch;gap:.15rem;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.ejp-wrap::-webkit-scrollbar{display:none}
+/* five steps have to fit a 375px phone without scrolling — at 60px they did
+   not, and Delivered sat half off the edge of the card looking like a bug */
+.ejp{
+  flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.25rem;
+  background:none;border:1px solid transparent;border-radius:var(--r-md);
+  padding:.5rem .1rem;cursor:pointer;color:var(--mut);min-height:var(--tap);
+}
+.ejp i{
+  display:grid;place-items:center;width:26px;height:26px;border-radius:50%;
+  border:1px solid var(--line);font-style:normal;font-size:var(--fs-sm);line-height:1;
+}
+.ejp span{font-size:var(--fs-2xs);letter-spacing:0;text-align:center;line-height:1.2;overflow-wrap:anywhere}
+.ejp.done{color:var(--state-confirmed)}
+.ejp.done i{border-color:var(--state-confirmed-ln);background:var(--state-confirmed-bg);color:var(--state-confirmed)}
+.ejp.on{color:var(--gold-b);border-color:var(--line);background:var(--gold-t3)}
+.ejp.on i{border-color:var(--gold);background:var(--grad-gold);color:var(--ink-0);font-weight:600}
+.ejp[disabled]{opacity:.4;cursor:default}
+.ejp:not([disabled]):active{background:var(--gold-t2)}
+.ejp-arw{align-self:center;color:var(--line-2);font-size:var(--fs-xs);flex:0 0 auto;margin-top:-.9rem}
+
+/* scope of work — the video services only, one row per function */
+.ejs-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
+.ejs-row:last-child{border-bottom:0}
+.ejs-row .w{flex:0 0 auto;min-width:52px;font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-base)}
+.ejs-row .t{flex:1;min-width:0}
+.ejs-row .t b{display:block;font-size:var(--fs-base);color:var(--text);font-weight:500}
+.ejs-row .t span{display:block;font-size:var(--fs-sm);color:var(--mut);overflow-wrap:anywhere}
+.ejs-n{
+  flex:0 0 auto;font-family:var(--serif);font-size:var(--fs-lg);color:var(--gold-b);
+  background:var(--gold-t3);border-radius:var(--r-sm);padding:.1em .5em;
+}
+
+/* editors on the job */
+.ejc-row{
+  display:flex;align-items:center;gap:.6rem;padding:.55rem 0;
+  border-bottom:1px dashed var(--line);cursor:pointer;min-height:var(--tap);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.ejc-row:last-child{border-bottom:0}
+.ejc-row:active{opacity:.65}
+.ejc-av{
+  flex:0 0 auto;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  background:var(--gold-t2);border:1px solid var(--line);color:var(--gold-b);
+  font-size:var(--fs-sm);font-weight:600;
+}
+.ejc-row .t{flex:1;min-width:0}
+.ejc-row .t b{display:block;font-size:var(--fs-base);color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ejc-row .t span{display:block;font-size:var(--fs-sm);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(hover:hover){ .ejc-row:hover .t b{color:var(--gold-b)} }
+
+.ejlink{
+  display:inline-block;margin:-.3rem 0 .9rem;font-size:var(--fs-sm);
+  color:var(--gold-b);text-decoration:underline;overflow-wrap:anywhere;min-height:var(--tap);
+  line-height:var(--tap);
+}
+
+/* note thread — append-only, newest first, and each one keeps the name
+   of whoever wrote it. This is not a notes box that gets overwritten. */
+.ejt-new{display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.9rem}
+.ejt-new textarea{
+  flex:1;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);
+  color:var(--text);padding:.6em .7em;font-family:inherit;font-size:var(--fs-base);resize:vertical;
+}
+/* .btn is a pill, which on a two-row textarea's height came out as a large
+   gold disc. Squared off and pinned to the box beside it instead. */
+.ejt-new .btn{flex:0 0 auto;border-radius:var(--r-sm);padding:.6em 1.1em;align-self:stretch}
+.ejt-row{padding:.55rem 0;border-bottom:1px dashed var(--line)}
+.ejt-row:last-child{border-bottom:0}
+.ejt-who{
+  display:flex;align-items:baseline;gap:.5rem;font-size:var(--fs-sm);
+  color:var(--gold-b);font-weight:500;
+}
+.ejt-who em{font-style:normal;font-size:var(--fs-xs);color:var(--mut);letter-spacing:.03em}
+.ejt-row p{margin-top:.2rem;font-size:var(--fs-base);color:var(--text);line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+
+/* audit trail */
+.eja-row{
+  display:flex;align-items:baseline;gap:.6rem;justify-content:space-between;
+  padding:.4rem 0;border-bottom:1px dashed var(--line);font-size:var(--fs-sm);
+}
+.eja-row:last-child{border-bottom:0}
+.eja-row span{color:var(--text);min-width:0;overflow-wrap:anywhere}
+.eja-row em{flex:0 0 auto;font-style:normal;font-size:var(--fs-xs);color:var(--mut);white-space:nowrap}
+@media(max-width:400px){
+  .eja-row{flex-direction:column;gap:.1rem}
+  .eja-row em{align-self:flex-start}
+}

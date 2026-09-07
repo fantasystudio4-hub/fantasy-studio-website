@@ -402,6 +402,14 @@ export const assignments = [
   /* editing work — kind:'edit', which must NOT count as crew on the day */
   asg('as12', 'pk03', team[4], iso(5), 'Nikah', 'editing', 'acknowledged', 12000, 12000, 'edit'),
   asg('as13', 'pk05', team[7], iso(-58), 'Reception', 'album design', 'acknowledged', 9000, 9000, 'edit'),
+  /* TWO editors on one booking, with different jobs and different fees — the
+     case the Editing tab exists to show, and the one a single assignee field
+     could not have held. pk01 deliberately has NO editingJobs document, so
+     its stage has to be derived from these two rows alone. */
+  { ...asg('as17', 'pk01', team[4], iso(1), 'All functions', 'editing', 'acknowledged', 14000, 0, 'edit'),
+    scope: 'package', deliver: 'Video', dueDate: iso(9) },
+  { ...asg('as18', 'pk01', team[7], iso(1), 'All functions', 'editing', 'assigned', 8000, 0, 'edit'),
+    scope: 'package', deliver: 'Teasers', dueDate: iso(16) },
   /* past work, part-paid — so the crew-pay section has something owed */
   asg('as14', 'pk11', team[0], iso(-90), 'Wedding', 'photography', 'acknowledged', 18000, 9000),
   asg('as15', 'pk11', team[1], iso(-90), 'Wedding', 'cinematography', 'acknowledged', 25000, 0),
@@ -435,6 +443,65 @@ export const expenses = [
   { id: 'ex06', date: iso(-40), cat: 'equipment', amount: 15500, mode: 'UPI',  note: 'Batteries + cards' },
   { id: 'ex07', date: iso(-70), cat: 'travel',    amount: 9800,  mode: 'Cash', note: 'Vijayawada shoot fuel' },
   { id: 'ex08', date: iso(-120),cat: 'rent',      amount: 38000, mode: 'Bank transfer', note: 'Studio rent' },
+];
+
+/* ------------------------------------------------------------ editingJobs
+   One document per BOOKING that owes a film, keyed by the package id. It
+   holds only the workflow — the client, the dates and the services stay in
+   packages, the editors stay in assignments.
+
+   Deliberately partial: pk01, pk02 and pk04 have NO job document here, so
+   the Editing tab has to derive their rows from the package and its
+   assignments alone. That is the state every booking starts in, and it is
+   the one most easily broken. */
+const ejWhen = daysAgo => {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo); d.setHours(11, 20, 0, 0);
+  return d.toISOString();
+};
+export const editingJobs = [
+  {
+    /* the six-function wedding: under review, with a revision already sent
+       back once — the audit trail is the only place that shows it */
+    id: 'pk03', pkgId: 'pk03', stage: 'review',
+    deadline: iso(-4),                 /* PAST and not delivered = the overdue row */
+    footage: '1.4 TB · 3 drives',
+    driveLink: 'https://drive.google.com/drive/folders/demo-aisha-fatima',
+    brief: 'No music over the Nikah audio. Her father\u2019s speech at the Walima has to be in the film in full.',
+    comments: [
+      { id: 'ec01', at: ejWhen(9), by: 'fantasystudio4@gmail.com',
+        text: 'Rough cut looks good. The Walima speech is cut short at 2:40 \u2014 they asked for all of it.' },
+      { id: 'ec02', at: ejWhen(7), by: 'bhavani@fantasystudio.in',
+        text: 'Fixed, full speech is in. Colour pass left, drive is slow today.' },
+      { id: 'ec03', at: ejWhen(2), by: 'fantasystudio4@gmail.com',
+        text: 'Client asked for the engagement footage at the top as well. Sending them the link once that is in.' },
+    ],
+    audit: [
+      { id: 'ea01', at: ejWhen(30), by: 'fantasystudio4@gmail.com', what: 'Assigned Bhavani Priya as Editing' },
+      { id: 'ea02', at: ejWhen(30), by: 'fantasystudio4@gmail.com', what: 'Deadline set to 12 Aug' },
+      { id: 'ea03', at: ejWhen(24), by: 'fantasystudio4@gmail.com', what: 'Stage Assigned \u2192 In Progress' },
+      { id: 'ea04', at: ejWhen(11), by: 'fantasystudio4@gmail.com', what: 'Stage In Progress \u2192 Under Review' },
+      { id: 'ea05', at: ejWhen(7),  by: 'fantasystudio4@gmail.com', what: 'Stage Under Review \u2192 In Progress' },
+      { id: 'ea06', at: ejWhen(3),  by: 'fantasystudio4@gmail.com', what: 'Stage In Progress \u2192 Under Review' },
+    ],
+  },
+  {
+    /* delivered, and reassigned along the way: the row that proves a swapped
+       editor leaves a trace rather than silently overwriting the first one */
+    id: 'pk05', pkgId: 'pk05', stage: 'delivered', deliveredAt: iso(-20),
+    deadline: iso(-26), footage: '820 GB', driveLink: '',
+    brief: 'Partner studio job \u2014 handover only, no teasers.',
+    comments: [
+      { id: 'ec04', at: ejWhen(40), by: 'fantasystudio4@gmail.com',
+        text: 'Aperture want the graded master only, no reels.' },
+    ],
+    audit: [
+      { id: 'ea07', at: ejWhen(56), by: 'fantasystudio4@gmail.com', what: 'Assigned Bhavani Priya as Editing' },
+      { id: 'ea08', at: ejWhen(44), by: 'fantasystudio4@gmail.com', what: 'Reassigned Bhavani Priya \u2192 Sunitha Rao' },
+      { id: 'ea09', at: ejWhen(43), by: 'fantasystudio4@gmail.com', what: 'Stage Assigned \u2192 In Progress' },
+      { id: 'ea10', at: ejWhen(24), by: 'fantasystudio4@gmail.com', what: 'Stage In Progress \u2192 Under Review' },
+      { id: 'ea11', at: ejWhen(20), by: 'fantasystudio4@gmail.com', what: 'Stage Under Review \u2192 Delivered' },
+    ],
+  },
 ];
 
 /* ----------------------------------------------------------------- config */

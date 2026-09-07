@@ -84,6 +84,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
+    <button id="tabEdit"><i>✂️</i><span>Editing</span><b class="badge" id="editBadge" hidden></b></button>
   </div>
   <!-- ONE floating button per screen. The search 🔍 that used to sit above
        these moved into the header: stacked pairs covered whatever was beneath
@@ -320,7 +321,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
           <div id="teamEvents"></div>
         </div>
         <div id="workEd" hidden>
-          <p class="sub">Post-production, by due date. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event including ones already shot. The sheet asks for a due date instead of a call time. <span id="edCount"></span></p>
+          <p class="sub">Post-production per EDITOR, by due date — one row for each person on each job, which is what chasing a deadline and paying somebody needs. For one row per booking, with its stage, brief and notes, use the <b style="color:var(--gold-b)">✂️ Editing</b> tab. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event including ones already shot. The sheet asks for a due date instead of a call time. <span id="edCount"></span></p>
           <div id="edList"></div>
           <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
         </div>
@@ -355,6 +356,31 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="fchips" id="payTabs"></div>
       <div id="teamPay"></div>
     </div>
+  </div>
+
+  <!-- ============================ EDITING ============================
+       Post-production as its own screen. The Team tab's ✂️ Editing section
+       is the per-PERSON view — one row per editor per job, which is what
+       chasing a deadline and paying somebody needs. This tab is the
+       per-BOOKING view: one row per wedding whose package was sold with
+       video, however many editors end up on it.
+
+       Nothing here duplicates a package field. The list reads packages +
+       assignments live; only the workflow state that has no home anywhere
+       else (stage, deadline, drive link, comments, audit) is stored, in
+       editingJobs/{pkgId}. -->
+  <div id="editView" hidden>
+    <div id="ejListView">
+      <div class="stats" id="ejStats"></div>
+      <div class="bar">
+        <input id="ejSearch" type="search" placeholder="Search client or quote no…" />
+        <button id="ejSort" type="button" title="Change the order">↕ Deadline</button>
+      </div>
+      <div class="fchips" id="ejStageChips"></div>
+      <div class="fchips" id="ejEditorChips"></div>
+      <div id="ejList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    </div>
+    <div id="ejDetailView" hidden></div>
   </div>
 
   <div id="configView" hidden>
