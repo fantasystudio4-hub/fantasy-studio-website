@@ -672,16 +672,31 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    part — partner names run long — so the name gets the full width on its own
    line and the area sits under it. Side by side, "Lumiere Weddi… / Hydera…"
    was two truncations to show two short facts. */
+/* Back + name + area, one row. The h3 keeps the whole toggle target; the
+   arrow sits beside it, so tapping the name still expands and tapping the
+   arrow still leaves. The row owns the bottom margin the h3 used to, or the
+   arrow would centre against the h3's margin box and sit a few pixels high. */
+.stu-profsec{margin-top:1rem}
+.stu-hd{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
+.stu-hd.closed{margin-bottom:0}
+.stu-hd #stuBack{font-size:var(--fs-lg)}
+.sec h3.stu-hd > .stu-prof,.stu-hd .stu-prof{flex:1;min-width:0;margin-bottom:0}
 .sec h3.stu-prof{gap:.5rem;align-items:center}
 .stu-prof .sp-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
 .stu-prof .sp-t b{
   font-weight:inherit;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
+/* The area line carries the status chips too. Beside the name they cost it
+   enough width to ellipsise a perfectly ordinary partner name once the back
+   arrow joined the row; down here there is room to spare. */
 .stu-prof .sp-t em{
   font-style:normal;font-family:var(--sans);font-size:var(--fs-sm);
   font-weight:400;color:var(--mut);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;gap:.4rem;min-width:0;
+}
+.stu-prof .sp-t em > span:first-child{
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .stu-prof .chip-status{flex:0 0 auto;font-family:var(--sans);font-weight:400}
 

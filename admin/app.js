@@ -7361,16 +7361,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const profOpen = !!_stuProfOpen;
     const loginBad = _loginKeyBad.get(s.id) === s.phone10;
     el.innerHTML = `
-      <button class="btn btn--sm btn--ghost" id="stuBack" style="margin:1rem 0 .6rem">← All studios</button>
-      <div class="sec">
-        <h3 class="rc-tog stu-prof ${profOpen?'':'closed'}" data-stuprof role="button" tabindex="0" aria-expanded="${profOpen}">
+      <div class="sec stu-profsec">
+        <!-- Back and the partner's name share the line. They were two stacked
+             rows saying one thing between them — which studio you are on, and
+             the way out of it — above a page whose own content started 200px
+             down. The arrow is a sibling of the toggle, never a child: a
+             control nested inside role="button" is invalid markup and the
+             outer tap swallows it (the same reason the studio CARD keeps its
+             Call link outside its toggle). -->
+        <div class="stu-hd ${profOpen?'':'closed'}">
+          <button class="icon-btn icon-btn--ring" id="stuBack" aria-label="All studios" title="All studios">←</button>
+          <h3 class="rc-tog stu-prof ${profOpen?'':'closed'}" data-stuprof role="button" tabindex="0" aria-expanded="${profOpen}">
           <span class="sp-t">
             <b>🏢 ${esc(s.name||'—')}</b>
-            <em>${esc(s.city || 'no area set')}</em>
+            <em>
+              <span>${esc(s.city || 'no area set')}</span>
+              ${s.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}
+              ${loginBad ? '<span class="chip-status no-dot" data-state="overdue" title="This partner cannot sign in to the portal">⚠ login</span>' : ''}
+            </em>
           </span>
-          ${s.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}
-          ${loginBad ? '<span class="chip-status no-dot" data-state="overdue" title="This partner cannot sign in to the portal">⚠ login</span>' : ''}
-          <span class="car">▾</span></h3>
+            <span class="car">▾</span></h3>
+        </div>
         ${profOpen ? `
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
         ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
