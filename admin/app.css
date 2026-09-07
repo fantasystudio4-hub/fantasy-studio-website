@@ -1415,6 +1415,21 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ejb--review   {color:var(--state-info);      background:var(--state-info-bg)}
 .ejb--delivered{color:var(--state-confirmed); background:var(--state-confirmed-bg)}
 .ejb--overdue  {color:var(--state-overdue);   background:rgba(var(--state-overdue-rgb),.16)}
+/* not a stage — the job has not started because its brief has not arrived */
+.ejb--waiting  {color:var(--state-progress);  background:rgba(var(--state-progress-rgb),.14)}
+
+/* the banner on a job that is not on the desk yet. Deliberately at the top of
+   the page and not a .sec: it is the reason everything below it is inert. */
+.ejwait{
+  display:flex;flex-direction:column;align-items:flex-start;gap:.45rem;
+  border:1px solid var(--line);border-left:3px solid var(--state-progress);
+  background:rgba(var(--state-progress-rgb),.08);
+  border-radius:var(--r-md);padding:.8rem .9rem;margin:0 0 .9rem;
+}
+.ejwait > b{color:var(--state-progress);font-size:var(--fs-base)}
+.ejwait > span{font-size:var(--fs-sm);color:var(--mut);line-height:1.5}
+.ejwait > span b{color:var(--text);font-weight:500}
+.ejwait .btn{margin-top:.15rem}
 
 /* ---- list row ---- */
 .ej-row{

@@ -67,9 +67,11 @@ export const packages = [
     totals: money(310000, 200000),
     payments: [pay(150000, 44, 'UPI', 'advance on booking — GPay from her father'),
                pay(50000, 6, 'Bank transfer')],   /* one with a note, one without */
-    /* nothing ticked: its last function is TOMORROW. "Now: All events shot" is
-       the correct next action and the tracker should say exactly that. */
-    delivery: [],
+    /* Its last function is TOMORROW, so "All events shot" is still the correct
+       next action on the tracker — but the couple sent their song list early,
+       which is why two editors are already booked against it. The two facts
+       are independent, and the editing desk keys off the second one. */
+    delivery: [{ step: 'Video editing details received', date: iso(-2) }],
   },
   {
     /* the long-name case: 39 characters, and four functions on ONE date */
@@ -109,10 +111,10 @@ export const packages = [
     ],
     totals: money(495000, 495000),   /* fully paid: the PAID badge, ₹0 balance */
     payments: [pay(250000, 115, 'Bank transfer'), pay(245000, 21, 'UPI')],
-    /* five of its six functions are still ahead, so the pipeline has not
-       started and cannot have: a job whose events run to next year is not
-       "behind", and the workflow must not call it that */
-    delivery: [],
+    /* Its Nikah and Walima are shot and the client has sent what she wants
+       from the film, so this one is ON the editing desk. The later functions
+       being months away is why the rest of the checklist is untouched. */
+    delivery: [{ step: 'Video editing details received', date: iso(-30) }],
   },
   {
     /* B2B, white-label */
@@ -410,6 +412,9 @@ export const assignments = [
     scope: 'package', deliver: 'Video', dueDate: iso(9) },
   { ...asg('as18', 'pk01', team[7], iso(1), 'All functions', 'editing', 'assigned', 8000, 0, 'edit'),
     scope: 'package', deliver: 'Teasers', dueDate: iso(16) },
+  /* the delivered edit, signed off by the editor — pairs with the pk15 job */
+  { ...asg('as19', 'pk15', team[7], iso(-150), 'Wedding', 'editing', 'acknowledged', 15000, 15000, 'edit'),
+    deliver: 'Video', dueDate: iso(-95), workDone: true },
   /* past work, part-paid — so the crew-pay section has something owed */
   asg('as14', 'pk11', team[0], iso(-90), 'Wedding', 'photography', 'acknowledged', 18000, 9000),
   asg('as15', 'pk11', team[1], iso(-90), 'Wedding', 'cinematography', 'acknowledged', 25000, 0),
@@ -485,21 +490,23 @@ export const editingJobs = [
     ],
   },
   {
-    /* delivered, and reassigned along the way: the row that proves a swapped
-       editor leaves a trace rather than silently overwriting the first one */
-    id: 'pk05', pkgId: 'pk05', stage: 'delivered', deliveredAt: iso(-20),
-    deadline: iso(-26), footage: '820 GB', driveLink: '',
-    brief: 'Partner studio job \u2014 handover only, no teasers.',
+    /* Delivered, and reassigned along the way: the row that proves a swapped
+       editor leaves a trace rather than silently overwriting the first one.
+       On pk15 rather than a partner job — a studio job runs the B2B checklist,
+       which has no editing step at all, so it never reaches this desk. */
+    id: 'pk15', pkgId: 'pk15', stage: 'delivered', deliveredAt: iso(-92),
+    deadline: iso(-95), footage: '820 GB', driveLink: '',
+    brief: 'Wanted the whole baaraat in the film, and no filter on the Ramoji drone shots.',
     comments: [
-      { id: 'ec04', at: ejWhen(40), by: 'fantasystudio4@gmail.com',
-        text: 'Aperture want the graded master only, no reels.' },
+      { id: 'ec04', at: ejWhen(100), by: 'fantasystudio4@gmail.com',
+        text: 'They want the graded master only, no reels.' },
     ],
     audit: [
-      { id: 'ea07', at: ejWhen(56), by: 'fantasystudio4@gmail.com', what: 'Assigned Bhavani Priya as Editing' },
-      { id: 'ea08', at: ejWhen(44), by: 'fantasystudio4@gmail.com', what: 'Reassigned Bhavani Priya \u2192 Sunitha Rao' },
-      { id: 'ea09', at: ejWhen(43), by: 'fantasystudio4@gmail.com', what: 'Stage Assigned \u2192 In Progress' },
-      { id: 'ea10', at: ejWhen(24), by: 'fantasystudio4@gmail.com', what: 'Stage In Progress \u2192 Under Review' },
-      { id: 'ea11', at: ejWhen(20), by: 'fantasystudio4@gmail.com', what: 'Stage Under Review \u2192 Delivered' },
+      { id: 'ea07', at: ejWhen(104), by: 'fantasystudio4@gmail.com', what: 'Assigned Bhavani Priya as Editing' },
+      { id: 'ea08', at: ejWhen(100), by: 'fantasystudio4@gmail.com', what: 'Reassigned Bhavani Priya \u2192 Sunitha Rao' },
+      { id: 'ea09', at: ejWhen(99),  by: 'fantasystudio4@gmail.com', what: 'Stage Assigned \u2192 In Progress' },
+      { id: 'ea10', at: ejWhen(94),  by: 'fantasystudio4@gmail.com', what: 'Stage In Progress \u2192 Under Review' },
+      { id: 'ea11', at: ejWhen(92),  by: 'fantasystudio4@gmail.com', what: 'Stage Under Review \u2192 Delivered' },
     ],
   },
 ];

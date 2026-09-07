@@ -3012,6 +3012,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       buzz();
       renderPkgList();
       if(typeof renderB2B === 'function') renderB2B();   /* the studio page shows this too */
+      renderEditTab();   /* ticking the editing-details step puts a job on the desk */
     }catch(err){ toast('Update failed'); }
   }
 
@@ -4218,7 +4219,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     toast(sm.msg);
     if(!sm.ok) return;
     x.delivery = delivery;
-    buzz(); renderPkgList(); renderTeam();
+    buzz(); renderPkgList(); renderTeam(); renderEditTab();
   }
 
   /* ---------- editing desk ----------
@@ -5039,16 +5040,51 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      editors have all been removed cannot go on claiming somebody has it.
      With no doc at all, reality decides — which is why a booking shows up
      here correctly before anything has ever been written for it. */
-  function ejStageOf(job, crew){
+  /* the OUTPUT steps on the package's own checklist — the film is cut, or it
+     is in the client's hands. "Video editing details received" is the INPUT
+     step and must not match (it carries neither 'edited' nor 'deliver'), and
+     "All delivered — package closed" is not about the video at all. */
+  const ejVideoDone = pk => (Array.isArray(pk && pk.delivery) ? pk.delivery : [])
+    .some(d=>{ const t = String((d||{}).step||''); return /video/i.test(t) && /edited|deliver/i.test(t); });
+  function ejStageOf(pk, job, crew){
     const st = job && job.stage;
     if(EJ_IDX[st] !== undefined){
       if(st !== 'unassigned' && st !== 'delivered' && !crew.length) return 'unassigned';
       return st;
     }
+    /* No job document, so the package's checklist is the only record this film
+       has — and for every booking finished before this tab existed it is the
+       right one. A video already ticked edited or delivered is DONE; showing
+       it as Unassigned put finished work at the head of the pipeline and
+       counted it under "In hand". */
+    if(ejVideoDone(pk)) return 'delivered';
     if(crew.length && crew.every(a=>a.workDone)) return 'delivered';
     return crew.length ? 'assigned' : 'unassigned';
   }
 
+  /* ---- the gate: has the client's editing brief actually arrived? ----
+     A booking sold a film is not editable work the day it is booked. The
+     owner ticks "Video editing details received" on the package once the
+     client has said what they want — song choices, must-have moments — and
+     that tick is what turns a booking into a job on this desk.
+
+     Matched on keywords, not on the string, because the checklist is the
+     studio's to rename in Config. "Video edited" must NOT match it: that is
+     the OUTPUT step, and treating it as the gate would let a finished film
+     into the list and keep an unstarted one out. The album's own
+     "Album selection received" is excluded for the same reason — it is a
+     different service's brief. */
+  const ejDetailsStep = pk => (stepsFor(pk) || [])
+    .find(s=>/detail|brief/i.test(s) && !/album/i.test(s)) || '';
+  function ejGotDetails(pk){
+    const step = ejDetailsStep(pk);
+    /* No such step on this package's checklist at all, which happens when the
+       studio has renamed it away. There is then nothing to wait for and no
+       way to judge, so the job is not held back — hiding every row over a
+       Config edit would read as the tab being broken. */
+    if(!step) return true;
+    return (Array.isArray(pk.delivery) ? pk.delivery : []).some(d=>d && d.step === step);
+  }
   function ejRowOf(pk){
     const job = ejDoc(pk.id), crew = ejCrew(pk.id), scope = ejScope(pk);
     const dates = scope.map(e=>e.date).filter(d=>ISO_RE.test(d)).sort();
@@ -5057,20 +5093,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        else nothing — this tab never invents a date the studio did not set */
     const deadline = (job && ISO_RE.test(job.deadline||'') ? job.deadline : '')
       || crew.map(a=>a.dueDate).filter(d=>ISO_RE.test(d||'')).sort()[0] || '';
-    const stage = ejStageOf(job, crew);
+    const stage = ejStageOf(pk, job, crew);
     const overdue = stage !== 'delivered' && ISO_RE.test(deadline) && deadline < todayISO();
-    return { pk, job, crew, scope, last, deadline, stage, overdue };
+    const detailsStep = ejDetailsStep(pk);
+    return { pk, job, crew, scope, last, deadline, stage, overdue,
+             detailsStep, awaiting: !ejGotDetails(pk) };
   }
-  function ejAllRows(){
+  /* Every booking this tab could ever be about: sold a film, and ours to edit.
+     A partner studio's job is excluded outright — it runs the B2B checklist
+     (shot → data ready → data delivered), which has no editing step because
+     the partner edits its own footage. We hand over the rushes and the job
+     is done; there is no edit here to track. */
+  function ejCandidates(){
     return livePkgs()
       .filter(x=>['booked','delivered'].includes(x.status||'draft'))
-      .filter(ejHasVideo)
+      .filter(x=>ejHasVideo(x) && !isStudioJob(x))
       .map(ejRowOf);
   }
+  /* the desk itself: the ones whose brief has landed. Everything that counts —
+     the tiles, the tab badge, the stage chips — is counted over these, so a
+     booking the studio cannot start on yet never inflates the numbers. */
+  const ejAllRows = () => ejCandidates().filter(r=>!r.awaiting);
+  const ejAwaitingRows = () => ejCandidates().filter(r=>r.awaiting);
 
   /* ---- filters, search, sort ---- */
   let _ejQ      = viewGet('ejQ',''),
-      _ejStageF = viewGet('ejStageF',''),
+      /* Stage filters narrow the desk and are worth remembering. "Awaiting
+         brief" does not narrow it — it swaps the desk for the pile of work
+         that is NOT on it — so it is session-only, for the same reason the
+         Team tab's warning filters are: a set you did not choose today,
+         sitting under tiles that count something else, is how a list lies
+         about being empty. */
+      _ejStageF = viewGet('ejStageF','') === 'awaiting' ? '' : viewGet('ejStageF',''),
       _ejEditorF= viewGet('ejEditorF',''),
       _ejSort   = viewGet('ejSort','deadline');
   const EJ_SORTS = [
@@ -5080,11 +5134,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   ];
   function ejVisibleRows(){
     const q = _ejQ.trim().toLowerCase();
-    let rows = ejAllRows();
+    /* the one filter that changes WHICH set is being looked at rather than
+       narrowing the desk — everything below still applies on top of it */
+    let rows = _ejStageF === 'awaiting' ? ejAwaitingRows() : ejAllRows();
     if(q) rows = rows.filter(r=>
       String(r.pk.clientName||'').toLowerCase().includes(q) ||
       String(r.pk.quoteNo||'').toLowerCase().includes(q));
-    if(_ejStageF) rows = rows.filter(r=>_ejStageF === 'overdue' ? r.overdue : r.stage === _ejStageF);
+    if(_ejStageF && _ejStageF !== 'awaiting'){
+      rows = rows.filter(r=>_ejStageF === 'overdue' ? r.overdue : r.stage === _ejStageF);
+    }
     if(_ejEditorF) rows = rows.filter(r=>r.crew.some(a=>a.memberId === _ejEditorF));
     const byDeadline = (a,b)=>{
       /* Delivered work sinks, whatever its date. Sorting purely by deadline
@@ -5114,8 +5172,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const txt = d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'in ' + d + 'd';
     return `<span class="duetag ${cls}">${txt}</span>`;
   };
-  const ejBadge = r => `<span class="ejb ejb--${r.overdue ? 'overdue' : r.stage}">${
-    r.overdue ? 'Overdue' : ejStageLabel(r.stage)}</span>`;
+  const ejBadge = r => r.awaiting
+    /* not a stage: this job has not started and cannot, so labelling it
+       "Unassigned" would put the blame on the roster rather than on the
+       brief that has not arrived */
+    ? '<span class="ejb ejb--waiting">⏳ Awaiting brief</span>'
+    : `<span class="ejb ejb--${r.overdue ? 'overdue' : r.stage}">${
+        r.overdue ? 'Overdue' : ejStageLabel(r.stage)}</span>`;
   const ejEditorNames = r => r.crew.length
     ? r.crew.map(a=>esc((memberById(a.memberId) || {}).name || a.memberName || '—')).join(', ')
     : '<i>Unassigned</i>';
@@ -5139,17 +5202,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderEjChips(){
     const rows = ejAllRows();
     const n = k => k === 'overdue' ? rows.filter(r=>r.overdue).length : rows.filter(r=>r.stage === k).length;
+    const waiting = ejAwaitingRows().length;
     const stg = $('#ejStageChips');
     if(stg) stg.innerHTML = [['','All', rows.length]]
       .concat(EJ_STAGES.map(s=>[s.k, s.short, n(s.k)]))
       .concat([['overdue','⚠ Overdue', n('overdue')]])
+      /* the bookings whose brief has not landed. They are not on the desk, but
+         chasing that brief is the job standing between them and it — a count
+         that is only reachable from the Packages tab is a count nobody sees. */
+      .concat(waiting ? [['awaiting','⏳ Awaiting brief', waiting]] : [])
       .map(([k,l,c])=>`<button type="button" data-ejstage="${esc(k)}" class="${_ejStageF===k?'on':''}">${esc(l)}<b>${c}</b></button>`)
       .join('');
+    /* The chip row scrolls, and Awaiting brief is the last chip in it — so
+       selecting it left the strip showing four unhighlighted chips above a
+       filtered list, which reads as no filter at all. Bring the live one into
+       view. block:'nearest' so this never scrolls the page itself. */
+    const onChip = stg && stg.querySelector('button.on');
+    if(onChip) onChip.scrollIntoView({ inline:'nearest', block:'nearest' });
     /* only the people who actually have editing work — a full roster of chips
        here would be a list of everyone who has never touched an edit */
     const el = $('#ejEditorChips'); if(!el) return;
     const seen = new Map();
-    rows.forEach(r=>r.crew.forEach(a=>{
+    (_ejStageF === 'awaiting' ? ejAwaitingRows() : rows).forEach(r=>r.crew.forEach(a=>{
       if(!a.memberId) return;
       seen.set(a.memberId, (seen.get(a.memberId)||0) + 1);
     }));
@@ -5169,13 +5243,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       el.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
-    const all = ejAllRows();
-    if(!all.length){
-      el.innerHTML = `<div class="empty-state">
-        <span class="empty-state__icon">✂️</span>
-        <p class="empty-state__title">No editing jobs yet</p>
-        <p class="empty-state__text">A booking appears here once its package is <b style="color:var(--ok)">booked</b> and one of its functions was quoted a service that produces a film — anything with <b>video</b> or <b>cinema</b> in its name.</p>
-      </div>`;
+    const all = ejAllRows(), waiting = ejAwaitingRows();
+    if(!all.length && _ejStageF !== 'awaiting'){
+      /* Two different nothings, and telling them apart is the whole point:
+         "you have no video bookings" is a quiet week, "six films are waiting
+         on their briefs" is six phone calls. */
+      el.innerHTML = waiting.length
+        ? `<div class="empty-state">
+             <span class="empty-state__icon">⏳</span>
+             <p class="empty-state__title">Nothing ready to edit yet</p>
+             <p class="empty-state__text">${waiting.length} booking${waiting.length===1?' is':'s are'} waiting on the client's editing details. A job reaches this desk when you tick <b>${esc(ejDetailsStep(waiting[0].pk) || 'Video editing details received')}</b> on its package.</p>
+             <button type="button" class="btn btn--ghost" data-ejstage="awaiting">See the ${waiting.length} waiting</button>
+           </div>`
+        : `<div class="empty-state">
+             <span class="empty-state__icon">✂️</span>
+             <p class="empty-state__title">No editing jobs yet</p>
+             <p class="empty-state__text">A booking reaches this desk once its package is <b style="color:var(--ok)">booked</b>, one of its functions was quoted a service that produces a film, and you have ticked its <b>editing details received</b> step.</p>
+           </div>`;
       return;
     }
     const rows = ejVisibleRows();
@@ -5231,13 +5315,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#ejStageChips', 'click', e=>{
     const b = e.target.closest('[data-ejstage]'); if(!b) return;
-    _ejStageF = b.dataset.ejstage; viewSet('ejStageF', _ejStageF); renderEditTab();
+    _ejStageF = b.dataset.ejstage;
+    viewSet('ejStageF', _ejStageF === 'awaiting' ? '' : _ejStageF);
+    renderEditTab();
   });
   on('#ejEditorChips', 'click', e=>{
     const b = e.target.closest('[data-ejeditor]'); if(!b) return;
     _ejEditorF = b.dataset.ejeditor; viewSet('ejEditorF', _ejEditorF); renderEditTab();
   });
   on('#ejList', 'click', e=>{
+    const jump = e.target.closest('[data-ejstage]');
+    if(jump){
+      _ejStageF = jump.dataset.ejstage;
+      viewSet('ejStageF', _ejStageF === 'awaiting' ? '' : _ejStageF);
+      renderEditTab(); return;
+    }
     if(e.target.closest('[data-ejclear]')){
       _ejQ = _ejStageF = _ejEditorF = '';
       viewSet('ejQ',''); viewSet('ejStageF',''); viewSet('ejEditorF','');
@@ -5353,6 +5445,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         ${ejBadge(r)}
       </div>
+
+      ${r.awaiting ? `<div class="ejwait">
+        <b>Waiting on the client's editing details.</b>
+        <span>This booking is not on the editing desk yet. It arrives when
+        <b>${esc(r.detailsStep)}</b> is ticked on its package — that tick is what says
+        the client has told you what they want from the film.</span>
+        <button type="button" class="btn btn--sm btn--primary" data-ejgotdetails>✓ Details received</button>
+      </div>` : ''}
 
       <div class="sec">
         <h3>Stage</h3>
@@ -5519,6 +5619,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const a = ASGS.find(v=>v.id === cr.dataset.ejcrew); if(!a) return;
       openAs({ pkgId: a.pkgId, quoteNo: a.quoteNo||'', clientName: a.clientName||'',
                eventTitle: a.eventTitle||'', slot: a.slot||'', date: a.date||'', venue: a.venue||'' }, a);
+      return;
+    }
+    if(e.target.closest('[data-ejgotdetails]')){
+      const pk = ejPkg(_ejOpenId); if(!pk) return;
+      const step = ejDetailsStep(pk); if(!step) return;
+      if(await confirmDialog({
+        title:'The client has sent their editing details?',
+        body:`<p>This ticks <b>${esc(step)}</b> on ${esc(pk.clientName||'this package')} and puts the film on the editing desk.</p>`,
+        confirmText:'Yes, received', danger:false })) tickDeliveryStep(pk.id, step);
       return;
     }
     if(e.target.closest('[data-ejtick]')){
