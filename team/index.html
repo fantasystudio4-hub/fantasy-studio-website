@@ -95,6 +95,46 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* the band headers inside the editing list — tighter than a section heading,
    and the first one does not push the list away from the section title */
 .edgrp{margin:.9rem 0 .45rem}
+/* ---- the list row ----
+   A summary you can scan, not the job itself. Everything about the job is one
+   tap away in the sheet, which is the only way more than one of them fits on
+   a phone at once. */
+.edrow{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;
+       background:var(--card);border:1px solid var(--line);border-radius:14px;
+       padding:.7rem .8rem;margin-bottom:.55rem;cursor:pointer;min-height:60px;
+       color:inherit;font:inherit;-webkit-tap-highlight-color:transparent}
+.edrow:active{border-color:var(--gold);background:rgba(184,144,43,.08)}
+.edrow.done{opacity:.6}
+.edrow-d{flex:0 0 auto;min-width:52px;font-family:var(--serif);color:var(--gold-b);font-size:.9rem}
+.edrow-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
+.edrow-t b{font-size:.95rem;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.edrow-t span{font-size:.78rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.edrow-p{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.15rem}
+.edrow-p i{font-style:normal;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
+           border-radius:20px;padding:.16em .55em;background:rgba(255,255,255,.06);color:var(--mut)}
+.edrow-p i.warn{color:var(--warn);background:rgba(255,176,84,.14)}
+.edrow-p i.ok{color:var(--ok);background:rgba(76,175,125,.14)}
+.edrow .chip{flex:0 0 auto}
+
+/* ---- the sheet ---- */
+.ed-bd{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);z-index:90}
+.ed-sheet{position:fixed;left:0;right:0;bottom:0;z-index:91;max-height:92vh;
+          display:flex;flex-direction:column;background:var(--card);
+          border:1px solid var(--line);border-bottom:0;
+          border-radius:18px 18px 0 0;box-shadow:0 -18px 46px rgba(0,0,0,.5)}
+.ed-sheet-h{display:flex;align-items:center;gap:.6rem;padding:.7rem .9rem .6rem;
+            border-bottom:1px solid var(--line);position:relative}
+.ed-grab{position:absolute;top:.35rem;left:50%;transform:translateX(-50%);
+         width:34px;height:4px;border-radius:4px;background:rgba(255,255,255,.18)}
+.ed-sheet-h b{flex:1;min-width:0;font-size:1rem;color:var(--gold-b);margin-top:.25rem;
+              white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-x{flex:0 0 auto;width:44px;height:44px;border:0;background:none;color:var(--mut);
+      font-size:1.1rem;cursor:pointer;border-radius:50%}
+.ed-x:active{background:rgba(255,255,255,.08);color:var(--gold-b)}
+.ed-sheet-b{overflow-y:auto;-webkit-overflow-scrolling:touch;
+            padding:.9rem .9rem calc(1.2rem + env(safe-area-inset-bottom))}
+.ed-sheet-b .asg{border:0;background:none;padding:0;margin:0}
+:root.ed-lock body{overflow:hidden}
 #editList > .edgrp:first-child{margin-top:.2rem}
 
 .asg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:.9rem;padding:1rem 1.1rem}
@@ -143,7 +183,18 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ejfee{border-radius:10px;padding:.6rem .75rem;border:1px solid var(--line);background:rgba(255,255,255,.03)}
 .ejfee > span{display:block;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
 .ejfee > b{display:block;font-size:1.15rem;color:var(--gold-b);margin-top:.1rem}
-.ejfee > em{display:block;font-style:normal;font-size:.78rem;color:var(--mut);margin-top:.2rem;line-height:1.45}
+.ejfee > em,.ejp-d em{display:block;font-style:normal;font-size:.78rem;color:var(--mut);margin-top:.2rem;line-height:1.45}
+.ejfee{display:flex;flex-wrap:wrap;align-items:baseline;gap:.15rem .6rem}
+.ejfee > span,.ejfee > b,.ejfee > em{margin-top:0}
+.ejfee > em{flex-basis:100%}
+.ejfee-n{font-size:1.05rem;color:var(--gold-b)}
+.ejp-d{flex-basis:100%;margin-top:.15rem}
+.ejp-d summary{
+  list-style:none;cursor:pointer;display:inline-flex;align-items:center;
+  min-height:44px;font-size:.8rem;color:var(--gold-b);text-decoration:underline;
+}
+.ejp-d summary::-webkit-details-marker{display:none}
+.ejp-d[open] summary{text-decoration:none;color:var(--mut)}
 .ejfee.ok{border-color:rgba(76,175,125,.4);background:rgba(76,175,125,.08)}
 .ejfee.ok > b{color:var(--ok)}
 .ejfee.wait{border-color:rgba(255,176,84,.45);background:rgba(255,176,84,.08)}
@@ -1095,15 +1146,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="ejp-undo" data-ejwithdraw="${esc(a.id)}">Withdraw</button>
       </div>`;
     }
+    /* One line until it is wanted. Open, the form was the tallest thing on the
+       card and it is the part an editor touches once a job. */
     return `<div class="ejfee ask">
-      <span>Your fee</span><em>${fee > 0
-        ? `The studio has ${esc(inr(fee))} on this job. Ask for something different if that is not right.`
-        : 'Not set yet. Tell the studio what this edit is worth and they can agree to it.'}</em>
-      <div class="ejp-new">
-        <input type="number" inputmode="numeric" min="0" max="2000000" step="100"
-               data-ejprice="${esc(a.id)}" placeholder="Your price ₹" />
-        <button class="ackbtn ejp-send" data-ejask="${esc(a.id)}">${fee > 0 ? 'Ask' : 'Send price'}</button>
-      </div>
+      <span>Your fee</span>
+      <b class="ejfee-n">${fee > 0 ? esc(inr(fee)) : 'Not set'}</b>
+      <details class="ejp-d">
+        <summary>${fee > 0 ? 'Ask for a different price' : 'Name your price'}</summary>
+        <em>${fee > 0
+          ? `The studio has ${esc(inr(fee))} on this job.`
+          : 'Tell the studio what this edit is worth and they can agree to it.'}</em>
+        <div class="ejp-new">
+          <input type="number" inputmode="numeric" min="0" max="2000000" step="100"
+                 data-ejprice="${esc(a.id)}" placeholder="Your price ₹" />
+          <button class="ackbtn ejp-send" data-ejask="${esc(a.id)}">${fee > 0 ? 'Ask' : 'Send price'}</button>
+        </div>
+      </details>
     </div>`;
   }
 
@@ -1231,6 +1289,50 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          : (da || '9999-99-99') > (db || '9999-99-99') ? 1 : 0;
   }
 
+  /* The row. Enough to know which job it is and whether it wants you, and
+     nothing else — the job itself opens in a sheet. */
+  function editRow(a){
+    const j = EJOBS[a.pkgId];
+    const latest = ejCuts(j)[0] || null;
+    const cut = latest ? ejCutState(j, latest) : null;
+    const asked = a.payProposal && Number(a.payProposal.amount) >= 0
+      ? Math.round(Number(a.payProposal.amount)) : null;
+    const fee = Math.max(0, Number(((a||{}).pay||{}).amount) || 0);
+    const pills = [];
+    if(cut === 'changes') pills.push('<i class="warn">changes asked</i>');
+    else if(cut === 'review') pills.push(`<i>V${latest.n} with the studio</i>`);
+    else if(cut === 'approved') pills.push('<i class="ok">approved</i>');
+    if(a.status !== 'acknowledged' && !a.workDone) pills.push('<i class="warn">confirm it</i>');
+    if(asked !== null) pills.push(`<i class="warn">${esc(inr(asked))} asked</i>`);
+    else if(!fee) pills.push('<i>no fee yet</i>');
+    return `
+    <button type="button" class="edrow ${a.workDone?'done':''}" data-edopen="${esc(a.id)}">
+      <span class="edrow-d">${esc(edWhen(a))}</span>
+      <span class="edrow-t">
+        <b>${esc(a.deliver || 'Editing')}</b>
+        <span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}</span>
+        ${pills.length ? `<span class="edrow-p">${pills.join('')}</span>` : ''}
+      </span>
+      ${edDueChip(a)}
+    </button>`;
+  }
+  /* fmtShort() returns "—" for a missing date, and "—" is truthy — so
+     `fmtShort(dueDate) || fmtShort(date)` never once reached the shoot date
+     it was written to fall back to. Pick the date first, format it after. */
+  const edWhen = a => {
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    return fmtShort(iso.test(a.dueDate||'') ? a.dueDate : (a.date||''));
+  };
+  function edDueChip(a){
+    const today = todayISO();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')) return '<span class="chip wait">no date</span>';
+    const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
+    const cls = a.workDone ? 'seen' : d < 0 ? 'late' : 'wait';
+    const txt = a.workDone ? '✓ done' : d < 0 ? Math.abs(d) + 'd late'
+      : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'due in ' + d + 'd';
+    return `<span class="chip ${cls}">${txt}</span>`;
+  }
+
   /* Editing is a desk job on a deadline — no call time, no venue, and it does
      not belong in a schedule of shoot days. */
   function editCard(a){
@@ -1246,7 +1348,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return `
     <div class="asg ${a.workDone?'past':''}">
       <div class="asg-h">
-        <span class="when">${esc(fmtShort(a.dueDate) || fmtShort(a.date))}</span>
+        <span class="when">${esc(edWhen(a))}</span>
         <b>${esc(a.deliver || 'Editing')}</b>
         ${tag}
       </div>
@@ -1545,8 +1647,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           ? (band = p, `<div class="grp edgrp">${ED_BAND[p].label}<b>${
               edits.filter(x=>edBand(x) === p).length}</b></div>`)
           : '';
-        return head + editCard(a);
+        return head + editRow(a);
       }).join('');
+      if(_edOpen) edPaint();
     }
     const toConfirm = up.filter(a=>a.status !== 'acknowledged').length;
     const openEdits = edits.filter(a=>!a.workDone).length;
@@ -1609,11 +1712,59 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      on past ones, so it is attached to both */
   $('#pastList').addEventListener('click', doneClick);
   $('#upList').addEventListener('click', doneClick);
+  /* ---- the job sheet ----
+     Every control inside it is one the list already had, so the same
+     delegated handlers are bound to the sheet body as well rather than
+     rewritten for it. */
+  let _edOpen = null, _edScrollY = 0;
+  function edPaint(){
+    const a = ASGS.find(v=>v.id === _edOpen);
+    if(!a){ closeEd(); return; }
+    $('#edSheetTitle').textContent = `${a.deliver || 'Editing'} · ${a.clientName || '—'}`;
+    /* keep whatever is half-typed in the sheet through a snapshot repaint */
+    const keep = {};
+    $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice],#edSheetBody [data-ejcutlink],#edSheetBody [data-ejcutnote]')
+      .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice || el.dataset.ejcutlink || el.dataset.ejcutnote;
+                     if(el.value) keep[(el.tagName + k)] = el.value; });
+    $('#edSheetBody').innerHTML = editCard(a);
+    $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice],#edSheetBody [data-ejcutlink],#edSheetBody [data-ejcutnote]')
+      .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice || el.dataset.ejcutlink || el.dataset.ejcutnote;
+                     const v = keep[(el.tagName + k)]; if(v) el.value = v; });
+  }
+  function openEd(id){
+    _edOpen = id;
+    _edScrollY = window.scrollY;
+    edPaint();
+    $('#edBackdrop').hidden = false; $('#edSheet').hidden = false;
+    document.documentElement.classList.add('ed-lock');
+    setTimeout(()=>$('#edClose').focus(), 60);
+  }
+  function closeEd(){
+    if(!_edOpen) return;
+    _edOpen = null;
+    $('#edBackdrop').hidden = true; $('#edSheet').hidden = true;
+    document.documentElement.classList.remove('ed-lock');
+    window.scrollTo(0, _edScrollY);
+  }
+  $('#editList').addEventListener('click', e=>{
+    const r = e.target.closest('[data-edopen]'); if(!r) return;
+    openEd(r.dataset.edopen);
+  });
+  $('#edClose').addEventListener('click', closeEd);
+  $('#edBackdrop').addEventListener('click', closeEd);
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && _edOpen) closeEd(); });
+
   $('#editList').addEventListener('click', doneClick);
   $('#editList').addEventListener('click', ackClick);
   $('#editList').addEventListener('click', ejSendClick);
   $('#editList').addEventListener('click', ejPriceClick);
   $('#editList').addEventListener('click', ejCutClick);
+  /* the sheet holds the same controls the list used to */
+  $('#edSheetBody').addEventListener('click', doneClick);
+  $('#edSheetBody').addEventListener('click', ackClick);
+  $('#edSheetBody').addEventListener('click', ejSendClick);
+  $('#edSheetBody').addEventListener('click', ejPriceClick);
+  $('#edSheetBody').addEventListener('click', ejCutClick);
   /* Hand in a cut. Appends one entry to versions[] and nothing else — the
      rules pin it to that, and the studio's verdict lives in decisions{} which
      this page cannot write. */
@@ -1745,5 +1896,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 }
 </script>
+<!-- One editing job, in full. The list stays a list; everything about a job
+     lives here, which is what keeps a phone screen showing more than one. -->
+<div class="ed-bd" id="edBackdrop" hidden></div>
+<div class="ed-sheet" id="edSheet" role="dialog" aria-modal="true" aria-labelledby="edSheetTitle" hidden>
+  <div class="ed-sheet-h">
+    <span class="ed-grab" aria-hidden="true"></span>
+    <b id="edSheetTitle"></b>
+    <button type="button" class="ed-x" id="edClose" aria-label="Close">✕</button>
+  </div>
+  <div class="ed-sheet-b" id="edSheetBody"></div>
+</div>
 </body>
 </html>
