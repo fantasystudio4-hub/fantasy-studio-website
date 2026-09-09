@@ -222,6 +222,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
   border-radius:40px;padding:.45em 1em;font-size:.78rem;cursor:pointer;min-height:44px;
 }
 .ejp-undo:active{color:var(--gold-b)}
+/* what is being cut, as counts you can read at a glance rather than a
+   sentence you have to parse */
+.ejsvc{display:flex;flex-wrap:wrap;gap:.4rem}
+.ejsvc-i{display:flex;align-items:baseline;gap:.3rem;background:rgba(184,144,43,.1);
+         border:1px solid var(--line);border-radius:10px;padding:.35em .65em;font-size:.8rem;color:var(--text)}
+.ejsvc-i b{font-family:var(--serif);font-size:1rem;color:var(--gold-b)}
+.ejsvc-t{margin-top:.35rem;font-size:.76rem;color:var(--mut)}
+
 /* ---- rounds ---- */
 /* whose move it is, said before the list rather than left to be inferred */
 .ejwhose{font-size:.82rem;line-height:1.5;color:var(--mut);margin-bottom:.5rem}
@@ -287,8 +295,21 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .paytotal b{color:var(--gold-b);font-family:var(--serif)}
 
 /* member analytics — stat tiles + a single-series monthly column chart */
-.stats2{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem;margin:0 0 .9rem}
-@media(min-width:520px){.stats2{grid-template-columns:repeat(4,1fr)}}
+/* Four across, always. Two-by-two put the money on a second row where the
+   two counts above it read as the important pair — they are not; what you
+   have earned and what you are still owed is the half a crew member opens
+   this page for. At 380px each tile is ~83px, which the short money form
+   (₹1.5L) fits and the full one never would. */
+.stats2{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .9rem}
+.stats2 .stat{padding:.55rem .25rem;min-width:0}
+.stats2 .stat b{font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats2 .stat span{font-size:.55rem;letter-spacing:.04em;display:block;line-height:1.3}
+@media(min-width:520px){
+  .stats2{gap:.5rem}
+  .stats2 .stat{padding:.6rem .5rem}
+  .stats2 .stat b{font-size:1.15rem}
+  .stats2 .stat span{font-size:.6rem;letter-spacing:.08em}
+}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.6rem .5rem;text-align:center;box-shadow:0 10px 26px rgba(0,0,0,.22)}
 .stat b{font-family:var(--serif);font-size:1.15rem;color:var(--gold-b);display:block;line-height:1.25}
 .stat span{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
@@ -1230,7 +1251,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return `
       ${url ? `<a class="ejdrive" href="${esc(url)}" target="_blank" rel="noopener noreferrer">
         <b>↗ Open the footage</b><em>opens your drive in a new tab</em></a>` : ''}
-      ${bits.length ? `<div class="ejsec"><h4>The job</h4><div class="lines">${bits.join('')}</div></div>` : ''}
+        ${/* What is actually being cut. The booking itself is not readable from
+           this page, so the studio copies the counts onto the job — without
+           them an editor knows a film is due and not how much of one. */ ''}
+      ${(j.scope && Array.isArray(j.scope.services) && j.scope.services.length) ? `
+        <div class="ejsec">
+          <h4>What you're editing</h4>
+          <div class="ejsvc">${j.scope.services.map(v=>`
+            <span class="ejsvc-i"><b>${esc(String(v.qty||0))}</b>${esc(v.service||'')}</span>`).join('')}</div>
+          <p class="ejsvc-t">${esc(String(j.scope.units||0))} camera-day${j.scope.units===1?'':'s'} across ${
+            esc(String(j.scope.functions||0))} function${j.scope.functions===1?'':'s'}</p>
+        </div>` : ''}
+    ${bits.length ? `<div class="ejsec"><h4>The job</h4><div class="lines">${bits.join('')}</div></div>` : ''}
       ${j.brief ? `<div class="ejsec"><h4>What the client asked for</h4>
         <div class="notes">${esc(j.brief)}</div></div>` : ''}
       ${ejCutsBlock(a, j)}
@@ -1594,8 +1626,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#crewStats').innerHTML = `
       <div class="stat"><b>${done.length}</b><span>events done</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
-      <div class="stat" data-pay role="button" tabindex="0" title="See payment details"><b>${inr(received)}</b><span>received</span></div>
-      <div class="stat" data-pay role="button" tabindex="0" title="See payment details"><b>${inr(due)}</b><span>to receive</span></div>`;
+      <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(received))} received — tap for the detail"><b>${esc(shMoney(received))}</b><span>received</span></div>
+      <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(due))} still to come — tap for the detail"><b>${esc(shMoney(due))}</b><span>to receive</span></div>`;
     renderBars();
     const roles = {};
     ASGS.forEach(a=>{ const r = String(a.role||'').trim(); if(r) roles[r] = (roles[r]||0) + 1; });

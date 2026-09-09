@@ -5530,8 +5530,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     btn.disabled = true; btn.textContent = 'Fixing…';
     let ok = 0, failed = 0;
     for(const j of stale){
+      const sc = ejScopeSummary(j.pkgId);
       const res = await settle(setDoc(doc(db,'editingJobs', j.pkgId),
-        { pkgId: j.pkgId, editors: j.want, updatedAt: serverTimestamp() }, { merge: true }));
+        { pkgId: j.pkgId, editors: j.want, ...(sc ? { scope: sc } : {}), updatedAt: serverTimestamp() },
+        { merge: true }));
       if(res === 'denied'){ failed++; continue; }
       ok++;
       /* keep the local copy in step so the banner empties without a round trip */
@@ -5866,10 +5868,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const ejEditorPhones = id => [...new Set(ejCrew(id)
     .map(a => String((a && a.memberPhone10) || ''))
     .filter(p => /^\d{10}$/.test(p)))];
+  /* What the editor is actually cutting — "Cinematography ×4 · Traditional
+     Video ×6" — copied onto the job because the crew page cannot read
+     packages at all (the rules there are client-and-partner only, and rightly
+     so). Without this an editor knows a film is due and not how much of one.
+     Written on every job write, like the editors list, so it keeps itself
+     current if the booking changes. */
+  function ejScopeSummary(pkgId){
+    const pk = ejPkg(pkgId); if(!pk) return null;
+    const scope = ejScope(pk); if(!scope.length) return null;
+    const tot = new Map();
+    scope.forEach(e=>e.svc.forEach(v=>tot.set(v.service, (tot.get(v.service)||0) + v.qty)));
+    return { units: ejUnits(scope), functions: scope.length,
+             services: [...tot.entries()].map(([service,qty])=>({ service, qty })) };
+  }
   async function ejWrite(pkgId, patch, what){
     const now = ejNow(), by = ejWho();
     const entry = what ? { id: ejId(), at: now, by, what } : null;
     const body = { ...patch, pkgId, editors: ejEditorPhones(pkgId), updatedAt: serverTimestamp() };
+    const sc = ejScopeSummary(pkgId);
+    if(sc) body.scope = sc;   /* Firestore refuses undefined, so only when there is one */
     if(entry) body.audit = arrayUnion(entry);
     let cur = ejDoc(pkgId);
     const isNew = !cur;
