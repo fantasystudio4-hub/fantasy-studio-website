@@ -229,6 +229,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
          border:1px solid var(--line);border-radius:10px;padding:.35em .65em;font-size:.8rem;color:var(--text)}
 .ejsvc-i b{font-family:var(--serif);font-size:1rem;color:var(--gold-b)}
 .ejsvc-t{margin-top:.35rem;font-size:.76rem;color:var(--mut)}
+.ejnone{margin:0 0 .85rem;padding:.6rem .7rem;font-size:.8rem;line-height:1.5;color:var(--mut);
+        background:rgba(184,144,43,.07);border:1px dashed var(--line);border-radius:12px}
 /* scope of work, one row per function — the same shape the studio sees */
 .ejs{margin-top:.5rem;border-top:1px dashed var(--line)}
 .ejs-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
@@ -1266,10 +1268,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
   }
 
+  /* An editor who opens a job and finds half a page cannot tell whether the
+     app is broken, the studio has not filled it in, or they are not allowed to
+     see it. Any of those is the studio's to fix and none of them is obvious
+     from an empty space, so say it. */
+  const ejBare = j => !j || !(ejSafeUrl(j.driveLink) || j.brief || j.footage
+    || (j.scope && Array.isArray(j.scope.services) && j.scope.services.length)
+    || (Array.isArray(j.versions) && j.versions.length)
+    || (Array.isArray(j.comments) && j.comments.length));
+  const EJ_NONE = `<p class="ejnone">No details from the studio yet — no footage link,
+    brief or scope. Confirming and naming your price still work; ask them to open this
+    job from their Editing tab.</p>`;
+
   function ejBlock(a){
     const j = EJOBS[a.pkgId];
     const fee = ejFee(a);
-    if(!j) return fee;   /* the fee lives on the assignment, so it works either way */
+    /* the fee lives on the assignment, so it works either way */
+    if(ejBare(j)) return EJ_NONE + fee;
     const url = ejSafeUrl(j.driveLink);
     const notes = (Array.isArray(j.comments) ? j.comments : [])
       .slice().sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
