@@ -1759,6 +1759,17 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   background:var(--gold-t3);border-radius:var(--r-sm);padding:.1em .5em;
 }
 
+/* what the editor can actually see of this booking's scope */
+.ejseen{
+  display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;
+  margin:.6rem 0 0;padding-top:.55rem;border-top:1px dashed var(--line);
+  font-size:var(--fs-sm);line-height:1.45;
+}
+.ejseen--ok{color:var(--mut)}
+.ejseen--part{color:var(--warn)}
+.ejseen--no{color:var(--warn)}
+.ejseen .btn{flex:0 0 auto}
+
 /* editors on the job */
 .ejc-row{
   display:flex;align-items:center;gap:.6rem;padding:.55rem 0;

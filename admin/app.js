@@ -5797,6 +5797,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${_ejScopeOpen ? `
         <p class="sub">The video services this booking was sold. Photography, album and everything else on the package are deliberately not shown here.</p>
         <div class="ejs">${scopeRows}</div>` : ''}
+        ${ejSeenLine(r)}
       </div>
 
       <div class="sec">
@@ -5935,6 +5936,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      so). Without this an editor knows a film is due and not how much of one.
      Written on every job write, like the editors list, so it keeps itself
      current if the booking changes. */
+  /* What the EDITOR can actually see, said on the booking itself.
+     This panel reads the scope live off the package; the crew page can only
+     read the copy on the job document. Those two being different is invisible
+     from here, and it is the single most common reason an editor reports an
+     empty job — so state it, and make the fix one tap rather than a hunt. */
+  function ejSeenLine(r){
+    const sent = (r.job && r.job.scope) || null;
+    const want = ejScopeSummary(r.pk.id);
+    if(!want) return '';                       /* nothing to send */
+    if(!sent) return `<p class="ejseen ejseen--no">The editor cannot see this scope yet.
+      <button type="button" class="btn btn--sm btn--quiet" data-ejsendscope>Send it</button></p>`;
+    if(!Array.isArray(sent.rows) || !sent.rows.length)
+      return `<p class="ejseen ejseen--part">The editor sees the totals only, not the breakdown.
+        <button type="button" class="btn btn--sm btn--quiet" data-ejsendscope>Send the breakdown</button></p>`;
+    if(ejScopeStale(r.job, want))
+      return `<p class="ejseen ejseen--part">The booking changed since this was sent to the editor.
+        <button type="button" class="btn btn--sm btn--quiet" data-ejsendscope>Send the current scope</button></p>`;
+    return `<p class="ejseen ejseen--ok">The editor sees this scope ✓</p>`;
+  }
   function ejScopeSummary(pkgId){
     const pk = ejPkg(pkgId); if(!pk) return null;
     const scope = ejScope(pk); if(!scope.length) return null;
@@ -6012,6 +6032,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#ejDetailView', 'click', async e=>{
     if(e.target.closest('[data-ejback]')){ backFrom('ejob', closeEjDetail); return; }
     if(e.target.closest('[data-ejaudit]')){ _ejAuditOpen = !_ejAuditOpen; renderEjDetail(); return; }
+    if(e.target.closest('[data-ejsendscope]')){
+      /* an empty patch still rewrites editors[] and scope — that IS the fix */
+      const b = e.target.closest('[data-ejsendscope]');
+      b.disabled = true; b.textContent = 'Sending…';
+      /* ejWrite RESOLVES on a refusal — it reports through settleMsg and rolls
+         its own paint back — so the outcome has to come from what it returns.
+         A hardcoded "sent ✓" here would claim success on a write the server
+         had just refused, in the one place built to tell you the truth. */
+      ejWrite(_ejOpenId, {}, 'Sent the scope to the editor')
+        .then(sm=>{ toast(sm && sm.ok ? (sm.msg === 'Saved ✓' ? 'Sent to the editor ✓' : sm.msg)
+                                      : (sm && sm.msg) || 'Could not send it'); })
+        .catch(()=>{ toast('Could not send it'); })
+        .then(()=>renderEjDetail());
+      return;
+    }
     if(e.target.closest('[data-ejscope]')){ _ejScopeOpen = !_ejScopeOpen; renderEjDetail(); return; }
     const st = e.target.closest('[data-ejstageset]');
     if(st){ if(!st.disabled) ejSetStage(_ejOpenId, st.dataset.ejstageset); return; }
