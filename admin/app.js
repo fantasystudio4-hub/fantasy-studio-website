@@ -441,9 +441,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
-      const fromHash = TAB_OF_VIEW[(location.hash||'').replace('#','')] || 'tabHome';
+      const rawHash = (location.hash||'').replace('#','').split('/')[0];
+      const fromHash = TAB_OF_VIEW[rawHash] || 'tabHome';
       showTab(fromHash);
-      try{ history.replaceState({view: VIEW_OF_TAB[fromHash]}, '', '#' + VIEW_OF_TAB[fromHash]); }catch(e){}
+      if(rawHash === 'editing') setTeamSeg('edit');   /* same on a cold open */
+      /* keep #editing in the bar rather than flattening it to #team, so a
+         reload lands back on the section the user actually had open */
+      const bootView = rawHash === 'editing' ? 'editing' : VIEW_OF_TAB[fromHash];
+      try{ history.replaceState({view: bootView}, '', '#' + bootView); }catch(e){}
     }
   });
 
@@ -498,9 +503,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   syncBars();
 
   /* ---------- tabs ---------- */
-  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabEdit:'editView', tabConfig:'configView' };
-  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'b2b', tabTeam:'team', tabEdit:'editing', tabConfig:'config' };
-  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabEdit', config:'tabConfig' };
+  /* Editing is a SECTION of Team now, not a tab. Six across a 320px phone
+     left every label at 9px, and the editing desk belongs with the people who
+     do the editing — beside Work, Crew and Pay. */
+  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView' };
+  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'b2b', tabTeam:'team', tabConfig:'config' };
+  /* #editing still resolves — an old link or a back-press lands on Team, and
+     setTeamSeg picks the section up from there */
+  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig' };
   let _navFromPop = false;
   /* Sheet/modal history states. Pushing a new state while one of these is
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
@@ -619,7 +629,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
-    if(id === 'tabEdit' && typeof renderEditTab === 'function') renderEditTab();
     if(id === 'tabHome'){
       if(typeof renderHome === 'function') renderHome();
       if(typeof renderCalendar === 'function') renderCalendar();   /* the calendar lives on Home now */
@@ -653,7 +662,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(id === 'tabCal' && leavingStudio && typeof closeStudioDetail === 'function') closeStudioDetail();
       /* same for an editing job's work page */
       const leavingJob = !$('#ejDetailView').hidden;
-      if(id === 'tabEdit' && leavingJob && typeof closeEjDetail === 'function') closeEjDetail();
+      if(id === 'tabTeam' && leavingJob && typeof closeEjDetail === 'function') closeEjDetail();
       /* re-tapping the tab you are on = back to its top — the pattern every
          phone app uses; there was no other way up a long list one-handed */
       if(id === _curTab && !leavingEditor && !leavingStudio && !leavingJob){
@@ -713,11 +722,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         showTab('tabCal');
         if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
       }else if(v === 'ejob'){
-        showTab('tabEdit');
+        showTab('tabTeam');
+        if(typeof setTeamSeg === 'function') setTeamSeg('edit');
         if(_ejOpenId){ $('#ejListView').hidden = true; $('#ejDetailView').hidden = false; }
       }else{
         const tab = TAB_OF_VIEW[v] || 'tabHome';
         showTab(tab);
+        /* #editing is a Team section now, so landing on the tab is only half
+           of it — an old link or a back-press has to arrive at the section
+           too, not at whichever one was last open */
+        if(v === 'editing' && typeof setTeamSeg === 'function') setTeamSeg('edit');
         if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; syncFabs(); }
         if(tab === 'tabCal' && typeof closeStudioDetail === 'function') closeStudioDetail();
         if(typeof closeEjDetail === 'function') closeEjDetail();
@@ -4499,7 +4513,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Today first, because that is the question the Work section exists to
      answer when the owner opens it at 8am. Then what is coming, then what is
      already shot and still needs signing off or paying, then post-production. */
-  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Editing']];
+  /* "Per editor", not "Editing" — Team's own ✂️ Editing section sits one level
+     up in the same tab, and two things with the same name a tap apart is how
+     you end up on the wrong one. This is the per-PERSON list: one row for each
+     editor on each job, which is what chasing somebody and paying them needs.
+     The section above is per BOOKING. */
+  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Per editor']];
   let _teamTab = viewGet('workTab','today');
   /* deliberately NOT persisted: a filter you did not set yourself, still on
      from yesterday, is how a list lies about being empty */
@@ -4985,10 +5004,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        inbox is hidden by the same rule that hides an empty inbox */
     $('#teamReqSec').hidden  = _tSeg !== 'crew' || !(reqCount() || _reqsErr);
     $('#paySec').hidden      = _tSeg !== 'pay';
+    const ed = $('#editView');
+    if(ed){
+      ed.hidden = _tSeg !== 'edit';
+      /* the desk is derived from packages + assignments, so it is rebuilt on
+         arrival rather than left holding whatever it drew last */
+      if(_tSeg === 'edit' && typeof renderEditTab === 'function') renderEditTab();
+    }
   }
   const reqCount = () => REQS.filter(r=>(r.status||'pending') === 'pending').length;
   function setTeamSeg(seg){
-    if(!['work','crew','pay'].includes(seg)) return;
+    if(!['work','crew','pay','edit'].includes(seg)) return;
     _tSeg = seg;
     try{ localStorage.setItem('fs_team_seg', seg); }catch(e){}
     applyTeamSeg();
@@ -5029,6 +5055,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
     $('#segPayB').hidden = !(due > 0);
     $('#segPayB').textContent = due > 0 ? inrShort(due) : '';
+    /* the editing badge is written by renderEditTab, which knows what is
+       waiting on the owner — call it so the segment carries its count even
+       while another section is on screen */
+    if(_tSeg !== 'edit' && typeof renderEditTab === 'function') renderEditTab();
     applyTeamSeg();
   }
 
@@ -5581,7 +5611,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rows = ejAllRows();
     const late = rows.filter(r=>r.overdue).length;
     const asks = rows.reduce((n,r)=>n + r.asks, 0);
-    const b = $('#editBadge');
+    const b = $('#segEditB');
     if(b){ b.hidden = !(late + asks); b.textContent = (late + asks) || ''; }
   }
 
@@ -10196,7 +10226,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         $('#appView').hidden = false;
         $('#hdr').hidden = false;
         syncBars();
-        showTab('tabHome');
+        /* honour the hash the way the signed-in boot does, so a deep link like
+           #editing is testable here instead of always landing on Home */
+        const demoView = (location.hash||'').replace('#','').split('/')[0];
+        showTab(TAB_OF_VIEW[demoView] || 'tabHome');
+        if(demoView === 'editing') setTeamSeg('edit');
 
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */

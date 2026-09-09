@@ -394,17 +394,25 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .hq-chips b.hot{color:#ffb054;background:rgba(255,176,84,.13);border-color:rgba(255,176,84,.35)}
 
 /* next shoot — a live countdown, because "in 3 days" is the whole question */
-.cdown{background:var(--panel);border:1px solid rgba(226,194,117,.45);border-radius:18px;padding:.95rem 1.05rem;margin:0 0 .9rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
-.cd-h{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;margin-bottom:.55rem}
-.cd-lbl{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
-.cd-h b{font-family:var(--serif);color:#fff;font-size:1.05rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cd-clock{display:flex;gap:.5rem}
-.cd-clock div{flex:1;background:#171309;border:1px solid var(--line);border-radius:12px;padding:.5rem .2rem;text-align:center}
-.cd-clock b{display:block;font-family:var(--serif);font-size:1.45rem;color:var(--gold-b);line-height:1.1;font-variant-numeric:tabular-nums}
-.cd-clock span{font-size:.52rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+/* Medium, like the rank card above it. The clock was three 1.45rem numerals
+   in their own boxes with a rem of padding round the lot — a hero for a fact
+   that is read in a second. Same three numbers, two thirds the height. */
+.cdown{background:var(--panel);border:1px solid rgba(226,194,117,.45);border-radius:16px;padding:.7rem .85rem;margin:0 0 .7rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.cd-h{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;margin-bottom:.45rem}
+.cd-lbl{font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.cd-h b{font-family:var(--serif);color:#fff;font-size:.95rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cd-clock{display:flex;gap:.4rem}
+.cd-clock div{flex:1;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.35rem .2rem;text-align:center}
+.cd-clock b{display:block;font-family:var(--serif);font-size:1.15rem;color:var(--gold-b);line-height:1.15;font-variant-numeric:tabular-nums}
+.cd-clock span{font-size:.48rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .cd-clock.live b{color:#ffb054}
-.cd-meta{margin-top:.6rem;font-size:.8rem;color:var(--mut);display:flex;flex-wrap:wrap;gap:.15rem .7rem}
-.cd-meta a{color:var(--gold-b);text-decoration:none;border-bottom:1px dotted rgba(226,194,117,.5)}
+.cd-meta{margin-top:.45rem;font-size:.76rem;color:var(--mut);display:flex;flex-wrap:wrap;
+  align-items:center;gap:.15rem .7rem}
+/* the venue link keeps the 44px tap floor, so it is a flex item taller than its
+   own text: centre it, and underline the TEXT rather than border the box, or the
+   rule lands at the bottom of the tap area as a stray line across the card */
+.cd-meta a{color:var(--gold-b);display:inline-flex;align-items:center;
+  text-decoration:underline dotted rgba(226,194,117,.55);text-underline-offset:3px}
 .cd-now{margin-top:.6rem;text-align:center;color:#ffb054;font-size:.85rem;font-weight:500}
 
 /* badges — earned ones lit, locked ones show how far off they are */
