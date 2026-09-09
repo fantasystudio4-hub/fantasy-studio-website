@@ -372,18 +372,6 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 
 /* Says what the list is currently hiding. A narrowed list that does not admit
    it is how "no events" gets mistaken for "nothing on". */
-.workfilter{
-  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:nowrap;
-  margin:.1rem 0 .6rem;padding:.45rem .6rem;
-  background:var(--gold-t1);border:1px solid var(--line);border-left:3px solid var(--gold);
-  border-radius:var(--r-md);font-size:var(--fs-md);color:var(--mut);line-height:1.35;
-}
-.workfilter b{color:var(--gold-b);font-weight:600}
-/* the TEXT wraps, never the button: letting it wrap dropped "Show all" onto a
-   third line and made a one-line notice 200px tall */
-.workfilter > span{flex:1;min-width:0}
-.workfilter .btn{flex:0 0 auto;margin-left:auto}
-.stat.sel{border-color:var(--gold);background:var(--gold-t3)}
 @media(hover:hover){ .stat[data-goto]:hover{border-color:var(--gold)} }
 
 /* status picker sheet */
@@ -761,19 +749,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 #workTabs{margin-bottom:.7rem}
 #workTabs b.late{color:var(--warn)}
 
-/* the four counts read as one row on every width, like the B2B tiles */
-#teamStats{grid-template-columns:repeat(4,1fr);gap:.4rem}
-#teamStats .stat.month{grid-column:1 / -1}
-#teamStats .stat{padding:.5rem .2rem}
-#teamStats .stat b{font-size:var(--fs-xl)}
-#teamStats .stat span{font-size:var(--fs-2xs);letter-spacing:.03em;line-height:1.3}
-#teamStats .stat.month b{font-size:var(--fs-3xl)}
-#teamStats .stat.month span{font-size:var(--fs-xs);letter-spacing:.08em}
-@media(min-width:700px){
-  #teamStats .stat{padding:.6rem .5rem}
-  #teamStats .stat b{font-size:var(--fs-2xl)}
-  #teamStats .stat span{font-size:var(--fs-xs);letter-spacing:.08em}
-}
 .stat.warn{border-color:var(--state-pending-ln)}
 .stat.warn b{color:var(--warn)}
 

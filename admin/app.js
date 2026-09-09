@@ -4184,12 +4184,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        was in the tile's number and absent from the list it opened. While a
        warning filter is on, the list spans the same range the tile counted;
        the banner says so. */
-    const period = _workFilter ? 'upcoming' : (_teamTab === 'edit' ? 'up' : _teamTab);
+    const period = _teamTab === 'edit' ? 'up' : _teamTab;
     let all = teamEventsIn(period);
-    /* set only from the two warning tiles above, and only ever narrowing what
-       the current tab already shows */
-    if(_workFilter === 'nocrew') all = all.filter(({pk,ev})=>!evCrew(pk.id, ev.date, ev.title).length);
-    if(_workFilter === 'unconf') all = all.filter(({pk,ev})=>evCrew(pk.id, ev.date, ev.title).some(a=>a.status !== 'acknowledged'));
     if(!all.length){
       const EMPTY = {
         today: 'Nothing shooting today. <span style="color:var(--mut)">Enjoy it.</span>',
@@ -4517,7 +4513,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _teamTab = viewGet('workTab','today');
   /* deliberately NOT persisted: a filter you did not set yourself, still on
      from yesterday, is how a list lies about being empty */
-  let _workFilter = '';
   function renderWorkTabs(){
     const el = $('#workTabs'); if(!el) return;
     const today = todayISO();
@@ -4542,7 +4537,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        being shown is capped, the chip says what is on screen AND the total. */
     el.innerHTML = WORK_TABS.map(([k,l])=>{
       const capped = k === _teamTab && k !== 'edit' && !_teamEvAll && n[k] > TEAM_EV_N;
-      return `<button type="button" data-wtab="${k}" class="${_teamTab===k&&!_workFilter?'on':''}">${l}<b class="${
+      return `<button type="button" data-wtab="${k}" class="${_teamTab===k?'on':''}">${l}<b class="${
         (k==='edit'&&late) || (k==='today'&&shortToday) ? 'late' : ''}">${
         capped ? `${TEAM_EV_N}/${n[k]}` : n[k]}</b></button>`;
     }).join('');
@@ -4550,36 +4545,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#workEd').hidden = _teamTab !== 'edit';
     /* the hint has to follow the tab: "Tap ＋ Assign" is the wrong advice on a
        shoot that finished six weeks ago */
-    const fl = $('#workFilter');
-    if(fl){
-      const LABEL = { nocrew:'events with nobody assigned', unconf:'events with crew who have not confirmed' };
-      /* spelled out, because the tab chips still show Today / Upcoming and the
-         list is deliberately ignoring them right now */
-      fl.hidden = !_workFilter;
-      fl.innerHTML = _workFilter
-        ? `<span>Showing only <b>${LABEL[_workFilter]}</b>, today onwards</span><button type="button" class="btn btn--sm btn--quiet" data-clearwf>Show all &times;</button>`
-        : '';
-    }
     const hint = $('#workHint');
     if(hint) hint.innerHTML = _teamTab === 'past'
       ? 'Already shot. What is left here is sign-off and money — tap a name to record a payment, or <b style="color:var(--gold-b)">＋ Assign</b> if someone worked it and was never added.'
       : 'Tap <b style="color:var(--gold-b)">＋ Assign</b> to put someone on an event; tap a name to edit or remove.';
   }
-  on('#workFilter', 'click', e=>{
-    if(!e.target.closest('[data-clearwf]')) return;
-    _workFilter = '';
-    renderTeamStats(); renderWorkTabs(); renderTeamEvents();
-  });
   on('#workTabs', 'click', e=>{
     const b = e.target.closest('[data-wtab]'); if(!b) return;
-    /* "already on that tab, nothing to do" is wrong while a warning filter is
-       on: no chip is highlighted then, so the owner taps the tab they can see
-       is not active and the tap does nothing. The tap still has a job — it
-       drops the filter. */
-    if(b.dataset.wtab === _teamTab && !_workFilter) return;
+    if(b.dataset.wtab === _teamTab) return;
     _teamTab = b.dataset.wtab; viewSet('workTab', _teamTab);
-    _workFilter = '';   /* choosing a tab is an explicit choice; it wins */
-    renderTeamStats(); renderWorkTabs(); renderTeamEvents();
+    renderWorkTabs(); renderTeamEvents();
   });
   wireSwipe($('#paySec'), {
     keys: ()=>PAY_TABS.map(([k])=>k),
@@ -4940,48 +4915,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
 
-  function renderTeamStats(){
-    const el = $('#teamStats'); if(!el) return;
-    const today = todayISO();
-    const up = teamUpcoming();
-    const unfilled = up.filter(({pk, ev})=>!evCrew(pk.id, ev.date, ev.title).length).length;
-    /* Counted ASSIGNMENTS while the tile now filters EVENTS, so it read "5" and
-       then showed four rows — one shoot had two people yet to confirm. A tile
-       that disagrees with the list it opens is worse than no tile. Both are
-       events now, and both use the same evCrew() the list does. */
-    const unconf = up.filter(({pk, ev})=>evCrew(pk.id, ev.date, ev.title).some(a=>a.status !== 'acknowledged')).length;
-    /* the crew-pay-due figure rides the Pay section's own badge now, so this
-       strip stays one compact row and the work starts near the top */
-    /* These were four inert numbers. "6 with no crew" is precisely the thing
-       you want to act on, and it went nowhere — so the owner had to scroll the
-       whole list hunting for which six. Each tile is a button now: the two
-       warnings FILTER the work list down to exactly what they counted, and the
-       other two jump to the section that holds them. */
-    el.innerHTML = `
-      <button type="button" class="stat" data-tstat="up"><b>${up.length}</b><span>upcoming</span></button>
-      <button type="button" class="stat ${unfilled?'warn':''} ${_workFilter==='nocrew'?'sel':''}" data-tstat="nocrew"><b>${unfilled}</b><span>with no crew</span></button>
-      <button type="button" class="stat ${unconf?'warn':''} ${_workFilter==='unconf'?'sel':''}" data-tstat="unconf"><b>${unconf}</b><span>unconfirmed</span></button>
-      <button type="button" class="stat" data-tstat="crew"><b>${activeTeam().length}</b><span>active crew</span></button>`;
-  }
-  on('#teamStats', 'click', e=>{
-    const b = e.target.closest('[data-tstat]'); if(!b) return;
-    const k = b.dataset.tstat;
-    buzz();
-    if(k === 'crew'){ setTeamSeg('crew'); return; }
-    setTeamSeg('work');
-    if(k === 'up'){ _workFilter = ''; _teamTab = 'up'; }
-    else {
-      /* tapping the same warning twice clears it — a filter you cannot get out
-         of is a trap, and the tile is the only thing that set it */
-      _workFilter = _workFilter === k ? '' : k;
-      /* these count everything from today forward, so the tab has to match or
-         the filter would appear to find nothing */
-      if(_workFilter && _teamTab !== 'today' && _teamTab !== 'up') _teamTab = 'up';
-    }
-    viewSet('workTab', _teamTab);
-    renderTeamStats(); renderWorkTabs(); renderTeamEvents();
-  });
-
   /* Work = rostering, Crew = the people, Pay = the money. Only one is on
      screen, so no job is ever four screens below another. */
   let _tSeg = 'work';
@@ -5032,7 +4965,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderTeam(){
     if(!$('#teamView')) return;
-    renderTeamStats();
     renderTeamReqs();
     renderTeamEvents();
     renderEditDesk();
