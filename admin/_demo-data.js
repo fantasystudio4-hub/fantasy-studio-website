@@ -516,6 +516,11 @@ export const editingJobs = [
     /* already stamped — its editor can open it, so the backfill banner leaves
        it alone. team[7] Sunitha Rao's last-10, matching as19. */
     editors: ['9177007788'],
+    /* a scope copied across BEFORE the summary carried per-function rows: the
+       crew page has to fall back to the totals on this one rather than render
+       an empty breakdown, and the banner has to offer to refresh it */
+    scope: { units: 8, functions: 3,
+             services: [{ service: 'Traditional Video', qty: 5 }, { service: 'Cinematography', qty: 3 }] },
     id: 'pk15', pkgId: 'pk15', stage: 'delivered', deliveredAt: iso(-92),
     deadline: iso(-95), footage: '820 GB', driveLink: '',
     brief: 'Wanted the whole baaraat in the film, and no filter on the Ramoji drone shots.',

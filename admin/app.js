@@ -5471,6 +5471,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      already sitting there. It reports only what is genuinely wrong — a job
      whose stored list already matches its roster is left alone — so the
      banner empties itself and stops appearing. */
+  /* Same story for `scope`: a job written before the summary carried the
+     per-function rows shows its editor a roll-up and no breakdown. Both are
+     things only a write can fix, both are fixed by the same write, so they
+     share one banner rather than stacking two. */
+  const ejScopeStale = (job, sc) => {
+    if(!sc) return false;
+    const had = (job && job.scope) || null;
+    if(!had) return true;
+    if(!Array.isArray(had.rows) || had.rows.length !== sc.rows.length) return true;
+    /* a booking whose events changed since the last write: compare the shape
+       that is actually shown, not the whole object */
+    return sc.rows.some((r,i)=>{
+      const o = had.rows[i] || {};
+      return o.date !== r.date || o.title !== r.title || o.n !== r.n
+        || !Array.isArray(o.svc) || o.svc.length !== r.svc.length
+        || r.svc.some((v,k)=>(o.svc[k]||{}).service !== v.service || (o.svc[k]||{}).qty !== v.qty);
+    });
+  };
   function ejStale(){
     const out = [];
     livePkgs().forEach(pk=>{
@@ -5478,8 +5496,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!want.length) return;               /* nobody assigned: nothing to authorise */
       const job = ejDoc(pk.id);
       const have = (job && Array.isArray(job.editors)) ? job.editors : [];
-      const same = have.length === want.length && want.every(p=>have.includes(p));
-      if(!same) out.push({ pkgId: pk.id, want, name: pk.clientName || '—' });
+      const shut = !(have.length === want.length && want.every(p=>have.includes(p)));
+      const thin = ejScopeStale(job, ejScopeSummary(pk.id));
+      if(shut || thin) out.push({ pkgId: pk.id, want, name: pk.clientName || '—', shut, thin });
     });
     return out;
   }
@@ -5488,22 +5507,39 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const stale = ejStale();
     el.hidden = !stale.length;
     if(!stale.length){ el.innerHTML = ''; return; }
-    const n = stale.length;
+    const n = stale.length, one = n === 1;
+    /* two different faults, one fix. Saying "cannot open it" about a job the
+       editor can already open is the kind of wrong that makes the owner stop
+       trusting the banner, so the copy follows what is actually stale. */
+    const shut = stale.some(j=>j.shut);
+    const head = shut
+      ? `${n} editing job${one?'':'s'} ${one?'is':'are'} not reaching ${one?'its':'their'} editor.`
+      : `${n} editing job${one?'':'s'} ${one?'is':'are'} showing ${one?'its editor':'their editors'} less than you can see.`;
+    const body = shut
+      ? `${one?'It was':'They were'} set up before the crew page could show the footage link, the brief
+         and the notes, so ${one?'its editor cannot open it':'their editors cannot open them'} yet. This puts that right —
+         nothing else about the job${one?'':'s'} changes.`
+      : `The scope on ${one?'it':'them'} was copied across before it carried the per-function breakdown, so
+         ${one?'its editor sees':'their editors see'} the totals without the functions behind them. This copies the
+         current scope over — nothing else about the job${one?'':'s'} changes.`;
     el.innerHTML = `
-      <b>${n} editing job${n===1?'':'s'} ${n===1?'is':'are'} not reaching ${n===1?'its':'their'} editor.</b>
-      <span>${n===1?'It was':'They were'} set up before the crew page could show the footage link, the brief
-        and the notes, so ${n===1?'its editor cannot open it':'their editors cannot open them'} yet. This puts that right —
-        nothing else about the job${n===1?'':'s'} changes.</span>
-      <button type="button" class="btn btn--sm btn--primary" data-ejfix>Let ${n===1?'the editor':'the editors'} in</button>`;
+      <b>${head}</b>
+      <span>${body}</span>
+      <button type="button" class="btn btn--sm btn--primary" data-ejfix>${
+        shut ? `Let ${one?'the editor':'the editors'} in` : `Send the full scope`}</button>`;
   }
   on('#ejFix', 'click', async e=>{
     const btn = e.target.closest('[data-ejfix]'); if(!btn || btn.disabled) return;
     const stale = ejStale(); if(!stale.length) return;
+    const one = stale.length === 1, shut = stale.some(j=>j.shut);
     if(!await confirmDialog({
-      title:`Open ${stale.length} job${stale.length===1?'':'s'} to ${stale.length===1?'its editor':'their editors'}?`,
-      body:`<p>Each one gets the list of who is assigned to it, which is what lets that editor see the footage link, the brief and the notes on their own page.</p>`
-         + `<p class="sub">Nothing else on ${stale.length===1?'the job':'the jobs'} is touched — no stage, no deadline, no fee.</p>`,
-      confirmText: stale.length === 1 ? 'Let them in' : `Fix all ${stale.length}`, danger:false })) return;
+      title: shut
+        ? `Open ${stale.length} job${one?'':'s'} to ${one?'its editor':'their editors'}?`
+        : `Send the full scope on ${stale.length} job${one?'':'s'}?`,
+      body:`<p>Each one gets the list of who is assigned to it and the scope as it stands — which function, on what day, and how much of it — so the editor reads it the way you do.</p>`
+         + `<p class="sub">Nothing else on ${one?'the job':'the jobs'} is touched — no stage, no deadline, no fee.</p>`,
+      confirmText: shut ? (one ? 'Let them in' : `Fix all ${stale.length}`) : (one ? 'Send it' : `Send all ${stale.length}`),
+      danger:false })) return;
     btn.disabled = true; btn.textContent = 'Fixing…';
     let ok = 0, failed = 0;
     for(const j of stale){
@@ -5515,10 +5551,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ok++;
       /* keep the local copy in step so the banner empties without a round trip */
       const cur = ejDoc(j.pkgId);
-      if(cur) cur.editors = j.want;
-      else EJOBS = [...EJOBS, { id: j.pkgId, pkgId: j.pkgId, editors: j.want }];
+      if(cur){ cur.editors = j.want; if(sc) cur.scope = sc; }
+      else EJOBS = [...EJOBS, { id: j.pkgId, pkgId: j.pkgId, editors: j.want, ...(sc?{scope:sc}:{}) }];
     }
-    toast(failed ? `${ok} fixed — ${failed} refused by the server` : `Done — ${ok} job${ok===1?'':'s'} ${ok===1?'is':'are'} now open to ${ok===1?'its editor':'their editors'} ✓`);
+    toast(failed ? `${ok} fixed — ${failed} refused by the server`
+      : shut ? `Done — ${ok} job${ok===1?'':'s'} ${ok===1?'is':'are'} now open to ${ok===1?'its editor':'their editors'} ✓`
+             : `Done — the full scope is on ${ok} job${ok===1?'':'s'} ✓`);
     buzz(); renderEditTab();
   });
 
@@ -5857,7 +5895,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const tot = new Map();
     scope.forEach(e=>e.svc.forEach(v=>tot.set(v.service, (tot.get(v.service)||0) + v.qty)));
     return { units: ejUnits(scope), functions: scope.length,
-             services: [...tot.entries()].map(([service,qty])=>({ service, qty })) };
+             services: [...tot.entries()].map(([service,qty])=>({ service, qty })),
+             /* the same per-function rows the detail page shows, so the editor
+                reads the scope the way the studio does instead of a roll-up:
+                which function, on what day, and how much of it */
+             rows: scope.map(e=>({ date: e.date||'', title: e.title||'', n: e.n,
+                                   svc: e.svc.map(v=>({ service: v.service, qty: v.qty })) })) };
   }
   async function ejWrite(pkgId, patch, what){
     const now = ejNow(), by = ejWho();

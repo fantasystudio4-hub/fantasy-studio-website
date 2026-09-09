@@ -229,6 +229,16 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
          border:1px solid var(--line);border-radius:10px;padding:.35em .65em;font-size:.8rem;color:var(--text)}
 .ejsvc-i b{font-family:var(--serif);font-size:1rem;color:var(--gold-b)}
 .ejsvc-t{margin-top:.35rem;font-size:.76rem;color:var(--mut)}
+/* scope of work, one row per function — the same shape the studio sees */
+.ejs{margin-top:.5rem;border-top:1px dashed var(--line)}
+.ejs-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
+.ejs-row:last-child{border-bottom:0}
+.ejs-row .w{flex:0 0 auto;min-width:52px;font-family:var(--serif);color:var(--gold-b);font-size:.82rem}
+.ejs-row .t{flex:1;min-width:0}
+.ejs-row .t b{display:block;font-size:.82rem;color:var(--text);font-weight:500}
+.ejs-row .t span{display:block;font-size:.74rem;color:var(--mut);overflow-wrap:anywhere}
+.ejs-n{flex:0 0 auto;font-family:var(--serif);font-size:.95rem;color:var(--gold-b);
+       background:rgba(184,144,43,.14);border-radius:8px;padding:.1em .5em}
 
 /* ---- rounds ---- */
 /* whose move it is, said before the list rather than left to be inferred */
@@ -1283,6 +1293,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <span class="ejsvc-i"><b>${esc(String(v.qty||0))}</b>${esc(v.service||'')}</span>`).join('')}</div>
           <p class="ejsvc-t">${esc(String(j.scope.units||0))} camera-day${j.scope.units===1?'':'s'} across ${
             esc(String(j.scope.functions||0))} function${j.scope.functions===1?'':'s'}</p>
+          ${/* The same rows the studio reads on its own detail page. The totals
+               above say how much; these say which function and on what day, so
+               an editor can tell the Haldi rushes from the Sangeet ones without
+               asking. Older jobs carry the totals and no rows — they get the
+               breakdown the next time the studio writes to them. */ ''}
+          ${(Array.isArray(j.scope.rows) && j.scope.rows.length) ? `
+            <div class="ejs">${j.scope.rows.map(r=>`
+              <div class="ejs-row">
+                <span class="w">${esc(fmtShort(r.date))}</span>
+                <span class="t"><b>${esc(r.title||'Event')}</b><span>${
+                  esc((Array.isArray(r.svc)?r.svc:[]).map(v=>`${v.service||''}${(v.qty||0)>1?' ×'+v.qty:''}`).join(' · '))}</span></span>
+                <span class="ejs-n">${esc(String(r.n||0))}</span>
+              </div>`).join('')}</div>` : ''}
         </div>` : ''}
     ${bits.length ? `<div class="ejsec"><h4>The job</h4><div class="lines">${bits.join('')}</div></div>` : ''}
       ${j.brief ? `<div class="ejsec"><h4>What the client asked for</h4>
