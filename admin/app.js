@@ -4513,12 +4513,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Today first, because that is the question the Work section exists to
      answer when the owner opens it at 8am. Then what is coming, then what is
      already shot and still needs signing off or paying, then post-production. */
-  /* "Per editor", not "Editing" — Team's own ✂️ Editing section sits one level
-     up in the same tab, and two things with the same name a tap apart is how
-     you end up on the wrong one. This is the per-PERSON list: one row for each
-     editor on each job, which is what chasing somebody and paying them needs.
-     The section above is per BOOKING. */
-  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Per editor']];
+  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Editing']];
   let _teamTab = viewGet('workTab','today');
   /* deliberately NOT persisted: a filter you did not set yourself, still on
      from yesterday, is how a list lies about being empty */
