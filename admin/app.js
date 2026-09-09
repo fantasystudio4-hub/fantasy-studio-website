@@ -5400,8 +5400,65 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
       </div>`).join('');
   }
+  /* ---- one-time repair: stamp the editors allowlist ----
+     A job written before the crew side existed carries no `editors`, and
+     rules cannot run a query, so its editor simply cannot open it. Every job
+     write refreshes the list from that moment on; this is for the ones
+     already sitting there. It reports only what is genuinely wrong — a job
+     whose stored list already matches its roster is left alone — so the
+     banner empties itself and stops appearing. */
+  function ejStale(){
+    const out = [];
+    livePkgs().forEach(pk=>{
+      const want = ejEditorPhones(pk.id);
+      if(!want.length) return;               /* nobody assigned: nothing to authorise */
+      const job = ejDoc(pk.id);
+      const have = (job && Array.isArray(job.editors)) ? job.editors : [];
+      const same = have.length === want.length && want.every(p=>have.includes(p));
+      if(!same) out.push({ pkgId: pk.id, want, name: pk.clientName || '—' });
+    });
+    return out;
+  }
+  function renderEjFix(){
+    const el = $('#ejFix'); if(!el) return;
+    const stale = ejStale();
+    el.hidden = !stale.length;
+    if(!stale.length){ el.innerHTML = ''; return; }
+    const n = stale.length;
+    el.innerHTML = `
+      <b>${n} editing job${n===1?'':'s'} ${n===1?'is':'are'} not reaching ${n===1?'its':'their'} editor.</b>
+      <span>${n===1?'It was':'They were'} set up before the crew page could show the footage link, the brief
+        and the notes, so ${n===1?'its editor cannot open it':'their editors cannot open them'} yet. This puts that right —
+        nothing else about the job${n===1?'':'s'} changes.</span>
+      <button type="button" class="btn btn--sm btn--primary" data-ejfix>Let ${n===1?'the editor':'the editors'} in</button>`;
+  }
+  on('#ejFix', 'click', async e=>{
+    const btn = e.target.closest('[data-ejfix]'); if(!btn || btn.disabled) return;
+    const stale = ejStale(); if(!stale.length) return;
+    if(!await confirmDialog({
+      title:`Open ${stale.length} job${stale.length===1?'':'s'} to ${stale.length===1?'its editor':'their editors'}?`,
+      body:`<p>Each one gets the list of who is assigned to it, which is what lets that editor see the footage link, the brief and the notes on their own page.</p>`
+         + `<p class="sub">Nothing else on ${stale.length===1?'the job':'the jobs'} is touched — no stage, no deadline, no fee.</p>`,
+      confirmText: stale.length === 1 ? 'Let them in' : `Fix all ${stale.length}`, danger:false })) return;
+    btn.disabled = true; btn.textContent = 'Fixing…';
+    let ok = 0, failed = 0;
+    for(const j of stale){
+      const res = await settle(setDoc(doc(db,'editingJobs', j.pkgId),
+        { pkgId: j.pkgId, editors: j.want, updatedAt: serverTimestamp() }, { merge: true }));
+      if(res === 'denied'){ failed++; continue; }
+      ok++;
+      /* keep the local copy in step so the banner empties without a round trip */
+      const cur = ejDoc(j.pkgId);
+      if(cur) cur.editors = j.want;
+      else EJOBS = [...EJOBS, { id: j.pkgId, pkgId: j.pkgId, editors: j.want }];
+    }
+    toast(failed ? `${ok} fixed — ${failed} refused by the server` : `Done — ${ok} job${ok===1?'':'s'} ${ok===1?'is':'are'} now open to ${ok===1?'its editor':'their editors'} ✓`);
+    buzz(); renderEditTab();
+  });
+
   function renderEditTab(){
     if(!$('#editView')) return;
+    renderEjFix();
     renderEjStats();
     renderEjChips();
     renderEjList();

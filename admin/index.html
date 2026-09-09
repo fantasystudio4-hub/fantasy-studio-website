@@ -383,7 +383,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <button id="ejSort" type="button" title="Change the order">↕ Deadline</button>
       </div>
       <div class="fchips" id="ejStageChips"></div>
-      <div class="fchips" id="ejEditorChips"></div>
+      <!-- One-time repair, and it shows itself only while there is something to
+           repair. A job written before the crew side existed carries no
+           editors list, so its editor cannot open it — this stamps them all
+           and then disappears. -->
+      <div id="ejFix" hidden></div>
       <div id="ejList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
     </div>
     <div id="ejDetailView" hidden></div>

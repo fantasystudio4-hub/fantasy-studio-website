@@ -497,6 +497,9 @@ export const editingJobs = [
        editor leaves a trace rather than silently overwriting the first one.
        On pk15 rather than a partner job — a studio job runs the B2B checklist,
        which has no editing step at all, so it never reaches this desk. */
+    /* already stamped — its editor can open it, so the backfill banner leaves
+       it alone. team[7] Sunitha Rao's last-10, matching as19. */
+    editors: ['9177007788'],
     id: 'pk15', pkgId: 'pk15', stage: 'delivered', deliveredAt: iso(-92),
     deadline: iso(-95), footage: '820 GB', driveLink: '',
     brief: 'Wanted the whole baaraat in the film, and no filter on the Ramoji drone shots.',

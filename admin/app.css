@@ -1573,6 +1573,20 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ejb--overdue  {color:var(--state-overdue);   background:rgba(var(--state-overdue-rgb),.16)}
 /* not a stage — the job has not started because its brief has not arrived */
 .ejb--waiting  {color:var(--state-progress);  background:rgba(var(--state-progress-rgb),.14)}
+/* The one-time repair banner. Informational rather than alarming — nothing is
+   broken, a set of jobs simply predates the crew side — so it wears the
+   panel's own gold rather than a warning colour, and it removes itself the
+   moment there is nothing left to fix. */
+#ejFix{
+  display:flex;flex-direction:column;align-items:flex-start;gap:.35rem;
+  border:1px solid var(--line);border-left:3px solid var(--gold);
+  background:var(--gold-t1);border-radius:var(--r-md);
+  padding:.8rem .9rem;margin:0 0 .9rem;
+}
+#ejFix > b{color:var(--gold-b);font-size:var(--fs-base)}
+#ejFix > span{font-size:var(--fs-sm);color:var(--mut);line-height:1.5}
+#ejFix .btn{margin-top:.3rem}
+
 /* a price an editor has asked for and not been answered on */
 .ejb--ask{
   flex:0 0 auto;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;
