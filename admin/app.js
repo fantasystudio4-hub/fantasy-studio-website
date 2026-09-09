@@ -5645,10 +5645,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      One door for every change, so nothing can move without an audit line.
      setDoc(merge) rather than updateDoc: the first write on a booking is
      also the write that creates its job document. */
+  /* The last-10 digits of every editor currently on this job. Firestore rules
+     cannot run a query, so the job document has to say for itself who may
+     open it — the same denormalising the panel already does with
+     assignments.memberPhone10 and the packages.crew mirror the partner portal
+     reads. Refreshed on every write, so it is self-healing: assign, reassign
+     or remove somebody and the next write puts it right. */
+  const ejEditorPhones = id => [...new Set(ejCrew(id)
+    .map(a => String((a && a.memberPhone10) || ''))
+    .filter(p => /^\d{10}$/.test(p)))];
   async function ejWrite(pkgId, patch, what){
     const now = ejNow(), by = ejWho();
     const entry = what ? { id: ejId(), at: now, by, what } : null;
-    const body = { ...patch, pkgId, updatedAt: serverTimestamp() };
+    const body = { ...patch, pkgId, editors: ejEditorPhones(pkgId), updatedAt: serverTimestamp() };
     if(entry) body.audit = arrayUnion(entry);
     let cur = ejDoc(pkgId);
     const isNew = !cur;
@@ -6277,12 +6286,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            portal's key, so it cannot be forked per assignee — and the name
            that was on it, the time, and who changed it are recorded on the
            editing job instead. */
+        /* The message needs the name that is being replaced, so it is composed
+           BEFORE the local row is overwritten — but sent AFTER, because the
+           same write refreshes the job's editors allowlist from ASGS and that
+           has to see the new member, not the one leaving. */
+        let auditMsg = '';
         if(old && (base.kind === 'edit' || old.kind === 'edit')){
           const was = old.memberName || 'somebody';
-          ejAudit(base.pkgId || old.pkgId,
-            old.memberId !== base.memberId
-              ? `Reassigned ${was} → ${m.name || 'a member'}`
-              : `Updated ${m.name || 'the editor'}’s assignment`);
+          auditMsg = old.memberId !== base.memberId
+            ? `Reassigned ${was} → ${m.name || 'a member'}`
+            : `Updated ${m.name || 'the editor'}’s assignment`;
         }
         if(old){
           Object.assign(old, base, { updatedAt: null });
@@ -6291,6 +6304,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             ...(patch['pay.paid'] !== undefined ? { paid: patch['pay.paid'] } : {}) };
           if(reset){ old.status='assigned'; delete old.ackAt; }
         }
+        if(auditMsg) ejAudit(base.pkgId || (old && old.pkgId), auditMsg);
       }else{
         const ref = doc(collection(db,'assignments'));
         const res = await settle(setDoc(ref, { ...base, pay: { amount: amt, paid: false, paidDate: '', mode: '' },

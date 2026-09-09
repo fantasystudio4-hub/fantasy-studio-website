@@ -212,6 +212,49 @@ service cloud.firestore {
             ));
     }
 
+    // post-production workflow, one document per booking that owes a film
+    // (doc id IS the package id). Stage, deadline, drive link, footage volume,
+    // the client's editing brief, the note thread and the audit trail.
+    //
+    // This is deliberately NOT on the package: packages/{id} is readable by
+    // the client AND by the partner studio, and the thread on here is between
+    // the studio and its editor.
+    //
+    // An editor assigned to the job may read it and add a note. Rules cannot
+    // run a query, so the document carries `editors` — the last-10 digits of
+    // everyone currently assigned to it, written by the admin panel on every
+    // job write. The crew page queries
+    //   where('editors','array-contains', <verified last-10>)
+    // and the read condition below is provable straight from that filter, the
+    // same way the client and partner queries prove theirs above.
+    //
+    // What an editor may change is exactly one thing: append ONE note. The
+    // key list is pinned, the array must grow by exactly one entry, so
+    // nothing can be deleted, and stage, deadline, driveLink, brief, editors
+    // and audit stay admin-only. An editor could still rewrite the text of an
+    // earlier note inside that same array — rules cannot compare elements —
+    // which is why the audit trail is a separate, admin-write-only field.
+    match /editingJobs/{pkgId} {
+      function myJob() {
+        return request.auth != null
+          && resource.data.editors is list
+          && resource.data.editors.hasAny([clientPhone10()]);
+      }
+      function noteCount(d) {
+        return ('comments' in d) && d.comments is list ? d.comments.size() : 0;
+      }
+      allow read: if isAdmin() || myJob();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (myJob()
+            && request.resource.data.diff(resource.data)
+                 .affectedKeys().hasOnly(['comments','updatedAt'])
+            && request.resource.data.comments is list
+            && noteCount(request.resource.data) == noteCount(resource.data) + 1
+            && noteCount(request.resource.data) <= 400
+            && request.resource.data.updatedAt == request.time);
+    }
+
     // join requests from the crew page. One per signed-in account (doc id is
     // the auth uid), the phone is pinned to the OTP-verified number, and the
     // fields are pinned + size-capped so nothing arbitrary can be injected

@@ -114,6 +114,32 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .asg .lines{margin-top:.5rem}
 .asg .notes{margin-top:.5rem;background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text)}
 .asg .notes b{color:var(--gold-b);font-weight:500}
+/* ---- the editing job's own record, on the editor's side ---- */
+/* The footage link is the first thing an editor needs and the only reason
+   some of them open this page at all, so it is a target, not a line of text. */
+.ejdrive{
+  display:flex;align-items:center;justify-content:center;
+  margin-top:.7rem;min-height:44px;padding:.5em .9em;
+  border:1px solid var(--line);border-radius:10px;
+  color:var(--gold-b);text-decoration:none;font-size:.85rem;
+  overflow-wrap:anywhere;
+}
+.ejdrive:active{background:rgba(184,144,43,.14)}
+.ejthread{margin-top:.8rem;border-top:1px solid rgba(255,255,255,.07);padding-top:.6rem}
+.ejt-h{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.ejt-h b{color:var(--gold-b);font-weight:600;margin-left:.3em}
+.ejt-none{margin-top:.45rem;font-size:.8rem;color:var(--mut)}
+.ejt-row{padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.ejt-row:last-of-type{border-bottom:0}
+.ejt-who{display:flex;align-items:baseline;gap:.5rem;font-size:.78rem;color:var(--gold-b);font-weight:500}
+.ejt-who em{font-style:normal;font-size:.7rem;color:var(--mut)}
+.ejt-row p{margin-top:.15rem;font-size:.85rem;color:var(--text);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.ejt-new{display:flex;gap:.5rem;align-items:flex-end;margin-top:.6rem}
+.ejt-new textarea{
+  flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:10px;color:var(--text);padding:.55em .7em;font:inherit;font-size:.85rem;resize:vertical;
+}
+.ejt-send{width:auto;margin-top:0;flex:0 0 auto;padding:.6em 1.1em;border-radius:10px;min-height:44px}
 .ackbtn{width:100%;margin-top:.8rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.75em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
 .ackbtn:active{transform:scale(.98)}
 .ackbtn:disabled{opacity:.7;cursor:default}
@@ -794,8 +820,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
 
   /* ---------- data + routing ---------- */
-  let ME = null, ASGS = [], REQ = null;
-  let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null;
+  let ME = null, ASGS = [], REQ = null, EJOBS = {};
+  let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null, _ejUnsub = null;
   let _meLoaded = false, _asgsLoaded = false, _reqLoaded = false;
   let _meErr = null, _reqErr = null;
   /* a SERVER-confirmed team snapshot has arrived — see route() */
@@ -803,9 +829,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _pastOpen = false, _phone10 = '', _pretty = '';
 
   function stopData(){
-    [_meUnsub, _asgsUnsub, _reqUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
-    _meUnsub = _asgsUnsub = _reqUnsub = null;
-    ME = null; ASGS = []; REQ = null;
+    [_meUnsub, _asgsUnsub, _reqUnsub, _ejUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
+    _meUnsub = _asgsUnsub = _reqUnsub = _ejUnsub = null;
+    ME = null; ASGS = []; REQ = null; EJOBS = {};
     _meLoaded = _asgsLoaded = _reqLoaded = false;
     _meErr = _reqErr = null;
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
@@ -881,6 +907,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       if(ME) render();
     }, err=>{ _asgsLoaded = true; ASGS = []; if(ME) render(); });
+    /* The editing desk's own record: the drive the footage is on, what the
+       client asked for, and the thread with the studio. The assignment says
+       WHAT is due and WHEN; none of the rest of it was ever on this page, so
+       an editor had the deadline for a film and no way to reach the footage.
+       array-contains on the verified last-10 is exactly what the rule proves
+       against — see editingJobs in firestore.rules.
+       If that rule is not published yet the listener simply fails and every
+       card below falls back to what it showed before, which is why nothing
+       here is required for the page to work. */
+    _ejUnsub = onSnapshot(query(collection(db,'editingJobs'), where('editors','array-contains',_phone10)), snap=>{
+      EJOBS = {};
+      snap.docs.forEach(d=>{ EJOBS[d.id] = { id:d.id, ...d.data() }; });
+      if(ME) render();
+    }, err=>{ EJOBS = {}; if(ME) render(); });
   });
 
   /* ---------- join request ---------- */
@@ -938,6 +978,53 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
+  /* ---------- the editing desk's own record ----------
+     The assignment says what is due and when. Everything an editor actually
+     needs to START — where the footage is, what the client asked for, how
+     much of it there is — lives on editingJobs/{pkgId}, which until now only
+     the admin panel could read. The studio's own screen calls the thread
+     "between you and the editor"; this is the editor's half of it.
+
+     Every part is optional and the whole block disappears if the job document
+     cannot be read, so an unpublished rule costs this page nothing. */
+  const EJ_STAGE = { unassigned:'Not started', assigned:'Assigned',
+                     progress:'In progress', review:'Under review', delivered:'Delivered' };
+  const ejWhen = t => { const d = new Date(t||''); return isNaN(d) ? ''
+    : d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' · ' +
+      d.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'}); };
+  const ejWho = w => String(w||'').split('@')[0] || 'studio';
+  /* a link the studio typed — only ever opened, never trusted as markup, and
+     only if it is really http(s) */
+  const ejSafeUrl = u => /^https?:\/\//i.test(String(u||'').trim()) ? String(u).trim() : '';
+
+  function ejBlock(a){
+    const j = EJOBS[a.pkgId]; if(!j) return '';
+    const url = ejSafeUrl(j.driveLink);
+    const notes = (Array.isArray(j.comments) ? j.comments : [])
+      .slice().sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
+    const bits = [];
+    if(EJ_STAGE[j.stage]) bits.push(`<div class="ln"><span>Stage</span><span>${esc(EJ_STAGE[j.stage])}</span></div>`);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(j.deadline||'') && j.deadline !== a.dueDate)
+      bits.push(`<div class="ln"><span>Studio deadline</span><span>${esc(fmtDate(j.deadline))}</span></div>`);
+    if(j.footage) bits.push(`<div class="ln"><span>Raw footage</span><span>${esc(j.footage)}</span></div>`);
+    return `
+      ${url ? `<a class="ejdrive" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↗ Open the footage</a>` : ''}
+      ${bits.length ? `<div class="lines">${bits.join('')}</div>` : ''}
+      ${j.brief ? `<div class="notes"><b>What the client asked for:</b> ${esc(j.brief)}</div>` : ''}
+      <div class="ejthread">
+        <div class="ejt-h">Notes with the studio${notes.length ? ` <b>${notes.length}</b>` : ''}</div>
+        ${notes.length ? notes.map(c=>`
+          <div class="ejt-row">
+            <span class="ejt-who">${esc(ejWho(c.by))}<em>${esc(ejWhen(c.at))}</em></span>
+            <p>${esc(c.text||'')}</p>
+          </div>`).join('') : '<p class="ejt-none">Nothing yet — ask the studio anything about this edit here.</p>'}
+        <div class="ejt-new">
+          <textarea rows="2" maxlength="1000" data-ejnote="${esc(a.pkgId)}" placeholder="Write to the studio…"></textarea>
+          <button class="ackbtn ejt-send" data-ejsend="${esc(a.pkgId)}">Send</button>
+        </div>
+      </div>`;
+  }
+
   /* Editing is a desk job on a deadline — no call time, no venue, and it does
      not belong in a schedule of shoot days. */
   function editCard(a){
@@ -963,6 +1050,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="ln"><span>${a.scope === 'package' ? 'Last shoot' : 'Shot on'}</span><span>${esc(fmtDate(a.date))}</span></div>
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
+      ${ejBlock(a)}
       ${seen ? '' : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this</button>`}
       ${a.workDone
         ? `<div class="ackdone">✓ Editing completed${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
@@ -1310,6 +1398,34 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#upList').addEventListener('click', doneClick);
   $('#editList').addEventListener('click', doneClick);
   $('#editList').addEventListener('click', ackClick);
+  $('#editList').addEventListener('click', ejSendClick);
+  /* The one write an editor makes on the job document: append a note. The
+     rule pins it to exactly that — the key list is fixed and the array has to
+     grow by one — so stage, deadline, the drive link and the audit trail stay
+     the studio's. */
+  async function ejSendClick(e){
+    const btn = e.target.closest('[data-ejsend]'); if(!btn || btn.disabled) return;
+    const pkgId = btn.dataset.ejsend;
+    const box = document.querySelector(`[data-ejnote="${CSS.escape(pkgId)}"]`);
+    const text = box ? box.value.trim() : '';
+    if(!text){ if(box) box.focus(); return; }
+    const j = EJOBS[pkgId]; if(!j) return;
+    const had = Array.isArray(j.comments) ? j.comments : [];
+    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+                    at: new Date().toISOString(),
+                    by: (ME && ME.name) || _pretty || 'editor',
+                    text: text.slice(0,1000) };
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      await updateDoc(doc(db,'editingJobs',pkgId), { comments: [...had, entry], updatedAt: serverTimestamp() });
+      j.comments = [...had, entry];
+      render();
+      toast('Sent ✓ — the studio can see it');
+    }catch(err){
+      btn.disabled = false; btn.textContent = 'Send';
+      toast(navigator.onLine ? 'Could not send — try again' : 'You are offline — try again with signal');
+    }
+  }
   async function doneClick(e){
     const done = e.target.closest('[data-workdone]');
     const undo = e.target.closest('[data-workundo]');
