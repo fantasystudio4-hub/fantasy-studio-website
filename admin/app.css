@@ -1612,6 +1612,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .pd-i{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);
       color:var(--text);padding:.6em .7em;font:inherit;font-size:var(--fs-base);resize:vertical}
 
+/* band headers inside the editing desk — tighter than a section rule, and
+   the first one does not shove the list away from the chips above it */
+.ejgrp{margin:.9rem 0 .5rem}
+#ejList > .ejgrp:first-child{margin-top:.1rem}
+/* the desk's rows carry several of these at once, so they wrap rather than
+   push the service line off the card */
+.ej-foot{flex-wrap:wrap;row-gap:.35rem}
+
 /* a price an editor has asked for and not been answered on */
 .ejb--ask{
   flex:0 0 auto;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;

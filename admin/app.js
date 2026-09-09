@@ -5279,6 +5279,43 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ['event',   '↕ Event date'],
     ['client',  '↕ Client A–Z'],
   ];
+  /* ---- what the desk is ordered by ----
+     Deadline alone mixed the four things that need the owner — a cut waiting
+     on a verdict, a price waiting on an answer, a job with nobody on it, a
+     job past its date — in among jobs sitting correctly with an editor and
+     wanting nothing. Same three bands the crew page uses, read from this
+     side: what wants YOU, what is out with somebody, what is finished. */
+  const EJ_BANDS = [
+    { key:'you',  label:'Needs you' },
+    { key:'out',  label:'With the editor' },
+    { key:'done', label:'Delivered' },
+  ];
+  function ejBand(r){
+    if(r.stage === 'delivered') return 2;
+    const j = r.job;
+    const latest = ejLatestCut(j);
+    if(latest && ejCutState(j, latest) === 'review') return 0;   /* your verdict */
+    if(r.asks) return 0;                                          /* a price to answer */
+    if(!r.crew.length) return 0;                                  /* nobody on it */
+    if(r.overdue) return 0;
+    return 1;
+  }
+  /* why it is in "Needs you" — said on the row, so the band is never a
+     mystery you have to open the job to solve */
+  function ejWants(r){
+    /* only ever explains a "Needs you" row. On a delivered job "no editor
+       yet" is true and completely beside the point — the film is out. */
+    if(ejBand(r) !== 0) return [];
+    const j = r.job, latest = ejLatestCut(j);
+    const out = [];
+    if(latest && ejCutState(j, latest) === 'review') out.push(`V${latest.n} to review`);
+    if(r.asks) out.push(`${r.asks} price${r.asks>1?'s':''} to agree`);
+    if(!r.crew.length) out.push('no editor yet');
+    /* deliberately NOT "overdue": the due chip beside these already reads
+       "4d late", and a row saying both is the card telling you one fact
+       twice */
+    return out;
+  }
   function ejVisibleRows(){
     const q = _ejQ.trim().toLowerCase();
     /* the one filter that changes WHICH set is being looked at rather than
@@ -5303,7 +5340,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return x < y ? -1 : x > y ? 1 : 0;
     };
     const cmp = {
-      deadline: byDeadline,
+      /* the default view leads with the band; the two explicit sorts below
+         are the owner asking for a flat list in a particular order, so they
+         are left flat */
+      deadline: (a,b)=>(ejBand(a) - ejBand(b)) || byDeadline(a,b),
       event: (a,b)=>(a.last > b.last ? -1 : a.last < b.last ? 1 : 0),
       client: (a,b)=>String(a.pk.clientName||'').localeCompare(String(b.pk.clientName||'')),
     }[_ejSort] || byDeadline;
@@ -5415,7 +5455,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button type="button" class="linky" data-ejclear>Clear it</button></div>`;
       return;
     }
-    el.innerHTML = rows.map(r=>`
+    /* Banded only in the default order — see ejVisibleRows. Asking for
+       Client A–Z and getting it in three chunks would not be A–Z. */
+    const banded = _ejSort === 'deadline' && _ejStageF !== 'awaiting';
+    let band = -1;
+    el.innerHTML = rows.map(r=>{
+      let head = '';
+      if(banded){
+        const p = ejBand(r);
+        if(p !== band){ band = p;
+          head = `<div class="grp ejgrp">${EJ_BANDS[p].label}<b>${
+            rows.filter(x=>ejBand(x) === p).length}</b></div>`; }
+      }
+      const wants = banded ? ejWants(r) : [];
+      return head + `
       <div class="ej-row${r.stage === 'delivered' ? ' ok' : ''}" data-ejopen="${esc(r.pk.id)}" role="button" tabindex="0">
         <div class="ej-top">
           <b>${esc(r.pk.clientName || '—')}</b>${qnoTag(r.pk.quoteNo)}
@@ -5427,10 +5480,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         <div class="ej-foot">
           ${ejDueChip(r)}
-          ${r.asks ? `<span class="ejb ejb--ask">₹ ${r.asks} price${r.asks>1?'s':''} to agree</span>` : ''}
+          ${wants.length ? wants.map(w=>`<span class="ejb ejb--ask">${esc(w)}</span>`).join('')
+                         : (r.asks ? `<span class="ejb ejb--ask">₹ ${r.asks} price${r.asks>1?'s':''} to agree</span>` : '')}
           <span class="ej-svc">${esc(ejSvcLine(r.scope))}</span>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
   /* ---- one-time repair: stamp the editors allowlist ----
      A job written before the crew side existed carries no `editors`, and
@@ -5556,9 +5611,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---- detail: ONE booking's video edit, and nothing else ---- */
-  let _ejOpenId = null, _ejListScrollY = 0, _ejAuditOpen = false;
+  let _ejOpenId = null, _ejListScrollY = 0, _ejAuditOpen = false, _ejScopeOpen = false;
   function openEjDetail(id){
-    if(_ejOpenId !== id) _ejAuditOpen = false;
+    if(_ejOpenId !== id){ _ejAuditOpen = false; _ejScopeOpen = false; }
     _ejListScrollY = (!$('#editView').hidden && !$('#ejListView').hidden) ? window.scrollY : 0;
     _ejOpenId = id;
     renderEjDetail();
@@ -5686,10 +5741,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${dstep && !dstepDone ? `<button class="addrow" data-ejtick style="margin-top:.7rem">✓ Tick “${esc(dstep)}” on the package</button>` : ''}
       </div>
 
+      ${/* Reference, not a control. It says what was sold and never changes,
+           so it is read once and then in the way — the summary keeps the two
+           numbers that matter on screen and the rest is a tap. */ ''}
       <div class="sec">
-        <h3>Scope of work</h3>
-        <p class="sub">The video services this booking was sold — ${ejUnits(r.scope)} camera-day${ejUnits(r.scope)===1?'':'s'} of footage across ${r.scope.length} function${r.scope.length===1?'':'s'}. Photography, album and everything else on the package are deliberately not shown here.</p>
-        <div class="ejs">${scopeRows}</div>
+        <h3 class="rc-tog ${_ejScopeOpen?'':'closed'}" data-ejscope role="button" tabindex="0" aria-expanded="${_ejScopeOpen}">Scope
+          <span class="rc-sum">${ejUnits(r.scope)} camera-day${ejUnits(r.scope)===1?'':'s'} · ${r.scope.length} function${r.scope.length===1?'':'s'}</span>
+          <span class="car">▾</span></h3>
+        ${_ejScopeOpen ? `
+        <p class="sub">The video services this booking was sold. Photography, album and everything else on the package are deliberately not shown here.</p>
+        <div class="ejs">${scopeRows}</div>` : ''}
       </div>
 
       <div class="sec">
@@ -5867,6 +5928,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#ejDetailView', 'click', async e=>{
     if(e.target.closest('[data-ejback]')){ backFrom('ejob', closeEjDetail); return; }
     if(e.target.closest('[data-ejaudit]')){ _ejAuditOpen = !_ejAuditOpen; renderEjDetail(); return; }
+    if(e.target.closest('[data-ejscope]')){ _ejScopeOpen = !_ejScopeOpen; renderEjDetail(); return; }
     const st = e.target.closest('[data-ejstageset]');
     if(st){ if(!st.disabled) ejSetStage(_ejOpenId, st.dataset.ejstageset); return; }
     if(e.target.closest('[data-ejassign]')){
