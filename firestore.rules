@@ -209,6 +209,23 @@ service cloud.firestore {
                      .hasOnly(['workDone','workDoneAt'])
                   && request.resource.data.workDone is bool
                   && request.resource.data.workDoneAt == request.time)
+              // (3) proposing a fee for their own editing job. A PROPOSAL,
+              // never the fee: pay.* is untouched by this branch, so the
+              // number only becomes real when the admin agrees to it in the
+              // panel. Capped and typed so nothing arbitrary or absurd can be
+              // written, and the member can withdraw it by clearing the field.
+              || (request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['payProposal'])
+                  && (!('payProposal' in request.resource.data)
+                      || (request.resource.data.payProposal.keys()
+                            .hasOnly(['amount','at','note'])
+                          && request.resource.data.payProposal.amount is number
+                          && request.resource.data.payProposal.amount >= 0
+                          && request.resource.data.payProposal.amount <= 2000000
+                          && request.resource.data.payProposal.at == request.time
+                          && (!('note' in request.resource.data.payProposal)
+                              || (request.resource.data.payProposal.note is string
+                                  && request.resource.data.payProposal.note.size() <= 200)))))
             ));
     }
 

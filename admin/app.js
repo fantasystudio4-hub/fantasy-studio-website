@@ -5101,6 +5101,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
 
+  /* What an editor has asked to be paid for this job, or null. Written by the
+     crew page into payProposal; pay.amount stays the studio's to set. */
+  const ejProposed = a => {
+    const p = a && a.payProposal;
+    const n = p && Number(p.amount);
+    return (p && Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
+  };
+  const ejAsksFor = id => ejCrew(id).filter(a=>ejProposed(a) !== null).length;
   const ejPkg   = id => livePkgs().find(p=>p.id===id);
   const ejDoc   = id => EJOBS.find(j=>j.id===id) || null;
   const ejCrew  = id => ASGS.filter(a=>a.kind === 'edit' && a.pkgId === id);
@@ -5203,6 +5211,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const overdue = stage !== 'delivered' && ISO_RE.test(deadline) && deadline < todayISO();
     const detailsStep = ejDetailsStep(pk);
     return { pk, job, crew, scope, last, deadline, stage, overdue,
+             asks: crew.filter(a=>ejProposed(a) !== null).length,
              detailsStep, awaiting: !ejGotDetails(pk) };
   }
   /* Every booking this tab could ever be about: sold a film, and ours to edit.
@@ -5386,6 +5395,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         <div class="ej-foot">
           ${ejDueChip(r)}
+          ${r.asks ? `<span class="ejb ejb--ask">₹ ${r.asks} price${r.asks>1?'s':''} to agree</span>` : ''}
           <span class="ej-svc">${esc(ejSvcLine(r.scope))}</span>
         </div>
       </div>`).join('');
@@ -5400,11 +5410,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(srt) srt.textContent = (EJ_SORTS.find(s=>s[0] === _ejSort) || EJ_SORTS[0])[1];
     const q = $('#ejSearch');
     if(q && q.value !== _ejQ && document.activeElement !== q) q.value = _ejQ;
-    /* the badge is overdue work only — a count of everything open would be
-       permanently lit and stop meaning anything */
-    const late = ejAllRows().filter(r=>r.overdue).length;
+    /* The badge is what is WAITING ON THE OWNER: work that has run past its
+       deadline, and prices an editor has asked for and not been answered on.
+       A count of everything open would be permanently lit and stop meaning
+       anything; an unanswered price is somebody waiting to be told what they
+       are being paid, which is exactly the kind of thing a badge is for. */
+    const rows = ejAllRows();
+    const late = rows.filter(r=>r.overdue).length;
+    const asks = rows.reduce((n,r)=>n + r.asks, 0);
     const b = $('#editBadge');
-    if(b){ b.hidden = !late; b.textContent = late || ''; }
+    if(b){ b.hidden = !(late + asks); b.textContent = (late + asks) || ''; }
   }
 
   on('#ejSearch', 'input', debounce(e=>{ _ejQ = e.target.value; viewSet('ejQ', _ejQ); renderEditTab(); }));
@@ -5516,16 +5531,31 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     const crewRows = r.crew.length ? r.crew.map(a=>{
       const m = memberById(a.memberId);
-      return `<div class="ejc-row" data-ejcrew="${esc(a.id)}" role="button" tabindex="0">
+      const fee = payFee(a);
+      const ask = ejProposed(a);
+      return `<div class="ejc-wrap">
+      <div class="ejc-row" data-ejcrew="${esc(a.id)}" role="button" tabindex="0">
         <span class="ejc-av">${esc(initials((m&&m.name) || a.memberName))}</span>
         <span class="t">
           <b>${esc((m&&m.name) || a.memberName || '—')}</b>
-          <span>${esc(roleLabel(a.role) || 'Editor')}${a.deliver ? ' · ' + esc(a.deliver) : ''}${
-            ejAssignedAt(a) ? ' · assigned ' + esc(ejAssignedAt(a)) : ''}</span>
+          <span>${esc(roleLabel(a.role) || 'Editor')}${a.deliver ? ' · ' + esc(a.deliver) : ''} · ${
+            fee > 0 ? esc(inr(fee)) : '<i>no fee set</i>'}</span>
         </span>
         ${a.workDone ? '<span class="duetag ok">✓ signed off</span>'
                      : a.status === 'acknowledged' ? '<span class="duetag">seen</span>'
                      : '<span class="duetag soon">not seen</span>'}
+      </div>
+      ${/* What the editor is asking to be paid. It is only ever a proposal —
+           the crew page cannot write pay.amount, the rules see to that — so
+           the number becomes the fee here or not at all. */ ''}
+      ${ask === null ? '' : `<div class="ejask">
+        <span class="ejask-t">${esc((m&&m.name) || a.memberName || 'They')} asked for
+          <b>${esc(inr(ask))}</b>${fee > 0 ? ` · you have ${esc(inr(fee))} on it` : ' · no fee set yet'}</span>
+        <span class="ejask-b">
+          <button type="button" class="btn btn--sm btn--primary" data-ejagree="${esc(a.id)}">✓ Agree ${esc(inr(ask))}</button>
+          <button type="button" class="btn btn--sm btn--ghost" data-ejdecline="${esc(a.id)}">Decline</button>
+        </span>
+      </div>`}
       </div>`;
     }).join('') : `<div class="empty" style="padding:.5rem 0">Nobody is on this edit yet.</div>`;
 
@@ -5743,6 +5773,47 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         title:'The client has sent their editing details?',
         body:`<p>This ticks <b>${esc(step)}</b> on ${esc(pk.clientName||'this package')} and puts the film on the editing desk.</p>`,
         confirmText:'Yes, received', danger:false })) tickDeliveryStep(pk.id, step);
+      return;
+    }
+    /* Agreeing to an editor's price IS a fee change, so it goes through
+       feeChangePatch like every other one — anything already paid on the row
+       is frozen into pay.payments first, or raising the fee would silently
+       rewrite what the member was handed. */
+    const agree = e.target.closest('[data-ejagree]');
+    const decline = e.target.closest('[data-ejdecline]');
+    if(agree || decline){
+      const id = (agree || decline).dataset[agree ? 'ejagree' : 'ejdecline'];
+      const a = ASGS.find(v=>v.id===id); if(!a) return;
+      const ask = ejProposed(a); if(ask === null) return;
+      const who = (memberById(a.memberId)||{}).name || a.memberName || 'the editor';
+      if(agree){
+        if(!await confirmDialog({
+          title:`Pay ${esc(who)} ${inr(ask)}?`,
+          body:`<p>This becomes the agreed fee for their part of this edit${
+            payFee(a) > 0 ? `, replacing ${inr(payFee(a))}` : ''}.</p>`,
+          confirmText:`Agree ${inr(ask)}`, danger:false })) return;
+        const patch = { ...feeChangePatch(a, ask), payProposal: deleteField(), updatedAt: serverTimestamp() };
+        const res = await settle(updateDoc(doc(db,'assignments',id), patch));
+        const sm = settleMsg(res, `Agreed — ${who} is on ${inr(ask)} ✓`);
+        toast(sm.msg);
+        if(!sm.ok) return;
+        a.pay = { ...(a.pay||{}), amount: ask };
+        delete a.payProposal;
+        ejAudit(a.pkgId, `Agreed ${inr(ask)} for ${who}`);
+      }else{
+        if(!await confirmDialog({
+          title:'Decline this price?',
+          body:`<p>${esc(who)} asked for <b>${inr(ask)}</b>. Declining clears the request — tell them what you can pay in the notes.</p>`,
+          confirmText:'Decline' })) return;
+        const res = await settle(updateDoc(doc(db,'assignments',id),
+          { payProposal: deleteField(), updatedAt: serverTimestamp() }));
+        const sm = settleMsg(res, 'Price declined');
+        toast(sm.msg);
+        if(!sm.ok) return;
+        delete a.payProposal;
+        ejAudit(a.pkgId, `Declined ${inr(ask)} from ${who}`);
+      }
+      buzz(); renderTeam(); renderEditTab();
       return;
     }
     if(e.target.closest('[data-ejtick]')){

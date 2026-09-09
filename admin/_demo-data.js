@@ -410,8 +410,11 @@ export const assignments = [
      its stage has to be derived from these two rows alone. */
   { ...asg('as17', 'pk01', team[4], iso(1), 'All functions', 'editing', 'acknowledged', 14000, 0, 'edit'),
     scope: 'package', deliver: 'Video', dueDate: iso(9) },
-  { ...asg('as18', 'pk01', team[7], iso(1), 'All functions', 'editing', 'assigned', 8000, 0, 'edit'),
-    scope: 'package', deliver: 'Teasers', dueDate: iso(16) },
+  /* booked with NO fee agreed, and the editor has put a number forward — the
+     price waiting on the owner's ✓ Agree in the Editing tab */
+  { ...asg('as18', 'pk01', team[7], iso(1), 'All functions', 'editing', 'assigned', 0, 0, 'edit'),
+    scope: 'package', deliver: 'Teasers', dueDate: iso(16),
+    payProposal: { amount: 9500, at: iso(-1) } },
   /* the delivered edit, signed off by the editor — pairs with the pk15 job */
   { ...asg('as19', 'pk15', team[7], iso(-150), 'Wedding', 'editing', 'acknowledged', 15000, 15000, 'edit'),
     deliver: 'Video', dueDate: iso(-95), workDone: true },

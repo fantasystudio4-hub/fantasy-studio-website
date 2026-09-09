@@ -118,16 +118,44 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* The footage link is the first thing an editor needs and the only reason
    some of them open this page at all, so it is a target, not a line of text. */
 .ejdrive{
-  display:flex;align-items:center;justify-content:center;
-  margin-top:.7rem;min-height:44px;padding:.5em .9em;
-  border:1px solid var(--line);border-radius:10px;
-  color:var(--gold-b);text-decoration:none;font-size:.85rem;
-  overflow-wrap:anywhere;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.1rem;
+  margin-top:.7rem;min-height:52px;padding:.55em .9em;
+  border:1px solid rgba(184,144,43,.55);border-radius:10px;
+  background:rgba(184,144,43,.1);
+  color:var(--gold-b);text-decoration:none;font-size:.9rem;
+  overflow-wrap:anywhere;text-align:center;
 }
-.ejdrive:active{background:rgba(184,144,43,.14)}
-.ejthread{margin-top:.8rem;border-top:1px solid rgba(255,255,255,.07);padding-top:.6rem}
-.ejt-h{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
-.ejt-h b{color:var(--gold-b);font-weight:600;margin-left:.3em}
+.ejdrive b{font-weight:600}
+.ejdrive em{font-style:normal;font-size:.7rem;color:var(--mut);letter-spacing:.02em}
+.ejdrive:active{background:rgba(184,144,43,.2)}
+/* Titled sections. The card was a flat run of unlabelled lines, which is what
+   made it hard to read at a glance — you had to parse it to find the part you
+   wanted. Each block says what it is. */
+.ejsec{margin-top:.85rem}
+.ejsec h4{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600;margin-bottom:.35rem}
+.ejsec h4 b{color:var(--gold-b);font-weight:600;margin-left:.3em}
+.ejsec .lines,.ejsec .notes{margin-top:0}
+/* ---- the fee, and asking for one ---- */
+.ejfee{border-radius:10px;padding:.6rem .75rem;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.ejfee > span{display:block;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.ejfee > b{display:block;font-size:1.15rem;color:var(--gold-b);margin-top:.1rem}
+.ejfee > em{display:block;font-style:normal;font-size:.78rem;color:var(--mut);margin-top:.2rem;line-height:1.45}
+.ejfee.ok{border-color:rgba(76,175,125,.4);background:rgba(76,175,125,.08)}
+.ejfee.ok > b{color:var(--ok)}
+.ejfee.wait{border-color:rgba(255,176,84,.45);background:rgba(255,176,84,.08)}
+.ejfee.wait > b{color:var(--warn)}
+.ejp-new{display:flex;gap:.5rem;margin-top:.55rem}
+.ejp-new input{
+  flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:10px;color:var(--text);padding:.55em .7em;font:inherit;font-size:1rem;min-height:44px;
+}
+.ejp-send{width:auto;margin-top:0;flex:0 0 auto;padding:.6em 1.1em;border-radius:10px;min-height:44px}
+.ejp-undo{
+  margin-top:.5rem;background:none;border:1px solid var(--line);color:var(--mut);
+  border-radius:40px;padding:.45em 1em;font-size:.76rem;cursor:pointer;min-height:44px;
+}
+.ejp-undo:active{color:var(--gold-b)}
+.ejthread{border-top:1px solid rgba(255,255,255,.07);padding-top:.7rem}
 .ejt-none{margin-top:.45rem;font-size:.8rem;color:var(--mut)}
 .ejt-row{padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .ejt-row:last-of-type{border-bottom:0}
@@ -610,7 +638,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-          collection, doc, getDoc, setDoc, updateDoc, query, where, onSnapshot, serverTimestamp } =
+          collection, doc, getDoc, setDoc, updateDoc, deleteField, query, where, onSnapshot, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   /* a NAMED app gives the crew page its own session storage — signing in here
@@ -997,8 +1025,47 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      only if it is really http(s) */
   const ejSafeUrl = u => /^https?:\/\//i.test(String(u||'').trim()) ? String(u).trim() : '';
 
+  const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+
+  /* ---- your fee ----
+     The studio sometimes books an edit before the price is settled, which
+     left the editor with a deadline, a drive full of footage and no idea
+     what the job pays. They can put a number forward here. It is a PROPOSAL
+     and says so — the rules do not let this page touch pay.amount, so it
+     becomes the fee only when the studio agrees to it in the panel. */
+  function ejFee(a){
+    const fee = Math.max(0, Number(((a||{}).pay||{}).amount) || 0);
+    const p = a.payProposal;
+    const asked = p && Number(p.amount) >= 0 ? Math.round(Number(p.amount)) : null;
+    /* agreed to exactly what was asked — say so and stop asking */
+    const settled = fee > 0 && asked !== null && fee === asked;
+    if(fee > 0 && (asked === null || settled)){
+      return `<div class="ejfee ok"><span>Your fee</span><b>${esc(inr(fee))}</b>
+        <em>${settled ? 'the studio agreed to your price' : 'agreed with the studio'}</em></div>`;
+    }
+    if(asked !== null){
+      return `<div class="ejfee wait">
+        <span>Your price</span><b>${esc(inr(asked))}</b>
+        <em>waiting for the studio to agree${fee > 0 ? ` · they have ${esc(inr(fee))} on this job` : ''}</em>
+        <button class="ejp-undo" data-ejwithdraw="${esc(a.id)}">Withdraw</button>
+      </div>`;
+    }
+    return `<div class="ejfee ask">
+      <span>Your fee</span><em>${fee > 0
+        ? `The studio has ${esc(inr(fee))} on this job. Ask for something different if that is not right.`
+        : 'Not set yet. Tell the studio what this edit is worth and they can agree to it.'}</em>
+      <div class="ejp-new">
+        <input type="number" inputmode="numeric" min="0" max="2000000" step="100"
+               data-ejprice="${esc(a.id)}" placeholder="Your price ₹" />
+        <button class="ackbtn ejp-send" data-ejask="${esc(a.id)}">${fee > 0 ? 'Ask' : 'Send price'}</button>
+      </div>
+    </div>`;
+  }
+
   function ejBlock(a){
-    const j = EJOBS[a.pkgId]; if(!j) return '';
+    const j = EJOBS[a.pkgId];
+    const fee = ejFee(a);
+    if(!j) return fee;   /* the fee lives on the assignment, so it works either way */
     const url = ejSafeUrl(j.driveLink);
     const notes = (Array.isArray(j.comments) ? j.comments : [])
       .slice().sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
@@ -1007,12 +1074,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(/^\d{4}-\d{2}-\d{2}$/.test(j.deadline||'') && j.deadline !== a.dueDate)
       bits.push(`<div class="ln"><span>Studio deadline</span><span>${esc(fmtDate(j.deadline))}</span></div>`);
     if(j.footage) bits.push(`<div class="ln"><span>Raw footage</span><span>${esc(j.footage)}</span></div>`);
+    /* Ordered the way the work happens: get the footage, read what they want,
+       know what it pays, then talk. Each part titled, because an unlabelled
+       run of lines is what made this card hard to read. */
     return `
-      ${url ? `<a class="ejdrive" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↗ Open the footage</a>` : ''}
-      ${bits.length ? `<div class="lines">${bits.join('')}</div>` : ''}
-      ${j.brief ? `<div class="notes"><b>What the client asked for:</b> ${esc(j.brief)}</div>` : ''}
-      <div class="ejthread">
-        <div class="ejt-h">Notes with the studio${notes.length ? ` <b>${notes.length}</b>` : ''}</div>
+      ${url ? `<a class="ejdrive" href="${esc(url)}" target="_blank" rel="noopener noreferrer">
+        <b>↗ Open the footage</b><em>opens your drive in a new tab</em></a>` : ''}
+      ${bits.length ? `<div class="ejsec"><h4>The job</h4><div class="lines">${bits.join('')}</div></div>` : ''}
+      ${j.brief ? `<div class="ejsec"><h4>What the client asked for</h4>
+        <div class="notes">${esc(j.brief)}</div></div>` : ''}
+      <div class="ejsec">${fee}</div>
+      <div class="ejsec ejthread">
+        <h4>Notes with the studio${notes.length ? ` <b>${notes.length}</b>` : ''}</h4>
         ${notes.length ? notes.map(c=>`
           <div class="ejt-row">
             <span class="ejt-who">${esc(ejWho(c.by))}<em>${esc(ejWhen(c.at))}</em></span>
@@ -1399,6 +1472,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#editList').addEventListener('click', doneClick);
   $('#editList').addEventListener('click', ackClick);
   $('#editList').addEventListener('click', ejSendClick);
+  $('#editList').addEventListener('click', ejPriceClick);
+  /* Propose a fee, or withdraw the proposal. Both write ONLY payProposal —
+     the rules refuse anything that touches pay.*, so this page can ask for a
+     number and never award itself one. */
+  async function ejPriceClick(e){
+    const ask = e.target.closest('[data-ejask]');
+    const undo = e.target.closest('[data-ejwithdraw]');
+    if(!ask && !undo) return;
+    const id = ask ? ask.dataset.ejask : undo.dataset.ejwithdraw;
+    const a = ASGS.find(v=>v.id===id); if(!a) return;
+    let proposal = null;
+    if(ask){
+      const box = document.querySelector(`[data-ejprice="${CSS.escape(id)}"]`);
+      const n = Math.round(Number(box && box.value));
+      if(!(n > 0)){ toast('Type what this edit is worth first'); if(box) box.focus(); return; }
+      if(n > 2000000){ toast('That is higher than this page allows — talk to the studio'); return; }
+      proposal = { amount: n, at: serverTimestamp() };
+      ask.disabled = true; ask.textContent = 'Sending…';
+    }
+    try{
+      await updateDoc(doc(db,'assignments',id),
+        proposal ? { payProposal: proposal } : { payProposal: deleteField() });
+      /* paint from what we know; the snapshot confirms with the real stamp */
+      if(proposal) a.payProposal = { amount: proposal.amount, at: new Date().toISOString() };
+      else delete a.payProposal;
+      render();
+      toast(proposal ? 'Sent ✓ — the studio has to agree to it' : 'Price withdrawn');
+    }catch(err){
+      render();
+      toast(navigator.onLine ? 'Could not send — try again' : 'You are offline — try again with signal');
+    }
+  }
   /* The one write an editor makes on the job document: append a note. The
      rule pins it to exactly that — the key list is fixed and the array has to
      grow by one — so stage, deadline, the drive link and the audit trail stay
