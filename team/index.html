@@ -1196,6 +1196,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      in decisions{} which this page cannot write — so a cut shows as "with the
      studio" until they say otherwise, and nobody can approve their own work.
      versions[] is theirs to append to, one at a time. */
+  /* The one deadline. It lives on the job now — the assign sheet no longer
+     asks for a second one — but an assignment written before that carries its
+     own, so that wins and nothing already scheduled shifts. */
+  const ISO_D = /^\d{4}-\d{2}-\d{2}$/;
+  const asgDue = a => {
+    const own = (a && a.dueDate) || '';
+    if(ISO_D.test(own)) return own;
+    const j = a && EJOBS[a.pkgId];
+    return (j && ISO_D.test(j.deadline||'')) ? j.deadline : '';
+  };
   const EJ_CUT = { review:'With the studio', changes:'Changes asked', approved:'Approved' };
   const ejCuts = j => (j && Array.isArray(j.versions) ? j.versions : [])
     .slice().sort((x,y)=>(Number(y.n)||0) - (Number(x.n)||0));
@@ -1247,8 +1257,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .slice().sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
     const bits = [];
     if(EJ_STAGE[j.stage]) bits.push(`<div class="ln"><span>Stage</span><span>${esc(EJ_STAGE[j.stage])}</span></div>`);
-    if(/^\d{4}-\d{2}-\d{2}$/.test(j.deadline||'') && j.deadline !== a.dueDate)
-      bits.push(`<div class="ln"><span>Studio deadline</span><span>${esc(fmtDate(j.deadline))}</span></div>`);
+
     if(j.footage) bits.push(`<div class="ln"><span>Raw footage</span><span>${esc(j.footage)}</span></div>`);
     /* Ordered the way the work happens: get the footage, read what they want,
        know what it pays, then talk. Each part titled, because an unlabelled
@@ -1309,8 +1318,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(a.workDone || cut === 'approved') return 3;
     if(cut === 'changes') return 0;                 /* sent back — your move */
     if(a.status !== 'acknowledged') return 0;       /* newly handed to you */
-    const d = /^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')
-      ? Math.round((new Date(a.dueDate+'T00:00') - new Date(todayISO()+'T00:00'))/864e5) : null;
+    const due = asgDue(a);
+    const d = ISO_D.test(due)
+      ? Math.round((new Date(due+'T00:00') - new Date(todayISO()+'T00:00'))/864e5) : null;
     if(d !== null && d <= 1) return 0;              /* late, today, tomorrow */
     if(cut === 'review') return 2;                  /* waiting on their verdict */
     return 1;
@@ -1318,7 +1328,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function edOrder(a, b){
     const pa = edBand(a), pb = edBand(b);
     if(pa !== pb) return pa - pb;
-    const da = a.dueDate || '', db = b.dueDate || '';
+    const da = asgDue(a), db = asgDue(b);
     /* finished work reads newest-first; everything else is soonest-first, and
        an undated job sorts after dated ones rather than before all of them */
     if(pa === 3) return da > db ? -1 : da < db ? 1 : 0;
@@ -1358,12 +1368,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      it was written to fall back to. Pick the date first, format it after. */
   const edWhen = a => {
     const iso = /^\d{4}-\d{2}-\d{2}$/;
-    return fmtShort(iso.test(a.dueDate||'') ? a.dueDate : (a.date||''));
+    const due = asgDue(a);
+    return fmtShort(iso.test(due) ? due : (a.date||''));
   };
   function edDueChip(a){
     const today = todayISO();
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')) return '<span class="chip wait">no date</span>';
-    const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
+    const due = asgDue(a);
+    if(!ISO_D.test(due)) return '<span class="chip wait">no date</span>';
+    const d = Math.round((new Date(due+'T00:00') - new Date(today+'T00:00'))/864e5);
     const cls = a.workDone ? 'seen' : d < 0 ? 'late' : 'wait';
     const txt = a.workDone ? '✓ done' : d < 0 ? Math.abs(d) + 'd late'
       : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'due in ' + d + 'd';
@@ -1376,8 +1388,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const seen = a.status === 'acknowledged';
     const today = todayISO();
     let tag = '<span class="chip wait">no date</span>';
-    if(/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')){
-      const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
+    const due = asgDue(a);
+    if(ISO_D.test(due)){
+      const d = Math.round((new Date(due+'T00:00') - new Date(today+'T00:00'))/864e5);
       const cls = a.workDone ? 'seen' : d < 0 ? 'late' : 'wait';
       const txt = a.workDone ? '✓ done' : d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'due in ' + d + 'd';
       tag = `<span class="chip ${cls}">${txt}</span>`;
@@ -1391,7 +1404,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <div class="lines">
         <div class="ln"><span>Booking</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
-        ${a.dueDate ? `<div class="ln"><span>Due</span><span>${esc(fmtDate(a.dueDate))}</span></div>` : ''}
+        ${asgDue(a) ? `<div class="ln"><span>Due</span><span>${esc(fmtDate(asgDue(a)))}</span></div>` : ''}
         <div class="ln"><span>${a.scope === 'package' ? 'Last shoot' : 'Shot on'}</span><span>${esc(fmtDate(a.date))}</span></div>
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
@@ -1672,7 +1685,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const past = shoots.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
     $('#editWrap').hidden = !edits.length;
     if(edits.length){
-      const late = edits.filter(a=>!a.workDone && (a.dueDate||'') && a.dueDate < today).length;
+      const late = edits.filter(a=>!a.workDone && asgDue(a) && asgDue(a) < today).length;
       $('#editCount').textContent = edits.filter(a=>!a.workDone).length + (late ? ' · ' + late + ' late' : '');
       /* Grouped by what it wants from you, not by date alone. A date sort put
          a job with no deadline at the bottom — which is exactly where a piece

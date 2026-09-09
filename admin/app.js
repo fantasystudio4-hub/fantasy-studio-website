@@ -4354,20 +4354,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     const today = todayISO();
-    const open = jobs.filter(a=>!a.workDone).sort((a,b)=>(a.dueDate||'9999') < (b.dueDate||'9999') ? -1 : 1);
-    const done = jobs.filter(a=>a.workDone).sort((a,b)=>(a.dueDate||'') > (b.dueDate||'') ? -1 : 1);
-    const late = open.filter(a=>(a.dueDate||'') && a.dueDate < today).length;
+    const open = jobs.filter(a=>!a.workDone).sort((a,b)=>(asgDue(a)||'9999') < (asgDue(b)||'9999') ? -1 : 1);
+    const done = jobs.filter(a=>a.workDone).sort((a,b)=>(asgDue(a)||'') > (asgDue(b)||'') ? -1 : 1);
+    const late = open.filter(a=>asgDue(a) && asgDue(a) < today).length;
     $('#edCount').innerHTML = late ? `<b style="color:var(--warn)">${late} overdue.</b>` : '';
     const dueChip = a => {
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')) return '<span class="duetag">no date</span>';
-      const d = Math.round((new Date(a.dueDate+'T00:00') - new Date(today+'T00:00'))/864e5);
+      const due = asgDue(a);
+      if(!ISO_RE.test(due)) return '<span class="duetag">no date</span>';
+      const d = Math.round((new Date(due+'T00:00') - new Date(today+'T00:00'))/864e5);
       const cls = d < 0 ? 'late' : d <= 3 ? 'soon' : '';
       const txt = d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + 'd';
       return `<span class="duetag ${cls}">${txt}</span>`;
     };
     const row = a => {
       const pk = PKGS.find(p=>p.id===a.pkgId);
-      const late = !a.workDone && (a.dueDate||'') && a.dueDate < today;
+      const late = !a.workDone && asgDue(a) && asgDue(a) < today;
       const m = memberById(a.memberId);
       const wa = (m && m.phone) ? String(normPhoneFull(m.phone)).replace(/\D/g,'') : '';
       /* an edit signed off whose delivery step is still unticked — one tap
@@ -4376,7 +4377,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const stepDone = step && (Array.isArray(pk.delivery) ? pk.delivery : []).some(d=>d && d.step === step);
       return `
       <div class="ed-row ${a.workDone ? 'ok' : ''}">
-        <span class="w" data-asedit="${a.id}" role="button" tabindex="0">${esc(stepDate(a.dueDate) || '—')}</span>
+        <span class="w" data-asedit="${a.id}" role="button" tabindex="0">${esc(stepDate(asgDue(a)) || '—')}</span>
         <span class="t" data-asedit="${a.id}" role="button" tabindex="0">
           <b>${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : ''}</b>
           ${qnoTag(a.quoteNo)}
@@ -4399,9 +4400,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(nd){
       const a = ASGS.find(v=>v.id===nd.dataset.nudge); if(!a) return;
       const m = memberById(a.memberId); if(!m || !m.phone) return;
-      const days = Math.round((new Date(todayISO()+'T00:00') - new Date(a.dueDate+'T00:00'))/864e5);
+      const days = Math.round((new Date(todayISO()+'T00:00') - new Date(asgDue(a)+'T00:00'))/864e5);
       openWa('https://wa.me/' + String(normPhoneFull(m.phone)).replace(/\D/g,'') + '?text=' + encodeURIComponent(
-        `Salaam ${m.name||''}! The ${a.deliver||'editing'} for ${a.clientName||'the booking'} was due ${stepDate(a.dueDate)}` +
+        `Salaam ${m.name||''}! The ${a.deliver||'editing'} for ${a.clientName||'the booking'} was due ${stepDate(asgDue(a))}` +
         `${days > 0 ? ` — ${days} day${days===1?'':'s'} ago` : ''}. How is it looking?`));
       return;
     }
@@ -4476,7 +4477,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const r = _bookRows[Number($('#asBook').value)]; if(!r) return;
     _asCtx = ctxOfRow(r);
     $('#asWho').textContent = asWhoText(_asCtx);
-    $('#asDue').value = '';            /* re-derived from the chosen function */
     renderAsPick(); syncAsUI(); refreshAsConflict();
   }
   on('#edAdd', 'click', ()=>{
@@ -4511,7 +4511,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                 up:    teamEventsIn('up').length,
                 past:  teamEventsIn('past').length,
                 edit:  ASGS.filter(a=>a.kind === 'edit' && !a.workDone).length };
-    const late = ASGS.filter(a=>a.kind === 'edit' && !a.workDone && (a.dueDate||'') && a.dueDate < today).length;
+    const late = ASGS.filter(a=>a.kind === 'edit' && !a.workDone && asgDue(a) && asgDue(a) < today).length;
     /* a shoot TODAY that is still short of crew is the one thing on this page
        worth shouting about */
     const shortToday = teamEventsIn('today').some(({pk,ev})=>{
@@ -5141,6 +5141,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const ejRounds = j => ejCuts(j).length;
   /* only ever opened, never trusted as markup */
   const ejSafeUrl = u => /^https?:\/\//i.test(String(u||'').trim()) ? String(u).trim() : '';
+  /* The one deadline an editing job has. It lives on the job; an assignment
+     written before this change may still carry its own, so that is honoured
+     first and nothing already scheduled moves. */
+  const asgDue = a => {
+    const own = (a && a.dueDate) || '';
+    if(ISO_RE.test(own)) return own;
+    const j = a && ejDoc(a.pkgId);
+    return (j && ISO_RE.test(j.deadline||'')) ? j.deadline : '';
+  };
+  /* Putting somebody on an edit for the first time gives the job a deadline
+     if it has none — the same date the sheet used to prefill, now written
+     where the one date lives. */
+  function ejAssigned(pkgId, msg, evDate){
+    const j = ejDoc(pkgId);
+    const has = j && ISO_RE.test(j.deadline||'');
+    ejWrite(pkgId, has ? {} : { deadline: dueFromEvent(evDate) }, msg).catch(()=>{});
+  }
   const ejPkg   = id => livePkgs().find(p=>p.id===id);
   const ejDoc   = id => EJOBS.find(j=>j.id===id) || null;
   const ejCrew  = id => ASGS.filter(a=>a.kind === 'edit' && a.pkgId === id);
@@ -6341,14 +6358,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $$('#asModal [data-editonly]').forEach(f=>f.hidden = !ed);
     if(!$('#asBookWrap').hidden && typeof fillBookingEvents === 'function') fillBookingEvents();
     $$('#asModal [data-shootonly]').forEach(f=>f.hidden = ed);
-    if(ed && !$('#asDue').value)
-      $('#asDue').value = dueFromEvent(($('#asWhole').checked && lastEventDate(_asCtx && _asCtx.pkgId)) || (_asCtx && _asCtx.date));
     $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save Assignment';
   }
   on('#asRole', 'change', syncAsUI);
   /* the deadline is measured from the last function once it covers them all */
   on('#asWhole', 'change', ()=>{
-    $('#asDue').value = '';
     if(!$('#asBookWrap').hidden){ fillBookingEvents(); reBook(); return; }
     syncAsUI();
   });
@@ -6490,7 +6504,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role
       : (_asForceEdit && TEAM_ROLES.includes('editor')) ? 'editor' : TEAM_ROLES[0];
     $('#asCall').value = a ? (a.callTime||'') : '';
-    $('#asDue').value = a ? (a.dueDate||'') : '';
     $('#asDeliver').value = a ? (a.deliver||'') : '';
     $('#asWhole').checked = a ? (a.scope === 'package') : !!(opts && opts.whole);
     $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
@@ -6545,7 +6558,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* empty strings rather than absent keys: a member switched off editing
            must lose the deadline, not keep a stale one */
         kind: ed ? 'edit' : '',
-        dueDate: ed ? (($('#asDue').value || dueFromEvent(_asCtx.date))) : '',
+        /* the job owns the deadline now — see ejAssigned below, which seeds
+           it from the shoot the first time somebody is put on the work */
+        dueDate: '',
         deliver: ed ? $('#asDeliver').value.trim() : '',
         scope: ed && $('#asWhole').checked ? 'package' : '',
         notes: $('#asNotes').value.trim(), updatedAt: serverTimestamp()
@@ -6567,7 +6582,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           /* an editing job's assignments live here, but its history lives on
              the job document — so the Editing tab can say who was put on it
              and when, long after the roster has changed */
-          if(b.kind === 'edit') ejAudit(b.pkgId, `Assigned ${x.name || 'a member'} as ${roleLabel(b.role) || 'editor'}`);
+          if(b.kind === 'edit') ejAssigned(b.pkgId, `Assigned ${x.name || 'a member'} as ${roleLabel(b.role) || 'editor'}`, b.date);
         }
         toast(failed ? `${ok} assigned — ${failed} refused by the server` : `${ok} crew assigned ✓`);
         if(!ok) return;
@@ -6623,7 +6638,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast(sm.msg);
         if(!sm.ok) return;
         ASGS.unshift({ id: ref.id, ...base, pay: { amount: amt, paid: false, paidDate: '', mode: '' }, status: 'assigned' });
-        if(base.kind === 'edit') ejAudit(base.pkgId, `Assigned ${m.name || 'a member'} as ${roleLabel(base.role) || 'editor'}`);
+        if(base.kind === 'edit') ejAssigned(base.pkgId, `Assigned ${m.name || 'a member'} as ${roleLabel(base.role) || 'editor'}`, base.date);
       }
       buzz(); renderTeam(); renderEditTab();
       closeAs();

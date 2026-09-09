@@ -597,7 +597,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="as-multi" id="asMulti" hidden></div>
   <div class="fld" data-solo><label>Role for this event</label><select id="asRole"></select></div>
   <div class="fld" data-shootonly><label>Call time</label><input id="asCall" type="time" /></div>
-  <div class="fld" data-editonly hidden><label>Editing due</label><input id="asDue" type="date" /></div>
+  <!-- The editing deadline was asked for here AND set on the job in the
+       Editing tab, so one edit had two dates that could disagree and nothing
+       said which one counted. The job owns it now; this sheet is about who is
+       on the work, not when it lands. -->
   <div class="fld" data-editonly hidden><label>What to deliver</label>
     <input id="asDeliver" placeholder="e.g. Photos + 2 teasers" />
     <div class="evchips" id="asDelChips"></div>
