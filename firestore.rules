@@ -260,16 +260,32 @@ service cloud.firestore {
       function noteCount(d) {
         return ('comments' in d) && d.comments is list ? d.comments.size() : 0;
       }
-      allow read: if isAdmin() || myJob();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin()
-        || (myJob()
-            && request.resource.data.diff(resource.data)
+      function cutCount(d) {
+        return ('versions' in d) && d.versions is list ? d.versions.size() : 0;
+      }
+      // an editor hands in a cut: one new entry on versions[], nothing else.
+      // The STUDIO'S VERDICT on that cut is not here — it lives in
+      // `decisions`, which this branch cannot touch, so an editor can submit
+      // work and can never mark their own work approved.
+      function addsOneCut() {
+        return request.resource.data.diff(resource.data)
+                 .affectedKeys().hasOnly(['versions','updatedAt'])
+            && request.resource.data.versions is list
+            && cutCount(request.resource.data) == cutCount(resource.data) + 1
+            && cutCount(request.resource.data) <= 100
+            && request.resource.data.updatedAt == request.time;
+      }
+      function addsOneNote() {
+        return request.resource.data.diff(resource.data)
                  .affectedKeys().hasOnly(['comments','updatedAt'])
             && request.resource.data.comments is list
             && noteCount(request.resource.data) == noteCount(resource.data) + 1
             && noteCount(request.resource.data) <= 400
-            && request.resource.data.updatedAt == request.time);
+            && request.resource.data.updatedAt == request.time;
+      }
+      allow read: if isAdmin() || myJob();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (myJob() && (addsOneNote() || addsOneCut()));
     }
 
     // join requests from the crew page. One per signed-in account (doc id is

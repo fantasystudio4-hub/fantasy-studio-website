@@ -475,6 +475,22 @@ export const editingJobs = [
     footage: '1.4 TB · 3 drives',
     driveLink: 'https://drive.google.com/drive/folders/demo-aisha-fatima',
     brief: 'No music over the Nikah audio. Her father\u2019s speech at the Walima has to be in the film in full.',
+    /* three rounds: V1 sent back, V2 sent back, V3 sitting with the studio —
+       the state the Cuts section exists to make legible */
+    versions: [
+      { id: 'v1', n: 1, link: 'https://frame.io/demo/aisha-v1', note: 'First pass, no colour yet.',
+        by: 'Bhavani Priya', at: ejWhen(24) },
+      { id: 'v2', n: 2, link: 'https://frame.io/demo/aisha-v2', note: 'Speech fixed, colour started.',
+        by: 'Bhavani Priya', at: ejWhen(11) },
+      { id: 'v3', n: 3, link: 'https://frame.io/demo/aisha-v3', note: 'Engagement footage added at the top.',
+        by: 'Bhavani Priya', at: ejWhen(3) },
+    ],
+    decisions: {
+      v1: { status: 'changes', at: ejWhen(22), by: 'fantasystudio4@gmail.com',
+            changes: 'Walima speech is cut short at 2:40 — they asked for all of it.' },
+      v2: { status: 'changes', at: ejWhen(7), by: 'fantasystudio4@gmail.com',
+            changes: 'Client wants the engagement footage at the top as well.' },
+    },
     comments: [
       { id: 'ec01', at: ejWhen(9), by: 'fantasystudio4@gmail.com',
         text: 'Rough cut looks good. The Walima speech is cut short at 2:40 \u2014 they asked for all of it.' },

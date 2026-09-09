@@ -167,6 +167,36 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
   border-radius:40px;padding:.45em 1em;font-size:.78rem;cursor:pointer;min-height:44px;
 }
 .ejp-undo:active{color:var(--gold-b)}
+/* ---- rounds ---- */
+/* whose move it is, said before the list rather than left to be inferred */
+.ejwhose{font-size:.82rem;line-height:1.5;color:var(--mut);margin-bottom:.5rem}
+.ejwhose.changes{color:var(--warn)}
+.ejwhose.approved{color:var(--ok)}
+.ejcut{border-left:3px solid var(--line);padding:.5rem .7rem;margin-bottom:.45rem;
+       background:rgba(255,255,255,.03);border-radius:0 8px 8px 0}
+.ejcut--changes{border-left-color:var(--warn);background:rgba(255,176,84,.07)}
+.ejcut--approved{border-left-color:var(--ok);background:rgba(76,175,125,.07)}
+.ejcut-h{display:flex;align-items:baseline;gap:.5rem}
+.ejcut-h b{font-size:.92rem;color:var(--gold-b)}
+.ejcut-h em{font-style:normal;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.ejcut--changes .ejcut-h em{color:var(--warn)}
+.ejcut--approved .ejcut-h em{color:var(--ok)}
+.ejcut-n{margin-top:.2rem;font-size:.82rem;color:var(--mut);line-height:1.45}
+.ejcut-c{margin-top:.3rem;font-size:.85rem;color:var(--text);line-height:1.5}
+.ejcut-c b{color:var(--warn);font-weight:600}
+.ejcut-l{display:inline-block;margin-top:.35rem;font-size:.82rem;color:var(--gold-b);
+         text-decoration:underline;min-height:44px;line-height:44px;overflow-wrap:anywhere}
+.ejcut-new{display:flex;flex-direction:column;gap:.45rem;margin-top:.6rem}
+.ejcut-new input,.ejcut-new textarea{
+  width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);
+  border-radius:10px;color:var(--text);padding:.6em .75em;font:inherit;font-size:.95rem;min-height:44px;
+}
+.ejcut-new textarea{font-size:.9rem;resize:vertical;min-height:auto}
+.ejcut-new .ejcut-send{
+  width:100%;margin-top:0;background:none;border:1px solid rgba(184,144,43,.6);
+  color:var(--gold-b);border-radius:10px;padding:.65em;font-size:.85rem;min-height:44px;
+}
+.ejcut-new .ejcut-send:active{background:rgba(184,144,43,.16)}
 .ejthread{border-top:1px solid rgba(255,255,255,.07);padding-top:.7rem}
 .ejt-none{margin-top:.45rem;font-size:.8rem;color:var(--mut)}
 .ejt-row{padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
@@ -1073,6 +1103,53 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
+  /* ---- the rounds ----
+     What the editor hands in, and what came back. The studio's verdict lives
+     in decisions{} which this page cannot write — so a cut shows as "with the
+     studio" until they say otherwise, and nobody can approve their own work.
+     versions[] is theirs to append to, one at a time. */
+  const EJ_CUT = { review:'With the studio', changes:'Changes asked', approved:'Approved' };
+  const ejCuts = j => (j && Array.isArray(j.versions) ? j.versions : [])
+    .slice().sort((x,y)=>(Number(y.n)||0) - (Number(x.n)||0));
+  const ejVerdict = (j,v) => ((j && j.decisions) || {})[v && v.id] || null;
+  const ejCutState = (j,v) => { const d = ejVerdict(j,v); return d && d.status ? d.status : 'review'; };
+
+  function ejCutsBlock(a, j){
+    const cuts = ejCuts(j);
+    const latest = cuts[0] || null;
+    const st = latest ? ejCutState(j, latest) : null;
+    const done = st === 'approved';
+    /* what to do next, said in one line at the top — the whole point of
+       rounds is knowing whose move it is */
+    const whose = !latest ? 'Nothing sent yet. Hand in your first cut when it is ready.'
+      : st === 'review'   ? `V${latest.n} is with the studio. They will approve it or come back with changes.`
+      : st === 'changes'  ? `V${latest.n} came back with changes. Send the next cut when you have done them.`
+      :                     `V${latest.n} is approved — nothing more needed unless the studio asks.`;
+    return `
+      <div class="ejsec">
+        <h4>Cuts${cuts.length ? ` <b>${cuts.length}</b>` : ''}</h4>
+        <p class="ejwhose ${st||'none'}">${esc(whose)}</p>
+        ${cuts.map(v=>{
+          const s2 = ejCutState(j,v), d = ejVerdict(j,v), url = ejSafeUrl(v.link);
+          return `
+          <div class="ejcut ejcut--${s2}">
+            <span class="ejcut-h"><b>V${esc(String(v.n||'?'))}</b>
+              <em>${esc(EJ_CUT[s2] || s2)}</em></span>
+            ${v.note ? `<p class="ejcut-n">${esc(v.note)}</p>` : ''}
+            ${d && d.changes ? `<p class="ejcut-c"><b>They asked for:</b> ${esc(d.changes)}</p>` : ''}
+            ${url ? `<a class="ejcut-l" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↗ Open this cut</a>` : ''}
+          </div>`;
+        }).join('')}
+        ${done ? '' : `<div class="ejcut-new">
+          <input type="url" inputmode="url" data-ejcutlink="${esc(a.pkgId)}"
+                 placeholder="Link to your cut (https://…)" />
+          <textarea rows="2" maxlength="400" data-ejcutnote="${esc(a.pkgId)}"
+                    placeholder="Anything the studio should know (optional)"></textarea>
+          <button class="ackbtn ejcut-send" data-ejcutsend="${esc(a.pkgId)}">Hand in V${cuts.length + 1}</button>
+        </div>`}
+      </div>`;
+  }
+
   function ejBlock(a){
     const j = EJOBS[a.pkgId];
     const fee = ejFee(a);
@@ -1094,6 +1171,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${bits.length ? `<div class="ejsec"><h4>The job</h4><div class="lines">${bits.join('')}</div></div>` : ''}
       ${j.brief ? `<div class="ejsec"><h4>What the client asked for</h4>
         <div class="notes">${esc(j.brief)}</div></div>` : ''}
+      ${ejCutsBlock(a, j)}
       <div class="ejsec">${fee}</div>
       <div class="ejsec ejthread">
         <h4>Notes with the studio${notes.length ? ` <b>${notes.length}</b>` : ''}</h4>
@@ -1484,6 +1562,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#editList').addEventListener('click', ackClick);
   $('#editList').addEventListener('click', ejSendClick);
   $('#editList').addEventListener('click', ejPriceClick);
+  $('#editList').addEventListener('click', ejCutClick);
+  /* Hand in a cut. Appends one entry to versions[] and nothing else — the
+     rules pin it to that, and the studio's verdict lives in decisions{} which
+     this page cannot write. */
+  async function ejCutClick(e){
+    const btn = e.target.closest('[data-ejcutsend]'); if(!btn || btn.disabled) return;
+    const pkgId = btn.dataset.ejcutsend;
+    const j = EJOBS[pkgId]; if(!j) return;
+    const linkBox = document.querySelector(`[data-ejcutlink="${CSS.escape(pkgId)}"]`);
+    const noteBox = document.querySelector(`[data-ejcutnote="${CSS.escape(pkgId)}"]`);
+    const link = (linkBox ? linkBox.value : '').trim();
+    if(!ejSafeUrl(link)){
+      toast(link ? 'That does not look like a link — it should start with https://' : 'Paste the link to your cut first');
+      if(linkBox) linkBox.focus();
+      return;
+    }
+    const had = Array.isArray(j.versions) ? j.versions : [];
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      n: had.reduce((m,v)=>Math.max(m, Number(v.n)||0), 0) + 1,
+      link, note: (noteBox ? noteBox.value : '').trim().slice(0,400),
+      by: (ME && ME.name) || _pretty || 'editor',
+      at: new Date().toISOString()
+    };
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      await updateDoc(doc(db,'editingJobs',pkgId), { versions: [...had, entry], updatedAt: serverTimestamp() });
+      j.versions = [...had, entry];
+      render();
+      toast(`V${entry.n} handed in ✓ — the studio can watch it now`);
+    }catch(err){
+      btn.disabled = false; btn.textContent = 'Hand in V' + entry.n;
+      toast(navigator.onLine ? 'Could not send — try again' : 'You are offline — try again with signal');
+    }
+  }
   /* Propose a fee, or withdraw the proposal. Both write ONLY payProposal —
      the rules refuse anything that touches pay.*, so this page can ask for a
      number and never award itself one. */
