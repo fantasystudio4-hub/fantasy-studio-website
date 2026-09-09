@@ -144,15 +144,27 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ejfee.ok > b{color:var(--ok)}
 .ejfee.wait{border-color:rgba(255,176,84,.45);background:rgba(255,176,84,.08)}
 .ejfee.wait > b{color:var(--warn)}
-.ejp-new{display:flex;gap:.5rem;margin-top:.55rem}
+/* Stacked, not side by side. Sharing a row, the number field collapsed to a
+   sliver next to the button — a price box you cannot type a price into. Full
+   width each is also simply easier on a phone. */
+.ejp-new{display:flex;flex-direction:column;gap:.45rem;margin-top:.6rem}
 .ejp-new input{
-  flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);
-  border-radius:10px;color:var(--text);padding:.55em .7em;font:inherit;font-size:1rem;min-height:44px;
+  width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);
+  border-radius:10px;color:var(--text);padding:.6em .75em;font:inherit;font-size:1.05rem;
+  min-height:48px;text-align:center;letter-spacing:.02em;
 }
-.ejp-send{width:auto;margin-top:0;flex:0 0 auto;padding:.6em 1.1em;border-radius:10px;min-height:44px}
+.ejp-new input::placeholder{color:var(--mut);font-size:.9rem;letter-spacing:0}
+/* .ackbtn sets width:100% and the big gold gradient further down the sheet,
+   so these need the extra class to win on specificity rather than order —
+   and they are secondary actions, which the gradient should not claim. */
+.ejp-new .ejp-send,.ejt-new .ejt-send{
+  width:100%;margin-top:0;background:none;border:1px solid rgba(184,144,43,.6);
+  color:var(--gold-b);border-radius:10px;padding:.65em;font-size:.85rem;min-height:44px;
+}
+.ejp-new .ejp-send:active,.ejt-new .ejt-send:active{background:rgba(184,144,43,.16)}
 .ejp-undo{
-  margin-top:.5rem;background:none;border:1px solid var(--line);color:var(--mut);
-  border-radius:40px;padding:.45em 1em;font-size:.76rem;cursor:pointer;min-height:44px;
+  margin-top:.55rem;background:none;border:1px solid var(--line);color:var(--mut);
+  border-radius:40px;padding:.45em 1em;font-size:.78rem;cursor:pointer;min-height:44px;
 }
 .ejp-undo:active{color:var(--gold-b)}
 .ejthread{border-top:1px solid rgba(255,255,255,.07);padding-top:.7rem}
@@ -162,12 +174,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ejt-who{display:flex;align-items:baseline;gap:.5rem;font-size:.78rem;color:var(--gold-b);font-weight:500}
 .ejt-who em{font-style:normal;font-size:.7rem;color:var(--mut)}
 .ejt-row p{margin-top:.15rem;font-size:.85rem;color:var(--text);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.ejt-new{display:flex;gap:.5rem;align-items:flex-end;margin-top:.6rem}
+.ejt-new{display:flex;flex-direction:column;gap:.45rem;margin-top:.6rem}
 .ejt-new textarea{
-  flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);
-  border-radius:10px;color:var(--text);padding:.55em .7em;font:inherit;font-size:.85rem;resize:vertical;
+  width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);
+  border-radius:10px;color:var(--text);padding:.6em .75em;font:inherit;font-size:.9rem;resize:vertical;
 }
-.ejt-send{width:auto;margin-top:0;flex:0 0 auto;padding:.6em 1.1em;border-radius:10px;min-height:44px}
 .ackbtn{width:100%;margin-top:.8rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.75em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
 .ackbtn:active{transform:scale(.98)}
 .ackbtn:disabled{opacity:.7;cursor:default}

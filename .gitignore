@@ -14,3 +14,6 @@ PHASE0-AUDIT.md
 AUDIT-*.md
 firestore.rules.proposed
 *.local.md
+
+# Scratch previews rendered while working on the crew page. Never deploy.
+_preview-*.html
