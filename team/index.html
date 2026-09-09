@@ -369,22 +369,27 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* ==== Crew HQ: rank, countdown, badges ====
    Everything here is computed from the member's OWN assignment docs — no extra
    reads, no new writes, nothing the firestore rules don't already allow. */
-.hq{background:linear-gradient(150deg,rgba(201,163,71,.16),rgba(36,30,18,.9) 55%);border:1px solid rgba(226,194,117,.4);border-radius:18px;padding:1rem 1.05rem;margin:0 0 .9rem;box-shadow:0 10px 26px rgba(0,0,0,.28)}
-.hq-top{display:flex;align-items:center;gap:.9rem}
-.lvl{position:relative;flex:0 0 auto;width:74px;height:74px}
-.lvl .ring{width:74px;height:74px;transform:rotate(-90deg)}
+/* Medium, not a hero. This and the countdown under it came to 328px of a
+   900px phone before a single assignment showed — and this one is the
+   scoreboard, not the work. The ring loses 22px, the padding a third, and
+   the two chips that repeated the tiles below are gone. */
+.hq{background:linear-gradient(150deg,rgba(201,163,71,.16),rgba(36,30,18,.9) 55%);border:1px solid rgba(226,194,117,.4);border-radius:16px;padding:.7rem .85rem;margin:0 0 .7rem;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+.hq-top{display:flex;align-items:center;gap:.75rem}
+.lvl{position:relative;flex:0 0 auto;width:52px;height:52px}
+.lvl .ring{width:52px;height:52px;transform:rotate(-90deg)}
 .lvl .rbg{fill:none;stroke:rgba(226,194,117,.16);stroke-width:7}
 .lvl .rfg{fill:none;stroke:url(#hqGrad);stroke-width:7;stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:276.5;transition:stroke-dashoffset .9s cubic-bezier(.2,.7,.3,1)}
 .lvl-in{position:absolute;inset:0;display:grid;place-content:center;text-align:center;line-height:1}
-.lvl-in b{display:block;font-family:var(--serif);font-size:1.5rem;color:var(--gold-b)}
+.lvl-in b{display:block;font-family:var(--serif);font-size:1.15rem;color:var(--gold-b)}
 .lvl-in span{font-size:.48rem;letter-spacing:.18em;color:var(--mut)}
 .hq-t{flex:1;min-width:0}
-.hq-t > b{display:block;font-family:var(--serif);color:#fff;font-size:1.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hq-t > b{display:block;font-family:var(--serif);color:#fff;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hq-t .ttl{display:block;color:var(--gold-b);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;margin:.1rem 0 .5rem}
 .xpbar{height:7px;border-radius:6px;background:rgba(255,255,255,.09);overflow:hidden}
 .xpbar i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#C9A347,#E2C275);transition:width .9s cubic-bezier(.2,.7,.3,1)}
 .hq-t .xpn{display:block;font-size:.62rem;color:var(--mut);letter-spacing:.06em;margin-top:.28rem}
-.hq-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.85rem;padding-top:.8rem;border-top:1px dashed var(--line)}
+.hq-chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.6rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.07)}
+.hq-chips:empty{display:none;margin:0;padding:0;border:0}
 .hq-chips b{background:rgba(184,144,43,.13);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.68rem;font-weight:500;white-space:nowrap}
 .hq-chips b.hot{color:#ffb054;background:rgba(255,176,84,.13);border-color:rgba(255,176,84,.35)}
 
@@ -404,7 +409,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
 /* badges — earned ones lit, locked ones show how far off they are */
 .badges{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.3rem}
-@media(min-width:520px){ .badges{grid-template-columns:repeat(5,1fr)} }
+@media(min-width:520px){ .badges{grid-template-columns:repeat(6,1fr)} }
 .bdg{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.65rem .3rem .55rem;text-align:center;position:relative;overflow:hidden}
 .bdg .ic{font-size:1.5rem;display:block;line-height:1.2;filter:grayscale(1);opacity:.35}
 .bdg b{display:block;font-size:.6rem;color:var(--mut);font-weight:500;letter-spacing:.02em;margin-top:.25rem;line-height:1.25}
@@ -1460,12 +1465,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
     const streak = monthStreak(done);
     const thisMonth = done.filter(a=>(a.date||'').slice(0,7) === todayISO().slice(0,7)).length;
+    /* "🎬 N done" and "⏭ N ahead" are the first two stat tiles directly
+       below this card, word for word. What is left is what the tiles do not
+       say: the streak, how many weddings that adds up to, and this month. */
     $('#hqChips').innerHTML =
       (streak > 1 ? `<b class="hot">🔥 ${streak}-month streak</b>` : '')
-      + `<b>🎬 ${done.length} done</b>`
       + (weddings ? `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>` : '')
-      + (thisMonth ? `<b>📆 ${thisMonth} this month</b>` : '')
-      + (up.length ? `<b>⏭ ${up.length} ahead</b>` : '');
+      + (thisMonth ? `<b>📆 ${thisMonth} this month</b>` : '');
     $('#hqCard').hidden = false;
   }
 
@@ -1512,30 +1518,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- badges ---------- */
   function renderBadges(done){
-    const acks = ASGS.filter(a=>a.status === 'acknowledged').length;
-    const edits = ASGS.filter(a=>a.workDone).length;
+    /* acks / edits / doubles went with the three badges that used them —
+       nothing else read those counts */
     const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
-    const byMonth = {}, byDate = {};
-    done.forEach(a=>{
-      const m = (a.date||'').slice(0,7); if(m) byMonth[m] = (byMonth[m]||0)+1;
-      if(a.date) byDate[a.date] = (byDate[a.date]||0)+1;
-    });
+    const byMonth = {};
+    done.forEach(a=>{ const m = (a.date||'').slice(0,7); if(m) byMonth[m] = (byMonth[m]||0)+1; });
     const bestMonth = Math.max(0, ...Object.values(byMonth));
-    const doubles = Object.values(byDate).filter(n=>n > 1).length;
     const dates = done.map(a=>a.date).filter(Boolean).sort();
     const monthsIn = dates.length
       ? Math.floor((new Date() - new Date(dates[0]+'T00:00')) / 2629800000) : 0;
+    /* Six, not ten. Four of the ten counted the same thing — events done at
+       1, 10, 50 and 100 — so most of the wall was one number wearing four
+       hats, and Century was a number almost nobody reaches. Two of the rest
+       rewarded doing the admin (confirming, ticking done), which is a thing
+       to expect rather than a thing to celebrate, and Double Duty was too
+       narrow to fire. What is left measures six different things, and it
+       comes to exactly two rows on a phone. */
     const B = [
       { ic:'🎬', t:'First Shoot',  n:done.length, goal:1  },
       { ic:'🔟', t:'Perfect Ten',  n:done.length, goal:10 },
       { ic:'🏆', t:'Half Century', n:done.length, goal:50 },
-      { ic:'💍', t:'Wedding Pro',  n:weddings,    goal:10 },
-      { ic:'🔥', t:'Busy Season',  n:bestMonth,   goal:5, sub:'5 in a month' },
-      { ic:'⚡', t:'Always Ready', n:acks,        goal:10, sub:'10 confirmed' },
-      { ic:'✅', t:'Signed Off',   n:edits,       goal:10, sub:'10 marked done' },
-      { ic:'🌙', t:'Double Duty',  n:doubles,     goal:3, sub:'2 shoots a day' },
+      { ic:'💍', t:'Wedding Pro',  n:weddings,    goal:10, sub:'10 weddings' },
+      { ic:'🔥', t:'Busy Season',  n:bestMonth,   goal:5,  sub:'5 in a month' },
       { ic:'📅', t:'One Year In',  n:monthsIn,    goal:12, sub:'months on crew' },
-      { ic:'💎', t:'Century',      n:done.length, goal:100 },
     ];
     const got = B.filter(b=>b.n >= b.goal).length;
     $('#bdgCount').textContent = `${got}/${B.length}`;
