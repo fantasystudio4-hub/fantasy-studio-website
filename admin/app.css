@@ -1800,12 +1800,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ejc-row .t span{display:block;font-size:var(--fs-sm);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(hover:hover){ .ejc-row:hover .t b{color:var(--gold-b)} }
 
-.ejlink{
-  display:inline-block;margin:-.3rem 0 .9rem;font-size:var(--fs-sm);
-  color:var(--gold-b);text-decoration:underline;overflow-wrap:anywhere;min-height:var(--tap);
-  line-height:var(--tap);
-}
-
 /* note thread — append-only, newest first, and each one keeps the name
    of whoever wrote it. This is not a notes box that gets overwritten. */
 .ejt-new{display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.9rem}

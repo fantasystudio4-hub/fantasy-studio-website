@@ -5694,8 +5694,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        their phone disappears mid-sentence */
     const draft = {
       comment: (el.querySelector('#ejComment') || {}).value,
-      footage: (el.querySelector('#ejFootage') || {}).value,
-      link:    (el.querySelector('#ejLink') || {}).value,
       brief:   (el.querySelector('#ejBrief') || {}).value,
     };
     const focusId = document.activeElement && el.contains(document.activeElement)
@@ -5841,15 +5839,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
       <div class="sec">
         <h3>The job</h3>
-        <div class="grid2">
-          <div class="fld"><label>Deadline</label>
-            <input type="date" id="ejDeadline" value="${esc(ISO_RE.test(job.deadline||'') ? job.deadline : '')}" /></div>
-          <div class="fld"><label>Raw footage</label>
-            <input type="text" id="ejFootage" placeholder="e.g. 640 GB · 2 drives" maxlength="80" value="${esc(job.footage||'')}" /></div>
-        </div>
-        <div class="fld"><label>Raw footage / drive link</label>
-          <input type="url" id="ejLink" inputmode="url" placeholder="https://…" maxlength="500" value="${esc(job.driveLink||'')}" /></div>
-        ${job.driveLink ? `<a class="ejlink" href="${esc(job.driveLink)}" target="_blank" rel="noopener noreferrer">↗ Open the footage</a>` : ''}
+        <div class="fld"><label>Deadline</label>
+          <input type="date" id="ejDeadline" value="${esc(ISO_RE.test(job.deadline||'') ? job.deadline : '')}" /></div>
         <div class="fld"><label>What the client asked for</label>
           <textarea id="ejBrief" rows="3" maxlength="1000" placeholder="Song choices, must-have moments, anything they said about the film…">${esc(job.brief||'')}</textarea></div>
       </div>
@@ -5877,7 +5868,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
 
     /* put back whatever was being typed, and the caret with it */
-    Object.entries({ ejComment:draft.comment, ejFootage:draft.footage, ejLink:draft.link, ejBrief:draft.brief })
+    Object.entries({ ejComment:draft.comment, ejBrief:draft.brief })
       .forEach(([id,v])=>{
         if(v === undefined || v === null) return;
         const f = el.querySelector('#' + id); if(!f || f.value === v) return;
@@ -6203,13 +6194,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const sm = await ejWrite(_ejOpenId, { deadline: v },
         v ? `Deadline ${old ? 'moved to' : 'set to'} ${stepDate(v)}` : 'Deadline cleared');
       toast(sm.ok ? (v ? `Deadline ${stepDate(v)} ✓` : 'Deadline cleared') : sm.msg);
-    }else if(id === 'ejFootage' || id === 'ejLink' || id === 'ejBrief'){
-      const key = id === 'ejFootage' ? 'footage' : id === 'ejLink' ? 'driveLink' : 'brief';
-      const label = { footage:'Raw footage', driveLink:'Drive link', brief:'Client brief' }[key];
-      const v = e.target.value.trim().slice(0, key === 'brief' ? 1000 : key === 'driveLink' ? 500 : 80);
-      if(v === ((ejDoc(_ejOpenId)||{})[key] || '')) return;
-      const sm = await ejWrite(_ejOpenId, { [key]: v }, v ? `${label} updated` : `${label} cleared`);
-      toast(sm.ok ? `${label} saved ✓` : sm.msg);
+    }else if(id === 'ejBrief'){
+      const v = e.target.value.trim().slice(0, 1000);
+      if(v === ((ejDoc(_ejOpenId)||{}).brief || '')) return;
+      const sm = await ejWrite(_ejOpenId, { brief: v }, v ? 'Client brief updated' : 'Client brief cleared');
+      toast(sm.ok ? 'Client brief saved ✓' : sm.msg);
     }
   });
 
