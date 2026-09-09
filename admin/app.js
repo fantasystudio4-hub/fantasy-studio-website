@@ -516,7 +516,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns'];
   function pushView(view, hash, replace){
     if(_navFromPop) return;
     try{
@@ -698,6 +698,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeStuUI === 'function') closeStuUI();
       if(typeof closeJtUI === 'function') closeJtUI();
       if(typeof closeCrewPayUI === 'function') closeCrewPayUI();
+      if(typeof closeTxUI === 'function') closeTxUI();
       /* Close the editor honestly: prompt ONLY when the form is genuinely
          dirty AND actually on screen. Closing a Home sheet must never raise
          "Discard unsaved changes?" for an editor parked on another tab —
@@ -3017,6 +3018,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(typeof renderTeam === 'function' && !$('#teamView').hidden) renderTeam();
     if(typeof renderB2B === 'function') renderB2B();   /* self-skips when the B2B tab is hidden */
     if($('#finModal').classList.contains('open')) renderFin();
+    if($('#txModal').classList.contains('open')) renderTx();
     renderPkgListOnly();
   }
   on('#pkgList', 'click', e=>{
@@ -4009,6 +4011,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           renderEditTab();    /* who is on an edit, and whether they signed off */
           renderPkgStats();   /* the crew-pay tile on Home reads these */
           if($('#finModal').classList.contains('open')) renderFin();
+          if($('#txModal').classList.contains('open')) renderTx();
           if(!$('#homeView').hidden) renderCalDetail();   /* the calendar sits on Home */
         }, err=>{
           try{ if(_asgsUnsub) _asgsUnsub(); }catch(e){} _asgsUnsub = null;
@@ -6696,6 +6699,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- pay tracker: pay crew in instalments against one assignment ---------- */
   let _cpId = null, _cpMode = 'online';
+  /* set while the sheet is CORRECTING an instalment already on the record
+     instead of adding a new one: the payment's id, and the mode and amount it
+     arrived with */
+  let _cpEditPid = null, _cpEditMode0 = '', _cpEditAmt0 = 0;
+  /* The two pills were toggled by hand at four call sites, and edit mode makes
+     a fifth. One setter, so _cpMode and the classes can never drift apart. */
+  function setCpMode(m){
+    _cpMode = m === 'cash' ? 'cash' : 'online';
+    $('#cpModeOnline').classList.toggle('on', _cpMode === 'online');
+    $('#cpModeCash').classList.toggle('on', _cpMode === 'cash');
+  }
+  /* 'UPI', 'Bank transfer', 'GPay' — modes typed before the panel offered two
+     pills, and modes the demo fixtures use. They all mean online, but they are
+     the owner's own words: a correction that only changes the amount must not
+     quietly rewrite 'UPI' to 'online', so the original string is kept unless
+     the pill is actually moved. */
+  const modePill = m => /cash/i.test(String(m||'')) ? 'cash' : 'online';
   /* set instead of _cpId when the sheet is settling a member's whole ledger */
   let _cpAllMember = null;
   /* everything still owed to one member, oldest shoot first — the order money
@@ -6714,8 +6734,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const m = memberById(mid);
     const name = (m && m.name) || rows[0].memberName || 'this member';
     const total = rows.reduce((s,a)=>s + payDue(a), 0);
-    _cpId = null; _cpAllMember = mid; _cpMode = 'online';
-    $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on');
+    _cpId = null; _cpAllMember = mid;
+    exitCpEdit(); setCpMode('online');
     $('#cpWho').textContent = `${name} — ${inr(total)} owed across ${rows.length} shoot${rows.length===1?'':'s'}`;
     $('#cpAmt').value = ''; $('#cpNote').value = '';
     const quick = [['Everything owed', total]];
@@ -6777,8 +6797,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   function openCrewPay(a){
-    _cpId = a.id; _cpAllMember = null; _cpMode = 'online';
-    $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on');
+    _cpId = a.id; _cpAllMember = null;
+    exitCpEdit(); setCpMode('online');
     const fee = payFee(a), got = payGot(a), due = payDue(a);
     $('#cpWho').textContent = `${a.memberName||'—'} · ${a.eventTitle||'Event'} ${stepDate(a.date)||a.date||''} — `
       + (fee > 0 ? `${inr(due)} left of ${inr(fee)}` : 'no fee set on this assignment');
@@ -6801,17 +6821,59 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        could never be taken back once the old toggle was retired */
     const list = priorPayments((a||{}).pay);
     const el = $('#cpHist'); if(!el) return;
+    /* Each row is a button now. A wrong figure — 7,000 typed for 700 — could
+       only be deleted and re-entered from memory, and the ✕ that did it sat
+       next to no other affordance at all, so the safest reading of the row was
+       "this cannot be changed". Tapping it loads the instalment into the
+       fields above to be corrected. */
     el.innerHTML = list.length
-      ? '<b style="color:var(--gold-b)">Payments so far</b>' + list.map(pm=>
-          `<div><span>${esc(dmy(pm.date) || 'date not recorded')}${pm.mode ? ' · ' + esc(pm.mode) : ''}${pm.note ? `<em class="paynote">${esc(pm.note)}</em>` : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-cprm data-pid="${esc(pm.id||'')}" title="Remove this payment">✕</button></span></div>`).join('')
+      ? '<b style="color:var(--gold-b)">Payments so far — tap one to correct it</b>' + list.map(pm=>
+          `<div class="pmedit ${_cpEditPid && String(pm.id||'') === _cpEditPid ? 'on' : ''}" data-cped data-pid="${esc(pm.id||'')}" role="button" tabindex="0" title="Tap to change this payment"><span>${esc(dmy(pm.date) || 'date not recorded')}${pm.mode ? ' · ' + esc(pm.mode) : ''}${pm.note ? `<em class="paynote">${esc(pm.note)}</em>` : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-cprm data-pid="${esc(pm.id||'')}" title="Remove this payment">✕</button></span></div>`).join('')
       : '';
   }
-  function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; _cpAllMember = null; }
+  /* ---------- correcting one instalment ----------
+     The sheet's own fields become the edit form: one set of inputs, one Save
+     button, and the banner above them says which entry is in there. */
+  function enterCpEdit(pid){
+    const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
+    const pm = priorPayments(a.pay).find(p=>String((p||{}).id||'') === String(pid));
+    if(!pm){ toast('That payment is no longer on this event — reopen the sheet'); return; }
+    _cpEditPid = String(pid);
+    _cpEditMode0 = String(pm.mode||'');
+    _cpEditAmt0 = Math.max(0, Number(pm.amount)||0);
+    $('#cpAmt').value = _cpEditAmt0 || '';
+    $('#cpDate').value = ISO_RE.test(pm.date||'') ? pm.date : todayISO();
+    $('#cpNote').value = String(pm.note||'');
+    setCpMode(modePill(_cpEditMode0));
+    $('#cpTitle').textContent = 'Correct Payment';
+    $('#cpEditWhat').innerHTML = `Editing the <b>${inr(_cpEditAmt0)}</b> paid on ${esc(dmy(pm.date) || 'an unrecorded date')}. Change what is wrong and tap Update.`;
+    $('#cpEditBar').hidden = false;
+    $('#cpDel').hidden = false;
+    $('#cpSave').textContent = 'Update Payment';
+    $('#cpQuick').innerHTML = '';   /* "Full balance" means nothing while correcting one entry */
+    renderCrewPayHist(a);
+    $('#cpAmt').focus(); $('#cpAmt').select();
+  }
+  /* back to being the "record a new payment" sheet it normally is */
+  function exitCpEdit(){
+    _cpEditPid = null; _cpEditMode0 = ''; _cpEditAmt0 = 0;
+    $('#cpAmt').value = ''; $('#cpNote').value = '';
+    $('#cpTitle').textContent = 'Pay Crew';
+    $('#cpEditBar').hidden = true;
+    $('#cpDel').hidden = true;
+    $('#cpSave').textContent = 'Save Payment';
+  }
+  function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; _cpAllMember = null; exitCpEdit(); }
   function closeCrewPay(){ backFrom('crewpay', closeCrewPayUI); }
   on('#cpClose', 'click', closeCrewPay);
   on('#cpBackdrop', 'click', closeCrewPay);
-  on('#cpModeOnline', 'click', ()=>{ _cpMode='online'; $('#cpModeOnline').classList.add('on'); $('#cpModeCash').classList.remove('on'); });
-  on('#cpModeCash', 'click', ()=>{ _cpMode='cash'; $('#cpModeCash').classList.add('on'); $('#cpModeOnline').classList.remove('on'); });
+  on('#cpModeOnline', 'click', ()=>setCpMode('online'));
+  on('#cpModeCash', 'click', ()=>setCpMode('cash'));
+  on('#cpEditCancel', 'click', ()=>{
+    const a = ASGS.find(v=>v.id===_cpId);
+    exitCpEdit();
+    if(a) openCrewPay(a);   /* rebuilds the quick chips and the balance line */
+  });
   on('#cpQuick', 'click', e=>{
     const b = e.target.closest('[data-cqa]'); if(!b) return;
     $('#cpAmt').value = b.dataset.cqa; $('#cpAmt').focus();
@@ -6880,7 +6942,84 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return { pay, queued: true };
   }
 
+  /* Correct one instalment in place. Read-modify-write like the remove path,
+     for the same reason: an instalment recorded on another phone, or a fee
+     edited meanwhile, must not be carried away by a stale copy of the list.
+     Needs signal — a transaction cannot be queued offline. */
+  async function editCrewPayment(a, pid, entry){
+    return runTransaction(db, async t=>{
+      const ref = doc(db,'assignments',a.id);
+      const snap = await t.get(ref);
+      if(!snap.exists()) throw new Error('assignment not found');
+      const cur = snap.data().pay || {};
+      const list = priorPayments(cur);
+      const i = list.findIndex(p=>String((p||{}).id||'') === String(pid));
+      if(i < 0) throw new Error('payment not found — reopen and retry');
+      /* a row marked paid before instalments existed is seeded by
+         priorPayments with the id 'legacy', which is not in the document —
+         give it a real one as this write puts the list on the record */
+      const had = String(list[i].id||'');
+      const row = { ...list[i], ...entry, id: (had && had !== 'legacy') ? had : newPayId() };
+      if(!entry.note) delete row.note;   /* an emptied note comes off, not back as '' */
+      list[i] = row;
+      const next = payMapFrom(cur, list);
+      t.update(ref, { pay: next, updatedAt: serverTimestamp() });
+      return next;
+    });
+  }
+  /* Take one instalment off. Shared by the ✕ on a history row and the
+     "Delete this payment" button that appears while correcting one. */
+  async function removeCrewPayment(a, pid){
+    return runTransaction(db, async t=>{
+      const ref = doc(db,'assignments',a.id);
+      const snap = await t.get(ref);
+      if(!snap.exists()) throw new Error('assignment not found');
+      const cur = snap.data().pay || {};
+      const list = priorPayments(cur);
+      const i = list.findIndex(p=>String((p||{}).id||'') === String(pid));
+      if(i < 0) throw new Error('payment not found — reopen and retry');
+      list.splice(i, 1);
+      const next = payMapFrom(cur, list);
+      t.update(ref, { pay: next, updatedAt: serverTimestamp() });
+      return next;
+    });
+  }
+
+  /* the sheet is in edit mode: Save means "replace that instalment" */
+  async function updateCrewPayment(){
+    const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
+    const pid = _cpEditPid;
+    const amount = Math.round(Number($('#cpAmt').value)||0);
+    if(amount <= 0){ toast('Enter the corrected amount — to take the payment off entirely, use Delete this payment'); $('#cpAmt').focus(); return; }
+    /* what the fee allows once this instalment's OLD figure is taken back out */
+    const fee = payFee(a), others = Math.max(0, payGot(a) - _cpEditAmt0);
+    if(fee > 0 && others + amount > fee && !await confirmDialog({
+      title:'More than the fee',
+      body:`<p>${inr(amount)} would take the total paid on this event to <b>${inr(others + amount)}</b>, against a fee of <b>${inr(fee)}</b>.</p>`
+         + `<p>It will show as overpaid in every crew-cost figure.</p>`,
+      confirmText:'Save it anyway' })){ $('#cpAmt').focus(); return; }
+    const note = ($('#cpNote').value||'').trim().slice(0, 80);
+    const entry = { amount, date: $('#cpDate').value || todayISO(),
+                    mode: _cpMode === modePill(_cpEditMode0) ? _cpEditMode0 : _cpMode,
+                    ...(note ? { note } : {}) };
+    const btn = $('#cpSave'); btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      const pay = await editCrewPayment(a, pid, entry);
+      a.pay = pay;
+      buzz(); renderTeam(); renderPkgStats();
+      if($('#txModal').classList.contains('open')) renderTx();
+      const left = Math.max(0, payFee({ pay }) - (Number(pay.paidAmount)||0));
+      toast(amount === _cpEditAmt0
+        ? 'Payment updated'
+        : `Changed from ${inr(_cpEditAmt0)} to ${inr(amount)} — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`);
+      exitCpEdit();
+      if(_cpId === a.id) openCrewPay(a);   /* back to the normal sheet, showing the corrected history */
+    }catch(err){ toast('Could not save that correction: ' + (err.message||err.code||'no signal')); }
+    finally{ btn.disabled = false; if(_cpEditPid) btn.textContent = 'Update Payment'; }
+  }
+
   async function saveCrewPayment(){
+    if(_cpEditPid) return updateCrewPayment();
     if(_cpAllMember) return settleAllPayment();
     const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
     const id = a.id;
@@ -6918,38 +7057,36 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     finally{ btn.disabled = false; }
   }
   on('#cpSave', 'click', saveCrewPayment);
-  on('#cpHist', 'click', async e=>{
-    const rm = e.target.closest('[data-cprm]'); if(!rm) return;
+  /* One flow for taking an instalment off, whichever control asked for it */
+  async function dropCrewPayment(pid){
     const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
-    const pid = rm.dataset.pid;
+    const pm = priorPayments(a.pay).find(p=>String((p||{}).id||'') === String(pid));
     if(!await confirmDialog({
       title:'Remove this payment?',
-      body:'The balance owed goes back up by the same amount.',
+      body: pm ? `<p><b>${inr(pm.amount||0)}</b> recorded on ${esc(dmy(pm.date) || 'an unrecorded date')} comes off.</p><p>The balance owed goes back up by the same amount.</p>`
+               : '<p>The balance owed goes back up by the same amount.</p>',
       confirmText:'Remove'
     })) return;
-    /* read-modify-write, so removing one instalment can never carry a stale
-       copy of the others back over the server's (same as client payments) */
     try{
-      const pay = await runTransaction(db, async t=>{
-        const ref = doc(db,'assignments',a.id);
-        const snap = await t.get(ref);
-        if(!snap.exists()) throw new Error('assignment not found');
-        const cur = snap.data().pay || {};
-        const list = priorPayments(cur);
-        const i = list.findIndex(p=>String((p||{}).id||'') === pid);
-        if(i < 0) throw new Error('payment not found — reopen and retry');
-        list.splice(i, 1);
-        const next = payMapFrom(cur, list);
-        t.update(ref, { pay: next, updatedAt: serverTimestamp() });
-        return next;
-      });
+      const pay = await removeCrewPayment(a, pid);
       a.pay = pay;
+      exitCpEdit();
       /* only refresh the sheet if it is still this assignment's — the snapshot
          may have re-rendered and the owner moved on while the write was away */
       if(_cpId === a.id) openCrewPay(a);
       renderTeam(); renderPkgStats();
+      if($('#txModal').classList.contains('open')) renderTx();
       toast('Payment removed — balance updated');
     }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
+  }
+  on('#cpDel', 'click', ()=>{ if(_cpEditPid) dropCrewPayment(_cpEditPid); });
+  on('#cpHist', 'click', e=>{
+    /* the ✕ sits INSIDE the row, so it is checked first — otherwise removing
+       a payment would open it for editing instead */
+    const rm = e.target.closest('[data-cprm]');
+    if(rm){ dropCrewPayment(rm.dataset.pid); return; }
+    const row = e.target.closest('[data-cped]');
+    if(row) enterCpEdit(row.dataset.pid);
   });
 
   on('#teamPay', 'click', e=>{
@@ -8174,9 +8311,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- record payment ---------- */
   let payingId = null, payMode = 'online';
+  /* set while the sheet is CORRECTING a payment already on the record rather
+     than adding a new one — the same edit mode the crew sheet has */
+  let _payEditPid = null, _payEditMode0 = '', _payEditAmt0 = 0;
+  function setPayMode(m){
+    payMode = m === 'cash' ? 'cash' : 'online';
+    $('#modeOnline').classList.toggle('on', payMode === 'online');
+    $('#modeCash').classList.toggle('on', payMode === 'cash');
+  }
   function openPay(x){
-    payingId = x.id; payMode = 'online';
-    $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on');
+    payingId = x.id;
+    exitPayEdit(); setPayMode('online');
     $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr(Math.max(0,(x.totals||{}).balance||0))} of ${inr((x.totals||{}).finalPrice||0)}`;
     $('#payAmt').value = '';
     /* cleared every open — a note left over from the last payment would attach
@@ -8193,17 +8338,68 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     $('#payQuick').innerHTML = quick.map(([l,v])=>`<button type="button" data-qa="${v}">${l} · ${inr(v)}</button>`).join('');
     $('#payDate').value = todayISO();
-    const hist = (x.payments||[]);
-    $('#payHist').innerHTML = hist.length
-      ? '<b style="color:var(--gold-b)">Previous payments</b>' + hist.map(pm=>
-          `<div><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}${pm.note ? `<em class="paynote">${esc(pm.note)}</em>` : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(pm.id||'')}" data-amt="${Number(pm.amount)||0}" data-date="${esc(pm.date||'')}" data-mode="${esc(pm.mode||'')}" title="Remove this payment">✕</button></span></div>`).join('')
-      : '';
+    renderPayHist(x);
     const wasOpen = $('#payModal').classList.contains('open');
     $('#payModal').classList.add('open'); $('#payBackdrop').classList.add('open');
     setTimeout(()=>$('#payAmt').focus(), 80);
     if(!wasOpen) pushView('pay', '#packages/pay');
   }
-  function closePayUI(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; }
+  /* Its own function now: entering and leaving edit mode redraws the list to
+     mark which row is being corrected, without reopening the whole sheet. */
+  function renderPayHist(x){
+    const hist = (x.payments||[]);
+    const key = pm => String(pm.id||'') || `${Number(pm.amount)||0}|${pm.date||''}|${pm.mode||''}`;
+    $('#payHist').innerHTML = hist.length
+      ? '<b style="color:var(--gold-b)">Previous payments — tap one to correct it</b>' + hist.map(pm=>
+          `<div class="pmedit ${_payEditPid && key(pm) === _payEditPid ? 'on' : ''}" data-payed data-pid="${esc(key(pm))}" role="button" tabindex="0" title="Tap to change this payment"><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}${pm.note ? `<em class="paynote">${esc(pm.note)}</em>` : ''}</span><span>${inr(pm.amount||0)} <button class="rm" data-rmpay data-pid="${esc(key(pm))}" title="Remove this payment">✕</button></span></div>`).join('')
+      : '';
+  }
+  /* Payments written before the panel stamped an id have none, so both the
+     edit and the remove path address a row by id when it has one and by
+     amount+date+mode when it does not. One matcher, used by both. */
+  function payRowIndex(list, key){
+    const k = String(key||'');
+    let i = list.findIndex(p=>p && String(p.id||'') !== '' && String(p.id) === k);
+    if(i >= 0) return i;
+    const [amt, date, mode] = k.split('|');
+    return list.findIndex(p=>p && !p.id && String(Number(p.amount)||0) === String(amt)
+      && String(p.date||'') === String(date||'') && String(p.mode||'') === String(mode||''));
+  }
+  function enterPayEdit(key){
+    const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
+    const list = x.payments||[];
+    const pm = list[payRowIndex(list, key)];
+    if(!pm){ toast('That payment is no longer on this package — reopen the sheet'); return; }
+    _payEditPid = String(key);
+    _payEditMode0 = String(pm.mode||'');
+    _payEditAmt0 = Math.max(0, Number(pm.amount)||0);
+    $('#payAmt').value = _payEditAmt0 || '';
+    $('#payDate').value = ISO_RE.test(pm.date||'') ? pm.date : todayISO();
+    $('#payNote').value = String(pm.note||'');
+    setPayMode(modePill(_payEditMode0));
+    $('#payTitle').textContent = 'Correct Payment';
+    $('#payEditWhat').innerHTML = `Editing the <b>${inr(_payEditAmt0)}</b> received on ${esc(dmy(pm.date) || 'an unrecorded date')}. Change what is wrong and tap Update.`;
+    $('#payEditBar').hidden = false;
+    $('#payDel').hidden = false;
+    $('#paySave').textContent = 'Update Payment';
+    $('#payQuick').innerHTML = '';   /* "Full balance" means nothing while correcting one entry */
+    renderPayHist(x);
+    $('#payAmt').focus(); $('#payAmt').select();
+  }
+  function exitPayEdit(){
+    _payEditPid = null; _payEditMode0 = ''; _payEditAmt0 = 0;
+    $('#payAmt').value = ''; $('#payNote').value = '';
+    $('#payTitle').textContent = 'Record Payment';
+    $('#payEditBar').hidden = true;
+    $('#payDel').hidden = true;
+    $('#paySave').textContent = 'Save Payment';
+  }
+  on('#payEditCancel', 'click', ()=>{
+    const x = PKGS.find(pk=>pk.id===payingId);
+    exitPayEdit();
+    if(x) openPay(x);   /* rebuilds the quick chips and the balance line */
+  });
+  function closePayUI(){ $('#payModal').classList.remove('open'); $('#payBackdrop').classList.remove('open'); payingId = null; exitPayEdit(); }
   function closePay(){
     backFrom('pay', closePayUI);
   }
@@ -8213,14 +8409,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#payClose', 'click', closePay);
   on('#payBackdrop', 'click', closePay);
-  on('#modeOnline', 'click', ()=>{ payMode='online'; $('#modeOnline').classList.add('on'); $('#modeCash').classList.remove('on'); });
-  on('#modeCash', 'click', ()=>{ payMode='cash'; $('#modeCash').classList.add('on'); $('#modeOnline').classList.remove('on'); });
+  on('#modeOnline', 'click', ()=>setPayMode('online'));
+  on('#modeCash', 'click', ()=>setPayMode('cash'));
   document.addEventListener('keydown', e=>{
     if(e.key !== 'Escape') return;
     /* the expense form sits inside the money sheet — one Escape should close
        the form, not the sheet out from under it */
     if(!$('#expForm').hidden){ closeExpForm(); return; }
-    closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt();
+    closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt(); closeTx();
   });
   /* Everything tappable here is a div — a calendar date, a shoot row, a stat
      tile, a group header. They are focusable now, so give them a button's
@@ -8266,7 +8462,61 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
 
+  /* Correct a payment in place. Read-modify-write so the totals can never be
+     rebuilt from a stale copy of the list, and so the advance/balance move by
+     exactly the difference rather than being recomputed from a local mirror. */
+  async function updatePkgPayment(){
+    const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
+    const key = _payEditPid;
+    const btn = $('#paySave'); if(btn.disabled) return;
+    const amount = Math.round(Number($('#payAmt').value)||0);
+    if(amount <= 0){ toast('Enter the corrected amount — to take the payment off entirely, use Delete this payment'); $('#payAmt').focus(); return; }
+    /* what is due once this payment's OLD figure is taken back out */
+    const fin = Number((x.totals||{}).finalPrice)||0;
+    const others = Math.max(0, (Number((x.totals||{}).advance)||0) - _payEditAmt0);
+    if(fin > 0 && others + amount > fin && !await confirmDialog({
+      title:'More than the billed figure',
+      body:`<p>${inr(amount)} would take the total received to <b>${inr(others + amount)}</b>, against a billed <b>${inr(fin)}</b>.</p>`
+         + `<p>It will show as an overpayment in your money reports.</p>`,
+      confirmText:'Save it anyway' })){ $('#payAmt').focus(); return; }
+    const note = ($('#payNote').value||'').trim().slice(0, 80);
+    const entry = { amount, date: $('#payDate').value || todayISO(),
+                    mode: payMode === modePill(_payEditMode0) ? _payEditMode0 : payMode,
+                    ...(note ? { note } : {}) };
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      const out = await runTransaction(db, async t=>{
+        const ref = doc(db,'packages',x.id);
+        const snap = await t.get(ref);
+        if(!snap.exists()) throw new Error('package not found');
+        const cur = snap.data();
+        const list = [...(cur.payments||[])];
+        const i = payRowIndex(list, key);
+        if(i < 0) throw new Error('payment not found — reopen and retry');
+        const before = Math.max(0, Number(list[i].amount)||0);
+        const row = { ...list[i], ...entry };
+        if(!entry.note) delete row.note;   /* an emptied note comes off, not back as '' */
+        list[i] = row;
+        const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, cur.totals||{});
+        tt.advance = Math.max(0, (Number(tt.advance)||0) - before + amount);
+        tt.balance = (Number(tt.finalPrice)||0) - tt.advance;
+        t.update(ref, { payments: list, totals: tt, updatedAt: serverTimestamp() });
+        return { list, tt };
+      });
+      x.payments = out.list; x.totals = out.tt;
+      buzz(); renderPkgList();
+      if($('#txModal').classList.contains('open')) renderTx();
+      toast(amount === _payEditAmt0
+        ? 'Payment updated'
+        : `Changed from ${inr(_payEditAmt0)} to ${inr(amount)} — balance ${inr(Math.max(0, out.tt.balance))}`);
+      exitPayEdit();
+      if(payingId === x.id) openPay(x);   /* back to the normal sheet, showing the corrected history */
+    }catch(err){ toast('Could not save that correction: ' + (err.message||err.code||'no signal')); }
+    finally{ btn.disabled = false; if(_payEditPid) btn.textContent = 'Update Payment'; }
+  }
+
   on('#paySave', 'click', async ()=>{
+    if(_payEditPid) return updatePkgPayment();
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     const btn = $('#paySave'); if(btn.disabled) return;
     const amount = Math.round(Number($('#payAmt').value)||0);
@@ -8335,12 +8585,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* remove a mistaken payment — transaction so totals stay exact (needs signal) */
-  on('#payHist', 'click', async e=>{
-    const b = e.target.closest('[data-rmpay]'); if(!b) return;
+  async function dropPkgPayment(key){
     const x = PKGS.find(pk=>pk.id===payingId); if(!x) return;
     /* resolve the payment by identity (not row index) — the list may have refreshed since the modal opened */
-    const pm = (x.payments||[]).find(p=>p && (b.dataset.pid ? p.id === b.dataset.pid
-      : (!p.id && Number(p.amount)===Number(b.dataset.amt) && (p.date||'')===b.dataset.date && (p.mode||'')===b.dataset.mode)));
+    const pm = (x.payments||[])[payRowIndex(x.payments||[], key)];
     if(!pm){ toast('Payment not found — reopen and retry'); return; }
     if(!await confirmDialog({
       title:'Remove this payment?',
@@ -8354,20 +8602,31 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(!snap.exists()) throw new Error('package not found');
         const cur = snap.data();
         const list = [...(cur.payments||[])];
-        const i = pm.id ? list.findIndex(p=>p && p.id === pm.id)
-                        : list.findIndex(p=>p && !p.id && p.amount===pm.amount && p.date===pm.date && p.mode===pm.mode);
+        const i = payRowIndex(list, key);
         if(i < 0) throw new Error('payment not found — refresh and retry');
+        const gone = Math.max(0, Number(list[i].amount)||0);
         list.splice(i, 1);
         const tt = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, cur.totals||{});
-        tt.advance = Math.max(0, (Number(tt.advance)||0) - (Number(pm.amount)||0));
+        tt.advance = Math.max(0, (Number(tt.advance)||0) - gone);
         tt.balance = (Number(tt.finalPrice)||0) - tt.advance;
         t.update(ref, { payments: list, totals: tt, updatedAt: serverTimestamp() });
         return { list, tt };
       });
       x.payments = arr.list; x.totals = arr.tt;
+      exitPayEdit();
       renderPkgList(); openPay(x);
+      if($('#txModal').classList.contains('open')) renderTx();
       toast('Payment removed — balance updated');
     }catch(err){ toast('Remove failed: ' + (err.message||err.code||'no signal')); }
+  }
+  on('#payDel', 'click', ()=>{ if(_payEditPid) dropPkgPayment(_payEditPid); });
+  on('#payHist', 'click', e=>{
+    /* the ✕ sits INSIDE the row, so it is checked first — otherwise removing
+       a payment would open it for editing instead */
+    const b = e.target.closest('[data-rmpay]');
+    if(b){ dropPkgPayment(b.dataset.pid); return; }
+    const row = e.target.closest('[data-payed]');
+    if(row) enterPayEdit(row.dataset.pid);
   });
 
   /* ---------- studio spending ----------
@@ -8392,11 +8651,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         warnIfCapped('expenses', snap.size, EXPS_CAP);
         _expsLoaded = true;
         if($('#finModal').classList.contains('open')) renderFin();
+        if($('#txModal').classList.contains('open')) renderTx();
       }, err=>{
         try{ if(_expsUnsub) _expsUnsub(); }catch(e){}
         _expsUnsub = null;   /* reopening Money Analytics resubscribes */
         _expsErr = 'Could not load expenses (' + (err.code||err.message) + ')';
         if($('#finModal').classList.contains('open')) renderFin();
+        if($('#txModal').classList.contains('open')) renderTx();
       });
     }catch(err){ _expsErr = 'Could not load expenses (' + (err.code||err.message) + ')'; }
   }
@@ -9018,6 +9279,155 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#finClose', 'click', closeFin);
   on('#finBackdrop', 'click', closeFin);
+
+  /* ============================================================
+     LEDGER — every transaction, one list
+     ------------------------------------------------------------
+     Money Analytics answers "how much", per month, per quarter, per year. It
+     could never answer "what was that 7,000 I paid last Tuesday": the entries
+     themselves only existed inside the record they belong to — a client
+     payment three taps into a package, a crew instalment three taps into the
+     Pay tracker, an expense in a list that only shows one financial year — and
+     nowhere could they be seen side by side or searched.
+
+     Nothing new is stored. This reads the same three sources the money sheet
+     totals up, flattens them into rows, and every row opens the sheet that
+     owns it with that entry already loaded for correction.
+     ============================================================ */
+  let _txF = 'all', _txQ = '', _txAll = false;
+  const TX_PAGE = 60;
+
+  function txRows(){
+    const rows = [];
+    livePkgs().forEach(x=>(x.payments||[]).forEach(pm=>{
+      if(!pm) return;
+      rows.push({
+        kind:'in', dir:1, id:x.id,
+        /* the same key the pay sheet addresses a row by, so a tap here lands
+           on the right payment even when it was written without an id */
+        pid: String(pm.id||'') || `${Number(pm.amount)||0}|${pm.date||''}|${pm.mode||''}`,
+        amount: Math.max(0, Number(pm.amount)||0), date: String(pm.date||''),
+        mode: String(pm.mode||''), note: String(pm.note||''),
+        who: x.clientName || 'Client',
+        sub: (x.quoteNo ? x.quoteNo + ' · ' : '') + 'payment received'
+      });
+    }));
+    ASGS.forEach(a=>priorPayments(a.pay).forEach(pm=>{
+      rows.push({
+        kind:'crew', dir:-1, id:a.id, pid: String(pm.id||''),
+        amount: Math.max(0, Number(pm.amount)||0), date: String(pm.date||''),
+        mode: String(pm.mode||''), note: String(pm.note||''),
+        who: a.memberName || 'Crew',
+        sub: (a.eventTitle || 'Event') + (ISO_RE.test(a.date||'') ? ' · ' + stepDate(a.date) : '')
+      });
+    }));
+    liveExps().forEach(x=>rows.push({
+      kind:'exp', dir:-1, id:x.id, pid:'',
+      amount: expAmt(x), date: String(x.date||''),
+      mode: String(x.mode||''), note: String(x.note||''),
+      who: catName(x.cat), sub: 'studio spending'
+    }));
+    /* newest first; anything undated sorts last rather than to the top, where
+       it would look like today's money */
+    return rows.sort((r1,r2)=>String(r2.date||'').localeCompare(String(r1.date||'')));
+  }
+
+  function renderTx(){
+    const q = _txQ.trim().toLowerCase();
+    const all = txRows().filter(r=>{
+      if(_txF === 'in'   && r.kind !== 'in')   return false;
+      if(_txF === 'crew' && r.kind !== 'crew') return false;
+      if(_txF === 'exp'  && r.kind !== 'exp')  return false;
+      if(!q) return true;
+      return `${r.who} ${r.sub} ${r.note} ${r.mode} ${r.amount} ${dmy(r.date)}`.toLowerCase().includes(q);
+    });
+    const gotIn  = all.reduce((n,r)=>n + (r.dir > 0 ? r.amount : 0), 0);
+    const gotOut = all.reduce((n,r)=>n + (r.dir < 0 ? r.amount : 0), 0);
+    const shown = _txAll ? all : all.slice(0, TX_PAGE);
+    /* month buckets, in the order the rows already are */
+    const groups = [];
+    shown.forEach(r=>{
+      const k = ISO_RE.test(r.date||'') ? r.date.slice(0,7) : 'nodate';
+      let g = groups.length && groups[groups.length-1].k === k ? groups[groups.length-1] : null;
+      if(!g){ g = { k, rows:[] }; groups.push(g); }
+      g.rows.push(r);
+    });
+    const monthName = k => k === 'nodate' ? 'No date recorded'
+      : new Date(k + '-01T00:00').toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+    const ICON = { in:'💰', crew:'🎬', exp:'💸' };
+    const row = r => `
+      <div class="up-ev txrow" data-tx="${esc(r.kind + '|' + r.id)}" data-pid="${esc(r.pid)}" role="button" tabindex="0" title="Tap to open and correct this entry">
+        <span class="when">${esc(ISO_RE.test(r.date||'') ? stepDate(r.date) : '—')}</span>
+        <span class="what">${ICON[r.kind]} ${esc(r.who)}<span> · ${esc(r.sub)}${r.mode ? ' · ' + esc(r.mode) : ''}</span>${r.note ? `<em class="paynote">${esc(r.note)}</em>` : ''}</span>
+        <b class="${r.dir > 0 ? 'pos' : 'neg'}" title="${inr(r.amount)}">${r.dir > 0 ? '+' : '−'}${inrShort(r.amount)}</b>
+      </div>`;
+    $('#txBody').innerHTML = `
+      <div class="finsplit txsum">
+        <span>➕ In <b style="color:var(--ok)">${inrShort(gotIn)}</b></span>
+        <span>➖ Out <b style="color:var(--money-out)">${inrShort(gotOut)}</b></span>
+        <span>💼 Net <b>${inrShort(gotIn - gotOut)}</b></span>
+      </div>
+      ${!_asgsLoaded || !_expsLoaded ? '<div class="finnote">Still loading crew pay and expenses — the list fills in as they arrive.</div>' : ''}
+      ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — spending is missing from this list. Close and reopen it to retry.</div>` : ''}
+      ${all.length ? groups.map(g=>{
+        const mi  = g.rows.reduce((n,r)=>n + (r.dir > 0 ? r.amount : 0), 0);
+        const mo  = g.rows.reduce((n,r)=>n + (r.dir < 0 ? r.amount : 0), 0);
+        return `<div class="txmon"><span>${esc(monthName(g.k))}</span><i>${mi ? '+' + inrShort(mi) : ''}${mi && mo ? ' · ' : ''}${mo ? '−' + inrShort(mo) : ''}</i></div>`
+             + g.rows.map(row).join('');
+      }).join('')
+      : `<div class="empty" style="padding:.8rem 0">${q || _txF !== 'all'
+          ? 'Nothing matches that — clear the search or tap All.'
+          : 'No payments recorded yet. Money shows up here the moment you record a client payment, pay a crew member, or add an expense.'}</div>`}
+      ${all.length > TX_PAGE ? `<button class="upall" type="button" id="txAll">${_txAll ? '− Show the latest ' + TX_PAGE : `＋ See all ${all.length}`}</button>` : ''}`;
+    $('#txWho').textContent = all.length
+      ? `${all.length} transaction${all.length === 1 ? '' : 's'} — newest first, tap one to correct it`
+      : 'Every transaction — money in and money out';
+  }
+
+  function openTx(){
+    loadExps();   /* expenses are only subscribed once a money screen asks for them */
+    renderTx();
+    const wasOpen = $('#txModal').classList.contains('open');
+    $('#txModal').classList.add('open'); $('#txBackdrop').classList.add('open');
+    if(!wasOpen) pushView('txns', '#ledger');
+  }
+  function closeTxUI(){ $('#txModal').classList.remove('open'); $('#txBackdrop').classList.remove('open'); }
+  function closeTx(){ backFrom('txns', closeTxUI); }
+  on('#hdrTxns', 'click', openTx);
+  on('#txClose', 'click', closeTx);
+  on('#txBackdrop', 'click', closeTx);
+  on('#txSegs', 'click', e=>{
+    const b = e.target.closest('[data-txf]'); if(!b) return;
+    _txF = b.dataset.txf; _txAll = false;
+    $$('#txSegs button').forEach(x=>x.classList.toggle('on', x.dataset.txf === _txF));
+    renderTx();
+  });
+  on('#txSearch', 'input', debounce(e=>{ _txQ = e.target.value; _txAll = false; renderTx(); }, 160));
+
+  /* A row is a doorway, not a form: it opens the sheet that owns the entry
+     with that entry loaded, so a correction is made where its balance, its
+     history and its guard rails are — never against a copy of it here. */
+  on('#txBody', 'click', e=>{
+    if(e.target.closest('#txAll')){ _txAll = !_txAll; renderTx(); return; }
+    const el = e.target.closest('[data-tx]'); if(!el) return;
+    const [kind, id] = String(el.dataset.tx||'').split('|');
+    const pid = el.dataset.pid || '';
+    if(kind === 'in'){
+      const x = PKGS.find(pk=>pk.id === id);
+      if(!x){ toast('That package is no longer here — it may have been deleted'); return; }
+      closeTxUI(); openPay(x); enterPayEdit(pid);
+    }else if(kind === 'crew'){
+      const a = ASGS.find(v=>v.id === id);
+      if(!a){ toast('That crew assignment is no longer here'); return; }
+      closeTxUI(); openCrewPay(a); enterCpEdit(pid);
+    }else{
+      const x = EXPS.find(v=>v.id === id);
+      if(!x){ toast('That expense is no longer here'); return; }
+      /* expenses are edited in the money sheet's own form — the one place that
+         knows the categories */
+      closeTxUI(); openFin(); openExpForm(x);
+    }
+  });
 
   /* ---------- upcoming shoot sheet: full event + package detail ---------- */
   let _evIdx = 0, _evKey = null;

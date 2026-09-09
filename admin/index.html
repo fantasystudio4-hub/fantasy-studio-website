@@ -36,6 +36,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
     <button class="out cfg" id="hdrSearch" title="Search everything (Ctrl+K)" aria-label="Search everything"><i>🔍</i><em>Search</em></button>
+    <button class="out cfg" id="hdrTxns" title="Ledger — every payment in and out" aria-label="Ledger"><i>🧾</i><em>Ledger</em></button>
     <button class="out cfg" id="tabConfig" title="Site Config" aria-label="Site Config"><i>⚙️</i><em>Config</em></button>
     <button class="out" id="logoutBtn">Logout</button>
   </div>
@@ -494,8 +495,15 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="payBackdrop"></div>
 <div class="pay-modal" id="payModal" role="dialog" aria-modal="true" aria-label="Record payment">
   <button class="pay-close" id="payClose" type="button" aria-label="Close">&times;</button>
-  <h3>Record Payment</h3>
+  <h3 id="payTitle">Record Payment</h3>
   <div class="who" id="payWho"></div>
+  <!-- Correcting a payment used to mean deleting it and typing it again from
+       memory. Tapping a row in the history below loads it into these same
+       fields instead, and this bar says so. -->
+  <div class="editbar" id="payEditBar" hidden>
+    <span id="payEditWhat"></span>
+    <button type="button" id="payEditCancel">Cancel edit</button>
+  </div>
   <div class="fld"><label>Amount received (₹)</label><input id="payAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" placeholder="e.g. 10000" /></div>
   <div class="qamt" id="payQuick"></div>
   <div class="fld"><label>Date</label><input id="payDate" type="date" /></div>
@@ -509,6 +517,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <input id="payNote" maxlength="80" autocomplete="off" placeholder="e.g. cash at venue · GPay from her brother" /></div>
   <div class="pay-hist" id="payHist"></div>
   <button class="gbtn" id="paySave" type="button">Save Payment</button>
+  <button class="btn btn--sm btn--ghost" id="payDel" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Delete this payment</button>
 </div>
 
 <!-- Edit fee: opened from a Pay tracker row. Deliberately its own small sheet
@@ -529,8 +538,15 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="cpBackdrop"></div>
 <div class="pay-modal" id="cpModal" role="dialog" aria-modal="true" aria-label="Pay crew member">
   <button class="pay-close" id="cpClose" type="button" aria-label="Close">&times;</button>
-  <h3>Pay Crew</h3>
+  <h3 id="cpTitle">Pay Crew</h3>
   <div class="who" id="cpWho"></div>
+  <!-- same as the client sheet: tap a payment in the history below and it
+       loads into these fields to be corrected, rather than removed and
+       re-typed from memory -->
+  <div class="editbar" id="cpEditBar" hidden>
+    <span id="cpEditWhat"></span>
+    <button type="button" id="cpEditCancel">Cancel edit</button>
+  </div>
   <div class="fld"><label>Amount paid (₹)</label><input id="cpAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" placeholder="e.g. 3000" /></div>
   <div class="qamt" id="cpQuick"></div>
   <div class="fld"><label>Date</label><input id="cpDate" type="date" /></div>
@@ -544,6 +560,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <input id="cpNote" maxlength="80" autocomplete="off" placeholder="e.g. cash at office · PhonePe" /></div>
   <div class="pay-hist" id="cpHist"></div>
   <button class="gbtn" id="cpSave" type="button">Save Payment</button>
+  <button class="btn btn--sm btn--ghost" id="cpDel" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Delete this payment</button>
 </div>
 
 <div class="pay-backdrop" id="stBackdrop"></div>
@@ -648,6 +665,33 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     </div>
   </div>
   <div id="finBody"></div>
+</div>
+
+<!-- Ledger — every rupee in and out as individual entries, newest first.
+     Money Analytics is the accounts book: totals per month, per quarter, per
+     year. It could never answer "what was that 7,000 I paid last Tuesday" —
+     the entries themselves were only reachable through the record they belong
+     to, three taps deep, and there was no one place to scan them all. This is
+     that place, and every row opens the sheet that owns it so it can be
+     corrected on the spot. -->
+<div class="pay-backdrop" id="txBackdrop"></div>
+<div class="pay-modal fin" id="txModal" role="dialog" aria-modal="true" aria-label="Ledger — every transaction">
+  <button class="pay-close" id="txClose" type="button" aria-label="Close">&times;</button>
+  <h3>🧾 Ledger</h3>
+  <div class="who" id="txWho">Every transaction — money in and money out</div>
+  <!-- filters and the search box sit OUTSIDE #txBody on purpose: that box is
+       rebuilt on every packages, assignments or expenses snapshot, which would
+       wipe a half-typed search from under the owner's thumb -->
+  <div class="mode-pills txsegs" id="txSegs">
+    <button type="button" data-txf="all" class="on">All</button>
+    <button type="button" data-txf="in">➕ In</button>
+    <button type="button" data-txf="crew">🎬 Crew</button>
+    <button type="button" data-txf="exp">💸 Spend</button>
+  </div>
+  <div class="txbar">
+    <input id="txSearch" type="search" autocomplete="off" placeholder="Name, note, quote # or amount…" aria-label="Search transactions" />
+  </div>
+  <div id="txBody"></div>
 </div>
 
 <div class="pay-backdrop" id="evBackdrop"></div>

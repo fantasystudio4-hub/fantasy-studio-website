@@ -57,6 +57,19 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
   .hd .cfg em{display:none}
   .hd .cfg{padding-inline:.7em}
 }
+/* The ledger 🧾 made it four buttons, and on a 320px phone that fourth pill
+   cost the studio name the 41px it needed — "Fantasy …" again, the exact
+   thing hiding the labels was meant to stop. The narrowest phones get the
+   padding and the gaps back instead of losing another button. */
+@media(max-width:359px){
+  .hd{gap:.25rem}
+  .hd .cfg{padding-inline:.45em}
+  .hd .out{padding-inline:.7em}
+  /* the last 23px come off the mark and the wordmark, not off a button: the
+     buttons are already at the 44px touch floor and cannot give any more */
+  .hd svg{width:28px;height:28px}
+  .hd b{font-size:var(--fs-lg)}
+}
 .hd .cfg em{font-style:normal}
 
 /* login */
@@ -458,8 +471,28 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .mode-pills{display:flex;gap:.5rem;margin-bottom:.9rem}
 .mode-pills button{flex:1;background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.6em;cursor:pointer;font-size:var(--fs-base)}
 .mode-pills button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
-.pay-hist{font-size:var(--fs-sm);color:var(--mut);margin:.6rem 0 .2rem;max-height:110px;overflow:auto}
+/* 110px showed barely two rows, and the list is now the way INTO a payment
+   rather than a receipt of it — a season's instalments have to be reachable
+   without hunting inside a 110px window. */
+.pay-hist{font-size:var(--fs-sm);color:var(--mut);margin:.6rem 0 .2rem;max-height:210px;overflow:auto}
 .pay-hist div{display:flex;justify-content:space-between;padding:.15rem 0;border-bottom:1px dashed var(--line)}
+/* a history row opens that payment for correction, so it looks and behaves
+   like the button it is — and says which one is being corrected */
+.pay-hist .pmedit{align-items:center;min-height:var(--tap);cursor:pointer;border-radius:var(--r-xs);
+  padding:.15rem .35rem;margin-inline:-.35rem;transition:background .15s}
+.pmedit:active{background:var(--gold-t2)}
+.pmedit.on{background:var(--gold-t3);color:var(--text)}
+.pmedit.on > span:first-child{color:var(--gold-b)}
+@media(hover:hover){ .pmedit:hover{background:var(--gold-t1)} }
+/* the bar that says which payment the fields above are holding */
+.editbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
+  background:var(--gold-t2);border:1px solid var(--line-3);border-radius:var(--r-sm);
+  padding:.55rem .65rem;margin:0 0 .9rem;font-size:var(--fs-md);line-height:1.45}
+.editbar > span{flex:1 1 150px;min-width:0;color:var(--text)}
+.editbar b{color:var(--gold-b);font-weight:600}
+.editbar button{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);
+  border-radius:var(--r-pill);padding:.35em .9em;min-height:var(--tap);cursor:pointer;font-size:var(--fs-sm)}
+.editbar button:active{border-color:var(--gold);color:var(--gold-b)}
 .pay-hist .rm{background:none;border:0;color:var(--err);cursor:pointer;font-size:var(--fs-base);padding:.5em .6em;min-width:var(--tap);min-height:var(--tap);vertical-align:middle}
 /* Sticky, not absolute: the sheet is its own scroll container, so an absolute
    ✕ scrolled away with the content — half-way down the assign sheet there was
@@ -990,6 +1023,33 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .exprow .when{min-width:76px;font-size:var(--fs-sm)}
 .exprow .what span{color:var(--mut);font-size:var(--fs-sm)}
 #expAdd{margin-top:.2rem}
+
+/* ---- ledger: every transaction, one list -------------------------------
+   Four filter pills over a search box over month-grouped rows. The pills wrap
+   rather than shrink: "💸 Spend" squeezed to three characters on a 320px
+   phone tells you nothing about what it filters. */
+/* the sticky ✕ rides over the top-right corner of every sheet, and this line
+   is long enough to run under it — keep it clear of the button */
+#txWho{padding-right:2.6rem}
+.mode-pills.txsegs{flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem}
+.mode-pills.txsegs button{flex:1 1 auto;font-size:var(--fs-md);padding:.5em .85em;min-height:var(--tap)}
+.txbar{margin:0 0 .5rem}
+.txbar input{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);
+  color:var(--text);padding:.65em .8em;min-height:var(--tap);font-size:var(--fs-base)}
+.finsplit.txsum{margin-bottom:.2rem}
+/* the month header carries that month's own in/out, so scrolling the list is
+   also reading a monthly summary */
+.txmon{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;
+  color:var(--gold-b);font-size:var(--fs-xs);letter-spacing:.14em;text-transform:uppercase;
+  margin:1rem 0 .2rem;border-bottom:1px solid var(--line);padding-bottom:.25rem}
+.txmon i{font-style:normal;letter-spacing:0;text-transform:none;color:var(--mut);
+  font-size:var(--fs-sm);white-space:nowrap}
+.txrow .when{min-width:58px;font-size:var(--fs-sm)}
+.txrow .what{white-space:normal}
+.txrow .what span{color:var(--mut);font-size:var(--fs-sm)}
+.txrow b{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--fs-base)}
+.txrow b.pos{color:var(--ok)}
+.txrow b.neg{color:var(--money-out)}
 /* billed / collected / balance table rows in Money Analytics */
 .ledrow.finled b{flex-basis:76px;font-size:var(--fs-sm)}
 .ledrow.finled .l-ev{font-size:var(--fs-md)}
