@@ -231,6 +231,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ejsvc-t{margin-top:.35rem;font-size:.76rem;color:var(--mut)}
 .ejnone{margin:0 0 .85rem;padding:.6rem .7rem;font-size:.8rem;line-height:1.5;color:var(--mut);
         background:rgba(184,144,43,.07);border:1px dashed var(--line);border-radius:12px}
+.ejnone--x{color:#e9b384;border-color:rgba(233,179,132,.4)}
 /* scope of work, one row per function — the same shape the studio sees */
 .ejs{margin-top:.5rem;border-top:1px dashed var(--line)}
 .ejs-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px dashed var(--line)}
@@ -1087,10 +1088,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        card below falls back to what it showed before, which is why nothing
        here is required for the page to work. */
     _ejUnsub = onSnapshot(query(collection(db,'editingJobs'), where('editors','array-contains',_phone10)), snap=>{
-      EJOBS = {};
+      EJOBS = {}; _ejErr = '';
       snap.docs.forEach(d=>{ EJOBS[d.id] = { id:d.id, ...d.data() }; });
       if(ME) render();
-    }, err=>{ EJOBS = {}; if(ME) render(); });
+    }, err=>{
+      /* Swallowing this made every cause look the same on screen: a refused
+         read, a job the studio never filled in and a job that was never
+         stamped with editors[] all rendered as a blank half-card. Keep the
+         degrade, but remember WHY so the card can say it. */
+      EJOBS = {}; _ejErr = (err && err.code) || 'unknown';
+      console.warn('[editing] job listener stopped:', _ejErr, err);
+      if(ME) render();
+    });
   });
 
   /* ---------- join request ---------- */
@@ -1157,6 +1166,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
      Every part is optional and the whole block disappears if the job document
      cannot be read, so an unpublished rule costs this page nothing. */
+  let _ejErr = '';   /* last editingJobs listener error code, '' while healthy */
   const EJ_STAGE = { unassigned:'Not started', assigned:'Assigned',
                      progress:'In progress', review:'Under review', delivered:'Delivered' };
   const ejWhen = t => { const d = new Date(t||''); return isNaN(d) ? ''
@@ -1276,15 +1286,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     || (j.scope && Array.isArray(j.scope.services) && j.scope.services.length)
     || (Array.isArray(j.versions) && j.versions.length)
     || (Array.isArray(j.comments) && j.comments.length));
-  const EJ_NONE = `<p class="ejnone">No details from the studio yet — no footage link,
-    brief or scope. Confirming and naming your price still work; ask them to open this
-    job from their Editing tab.</p>`;
+  const EJ_NONE = () => _ejErr === 'permission-denied'
+    ? `<p class="ejnone ejnone--x">This job's details are not open to you. Your number has to be on
+       the job for the server to release the footage link, the brief and the notes — ask the studio
+       to open it from their Editing tab.</p>`
+    : `<p class="ejnone">No details from the studio yet — no footage link,
+       brief or scope. Confirming and naming your price still work; ask them to open this
+       job from their Editing tab.</p>`;
 
   function ejBlock(a){
     const j = EJOBS[a.pkgId];
     const fee = ejFee(a);
     /* the fee lives on the assignment, so it works either way */
-    if(ejBare(j)) return EJ_NONE + fee;
+    if(ejBare(j)) return EJ_NONE() + fee;
     const url = ejSafeUrl(j.driveLink);
     const notes = (Array.isArray(j.comments) ? j.comments : [])
       .slice().sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);

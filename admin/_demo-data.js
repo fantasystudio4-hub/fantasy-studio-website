@@ -418,6 +418,15 @@ export const assignments = [
   /* the delivered edit, signed off by the editor — pairs with the pk15 job */
   { ...asg('as19', 'pk15', team[7], iso(-150), 'Wedding', 'editing', 'acknowledged', 15000, 15000, 'edit'),
     deliver: 'Video', dueDate: iso(-95), workDone: true },
+  /* written before this editor had a phone on file, so the assignment's own
+     copy is blank. The panel has to fall back to the team record or this job
+     reaches nobody — and reports it if even that comes up empty. */
+  { ...asg('as20', 'pk13', team[4], iso(-58), 'Wedding', 'editing', 'assigned', 0, 0, 'edit'),
+    memberPhone10: '', deliver: 'Video', dueDate: iso(12) },
+  /* team[6] Rakesh has no phone anywhere, so no fallback can save this one —
+     the case a backfill cannot fix and the banner has to name instead */
+  { ...asg('as21', 'pk11', team[6], iso(-90), 'Wedding', 'editing', 'assigned', 0, 0, 'edit'),
+    deliver: 'Reels', dueDate: iso(20) },
   /* past work, part-paid — so the crew-pay section has something owed */
   asg('as14', 'pk11', team[0], iso(-90), 'Wedding', 'photography', 'acknowledged', 18000, 9000),
   asg('as15', 'pk11', team[1], iso(-90), 'Wedding', 'cinematography', 'acknowledged', 25000, 0),

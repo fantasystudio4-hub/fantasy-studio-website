@@ -1618,6 +1618,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   background:var(--gold-t1);border-radius:var(--r-md);
   padding:.8rem .9rem;margin:0 0 .9rem;
 }
+/* the part the button cannot fix, kept visibly apart from the part it can */
+#ejFix .ejfix-x{
+  padding-top:.4rem;margin-top:.15rem;border-top:1px dashed var(--line);
+  color:var(--warn);align-self:stretch;
+}
 #ejFix > b{color:var(--gold-b);font-size:var(--fs-base)}
 #ejFix > span{font-size:var(--fs-sm);color:var(--mut);line-height:1.5}
 #ejFix .btn{margin-top:.3rem}

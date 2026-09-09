@@ -5489,6 +5489,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         || r.svc.some((v,k)=>(o.svc[k]||{}).service !== v.service || (o.svc[k]||{}).qty !== v.qty);
     });
   };
+  /* An editor with no findable number cannot be let into anything — the rule
+     matches on the phone, so there is nothing to write. Reported separately
+     because the fix is a phone number on the Crew tab, not a tap here. */
+  function ejUnreachable(){
+    const out = [];
+    livePkgs().forEach(pk=>{
+      const names = ejNoPhone(pk.id);
+      if(names.length) out.push({ pkgId: pk.id, name: pk.clientName || '—', names });
+    });
+    return out;
+  }
   function ejStale(){
     const out = [];
     livePkgs().forEach(pk=>{
@@ -5505,8 +5516,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderEjFix(){
     const el = $('#ejFix'); if(!el) return;
     const stale = ejStale();
-    el.hidden = !stale.length;
-    if(!stale.length){ el.innerHTML = ''; return; }
+    const lost = ejUnreachable();
+    el.hidden = !stale.length && !lost.length;
+    if(!stale.length){
+      /* nothing to backfill, but somebody still cannot be reached */
+      if(lost.length){
+        const who = [...new Set(lost.flatMap(j=>j.names))];
+        const w = who.length === 1;
+        el.innerHTML = `
+          <b>${w ? who[0] + ' has' : who.length + ' editors have'} no phone number on file.</b>
+          <span>${w ? 'They are' : 'They are each'} assigned to editing work${
+            lost.length > 1 ? ` on ${lost.length} bookings` : ''}, and the crew page finds an editor by
+            phone — so ${w ? 'that job cannot reach them' : 'those jobs cannot reach them'} until
+            ${w ? 'their number is' : 'the numbers are'} added. Team → Crew → tap the name.</span>`;
+      }else{ el.innerHTML = ''; }
+      return;
+    }
     const n = stale.length, one = n === 1;
     /* two different faults, one fix. Saying "cannot open it" about a job the
        editor can already open is the kind of wrong that makes the owner stop
@@ -5522,9 +5547,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : `The scope on ${one?'it':'them'} was copied across before it carried the per-function breakdown, so
          ${one?'its editor sees':'their editors see'} the totals without the functions behind them. This copies the
          current scope over — nothing else about the job${one?'':'s'} changes.`;
+    const who = [...new Set(lost.flatMap(j=>j.names))];
     el.innerHTML = `
       <b>${head}</b>
       <span>${body}</span>
+      ${who.length ? `<span class="ejfix-x">${who.length === 1
+        ? `${esc(who[0])} has no phone number on file, so their work stays out of reach even after this — add it under Team → Crew.`
+        : `${who.length} editors have no phone number on file, so their work stays out of reach even after this — add them under Team → Crew.`}</span>` : ''}
       <button type="button" class="btn btn--sm btn--primary" data-ejfix>${
         shut ? `Let ${one?'the editor':'the editors'} in` : `Send the full scope`}</button>`;
   }
@@ -5880,9 +5909,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      assignments.memberPhone10 and the packages.crew mirror the partner portal
      reads. Refreshed on every write, so it is self-healing: assign, reassign
      or remove somebody and the next write puts it right. */
+  /* The assignment's own copy is only as good as the moment it was written:
+     an editor added before they had a phone on file carries an empty one, and
+     it is only rewritten when that member's phone is later EDITED. Falling
+     back to the member record — the same fallback the pay sheet already
+     makes — is the difference between a job its editor can open and one that
+     is silently unreachable forever. */
+  const ejPhoneOf = a => {
+    const own = String((a && a.memberPhone10) || '');
+    if(/^\d{10}$/.test(own)) return own;
+    return memberPhone10(memberById(a && a.memberId)) || '';
+  };
   const ejEditorPhones = id => [...new Set(ejCrew(id)
-    .map(a => String((a && a.memberPhone10) || ''))
+    .map(ejPhoneOf)
     .filter(p => /^\d{10}$/.test(p)))];
+  /* editors on a job that no phone can be found for at all. Nothing a backfill
+     can fix — the member needs a number — and until this said so the job simply
+     never appeared anywhere, which is the worst version of the bug. */
+  const ejNoPhone = id => ejCrew(id)
+    .filter(a => !/^\d{10}$/.test(ejPhoneOf(a)))
+    .map(a => (memberById(a.memberId) || {}).name || a.memberName || 'an editor');
   /* What the editor is actually cutting — "Cinematography ×4 · Traditional
      Video ×6" — copied onto the job because the crew page cannot read
      packages at all (the rules there are client-and-partner only, and rightly
