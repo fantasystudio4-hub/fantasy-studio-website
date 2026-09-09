@@ -92,6 +92,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .grp.tog{cursor:pointer;user-select:none;padding:.3rem 0}
 .grp.tog .car{display:inline-block;transition:transform .15s;color:var(--gold-b);font-size:.62rem}
 .grp.tog.closed .car{transform:rotate(-90deg)}
+/* the band headers inside the editing list — tighter than a section heading,
+   and the first one does not push the list away from the section title */
+.edgrp{margin:.9rem 0 .45rem}
+#editList > .edgrp:first-child{margin-top:.2rem}
 
 .asg{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-bottom:.9rem;padding:1rem 1.1rem}
 .asg.past{opacity:.75}
@@ -1187,6 +1191,46 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
   }
 
+  /* ---- what the list is ordered by ----
+     Sorting on the deadline alone read as arbitrary: a job handed over this
+     morning with no date on it yet sank below one due in three weeks, an
+     overdue film sat next to a cut that is with the studio and needs nothing,
+     and "I have been given something new" was invisible.
+
+     Four bands, in the order an editor actually works: what wants you now,
+     what is coming, what is out of your hands, what is finished. Inside a
+     band it is still the deadline, soonest first, undated last — a date only
+     decides between two jobs that want the same thing from you. */
+  const ED_BAND = [
+    { key:'now',   label:'Needs you' },
+    { key:'soon',  label:'Coming up' },
+    { key:'wait',  label:'With the studio' },
+    { key:'done',  label:'Finished' },
+  ];
+  function edBand(a){
+    const j = EJOBS[a.pkgId];
+    const latest = ejCuts(j)[0] || null;
+    const cut = latest ? ejCutState(j, latest) : null;
+    if(a.workDone || cut === 'approved') return 3;
+    if(cut === 'changes') return 0;                 /* sent back — your move */
+    if(a.status !== 'acknowledged') return 0;       /* newly handed to you */
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(a.dueDate||'')
+      ? Math.round((new Date(a.dueDate+'T00:00') - new Date(todayISO()+'T00:00'))/864e5) : null;
+    if(d !== null && d <= 1) return 0;              /* late, today, tomorrow */
+    if(cut === 'review') return 2;                  /* waiting on their verdict */
+    return 1;
+  }
+  function edOrder(a, b){
+    const pa = edBand(a), pb = edBand(b);
+    if(pa !== pb) return pa - pb;
+    const da = a.dueDate || '', db = b.dueDate || '';
+    /* finished work reads newest-first; everything else is soonest-first, and
+       an undated job sorts after dated ones rather than before all of them */
+    if(pa === 3) return da > db ? -1 : da < db ? 1 : 0;
+    return (da || '9999-99-99') < (db || '9999-99-99') ? -1
+         : (da || '9999-99-99') > (db || '9999-99-99') ? 1 : 0;
+  }
+
   /* Editing is a desk job on a deadline — no call time, no venue, and it does
      not belong in a schedule of shoot days. */
   function editCard(a){
@@ -1484,18 +1528,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        schedule they read as shoots that never happened, so they get their own
        group and sort by their deadline */
     const shoots = ASGS.filter(a=>a.kind !== 'edit');
-    const edits  = ASGS.filter(a=>a.kind === 'edit')
-      .sort((a,b)=>{
-        if(!!a.workDone !== !!b.workDone) return a.workDone ? 1 : -1;   /* open first */
-        return (a.dueDate||a.date||'9999') < (b.dueDate||b.date||'9999') ? -1 : 1;
-      });
+    const edits = ASGS.filter(a=>a.kind === 'edit').sort(edOrder);
     const up = shoots.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
     const past = shoots.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
     $('#editWrap').hidden = !edits.length;
     if(edits.length){
       const late = edits.filter(a=>!a.workDone && (a.dueDate||'') && a.dueDate < today).length;
       $('#editCount').textContent = edits.filter(a=>!a.workDone).length + (late ? ' · ' + late + ' late' : '');
-      $('#editList').innerHTML = edits.map(editCard).join('');
+      /* Grouped by what it wants from you, not by date alone. A date sort put
+         a job with no deadline at the bottom — which is exactly where a piece
+         of work you have just been handed should NOT be. */
+      let band = -1;
+      $('#editList').innerHTML = edits.map(a=>{
+        const p = edBand(a);
+        const head = p !== band
+          ? (band = p, `<div class="grp edgrp">${ED_BAND[p].label}<b>${
+              edits.filter(x=>edBand(x) === p).length}</b></div>`)
+          : '';
+        return head + editCard(a);
+      }).join('');
     }
     const toConfirm = up.filter(a=>a.status !== 'acknowledged').length;
     const openEdits = edits.filter(a=>!a.workDone).length;
