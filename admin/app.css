@@ -1632,6 +1632,22 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    the first one does not shove the list away from the chips above it */
 .ejgrp{margin:.9rem 0 .5rem}
 #ejList > .ejgrp:first-child{margin-top:.1rem}
+/* ⚡ Urgent — at most three jobs the owner pins above everything else */
+.ejgrp--urg{color:var(--state-overdue)}
+.ejgrp--urg b{color:var(--state-overdue)}
+.ejgrp--urg::after{background:rgba(var(--state-overdue-rgb),.45)}
+.ejb--urgent{color:var(--state-overdue);background:rgba(var(--state-overdue-rgb),.18)}
+/* two badges on one row: only the first takes the push to the right */
+.ejb--urgent + .ejb{margin-left:.35rem}
+.ejurg-over{margin:-.2rem 0 .6rem;font-size:var(--fs-sm);color:var(--state-overdue)}
+.ejurg{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin:.1rem 0 .9rem}
+.ejurg--on{padding:.5rem .7rem;border:1px solid rgba(var(--state-overdue-rgb),.45);
+           background:rgba(var(--state-overdue-rgb),.08);border-radius:var(--r-md)}
+.ejurg--on > b{color:var(--state-overdue);font-size:var(--fs-base)}
+.ejurg-n{font-size:var(--fs-sm);color:var(--mut);flex:1;min-width:0}
+.ejurg-opt{display:flex;align-items:center;gap:.55rem;min-height:var(--tap);cursor:pointer;
+           font-size:var(--fs-base);color:var(--text)}
+.ejurg-opt input{width:18px;height:18px;accent-color:var(--gold);flex:0 0 auto}
 /* the desk's rows carry several of these at once, so they wrap rather than
    push the service line off the card */
 .ej-foot{flex-wrap:wrap;row-gap:.35rem}

@@ -4344,6 +4344,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     toast(sm.msg);
     if(!sm.ok) return;
     x.delivery = delivery;
+    /* ticking the film out on the package is a delivery too — clear its urgent
+       flag, which that tick alone never writes to the job */
+    if(Number((ejDoc(pkgId) || {}).urgent) > 0 && ejVideoDone(x))
+      ejWrite(pkgId, { urgent: 0 }, 'Urgent cleared — the film is delivered').catch(()=>{});
     buzz(); renderPkgList(); renderTeam(); renderEditTab();
   }
 
@@ -5247,7 +5251,95 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      job past its date — in among jobs sitting correctly with an editor and
      wanting nothing. Same three bands the crew page uses, read from this
      side: what wants YOU, what is out with somebody, what is finished. */
+  /* ---- ⚡ Urgent: up to three jobs the owner pins above everything ----
+     Stored as a rank on the job document (`urgent`, 0 = not urgent), which the
+     editor can already read and only the admin can write. Positions 1-2-3 are
+     worked out by sorting on that rank, so removing one never has to renumber
+     the others. A delivered job is never urgent here, whatever it still
+     carries, and its flag is cleared on its next write (see ejWrite). */
+  const EJ_URGENT_MAX = 3;
+  const ejUrgRank = r => (r && r.stage !== 'delivered' && r.job && Number(r.job.urgent) > 0)
+    ? Number(r.job.urgent) : 0;
+  /* the desk's urgent jobs, in the owner's order — rank, then id so a tie from
+     two phones at once still has one stable order */
+  const ejUrgentRows = () => ejAllRows().filter(r => ejUrgRank(r))
+    .sort((a,b) => (ejUrgRank(a) - ejUrgRank(b)) || String(a.pk.id).localeCompare(String(b.pk.id)));
+  /* What to write for one urgent change. Pure — no Firestore, no DOM — so it
+     can be tested on its own. `list` is the current urgent jobs in order,
+     [{id, rank}]; returns [{id, urgent, what}], urgent 0 meaning cleared. */
+  function ejUrgPlan(list, action, id, replaceId, nameOf){
+    const nm = k => (nameOf ? nameOf(k) : k);
+    const i = list.findIndex(x => x.id === id);
+    if(action === 'mark'){
+      if(i >= 0) return [];
+      if(list.length < EJ_URGENT_MAX){
+        const top = list.reduce((m,x) => Math.max(m, x.rank), 0);
+        return [{ id, urgent: top + 1, what: `Marked urgent #${list.length + 1}` }];
+      }
+      const j = list.findIndex(x => x.id === replaceId); if(j < 0) return [];
+      /* clear first, so the desk never holds four */
+      return [
+        { id: list[j].id, urgent: 0, what: `Urgent #${j+1} handed to ${nm(id)}` },
+        { id, urgent: list[j].rank, what: `Marked urgent #${j+1}, replacing ${nm(list[j].id)}` },
+      ];
+    }
+    if(action === 'clear') return i < 0 ? [] : [{ id, urgent: 0, what: `Urgent #${i+1} removed` }];
+    if(action === 'up'){
+      if(i <= 0) return [];
+      const a = list[i], b = list[i-1];
+      /* equal ranks cannot swap into an order — push the one above one past */
+      const aTo = b.rank, bTo = a.rank === b.rank ? b.rank + 1 : a.rank;
+      return [
+        { id: a.id, urgent: aTo, what: `Urgent #${i+1} → #${i}` },
+        { id: b.id, urgent: bTo, what: `Urgent #${i} → #${i+1}, ${nm(a.id)} moved above` },
+      ];
+    }
+    return [];
+  }
+  /* the control on the job page */
+  function ejUrgBlock(r){
+    if(r.awaiting || r.stage === 'delivered') return '';
+    const list = ejUrgentRows();
+    const i = list.findIndex(x => x.pk.id === r.pk.id);
+    if(i < 0){
+      const full = list.length >= EJ_URGENT_MAX;
+      return `<div class="ejurg">
+        <button type="button" class="btn btn--sm btn--ghost" data-ejurg="mark">⚡ Mark urgent</button>
+        <span class="ejurg-n">${list.length}/${EJ_URGENT_MAX} urgent${full ? ' — marking this one replaces another' : ''}</span>
+      </div>`;
+    }
+    return `<div class="ejurg ejurg--on">
+      <b>⚡ Urgent #${i + 1}</b><span class="ejurg-n">of ${list.length}</span>
+      ${i > 0 ? '<button type="button" class="btn btn--sm btn--ghost" data-ejurg="up">↑ Move up</button>' : ''}
+      <button type="button" class="btn btn--sm btn--quiet" data-ejurg="clear">Remove</button>
+    </div>`;
+  }
+  async function ejUrgAct(action, btn){
+    const id = _ejOpenId; const pk = ejPkg(id); if(!pk) return;
+    const list = ejUrgentRows().map(x => ({ id: x.pk.id, rank: ejUrgRank(x), name: x.pk.clientName || '—' }));
+    const nameOf = k => ((list.find(x => x.id === k) || {}).name) || (k === id ? (pk.clientName || '—') : 'another job');
+    let replaceId = '';
+    if(action === 'mark' && list.length >= EJ_URGENT_MAX){
+      const body = `<p>${list.length} jobs are already urgent. Which one should <b>${esc(pk.clientName || 'this job')}</b> replace?</p>`
+        + list.map((x,i) => `<label class="ejurg-opt"><input type="radio" name="ejUrgRep" value="${esc(x.id)}"${
+            i === list.length - 1 ? ' checked' : ''}> <b>#${i+1}</b> ${esc(x.name)}</label>`).join('');
+      if(!await confirmDialog({ title:'Replace an urgent job?', body, confirmText:'Replace', danger:false })) return;
+      /* the sheet's markup stays standing after it closes, so the choice is still there to read */
+      replaceId = (document.querySelector('input[name="ejUrgRep"]:checked') || {}).value || '';
+      if(!replaceId) return;
+    }
+    const plan = ejUrgPlan(list, action, id, replaceId, nameOf);
+    if(!plan.length) return;
+    if(btn) btn.disabled = true;
+    for(const w of plan){
+      const sm = await ejWrite(w.id, { urgent: w.urgent }, w.what);
+      if(!sm.ok){ toast(sm.msg); renderEjDetail(); return; }
+    }
+    toast(action === 'clear' ? 'Urgent removed' : action === 'up' ? 'Moved up ✓' : 'Marked urgent ⚡');
+    buzz(); renderEjDetail();
+  }
   const EJ_BANDS = [
+    { key:'urgent', label:'⚡ Urgent' },
     { key:'you',  label:'Needs you' },
     { key:'out',  label:'With the editor' },
     { key:'done', label:'Delivered' },
@@ -5263,19 +5355,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        keyboard user is not dropped to the top of the page */
     if(keepFocus){ const h = $(`#ejList [data-ejband="${p}"]`); if(h) h.focus(); }
   }
-  function ejBand(r){
+  function ejBaseBand(r){
     if(r.stage === 'delivered') return 2;
     if(r.asks) return 0;                                          /* a price to answer */
     if(!r.crew.length) return 0;                                  /* nobody on it */
     if(r.overdue) return 0;
     return 1;
   }
+  /* ⚡ Urgent sits above every other band; the rest keep their order */
+  function ejBand(r){ return ejUrgRank(r) ? 0 : ejBaseBand(r) + 1; }
   /* why it is in "Needs you" — said on the row, so the band is never a
      mystery you have to open the job to solve */
   function ejWants(r){
     /* only ever explains a "Needs you" row. On a delivered job "no editor
        yet" is true and completely beside the point — the film is out. */
-    if(ejBand(r) !== 0) return [];
+    if(ejBaseBand(r) !== 0) return [];
     const out = [];
     if(r.asks) out.push(`${r.asks} price${r.asks>1?'s':''} to agree`);
     if(!r.crew.length) out.push('no editor yet');
@@ -5311,7 +5405,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the default view leads with the band; the two explicit sorts below
          are the owner asking for a flat list in a particular order, so they
          are left flat */
-      deadline: (a,b)=>(ejBand(a) - ejBand(b)) || byDeadline(a,b),
+      deadline: (a,b)=>(ejBand(a) - ejBand(b)) || (ejBand(a) === 0 ? ejUrgRank(a) - ejUrgRank(b) : byDeadline(a,b)),
       event: (a,b)=>(a.last > b.last ? -1 : a.last < b.last ? 1 : 0),
       client: (a,b)=>String(a.pk.clientName||'').localeCompare(String(b.pk.clientName||'')),
     }[_ejSort] || byDeadline;
@@ -5426,16 +5520,26 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* Banded only in the default order — see ejVisibleRows. Asking for
        Client A–Z and getting it in three chunks would not be A–Z. */
     const banded = _ejSort === 'deadline' && _ejStageF !== 'awaiting';
+    const urgIds = ejUrgentRows().map(x => x.pk.id);   /* once per render, not per row */
     let band = -1;
     el.innerHTML = rows.map(r=>{
       let head = '', folded = false;
       if(banded){
         const p = ejBand(r);
-        const open = !_ejClosed.has(p);
-        if(p !== band){ band = p;
-          head = `<div class="grp tog ejgrp ${open?'':'closed'}" data-ejband="${p}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${EJ_BANDS[p].label}<b>${
-            rows.filter(x=>ejBand(x) === p).length}</b></div>`; }
-        folded = !open;
+        if(p === 0){
+          /* ⚡ Urgent never folds — urgent work behind a closed header is the
+             opposite of the point — and says how many of the slots are used */
+          if(p !== band){ band = p;
+            const n = urgIds.length;
+            head = `<div class="grp ejgrp ejgrp--urg">${EJ_BANDS[0].label}<b>${n}/${EJ_URGENT_MAX}</b></div>${
+              n > EJ_URGENT_MAX ? `<p class="ejurg-over">${n} are marked urgent — the limit is ${EJ_URGENT_MAX}. Open one and remove it.</p>` : ''}`; }
+        }else{
+          const open = !_ejClosed.has(p);
+          if(p !== band){ band = p;
+            head = `<div class="grp tog ejgrp ${open?'':'closed'}" data-ejband="${p}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${EJ_BANDS[p].label}<b>${
+              rows.filter(x=>ejBand(x) === p).length}</b></div>`; }
+          folded = !open;
+        }
       }
       /* a folded band keeps its header and its count, and shows no rows */
       if(folded) return head;
@@ -5444,6 +5548,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="ej-row${r.stage === 'delivered' ? ' ok' : ''}" data-ejopen="${esc(r.pk.id)}" role="button" tabindex="0">
         <div class="ej-top">
           <b>${esc(r.pk.clientName || '—')}</b>${qnoTag(r.pk.quoteNo)}
+          ${urgIds.includes(r.pk.id) ? `<span class="ejb ejb--urgent">⚡ ${urgIds.indexOf(r.pk.id) + 1}</span>` : ''}
           ${ejBadge(r)}
         </div>
         <div class="ej-meta">
@@ -5773,6 +5878,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         ${ejBadge(r)}
       </div>
+      ${ejUrgBlock(r)}
 
       ${r.awaiting ? `<div class="ejwait">
         <b>Waiting on the client's editing details.</b>
@@ -5937,6 +6043,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const body = { ...patch, pkgId, editors: ejEditorPhones(pkgId), updatedAt: serverTimestamp() };
     const sc = ejScopeSummary(pkgId);
     if(sc) body.scope = sc;   /* Firestore refuses undefined, so only when there is one */
+    /* a film handed over is no longer urgent: when this write leaves the job
+       delivered, free its slot in the same write so the editor's page drops
+       the flag too */
+    if(!('urgent' in patch) && Number((ejDoc(pkgId) || {}).urgent) > 0){
+      const pkNow = ejPkg(pkgId);
+      const goesDelivered = patch.stage === 'delivered'
+        || (!('stage' in patch) && pkNow && ejStageOf(pkNow, ejDoc(pkgId), ejCrew(pkgId)) === 'delivered');
+      if(goesDelivered) body.urgent = 0;
+    }
     if(entry) body.audit = arrayUnion(entry);
     let cur = ejDoc(pkgId);
     const isNew = !cur;
@@ -5993,6 +6108,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   on('#ejDetailView', 'click', async e=>{
+    const urg = e.target.closest('[data-ejurg]');
+    if(urg){ await ejUrgAct(urg.dataset.ejurg, urg); return; }
     if(e.target.closest('[data-ejback]')){ backFrom('ejob', closeEjDetail); return; }
     if(e.target.closest('[data-ejaudit]')){ _ejAuditOpen = !_ejAuditOpen; renderEjDetail(); return; }
     if(e.target.closest('[data-ejsendscope]')){

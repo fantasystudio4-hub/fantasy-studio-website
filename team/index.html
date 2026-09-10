@@ -120,6 +120,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .edrow-p i{font-style:normal;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
            border-radius:20px;padding:.16em .55em;background:rgba(255,255,255,.06);color:var(--mut)}
 .edrow-p i.warn{color:var(--warn);background:rgba(255,176,84,.14)}
+.edrow-p i.urg{color:var(--err);background:rgba(224,122,106,.16)}
+/* the studio's ⚡ Urgent band, and the line on the job itself */
+.edgrp--urg,.edgrp--urg b{color:var(--err)}
+.ejurg{margin:.1rem 0 .75rem;padding:.5rem .7rem;border-radius:12px;font-size:.82rem;font-weight:600;
+       color:#f0a597;background:rgba(224,122,106,.09);border:1px solid rgba(224,122,106,.45)}
 .edrow .chip{flex:0 0 auto}
 
 /* ---- the sheet ---- */
@@ -1210,6 +1215,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const own = (a && a.dueDate) || '';
     return ISO_D.test(own) ? own : '';
   };
+  /* ⚡ Urgent — the studio pins at most three jobs as the ones to do first.
+     Only the studio sets it (the rules let an editor add notes, nothing else),
+     and finished or delivered work is never shown as urgent. */
+  const edUrg = a => {
+    const j = a && EJOBS[a.pkgId];
+    return (j && Number(j.urgent) > 0 && j.stage !== 'delivered' && !a.workDone) ? Number(j.urgent) : 0;
+  };
   /* An editor who opens a job and finds half a page cannot tell whether the
      app is broken, the studio has not filled it in, or they are not allowed to
      see it. Any of those is the studio's to fix and none of them is obvious
@@ -1297,23 +1309,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      morning with no date on it yet sank below one due in three weeks, and
      "I have been given something new" was invisible.
 
-     Three bands, in the order an editor actually works: what wants you now,
-     what is coming, what is finished. Inside a band it is still the deadline,
-     soonest first, undated last — a date only decides between two jobs that
-     want the same thing from you. */
+     Bands, in the order an editor actually works: what the studio has pinned
+     as urgent, what wants you now, what is coming, what is finished. Inside a
+     band it is the deadline, soonest first, undated last — except Urgent,
+     which keeps the studio's own 1-2-3. */
   const ED_BAND = [
+    { key:'urgent', label:'⚡ Urgent' },
     { key:'now',   label:'Needs you' },
     { key:'soon',  label:'Coming up' },
     { key:'done',  label:'Finished' },
   ];
   function edBand(a){
-    if(a.workDone) return 2;
-    if(a.status !== 'acknowledged') return 0;       /* newly handed to you */
+    if(edUrg(a)) return 0;                          /* the studio pinned it */
+    if(a.workDone) return 3;
+    if(a.status !== 'acknowledged') return 1;       /* newly handed to you */
     const due = asgDue(a);
     const d = ISO_D.test(due)
       ? Math.round((new Date(due+'T00:00') - new Date(todayISO()+'T00:00'))/864e5) : null;
-    if(d !== null && d <= 1) return 0;              /* late, today, tomorrow */
-    return 1;
+    if(d !== null && d <= 1) return 1;              /* late, today, tomorrow */
+    return 2;
   }
   function edOrder(a, b){
     const pa = edBand(a), pb = edBand(b);
@@ -1321,7 +1335,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const da = asgDue(a), db = asgDue(b);
     /* finished work reads newest-first; everything else is soonest-first, and
        an undated job sorts after dated ones rather than before all of them */
-    if(pa === 2) return da > db ? -1 : da < db ? 1 : 0;
+    if(pa === 0) return edUrg(a) - edUrg(b);        /* the studio's own order */
+    if(pa === 3) return da > db ? -1 : da < db ? 1 : 0;
     return (da || '9999-99-99') < (db || '9999-99-99') ? -1
          : (da || '9999-99-99') > (db || '9999-99-99') ? 1 : 0;
   }
@@ -1334,6 +1349,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? Math.round(Number(a.payProposal.amount)) : null;
     const fee = Math.max(0, Number(((a||{}).pay||{}).amount) || 0);
     const pills = [];
+    if(edUrg(a)) pills.push('<i class="urg">⚡ urgent</i>');
     if(a.status !== 'acknowledged' && !a.workDone) pills.push('<i class="warn">confirm it</i>');
     if(asked !== null) pills.push(`<i class="warn">${esc(inr(asked))} asked</i>`);
     else if(!fee) pills.push('<i>no fee yet</i>');
@@ -1402,6 +1418,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <b>${esc(a.deliver || 'Editing')}</b>
         ${tag}
       </div>
+      ${edUrg(a) ? '<p class="ejurg">⚡ Urgent — the studio needs this one first</p>' : ''}
       <div class="lines">
         <div class="ln"><span>Booking</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
         ${asgDue(a) ? `<div class="ln"><span>Deadline</span><span>${esc(fmtDate(asgDue(a)))}</span></div>` : ''}
@@ -1694,7 +1711,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#editList').innerHTML = edits.map(a=>{
         const p = edBand(a);
         const head = p !== band
-          ? (band = p, `<div class="grp edgrp">${ED_BAND[p].label}<b>${
+          ? (band = p, `<div class="grp edgrp${p === 0 ? ' edgrp--urg' : ''}">${ED_BAND[p].label}<b>${
               edits.filter(x=>edBand(x) === p).length}</b></div>`)
           : '';
         return head + editRow(a);

@@ -297,6 +297,25 @@ export const packages = [
     deleted: true, deletedAt: iso(-9),
     events: [], totals: money(90000, 0), payments: [], delivery: [],
   },
+  {
+    /* two more on the editing desk, both pinned urgent. With pk03 they fill the
+       three slots in the order pk03 #1, pk17 #2, pk16 #3 — which is NOT their
+       deadline order (pk16 is due first), so Urgent visibly keeps the owner's */
+    id: 'pk16', quoteNo: 'FS-2026-052', clientName: 'Farhan & Zoya', clientPhone: '9701234567',
+    clientType: 'direct', status: 'booked', createdAt: ts(70),
+    events: [{ date: iso(-12), title: 'Wedding', slot: 'evening', venue: 'Taj Falaknuma',
+               items: shoot([['Photography', 2, 18000], ['Cinematography', 1, 25000]]) }],
+    totals: money(180000, 90000), payments: [pay(90000, 60, 'UPI')],
+    delivery: [{ step: 'Video editing details received', date: iso(-8) }],
+  },
+  {
+    id: 'pk17', quoteNo: 'FS-2026-055', clientName: 'Rohit & Meera', clientPhone: '9848567890',
+    clientType: 'direct', status: 'booked', createdAt: ts(65),
+    events: [{ date: iso(-20), title: 'Sangeet', slot: 'evening', venue: 'HICC',
+               items: shoot([['Cinematography', 2, 25000], ['Drone', 1, 22000]]) }],
+    totals: money(120000, 60000), payments: [pay(60000, 50, 'Bank transfer')],
+    delivery: [{ step: 'Video editing details received', date: iso(-15) }],
+  },
 ];
 
 /* ------------------------------------------------------------------ leads */
@@ -435,6 +454,11 @@ export const assignments = [
   asg('as14', 'pk11', team[0], iso(-90), 'Wedding', 'photography', 'acknowledged', 18000, 9000),
   asg('as15', 'pk11', team[1], iso(-90), 'Wedding', 'cinematography', 'acknowledged', 25000, 0),
   asg('as16', 'pk05', team[2], iso(-58), 'Reception', 'photography', 'acknowledged', 16000, 16000),
+  /* the editors on the two extra urgent jobs */
+  { ...asg('as22', 'pk16', team[4], iso(-12), 'Wedding', 'editor', 'acknowledged', 12000, 0, 'edit'),
+    deliver: 'Video' },
+  { ...asg('as23', 'pk17', team[7], iso(-20), 'Sangeet', 'editor', 'acknowledged', 10000, 0, 'edit'),
+    deliver: 'Highlights' },
 ];
 
 /* ---------------------------------------------------------------- studios */
@@ -484,6 +508,7 @@ export const editingJobs = [
     /* the six-function wedding: under review, with a revision already sent
        back once — the audit trail is the only place that shows it */
     id: 'pk03', pkgId: 'pk03', stage: 'review',
+    urgent: 1,                         /* ⚡ #1 */
     deadline: iso(-4),                 /* PAST and not delivered = the overdue row */
     footage: '1.4 TB · 3 drives',
     driveLink: 'https://drive.google.com/drive/folders/demo-aisha-fatima',
@@ -521,6 +546,7 @@ export const editingJobs = [
              rows: [{ date: iso(-150), title: 'Wedding', n: 2,
                       svc: [{ service: 'Cinematography', qty: 2 }] }] },
     id: 'pk15', pkgId: 'pk15', stage: 'delivered', deliveredAt: iso(-92),
+    urgent: 2,   /* left over from before delivery: the desk must NOT show it as urgent */
     deadline: iso(-95), footage: '820 GB', driveLink: '',
     brief: 'Wanted the whole baaraat in the film, and no filter on the Ramoji drone shots.',
     comments: [
@@ -535,6 +561,10 @@ export const editingJobs = [
       { id: 'ea11', at: ejWhen(92),  by: 'fantasystudio4@gmail.com', what: 'Stage Under Review \u2192 Delivered' },
     ],
   },
+  { id: 'pk16', pkgId: 'pk16', stage: 'progress', deadline: iso(6),  urgent: 3,
+    editors: ['9032005566'], comments: [], audit: [] },
+  { id: 'pk17', pkgId: 'pk17', stage: 'assigned', deadline: iso(14), urgent: 2,
+    editors: ['9177007788'], comments: [], audit: [] },
 ];
 
 /* ----------------------------------------------------------------- config */
