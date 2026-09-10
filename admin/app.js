@@ -5252,6 +5252,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     { key:'out',  label:'With the editor' },
     { key:'done', label:'Delivered' },
   ];
+  /* Which bands are folded. Session-only on purpose, like Completed and
+     Inactive elsewhere in this panel: "Needs you" remembered as closed would
+     quietly hide tomorrow's urgent work behind a header nobody reopens. */
+  const _ejClosed = new Set();
+  function ejToggleBand(p, keepFocus){
+    if(_ejClosed.has(p)) _ejClosed.delete(p); else _ejClosed.add(p);
+    renderEditTab();
+    /* the header is rebuilt by the render; hand focus back to the new one so a
+       keyboard user is not dropped to the top of the page */
+    if(keepFocus){ const h = $(`#ejList [data-ejband="${p}"]`); if(h) h.focus(); }
+  }
   function ejBand(r){
     if(r.stage === 'delivered') return 2;
     if(r.asks) return 0;                                          /* a price to answer */
@@ -5417,13 +5428,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const banded = _ejSort === 'deadline' && _ejStageF !== 'awaiting';
     let band = -1;
     el.innerHTML = rows.map(r=>{
-      let head = '';
+      let head = '', folded = false;
       if(banded){
         const p = ejBand(r);
+        const open = !_ejClosed.has(p);
         if(p !== band){ band = p;
-          head = `<div class="grp ejgrp">${EJ_BANDS[p].label}<b>${
+          head = `<div class="grp tog ejgrp ${open?'':'closed'}" data-ejband="${p}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${EJ_BANDS[p].label}<b>${
             rows.filter(x=>ejBand(x) === p).length}</b></div>`; }
+        folded = !open;
       }
+      /* a folded band keeps its header and its count, and shows no rows */
+      if(folded) return head;
       const wants = banded ? ejWants(r) : [];
       return head + `
       <div class="ej-row${r.stage === 'delivered' ? ' ok' : ''}" data-ejopen="${esc(r.pk.id)}" role="button" tabindex="0">
@@ -5615,6 +5630,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _ejEditorF = b.dataset.ejeditor; viewSet('ejEditorF', _ejEditorF); renderEditTab();
   });
   on('#ejList', 'click', e=>{
+    const fold = e.target.closest('[data-ejband]');
+    if(fold){ ejToggleBand(Number(fold.dataset.ejband)); return; }
     const jump = e.target.closest('[data-ejstage]');
     if(jump){
       _ejStageF = jump.dataset.ejstage;
@@ -5634,6 +5651,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.key !== 'Enter' && e.key !== ' ') return;
     const r = e.target.closest('[data-ejopen]'); if(!r) return;
     e.preventDefault(); openEjDetail(r.dataset.ejopen);
+  });
+  /* Enter / Space on a band header folds it, like a tap */
+  on('#ejList', 'keydown', e=>{
+    const fold = e.target.closest && e.target.closest('[data-ejband]');
+    if(!fold || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    ejToggleBand(Number(fold.dataset.ejband), true);
   });
 
   /* ---- detail: ONE booking's video edit, and nothing else ---- */
@@ -10598,6 +10622,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const demoView = (location.hash||'').replace('#','').split('/')[0];
         showTab(TAB_OF_VIEW[demoView] || 'tabHome');
         if(demoView === 'editing') setTeamSeg('edit');
+        /* and record it, as the signed-in boot does: without a state on this
+           first entry, Back from anything opened on top of it read the
+           popstate fallback, 'home', and dropped the demo onto Home */
+        const demoState = demoView === 'editing' ? 'editing'
+          : VIEW_OF_TAB[TAB_OF_VIEW[demoView] || 'tabHome'];
+        try{ history.replaceState({view: demoState}, '', '#' + demoState); }catch(e){}
 
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */
