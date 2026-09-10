@@ -252,10 +252,18 @@ service cloud.firestore {
     // earlier note inside that same array — rules cannot compare elements —
     // which is why the audit trail is a separate, admin-write-only field.
     match /editingJobs/{pkgId} {
+      // `in`, and nothing else. For a LIST query Firestore has to prove every
+      // condition from the query's own filter, and the crew page filters with
+      // array-contains — which it can match to `x in list`, but NOT to
+      // `list.hasAny([x])` and not to an `is list` type check. The first
+      // version used both, so the crew query was refused outright
+      // (permission-denied) for every editor, whatever editors[] held. Same
+      // trap as the clientType warning on packages above. A document with no
+      // editors field makes `in` error, and an error is a deny — which is what
+      // the `is list` guard was there for anyway.
       function myJob() {
         return request.auth != null
-          && resource.data.editors is list
-          && resource.data.editors.hasAny([clientPhone10()]);
+          && clientPhone10() in resource.data.editors;
       }
       function noteCount(d) {
         return ('comments' in d) && d.comments is list ? d.comments.size() : 0;
