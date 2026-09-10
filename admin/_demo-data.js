@@ -402,7 +402,11 @@ export const assignments = [
   asg('as10', 'pk02', team[2], iso(13), 'Nikah', 'photography', 'pending', 16000, 0),
   asg('as11', 'pk02', team[1], iso(13), 'Reception', 'cinematography', 'pending', 25000, 0),
   /* editing work — kind:'edit', which must NOT count as crew on the day */
-  asg('as12', 'pk03', team[4], iso(5), 'Nikah', 'editing', 'acknowledged', 12000, 12000, 'edit'),
+  /* a due date left over from the old assign sheet, 20 days out, while the
+     job's Deadline is 4 days PAST — the booking's Deadline has to win, so this
+     reads "4d late", never "due in 20d" */
+  { ...asg('as12', 'pk03', team[4], iso(5), 'Nikah', 'editing', 'acknowledged', 12000, 12000, 'edit'),
+    dueDate: iso(20) },
   asg('as13', 'pk05', team[7], iso(-58), 'Reception', 'album design', 'acknowledged', 9000, 9000, 'edit'),
   /* TWO editors on one booking, with different jobs and different fees — the
      case the Editing tab exists to show, and the one a single assignee field

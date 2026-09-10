@@ -1226,15 +1226,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      in decisions{} which this page cannot write — so a cut shows as "with the
      studio" until they say otherwise, and nobody can approve their own work.
      versions[] is theirs to append to, one at a time. */
-  /* The one deadline. It lives on the job now — the assign sheet no longer
-     asks for a second one — but an assignment written before that carries its
-     own, so that wins and nothing already scheduled shifts. */
+  /* The one deadline, and it is the one the studio sets on the booking.
+     An assignment written before the assign sheet lost its own due date still
+     carries one — and it used to WIN, so an editor went on seeing a date the
+     studio could no longer see or change, and never saw the Deadline when it
+     was moved. The job's deadline wins now; the old date is only a fallback
+     for a job that has never been given one. */
   const ISO_D = /^\d{4}-\d{2}-\d{2}$/;
   const asgDue = a => {
-    const own = (a && a.dueDate) || '';
-    if(ISO_D.test(own)) return own;
     const j = a && EJOBS[a.pkgId];
-    return (j && ISO_D.test(j.deadline||'')) ? j.deadline : '';
+    if(j && ISO_D.test(j.deadline||'')) return j.deadline;
+    const own = (a && a.dueDate) || '';
+    return ISO_D.test(own) ? own : '';
   };
   const EJ_CUT = { review:'With the studio', changes:'Changes asked', approved:'Approved' };
   const ejCuts = j => (j && Array.isArray(j.versions) ? j.versions : [])
@@ -1438,6 +1441,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const due = asgDue(a);
     return fmtShort(iso.test(due) ? due : (a.date||''));
   };
+  /* Every day this edit was shot on. The editor works function by function,
+     so one "last shoot" date said less than the job needed; the scope the
+     studio sends carries each function's date. With no breakdown yet it falls
+     back to the assignment's own date, labelled as before. */
+  const edShots = a => {
+    const sc = EJOBS[a.pkgId] && EJOBS[a.pkgId].scope;
+    const rows = sc && Array.isArray(sc.rows) ? sc.rows : [];
+    const ds = [...new Set(rows.map(r=>String((r && r.date) || '')).filter(d=>ISO_D.test(d)))].sort();
+    if(ds.length) return { label: 'Shot on',
+      text: ds.length === 1 ? fmtDate(ds[0]) : ds.map(fmtShort).join(' · ') };
+    return { label: a.scope === 'package' ? 'Last shoot' : 'Shot on', text: fmtDate(a.date) };
+  };
   function edDueChip(a){
     const today = todayISO();
     const due = asgDue(a);
@@ -1462,6 +1477,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const txt = a.workDone ? '✓ done' : d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'due in ' + d + 'd';
       tag = `<span class="chip ${cls}">${txt}</span>`;
     }
+    const shot = edShots(a);
     return `
     <div class="asg ${a.workDone?'past':''}">
       <div class="asg-h">
@@ -1471,8 +1487,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       <div class="lines">
         <div class="ln"><span>Booking</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
-        ${asgDue(a) ? `<div class="ln"><span>Due</span><span>${esc(fmtDate(asgDue(a)))}</span></div>` : ''}
-        <div class="ln"><span>${a.scope === 'package' ? 'Last shoot' : 'Shot on'}</span><span>${esc(fmtDate(a.date))}</span></div>
+        ${asgDue(a) ? `<div class="ln"><span>Deadline</span><span>${esc(fmtDate(asgDue(a)))}</span></div>` : ''}
+        <div class="ln"><span>${shot.label}</span><span>${esc(shot.text)}</span></div>
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
       ${ejBlock(a)}

@@ -5101,14 +5101,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const ejRounds = j => ejCuts(j).length;
   /* only ever opened, never trusted as markup */
   const ejSafeUrl = u => /^https?:\/\//i.test(String(u||'').trim()) ? String(u).trim() : '';
-  /* The one deadline an editing job has. It lives on the job; an assignment
-     written before this change may still carry its own, so that is honoured
-     first and nothing already scheduled moves. */
+  /* The one deadline an editing job has: the Deadline on the booking, the only
+     one the panel can show or change. An assignment written before the assign
+     sheet lost its own due date still carries one, and it used to win — so
+     moving the Deadline did nothing for that editor, on their page or on the
+     per-editor list here. It is a fallback now, for a job never given one.
+     The crew page's asgDue() has the same order; keep the two in step. */
   const asgDue = a => {
-    const own = (a && a.dueDate) || '';
-    if(ISO_RE.test(own)) return own;
     const j = a && ejDoc(a.pkgId);
-    return (j && ISO_RE.test(j.deadline||'')) ? j.deadline : '';
+    if(j && ISO_RE.test(j.deadline||'')) return j.deadline;
+    const own = (a && a.dueDate) || '';
+    return ISO_RE.test(own) ? own : '';
   };
   /* Putting somebody on an edit for the first time gives the job a deadline
      if it has none — the same date the sheet used to prefill, now written
