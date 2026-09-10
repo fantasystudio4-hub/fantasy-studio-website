@@ -1684,7 +1684,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#addTesti', 'click', ()=>$('#testiList').insertAdjacentHTML('beforeend', testiRow()));
   on('#addFaq', 'click', ()=>$('#faqList').insertAdjacentHTML('beforeend', faqRow()));
-  document.addEventListener('click', e=>{ if(e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
+  /* Site Config's ✕ Remove buttons. Guarded: anything else that carried
+     data-del reached this on every tap — the What-to-deliver chips threw here
+     each time, and would have removed the nearest .row had there been one. */
+  document.addEventListener('click', e=>{
+    if(!e.target.matches('[data-del]')) return;
+    const row = e.target.closest('.row'); if(row) row.remove();
+  });
 
   on('#saveConfig', 'click', async ()=>{
     if(_cfgLoadFailed){
@@ -6335,12 +6341,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!$('#asBookWrap').hidden){ fillBookingEvents(); reBook(); return; }
     syncAsUI();
   });
-  const DELIVERABLES = ['Photos','Video','Teasers','Album design','Reels'];
-  $('#asDelChips').innerHTML = DELIVERABLES.map(d=>`<button type="button" class="qchip" data-del="${esc(d)}">${esc(d)}</button>`).join('');
+  /* an editor delivers film — exactly these four. Anything else already saved
+     on an assignment stays in the box above as typed; it just has no chip. */
+  const DELIVERABLES = ['Video','Teasers','Highlights','Reels'];
+  $('#asDelChips').innerHTML = DELIVERABLES.map(d=>`<button type="button" class="qchip" data-dlv="${esc(d)}">${esc(d)}</button>`).join('');
   on('#asDelChips', 'click', e=>{
-    const b = e.target.closest('[data-del]'); if(!b) return;
+    /* data-dlv, not data-del — data-del is Site Config's ✕ Remove */
+    const b = e.target.closest('[data-dlv]'); if(!b) return;
     const cur = $('#asDeliver').value.split('+').map(t=>t.trim()).filter(Boolean);
-    const v = b.dataset.del;
+    const v = b.dataset.dlv;
     const i = cur.indexOf(v);
     if(i >= 0) cur.splice(i,1); else cur.push(v);
     $('#asDeliver').value = cur.join(' + ');
@@ -6470,8 +6479,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        deadline, and fills an empty deadline in. Rendering first meant syncAsUI
        read the PREVIOUS sheet's role, and the assignments below then wiped the
        due date it had just worked out. */
+    /* An editing job whose saved role is not one of TEAM_ROLES (older data)
+       used to open as the first role — Photography — and saving it then turned
+       it into a shoot and blanked its deliverable. kind:'edit' is what makes it
+       an editing job, so that decides. */
     $('#asRole').value = a && TEAM_ROLES.includes(a.role) ? a.role
-      : (_asForceEdit && TEAM_ROLES.includes('editor')) ? 'editor' : TEAM_ROLES[0];
+      : ((a && a.kind === 'edit') || _asForceEdit) && TEAM_ROLES.includes('editor') ? 'editor' : TEAM_ROLES[0];
     $('#asCall').value = a ? (a.callTime||'') : '';
     $('#asDeliver').value = a ? (a.deliver||'') : '';
     $('#asWhole').checked = a ? (a.scope === 'package') : !!(opts && opts.whole);

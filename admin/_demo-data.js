@@ -364,7 +364,7 @@ export const team = [
   { id: 'tm04', name: 'Naveen Kumar',    phone: '+919963004455', phone10: '9963004455',
     role: 'drone',           cat: 'outdoor', active: true,  defaultRate: 22000 },
   { id: 'tm05', name: 'Bhavani Priya',   phone: '+919032005566', phone10: '9032005566',
-    role: 'editing',         cat: 'office',  active: true,  defaultRate: 12000 },
+    role: 'editor',         cat: 'office',  active: true,  defaultRate: 12000 },
   { id: 'tm06', name: 'Arun Teja',       phone: '+919440006677', phone10: '9440006677',
     role: 'cinematography',  cat: 'outdoor', active: true,  defaultRate: 24000 },
   /* no phone at all — the "⚠ no phone" branch, and no Call/WhatsApp buttons */
@@ -405,31 +405,31 @@ export const assignments = [
   /* a due date left over from the old assign sheet, 20 days out, while the
      job's Deadline is 4 days PAST — the booking's Deadline has to win, so this
      reads "4d late", never "due in 20d" */
-  { ...asg('as12', 'pk03', team[4], iso(5), 'Nikah', 'editing', 'acknowledged', 12000, 12000, 'edit'),
+  { ...asg('as12', 'pk03', team[4], iso(5), 'Nikah', 'editor', 'acknowledged', 12000, 12000, 'edit'),
     dueDate: iso(20) },
   asg('as13', 'pk05', team[7], iso(-58), 'Reception', 'album design', 'acknowledged', 9000, 9000, 'edit'),
   /* TWO editors on one booking, with different jobs and different fees — the
      case the Editing tab exists to show, and the one a single assignee field
      could not have held. pk01 deliberately has NO editingJobs document, so
      its stage has to be derived from these two rows alone. */
-  { ...asg('as17', 'pk01', team[4], iso(1), 'All functions', 'editing', 'acknowledged', 14000, 0, 'edit'),
+  { ...asg('as17', 'pk01', team[4], iso(1), 'All functions', 'editor', 'acknowledged', 14000, 0, 'edit'),
     scope: 'package', deliver: 'Video', dueDate: iso(9) },
   /* booked with NO fee agreed, and the editor has put a number forward — the
      price waiting on the owner's ✓ Agree in the Editing tab */
-  { ...asg('as18', 'pk01', team[7], iso(1), 'All functions', 'editing', 'assigned', 0, 0, 'edit'),
+  { ...asg('as18', 'pk01', team[7], iso(1), 'All functions', 'editor', 'assigned', 0, 0, 'edit'),
     scope: 'package', deliver: 'Teasers', dueDate: iso(16),
     payProposal: { amount: 9500, at: iso(-1) } },
   /* the delivered edit, signed off by the editor — pairs with the pk15 job */
-  { ...asg('as19', 'pk15', team[7], iso(-150), 'Wedding', 'editing', 'acknowledged', 15000, 15000, 'edit'),
+  { ...asg('as19', 'pk15', team[7], iso(-150), 'Wedding', 'editor', 'acknowledged', 15000, 15000, 'edit'),
     deliver: 'Video', dueDate: iso(-95), workDone: true },
   /* written before this editor had a phone on file, so the assignment's own
      copy is blank. The panel has to fall back to the team record or this job
      reaches nobody — and reports it if even that comes up empty. */
-  { ...asg('as20', 'pk13', team[4], iso(-58), 'Wedding', 'editing', 'assigned', 0, 0, 'edit'),
+  { ...asg('as20', 'pk13', team[4], iso(-58), 'Wedding', 'editor', 'assigned', 0, 0, 'edit'),
     memberPhone10: '', deliver: 'Video', dueDate: iso(12) },
   /* team[6] Rakesh has no phone anywhere, so no fallback can save this one —
      the case a backfill cannot fix and the banner has to name instead */
-  { ...asg('as21', 'pk11', team[6], iso(-90), 'Wedding', 'editing', 'assigned', 0, 0, 'edit'),
+  { ...asg('as21', 'pk11', team[6], iso(-90), 'Wedding', 'editor', 'assigned', 0, 0, 'edit'),
     deliver: 'Reels', dueDate: iso(20) },
   /* past work, part-paid — so the crew-pay section has something owed */
   asg('as14', 'pk11', team[0], iso(-90), 'Wedding', 'photography', 'acknowledged', 18000, 9000),

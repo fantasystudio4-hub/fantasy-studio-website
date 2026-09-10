@@ -1341,8 +1341,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     <button type="button" class="edrow ${a.workDone?'done':''}" data-edopen="${esc(a.id)}">
       <span class="edrow-d">${esc(edWhen(a))}</span>
       <span class="edrow-t">
-        <b>${esc(a.deliver || 'Editing')}</b>
-        <span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}</span>
+        ${/* who it is for, first — "Video" and "Reels" repeat down the list and
+             say nothing about which job this is; the deliverable reads under it */ ''}
+        <b>${esc(a.clientName || '—')}</b>
+        <span>${esc(a.deliver || 'Editing')}${a.quoteNo ? ' · ' + esc(a.quoteNo) : ''}</span>
         ${pills.length ? `<span class="edrow-p">${pills.join('')}</span>` : ''}
       </span>
       ${edDueChip(a)}
@@ -1768,7 +1770,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function edPaint(){
     const a = ASGS.find(v=>v.id === _edOpen);
     if(!a){ closeEd(); return; }
-    $('#edSheetTitle').textContent = `${a.deliver || 'Editing'} · ${a.clientName || '—'}`;
+    /* the client at the top; the card right under it says what to deliver */
+    $('#edSheetTitle').textContent = a.clientName || '—';
     /* keep whatever is half-typed in the sheet through a snapshot repaint */
     const keep = {};
     $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice]')
