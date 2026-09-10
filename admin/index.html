@@ -326,7 +326,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
           <div id="teamEvents"></div>
         </div>
         <div id="workEd" hidden>
-          <p class="sub">One row per person per job — for chasing somebody and paying them. The <b style="color:var(--gold-b)">✂️ Editing</b> section above is one row per booking, with its stage, cuts and notes. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event, including ones already shot and ones not yet on the editing desk. <span id="edCount"></span></p>
+          <p class="sub">One row per person per job — for chasing somebody and paying them. The <b style="color:var(--gold-b)">✂️ Editing</b> section above is one row per booking, with its stage and notes. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event, including ones already shot and ones not yet on the editing desk. <span id="edCount"></span></p>
           <div id="edList"></div>
           <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
         </div>
@@ -368,7 +368,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 
          Nothing here duplicates a package field. The list reads packages +
          assignments live; only the workflow state that has no home anywhere
-         else (stage, deadline, drive link, cuts, comments, audit) is stored,
+         else (stage, deadline, brief, comments, audit) is stored,
          in editingJobs/{pkgId}. -->
     <div id="editView" hidden>
     <div id="ejListView">

@@ -1627,30 +1627,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 #ejFix > span{font-size:var(--fs-sm);color:var(--mut);line-height:1.5}
 #ejFix .btn{margin-top:.3rem}
 
-/* ---- cuts: the rounds a film goes through ---- */
-.ejcuts{margin-top:.1rem}
-.ejcut{border-left:3px solid var(--line);background:var(--white-t1);
-       border-radius:0 var(--r-md) var(--r-md) 0;padding:.6rem .75rem;margin-bottom:.5rem}
-.ejcut--changes{border-left-color:var(--state-pending);background:var(--state-pending-bg)}
-.ejcut--approved{border-left-color:var(--state-confirmed);background:var(--state-confirmed-bg)}
-.ejcut-h{display:flex;align-items:baseline;gap:.6rem;justify-content:space-between}
-.ejcut-h b{font-size:var(--fs-lg);color:var(--gold-b)}
-.ejcut-s{flex:0 0 auto;font-size:var(--fs-xs);letter-spacing:.08em;text-transform:uppercase;
-         font-weight:600;color:var(--mut)}
-.ejcut--changes .ejcut-s{color:var(--state-pending)}
-.ejcut--approved .ejcut-s{color:var(--state-confirmed)}
-.ejcut-m{display:block;font-size:var(--fs-xs);color:var(--mut);margin-top:.15rem}
-.ejcut-n{margin-top:.3rem;font-size:var(--fs-sm);color:var(--mut);line-height:1.5}
-.ejcut-c{margin-top:.35rem;font-size:var(--fs-base);color:var(--text);line-height:1.5}
-.ejcut-c b{color:var(--state-pending);font-weight:600}
-.ejcut-l{display:inline-flex;align-items:center;min-height:var(--tap);margin-top:.2rem;
-         font-size:var(--fs-sm);color:var(--gold-b);text-decoration:underline;overflow-wrap:anywhere}
-.ejcut-l.none{color:var(--mut);text-decoration:none}
-.ejcut-b{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.55rem}
-/* the textarea inside the shared confirm sheet, for asking for changes */
-.pd-l{display:block;font-size:var(--fs-sm);color:var(--mut);margin-bottom:.4rem;line-height:1.45}
-.pd-i{width:100%;background:var(--field);border:1px solid var(--line);border-radius:var(--r-sm);
-      color:var(--text);padding:.6em .7em;font:inherit;font-size:var(--fs-base);resize:vertical}
 
 /* band headers inside the editing desk — tighter than a section rule, and
    the first one does not shove the list away from the chips above it */

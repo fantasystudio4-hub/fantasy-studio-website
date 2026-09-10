@@ -268,21 +268,6 @@ service cloud.firestore {
       function noteCount(d) {
         return ('comments' in d) && d.comments is list ? d.comments.size() : 0;
       }
-      function cutCount(d) {
-        return ('versions' in d) && d.versions is list ? d.versions.size() : 0;
-      }
-      // an editor hands in a cut: one new entry on versions[], nothing else.
-      // The STUDIO'S VERDICT on that cut is not here — it lives in
-      // `decisions`, which this branch cannot touch, so an editor can submit
-      // work and can never mark their own work approved.
-      function addsOneCut() {
-        return request.resource.data.diff(resource.data)
-                 .affectedKeys().hasOnly(['versions','updatedAt'])
-            && request.resource.data.versions is list
-            && cutCount(request.resource.data) == cutCount(resource.data) + 1
-            && cutCount(request.resource.data) <= 100
-            && request.resource.data.updatedAt == request.time;
-      }
       function addsOneNote() {
         return request.resource.data.diff(resource.data)
                  .affectedKeys().hasOnly(['comments','updatedAt'])
@@ -293,7 +278,7 @@ service cloud.firestore {
       }
       allow read: if isAdmin() || myJob();
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (myJob() && (addsOneNote() || addsOneCut()));
+      allow update: if isAdmin() || (myJob() && addsOneNote());
     }
 
     // join requests from the crew page. One per signed-in account (doc id is

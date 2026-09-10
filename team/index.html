@@ -120,7 +120,6 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .edrow-p i{font-style:normal;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
            border-radius:20px;padding:.16em .55em;background:rgba(255,255,255,.06);color:var(--mut)}
 .edrow-p i.warn{color:var(--warn);background:rgba(255,176,84,.14)}
-.edrow-p i.ok{color:var(--ok);background:rgba(76,175,125,.14)}
 .edrow .chip{flex:0 0 auto}
 
 /* ---- the sheet ---- */
@@ -250,36 +249,6 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ejs-n{flex:0 0 auto;font-family:var(--serif);font-size:.95rem;color:var(--gold-b);
        background:rgba(184,144,43,.14);border-radius:8px;padding:.1em .5em}
 
-/* ---- rounds ---- */
-/* whose move it is, said before the list rather than left to be inferred */
-.ejwhose{font-size:.82rem;line-height:1.5;color:var(--mut);margin-bottom:.5rem}
-.ejwhose.changes{color:var(--warn)}
-.ejwhose.approved{color:var(--ok)}
-.ejcut{border-left:3px solid var(--line);padding:.5rem .7rem;margin-bottom:.45rem;
-       background:rgba(255,255,255,.03);border-radius:0 8px 8px 0}
-.ejcut--changes{border-left-color:var(--warn);background:rgba(255,176,84,.07)}
-.ejcut--approved{border-left-color:var(--ok);background:rgba(76,175,125,.07)}
-.ejcut-h{display:flex;align-items:baseline;gap:.5rem}
-.ejcut-h b{font-size:.92rem;color:var(--gold-b)}
-.ejcut-h em{font-style:normal;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
-.ejcut--changes .ejcut-h em{color:var(--warn)}
-.ejcut--approved .ejcut-h em{color:var(--ok)}
-.ejcut-n{margin-top:.2rem;font-size:.82rem;color:var(--mut);line-height:1.45}
-.ejcut-c{margin-top:.3rem;font-size:.85rem;color:var(--text);line-height:1.5}
-.ejcut-c b{color:var(--warn);font-weight:600}
-.ejcut-l{display:inline-block;margin-top:.35rem;font-size:.82rem;color:var(--gold-b);
-         text-decoration:underline;min-height:44px;line-height:44px;overflow-wrap:anywhere}
-.ejcut-new{display:flex;flex-direction:column;gap:.45rem;margin-top:.6rem}
-.ejcut-new input,.ejcut-new textarea{
-  width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);
-  border-radius:10px;color:var(--text);padding:.6em .75em;font:inherit;font-size:.95rem;min-height:44px;
-}
-.ejcut-new textarea{font-size:.9rem;resize:vertical;min-height:auto}
-.ejcut-new .ejcut-send{
-  width:100%;margin-top:0;background:none;border:1px solid rgba(184,144,43,.6);
-  color:var(--gold-b);border-radius:10px;padding:.65em;font-size:.85rem;min-height:44px;
-}
-.ejcut-new .ejcut-send:active{background:rgba(184,144,43,.16)}
 .ejthread{border-top:1px solid rgba(255,255,255,.07);padding-top:.7rem}
 .ejt-none{margin-top:.45rem;font-size:.8rem;color:var(--mut)}
 .ejt-row{padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
@@ -1228,11 +1197,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
   }
 
-  /* ---- the rounds ----
-     What the editor hands in, and what came back. The studio's verdict lives
-     in decisions{} which this page cannot write — so a cut shows as "with the
-     studio" until they say otherwise, and nobody can approve their own work.
-     versions[] is theirs to append to, one at a time. */
   /* The one deadline, and it is the one the studio sets on the booking.
      An assignment written before the assign sheet lost its own due date still
      carries one — and it used to WIN, so an editor went on seeing a date the
@@ -1246,48 +1210,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const own = (a && a.dueDate) || '';
     return ISO_D.test(own) ? own : '';
   };
-  const EJ_CUT = { review:'With the studio', changes:'Changes asked', approved:'Approved' };
-  const ejCuts = j => (j && Array.isArray(j.versions) ? j.versions : [])
-    .slice().sort((x,y)=>(Number(y.n)||0) - (Number(x.n)||0));
-  const ejVerdict = (j,v) => ((j && j.decisions) || {})[v && v.id] || null;
-  const ejCutState = (j,v) => { const d = ejVerdict(j,v); return d && d.status ? d.status : 'review'; };
-
-  function ejCutsBlock(a, j){
-    const cuts = ejCuts(j);
-    const latest = cuts[0] || null;
-    const st = latest ? ejCutState(j, latest) : null;
-    const done = st === 'approved';
-    /* what to do next, said in one line at the top — the whole point of
-       rounds is knowing whose move it is */
-    const whose = !latest ? 'Nothing sent yet. Hand in your first cut when it is ready.'
-      : st === 'review'   ? `V${latest.n} is with the studio. They will approve it or come back with changes.`
-      : st === 'changes'  ? `V${latest.n} came back with changes. Send the next cut when you have done them.`
-      :                     `V${latest.n} is approved — nothing more needed unless the studio asks.`;
-    return `
-      <div class="ejsec">
-        <h4>Cuts${cuts.length ? ` <b>${cuts.length}</b>` : ''}</h4>
-        <p class="ejwhose ${st||'none'}">${esc(whose)}</p>
-        ${cuts.map(v=>{
-          const s2 = ejCutState(j,v), d = ejVerdict(j,v), url = ejSafeUrl(v.link);
-          return `
-          <div class="ejcut ejcut--${s2}">
-            <span class="ejcut-h"><b>V${esc(String(v.n||'?'))}</b>
-              <em>${esc(EJ_CUT[s2] || s2)}</em></span>
-            ${v.note ? `<p class="ejcut-n">${esc(v.note)}</p>` : ''}
-            ${d && d.changes ? `<p class="ejcut-c"><b>They asked for:</b> ${esc(d.changes)}</p>` : ''}
-            ${url ? `<a class="ejcut-l" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↗ Open this cut</a>` : ''}
-          </div>`;
-        }).join('')}
-        ${done ? '' : `<div class="ejcut-new">
-          <input type="url" inputmode="url" data-ejcutlink="${esc(a.pkgId)}"
-                 placeholder="Link to your cut (https://…)" />
-          <textarea rows="2" maxlength="400" data-ejcutnote="${esc(a.pkgId)}"
-                    placeholder="Anything the studio should know (optional)"></textarea>
-          <button class="ackbtn ejcut-send" data-ejcutsend="${esc(a.pkgId)}">Hand in V${cuts.length + 1}</button>
-        </div>`}
-      </div>`;
-  }
-
   /* An editor who opens a job and finds half a page cannot tell whether the
      app is broken, the studio has not filled it in, or they are not allowed to
      see it. Any of those is the studio's to fix and none of them is obvious
@@ -1300,7 +1222,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   };
   const ejBare = j => !j || !(ejSafeUrl(j.driveLink) || j.brief || j.footage
     || ejHasScope(j)
-    || (Array.isArray(j.versions) && j.versions.length)
     || (Array.isArray(j.comments) && j.comments.length));
   const EJ_NONE = () => _ejErr === 'permission-denied'
     ? `<p class="ejnone ejnone--x">This job's details are not open to you. Your number has to be on
@@ -1356,7 +1277,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ${bits.length ? `<div class="ejsec"><h4>The job</h4><div class="lines">${bits.join('')}</div></div>` : ''}
       ${j.brief ? `<div class="ejsec"><h4>What the client asked for</h4>
         <div class="notes">${esc(j.brief)}</div></div>` : ''}
-      ${ejCutsBlock(a, j)}
       <div class="ejsec">${fee}</div>
       <div class="ejsec ejthread">
         <h4>Notes with the studio${notes.length ? ` <b>${notes.length}</b>` : ''}</h4>
@@ -1374,32 +1294,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---- what the list is ordered by ----
      Sorting on the deadline alone read as arbitrary: a job handed over this
-     morning with no date on it yet sank below one due in three weeks, an
-     overdue film sat next to a cut that is with the studio and needs nothing,
-     and "I have been given something new" was invisible.
+     morning with no date on it yet sank below one due in three weeks, and
+     "I have been given something new" was invisible.
 
-     Four bands, in the order an editor actually works: what wants you now,
-     what is coming, what is out of your hands, what is finished. Inside a
-     band it is still the deadline, soonest first, undated last — a date only
-     decides between two jobs that want the same thing from you. */
+     Three bands, in the order an editor actually works: what wants you now,
+     what is coming, what is finished. Inside a band it is still the deadline,
+     soonest first, undated last — a date only decides between two jobs that
+     want the same thing from you. */
   const ED_BAND = [
     { key:'now',   label:'Needs you' },
     { key:'soon',  label:'Coming up' },
-    { key:'wait',  label:'With the studio' },
     { key:'done',  label:'Finished' },
   ];
   function edBand(a){
-    const j = EJOBS[a.pkgId];
-    const latest = ejCuts(j)[0] || null;
-    const cut = latest ? ejCutState(j, latest) : null;
-    if(a.workDone || cut === 'approved') return 3;
-    if(cut === 'changes') return 0;                 /* sent back — your move */
+    if(a.workDone) return 2;
     if(a.status !== 'acknowledged') return 0;       /* newly handed to you */
     const due = asgDue(a);
     const d = ISO_D.test(due)
       ? Math.round((new Date(due+'T00:00') - new Date(todayISO()+'T00:00'))/864e5) : null;
     if(d !== null && d <= 1) return 0;              /* late, today, tomorrow */
-    if(cut === 'review') return 2;                  /* waiting on their verdict */
     return 1;
   }
   function edOrder(a, b){
@@ -1408,7 +1321,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const da = asgDue(a), db = asgDue(b);
     /* finished work reads newest-first; everything else is soonest-first, and
        an undated job sorts after dated ones rather than before all of them */
-    if(pa === 3) return da > db ? -1 : da < db ? 1 : 0;
+    if(pa === 2) return da > db ? -1 : da < db ? 1 : 0;
     return (da || '9999-99-99') < (db || '9999-99-99') ? -1
          : (da || '9999-99-99') > (db || '9999-99-99') ? 1 : 0;
   }
@@ -1417,15 +1330,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      nothing else — the job itself opens in a sheet. */
   function editRow(a){
     const j = EJOBS[a.pkgId];
-    const latest = ejCuts(j)[0] || null;
-    const cut = latest ? ejCutState(j, latest) : null;
     const asked = a.payProposal && Number(a.payProposal.amount) >= 0
       ? Math.round(Number(a.payProposal.amount)) : null;
     const fee = Math.max(0, Number(((a||{}).pay||{}).amount) || 0);
     const pills = [];
-    if(cut === 'changes') pills.push('<i class="warn">changes asked</i>');
-    else if(cut === 'review') pills.push(`<i>V${latest.n} with the studio</i>`);
-    else if(cut === 'approved') pills.push('<i class="ok">approved</i>');
     if(a.status !== 'acknowledged' && !a.workDone) pills.push('<i class="warn">confirm it</i>');
     if(asked !== null) pills.push(`<i class="warn">${esc(inr(asked))} asked</i>`);
     else if(!fee) pills.push('<i>no fee yet</i>');
@@ -1863,12 +1771,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#edSheetTitle').textContent = `${a.deliver || 'Editing'} · ${a.clientName || '—'}`;
     /* keep whatever is half-typed in the sheet through a snapshot repaint */
     const keep = {};
-    $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice],#edSheetBody [data-ejcutlink],#edSheetBody [data-ejcutnote]')
-      .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice || el.dataset.ejcutlink || el.dataset.ejcutnote;
+    $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice]')
+      .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice;
                      if(el.value) keep[(el.tagName + k)] = el.value; });
     $('#edSheetBody').innerHTML = editCard(a);
-    $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice],#edSheetBody [data-ejcutlink],#edSheetBody [data-ejcutnote]')
-      .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice || el.dataset.ejcutlink || el.dataset.ejcutnote;
+    $$('#edSheetBody [data-ejnote],#edSheetBody [data-ejprice]')
+      .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice;
                      const v = keep[(el.tagName + k)]; if(v) el.value = v; });
   }
   function openEd(id){
@@ -1898,47 +1806,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#editList').addEventListener('click', ackClick);
   $('#editList').addEventListener('click', ejSendClick);
   $('#editList').addEventListener('click', ejPriceClick);
-  $('#editList').addEventListener('click', ejCutClick);
   /* the sheet holds the same controls the list used to */
   $('#edSheetBody').addEventListener('click', doneClick);
   $('#edSheetBody').addEventListener('click', ackClick);
   $('#edSheetBody').addEventListener('click', ejSendClick);
   $('#edSheetBody').addEventListener('click', ejPriceClick);
-  $('#edSheetBody').addEventListener('click', ejCutClick);
-  /* Hand in a cut. Appends one entry to versions[] and nothing else — the
-     rules pin it to that, and the studio's verdict lives in decisions{} which
-     this page cannot write. */
-  async function ejCutClick(e){
-    const btn = e.target.closest('[data-ejcutsend]'); if(!btn || btn.disabled) return;
-    const pkgId = btn.dataset.ejcutsend;
-    const j = EJOBS[pkgId]; if(!j) return;
-    const linkBox = document.querySelector(`[data-ejcutlink="${CSS.escape(pkgId)}"]`);
-    const noteBox = document.querySelector(`[data-ejcutnote="${CSS.escape(pkgId)}"]`);
-    const link = (linkBox ? linkBox.value : '').trim();
-    if(!ejSafeUrl(link)){
-      toast(link ? 'That does not look like a link — it should start with https://' : 'Paste the link to your cut first');
-      if(linkBox) linkBox.focus();
-      return;
-    }
-    const had = Array.isArray(j.versions) ? j.versions : [];
-    const entry = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-      n: had.reduce((m,v)=>Math.max(m, Number(v.n)||0), 0) + 1,
-      link, note: (noteBox ? noteBox.value : '').trim().slice(0,400),
-      by: (ME && ME.name) || _pretty || 'editor',
-      at: new Date().toISOString()
-    };
-    btn.disabled = true; btn.textContent = 'Sending…';
-    try{
-      await updateDoc(doc(db,'editingJobs',pkgId), { versions: [...had, entry], updatedAt: serverTimestamp() });
-      j.versions = [...had, entry];
-      render();
-      toast(`V${entry.n} handed in ✓ — the studio can watch it now`);
-    }catch(err){
-      btn.disabled = false; btn.textContent = 'Hand in V' + entry.n;
-      toast(navigator.onLine ? 'Could not send — try again' : 'You are offline — try again with signal');
-    }
-  }
   /* Propose a fee, or withdraw the proposal. Both write ONLY payProposal —
      the rules refuse anything that touches pay.*, so this page can ask for a
      number and never award itself one. */

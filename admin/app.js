@@ -63,19 +63,6 @@ function closeConfirm(v){
   $('#confirmModal').classList.remove('open');
   const r = _cfmResolve; _cfmResolve = null; r(v);
 }
-/* The same sheet, with somewhere to type. Asking for changes on a cut needs a
-   sentence, and a native prompt() is the one dialog left that would look
-   nothing like the rest of the panel — and on a phone it is a system alert
-   over an installed app. Resolves to the text, or null if it was dismissed;
-   the value survives the close because closeConfirm only drops the .open
-   class and leaves the markup standing until the next dialog replaces it. */
-function promptDialog({ title, label='', placeholder='', confirmText='Save', cancelText='Cancel', maxlength=600 }){
-  const body = (label ? `<span class="pd-l">${esc(label)}</span>` : '')
-    + `<textarea id="confirmInput" class="pd-i" rows="3" maxlength="${maxlength}" placeholder="${esc(placeholder)}"></textarea>`;
-  const p = confirmDialog({ title, body, confirmText, cancelText, danger:false });
-  setTimeout(()=>{ const t = $('#confirmInput'); if(t) t.focus(); }, 80);
-  return p.then(ok => ok ? String(($('#confirmInput')||{}).value || '') : null);
-}
 on('#confirmYes', 'click', ()=>closeConfirm(true));
 on('#confirmNo', 'click', ()=>closeConfirm(false));
 on('#confirmBackdrop', 'click', ()=>closeConfirm(false));
@@ -5082,25 +5069,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return (p && Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
   };
   const ejAsksFor = id => ejCrew(id).filter(a=>ejProposed(a) !== null).length;
-  /* ---- cuts: the rounds a film actually goes through ----
-     A job is not one lump of work, it is V1 → changes → V2 → approved, and
-     "Under Review" on its own recorded none of that: not which cut, not what
-     was asked for, not how many rounds it has taken.
-
-     versions[] is what the EDITOR hands in — id, round, link, note, when.
-     decisions{} is what the STUDIO says about each one, keyed by version id,
-     and the crew rules cannot write it. So a cut's verdict can only ever come
-     from this panel, and nobody can approve their own work. */
-  const ejCuts = j => (j && Array.isArray(j.versions) ? j.versions : [])
-    .slice().sort((a,b)=>(Number(b.n)||0) - (Number(a.n)||0));
-  const ejVerdict = (j, v) => ((j && j.decisions) || {})[v && v.id] || null;
-  const ejCutState = (j, v) => { const d = ejVerdict(j, v); return d && d.status ? d.status : 'review'; };
-  const EJ_CUT_LABEL = { review:'With you', changes:'Changes asked', approved:'Approved' };
-  /* the cut everything hangs on: the newest one */
-  const ejLatestCut = j => ejCuts(j)[0] || null;
-  const ejRounds = j => ejCuts(j).length;
-  /* only ever opened, never trusted as markup */
-  const ejSafeUrl = u => /^https?:\/\//i.test(String(u||'').trim()) ? String(u).trim() : '';
   /* The one deadline an editing job has: the Deadline on the booking, the only
      one the panel can show or change. An assignment written before the assign
      sheet lost its own due date still carries one, and it used to win — so
@@ -5272,9 +5240,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   ];
   function ejBand(r){
     if(r.stage === 'delivered') return 2;
-    const j = r.job;
-    const latest = ejLatestCut(j);
-    if(latest && ejCutState(j, latest) === 'review') return 0;   /* your verdict */
     if(r.asks) return 0;                                          /* a price to answer */
     if(!r.crew.length) return 0;                                  /* nobody on it */
     if(r.overdue) return 0;
@@ -5286,9 +5251,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* only ever explains a "Needs you" row. On a delivered job "no editor
        yet" is true and completely beside the point — the film is out. */
     if(ejBand(r) !== 0) return [];
-    const j = r.job, latest = ejLatestCut(j);
     const out = [];
-    if(latest && ejCutState(j, latest) === 'review') out.push(`V${latest.n} to review`);
     if(r.asks) out.push(`${r.asks} price${r.asks>1?'s':''} to agree`);
     if(!r.crew.length) out.push('no editor yet');
     /* deliberately NOT "overdue": the due chip beside these already reads
@@ -5808,38 +5771,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="addrow" data-ejassign style="margin-top:.6rem">＋ Assign editor</button>
       </div>
 
-      ${/* The rounds this film has been through. Newest first, because the
-           only one anybody acts on is the newest — the rest are the record of
-           how it got here. */ ''}
-      <div class="sec">
-        <h3>Cuts <span class="ejn">${ejRounds(job)}</span></h3>
-        <p class="sub">${ejRounds(job)
-          ? 'Each round the editor has handed in. Your verdict on the newest one is what moves the job.'
-          : 'Nothing handed in yet. When the editor sends a cut it lands here for your verdict.'}</p>
-        <div class="ejcuts">${ejRounds(job) ? ejCuts(job).map((v,i)=>{
-          const st = ejCutState(job, v), d = ejVerdict(job, v), url = ejSafeUrl(v.link);
-          const newest = i === 0;
-          return `
-          <div class="ejcut ejcut--${st}">
-            <div class="ejcut-h">
-              <b>V${esc(String(v.n||'?'))}${v.label ? ' · ' + esc(v.label) : ''}</b>
-              <span class="ejcut-s">${esc(EJ_CUT_LABEL[st] || st)}</span>
-            </div>
-            <span class="ejcut-m">${esc(v.by ? ejWhoShort(v.by) : 'editor')} · ${esc(ejWhen(v.at))}</span>
-            ${v.note ? `<p class="ejcut-n">${esc(v.note)}</p>` : ''}
-            ${url ? `<a class="ejcut-l" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↗ Watch this cut</a>`
-                  : '<span class="ejcut-l none">No link on this one</span>'}
-            ${d && d.changes ? `<p class="ejcut-c"><b>You asked for:</b> ${esc(d.changes)}</p>` : ''}
-            ${d ? `<span class="ejcut-m">${esc(EJ_CUT_LABEL[st]||st)} ${esc(ejWhen(d.at))}${
-                    d.by ? ' · ' + esc(ejWhoShort(d.by)) : ''}</span>` : ''}
-            ${newest && st === 'review' ? `<div class="ejcut-b">
-              <button type="button" class="btn btn--sm btn--primary" data-ejapprove="${esc(v.id)}">✓ Approve this cut</button>
-              <button type="button" class="btn btn--sm btn--ghost" data-ejchanges="${esc(v.id)}">Ask for changes</button>
-            </div>` : ''}
-          </div>`;
-        }).join('') : '<div class="empty" style="padding:.4rem 0">No cuts yet.</div>'}</div>
-      </div>
-
       <div class="sec">
         <h3>The job</h3>
         <div class="fld"><label>Deadline</label>
@@ -6069,44 +6000,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         title:'The client has sent their editing details?',
         body:`<p>This ticks <b>${esc(step)}</b> on ${esc(pk.clientName||'this package')} and puts the film on the editing desk.</p>`,
         confirmText:'Yes, received', danger:false })) tickDeliveryStep(pk.id, step);
-      return;
-    }
-    /* A verdict on a cut. It also moves the stage, because a job whose newest
-       cut was just sent back while the pipeline still reads "Under Review" is
-       two screens disagreeing about the same fact. Approving does NOT jump to
-       Delivered on its own — handing over is a separate act, and the delivery
-       step on the package is what records it. */
-    const appr = e.target.closest('[data-ejapprove]');
-    const chg = e.target.closest('[data-ejchanges]');
-    if(appr || chg){
-      const vid = (appr || chg).dataset[appr ? 'ejapprove' : 'ejchanges'];
-      const job = ejDoc(_ejOpenId); if(!job) return;
-      const v = ejCuts(job).find(x=>x.id === vid); if(!v) return;
-      let changes = '';
-      if(chg){
-        changes = (await promptDialog({
-          title:`What needs changing on V${v.n}?`,
-          label:'The editor sees this on their own page, against this cut.',
-          placeholder:'e.g. the Walima speech is still cut short at 2:40',
-          confirmText:'Send it back' }) || '').trim();
-        if(!changes) return;
-      }else{
-        if(!await confirmDialog({
-          title:`Approve V${v.n}?`,
-          body:'<p>This closes the round. Handing the film over is a separate step — tick it on the package when it actually goes out.</p>',
-          confirmText:'Approve', danger:false })) return;
-      }
-      const decisions = { ...(job.decisions || {}),
-        [vid]: { status: appr ? 'approved' : 'changes', at: ejNow(), by: ejWho(),
-                 ...(changes ? { changes: changes.slice(0,600) } : {}) } };
-      const patch = { decisions };
-      /* keep the pipeline honest with the verdict */
-      if(chg && EJ_IDX[ejStageOf(ejPkg(_ejOpenId), job, ejCrew(_ejOpenId))] > EJ_IDX.progress) patch.stage = 'progress';
-      if(appr) patch.stage = 'review';
-      const sm = await ejWrite(_ejOpenId, patch,
-        appr ? `Approved V${v.n}` : `Sent V${v.n} back for changes`);
-      toast(sm.ok ? (appr ? `V${v.n} approved ✓` : `V${v.n} sent back`) : sm.msg);
-      buzz();
       return;
     }
     /* Agreeing to an editor's price IS a fee change, so it goes through
