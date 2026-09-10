@@ -18,6 +18,13 @@
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
   --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
   --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  /* --card and --warn were borrowed from the admin palette by the editing
+     popup and its list rows but never defined on this page. An undefined var
+     with no fallback computes to transparent (and, for colour, to whatever is
+     inherited) — so the popup had no background of its own and the list showed
+     through it, and "changes asked" / "waiting" read in plain text colour.
+     Define both here rather than rewriting the rules that use them. */
+  --card:var(--panel); --warn:#ffb054;
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 
