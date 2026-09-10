@@ -5029,10 +5029,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      is the same test hasVideo() above already uses to decide whether the
      delivery tracker shows the video steps, deliberately: a booking whose
      package promises a film is exactly the set of bookings that owe one.
-     LED, streaming and drone are excluded — a drone is a camera on the
-     video shoot, never an edit of its own. */
+     LED and streaming are excluded.
+
+     Drone is two things, and they are kept apart. It never puts a booking on
+     this desk — a drone is a camera on the video shoot, not an edit of its
+     own, so a photo + drone booking owes no film. But its footage IS what the
+     editor cuts into the film, so the scope lists it next to the video. */
   const EJ_VIDEO_RE = /video|cinema/i;
   const ejIsVideoItem = it => EJ_VIDEO_RE.test(String((it||{}).service || ''));
+  const EJ_SCOPE_RE = /video|cinema|drone|aerial/i;
+  const ejIsScopeItem = it => EJ_SCOPE_RE.test(String((it||{}).service || ''));
 
   const EJ_STAGES = [
     { k:'unassigned', label:'Unassigned',   short:'Unassigned' },
@@ -5112,7 +5118,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* the email is the audit record; the panel shows the part before the @ */
   const ejWhoShort = w => String(w||'').split('@')[0] || 'admin';
 
-  /* ---- the video half of a booking, and nothing else ----
+  /* ---- the footage half of a booking — video, cinematic and drone ----
      Every field this tab shows about the WORK comes through here, which is
      what keeps the detail page a single-service work page: photography
      counts, album sheets, totals and payments are never read. */
@@ -5121,7 +5127,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ((pk && pk.events) || []).forEach(ev=>{
       const svc = [];
       let n = 0;
-      (ev.items||[]).filter(ejIsVideoItem).forEach(it=>{
+      (ev.items||[]).filter(ejIsScopeItem).forEach(it=>{
         const q = Math.max(1, Number(it.qty) || 1);
         svc.push({ service: String(it.service||'Video'), qty: q });
         n += q;
@@ -5130,7 +5136,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
     return out;
   }
-  const ejHasVideo = pk => ejScope(pk).length > 0;
+  /* whether it owes a film at all — video or cinematic only, so drone in the
+     scope never widens which bookings reach this desk */
+  const ejHasVideo = pk => ((pk && pk.events) || []).some(ev => (ev.items || []).some(ejIsVideoItem));
   /* how many camera-days of footage this edit is built from — the closest
      thing to a deliverable count the booking actually states */
   const ejUnits = scope => scope.reduce((s,e)=>s + e.n, 0);
@@ -5765,7 +5773,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="rc-sum">${ejUnits(r.scope)} camera-day${ejUnits(r.scope)===1?'':'s'} · ${r.scope.length} function${r.scope.length===1?'':'s'}</span>
           <span class="car">▾</span></h3>
         ${_ejScopeOpen ? `
-        <p class="sub">The video services this booking was sold. Photography, album and everything else on the package are deliberately not shown here.</p>
+        <p class="sub">The video and drone footage this booking was sold. Photography, album and everything else on the package are deliberately not shown here.</p>
         <div class="ejs">${scopeRows}</div>` : ''}
         ${ejSeenLine(r)}
       </div>
