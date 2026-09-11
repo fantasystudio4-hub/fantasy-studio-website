@@ -40,7 +40,7 @@ input[type=checkbox],input[type=radio]{ min-height:0 }
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;font-size:15px;line-height:1.55}
-.wrap{max-width:640px;margin:0 auto;padding:0 clamp(14px,4vw,22px) calc(40px + env(safe-area-inset-bottom))}
+.wrap{max-width:640px;margin:0 auto;padding:0 clamp(14px,4vw,22px) calc(40px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}
 a{color:var(--gold-b)}
 button,input,textarea{font-family:var(--sans);font-size:16px}
 :focus-visible{outline:2px solid var(--gold-b);outline-offset:2px;border-radius:4px}
@@ -262,12 +262,12 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .help{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;margin-top:1.6rem}
 .help p{color:var(--mut);font-size:.84rem;margin-bottom:.6rem}
 
-.toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#0d0b06;border:1px solid var(--gold-d);color:var(--text);border-radius:24px;padding:.55rem 1.1rem;font-size:.85rem;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:88vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(26px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateX(-50%) translateY(20px);background:#0d0b06;border:1px solid var(--gold-d);color:var(--text);border-radius:24px;padding:.55rem 1.1rem;font-size:.85rem;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:88vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 .pay-back{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.25s;z-index:40}
 .pay-back.open{opacity:1;pointer-events:auto}
-.pay-sheet{position:fixed;left:0;right:0;bottom:0;background:#1c1710;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:1rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));transform:translateY(105%);transition:.28s;z-index:50;max-width:640px;margin:0 auto;max-height:88vh;overflow:auto}
+.pay-sheet{position:fixed;left:0;right:0;bottom:0;background:#1c1710;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:1rem 1.2rem calc(1.2rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateY(105%);transition:.28s;z-index:50;max-width:640px;margin:0 auto;max-height:88vh;overflow:auto}
 .pay-sheet.open{transform:translateY(0)}
 .pay-sheet::before{content:"";display:block;width:44px;height:4px;border-radius:4px;background:var(--line);margin:0 auto .8rem}
 .pay-sheet h3{font-family:var(--serif);font-size:1.05rem;margin-bottom:.7rem}

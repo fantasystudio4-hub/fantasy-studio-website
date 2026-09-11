@@ -47,7 +47,7 @@ input[type=checkbox],input[type=radio]{ min-height:0 }
 body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 40%);color:var(--text);min-height:100vh;line-height:1.5}
 h1,h2,h3{font-family:var(--serif)}
 button,input,textarea{font-family:var(--sans);font-size:16px}
-.wrap{max-width:640px;margin:0 auto;padding:0 max(14px,env(safe-area-inset-left)) calc(60px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-right))}
+.wrap{max-width:640px;margin:0 auto;padding:0 max(14px,env(safe-area-inset-left)) calc(60px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))) max(14px,env(safe-area-inset-right))}
 /* In the Android app the page is drawn under the status bar. Capacitor passes
    its height as --safe-area-inset-top; env() covers iOS and newer WebViews.
    Both are 0 wherever nothing overlaps, and max() never adds them twice. */
@@ -146,7 +146,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
       font-size:1.1rem;cursor:pointer;border-radius:50%}
 .ed-x:active{background:rgba(255,255,255,.08);color:var(--gold-b)}
 .ed-sheet-b{overflow-y:auto;-webkit-overflow-scrolling:touch;
-            padding:.9rem .9rem calc(1.2rem + env(safe-area-inset-bottom))}
+            padding:.9rem .9rem calc(1.2rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}
 .ed-sheet-b .asg{border:0;background:none;padding:0;margin:0}
 :root.ed-lock body{overflow:hidden}
 #editList > .edgrp:first-child{margin-top:.2rem}
@@ -335,7 +335,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .stat[data-pay]:hover{border-color:var(--gold)} }
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;color:var(--mut);font-size:.88rem;margin:1rem 0}
 .bigic{font-size:2rem;display:block;margin-bottom:.4rem}
-.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(34px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
 .toast.show{opacity:1}
 .net{background:rgba(224,122,106,.15);color:var(--err);border:1px solid rgba(224,122,106,.4);border-radius:20px;padding:.15em .7em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
 .hd .net + .out{margin-left:.45rem}

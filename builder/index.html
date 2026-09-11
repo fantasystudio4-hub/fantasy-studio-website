@@ -448,7 +448,7 @@ img{max-width:100%;display:block}
 .ci-line .cl-v{white-space:nowrap}
 .ci-line .cl-x{width:24px;height:24px;flex:0 0 auto;border:0;background:none;color:#a3987d;cursor:pointer;font-size:1rem;line-height:1;border-radius:50%;transition:.2s}
 .ci-line .cl-x:hover{background:#fdeeea;color:#b04030}
-.cart-foot{padding:1rem 1.2rem calc(1rem + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+.cart-foot{padding:1rem 1.2rem calc(1rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));background:#fff;border-top:1px solid var(--line)}
 .crow{display:flex;justify-content:space-between;font-size:.87rem;color:var(--ink-soft);padding:.18rem 0}
 .disc-field{display:flex;align-items:center;gap:.5rem;margin:.7rem 0;padding:.6rem .7rem;background:var(--cream);border:1px solid var(--line);border-radius:8px}
 .disc-field label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);white-space:nowrap}
@@ -476,7 +476,7 @@ img{max-width:100%;display:block}
 .mq-bar{
   position:fixed;left:0;right:0;bottom:0;z-index:900;display:none;align-items:center;gap:.5rem;
   background:rgba(28,26,22,.97);backdrop-filter:blur(10px);border-top:1px solid rgba(226,194,117,.3);
-  padding:.65rem .75rem calc(.65rem + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.3);
+  padding:.65rem .75rem calc(.65rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));box-shadow:0 -10px 30px rgba(0,0,0,.3);
 }
 .mq-open{flex:1;min-width:0;text-align:left;background:none;border:0;color:#fff;cursor:pointer;padding:.15rem}
 .mq-open .l{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-bright)}
@@ -500,7 +500,7 @@ img{max-width:100%;display:block}
 .sheet-head .pkg-chip{background:var(--cream);border-color:var(--gold);color:var(--gold-deep);margin:0 auto 0 .6rem}
 .sheet-close{background:var(--cream);border:1px solid var(--line);border-radius:50%;width:40px;height:40px;display:grid;place-items:center;font-size:1.4rem;line-height:1;cursor:pointer;flex:0 0 auto}
 .sheet-scroll{overflow-y:auto;padding:1rem 1.3rem 0}
-.sheet-foot{padding:.9rem 1.3rem calc(1rem + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#fff}
+.sheet-foot{padding:.9rem 1.3rem calc(1rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));border-top:1px solid var(--line);background:#fff}
 
 /* ============================================================
    MODALS
@@ -569,7 +569,7 @@ img{max-width:100%;display:block}
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
 .toast .t-close{border:0;background:none;color:#b3a98f;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;padding:.85em .4em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
-@media(max-width:1080px){.toast{bottom:calc(var(--mqbar) + 14px + env(safe-area-inset-bottom))}}
+@media(max-width:1080px){.toast{bottom:calc(var(--mqbar) + 14px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}}
 
 /* ---- date field painted as dd-mm-yyyy ---- */
 .dwrap{position:relative;display:block}
@@ -587,7 +587,7 @@ img{max-width:100%;display:block}
   .mq-bar{display:flex}
   /* the bar is fixed from here down, so this is where its height is owed —
      and the page's own 60px tail sat on top of it as dead scroll */
-  body{padding-bottom:calc(var(--mqbar) + env(safe-area-inset-bottom))}
+  body{padding-bottom:calc(var(--mqbar) + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}
   .shop{padding-bottom:18px}
   /* the sticky bar already carries Next at this width — an in-page copy of it
      is a second button for one action, sitting just above the first */
@@ -614,7 +614,7 @@ img{max-width:100%;display:block}
   .mq-open .l{display:none}
   .mq-total{font-size:1.5rem}
   .mq-open .c{font-size:.58rem;margin-top:2px}
-  .mq-bar{padding-top:.5rem;padding-bottom:calc(.5rem + env(safe-area-inset-bottom))}
+  .mq-bar{padding-top:.5rem;padding-bottom:calc(.5rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}
 
   /* stripped of its pill this read as part of the sentence above it —
      "change anything afterwards. OPTIONAL" */
@@ -761,13 +761,13 @@ img{max-width:100%;display:block}
   .lead-modal{
     left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;
     border-radius:20px 20px 0 0;border-left:0;border-right:0;border-bottom:0;
-    padding:1.6rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom));transform:translateY(106%);
+    padding:1.6rem 1.2rem calc(1.4rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateY(106%);
   }
   .lead-modal.open{transform:translateY(0)}
   .cmp-modal{
     left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;
     border-radius:20px 20px 0 0;border-left:0;border-right:0;border-bottom:0;
-    padding:1.4rem .9rem calc(1.1rem + env(safe-area-inset-bottom));transform:translateY(106%);
+    padding:1.4rem .9rem calc(1.1rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateY(106%);
   }
   .cmp-modal.open{transform:translateY(0)}
   /* The message took a whole row of its own, which left the tick sitting alone

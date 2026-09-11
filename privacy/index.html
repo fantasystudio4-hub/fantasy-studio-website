@@ -15,7 +15,7 @@
 :root{--ink:#14110a;--gold:#B8902B;--gold-b:#d9b45a;--paper:#f4ead2;--line:rgba(184,144,43,.25)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--ink);color:var(--paper);font-family:'Jost',sans-serif;line-height:1.7;
-  padding:calc(24px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(48px + env(safe-area-inset-bottom))}
+  padding:calc(24px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(48px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}
 main{max-width:720px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:.7rem;margin-bottom:2.2rem}
 .brand svg{width:44px;height:44px;flex:none}

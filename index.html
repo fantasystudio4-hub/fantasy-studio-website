@@ -230,7 +230,7 @@ header.nav.scrolled{
 .mobile-menu{
   position:fixed;inset:0;z-index:1150;background:var(--ink);
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1.5rem;
-  padding:calc(72px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1rem calc(24px + env(safe-area-inset-bottom));
+  padding:calc(72px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1rem calc(24px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));
   overflow-y:auto;
   /* visibility:hidden is what actually takes a closed overlay out of the tab order
      and the accessibility tree — opacity:0 alone leaves every control focusable.
@@ -501,7 +501,9 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
 
 /* floating whatsapp */
 .wa-fab{
-  position:fixed;right:22px;bottom:22px;z-index:950;width:50px;height:50px;border-radius:50%;
+  /* clear the phone's own buttons: env() on iPhone, and in the Android app,
+     which draws under the navigation bar, --safe-area-inset-bottom */
+  position:fixed;right:22px;bottom:calc(22px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));z-index:950;width:50px;height:50px;border-radius:50%;
   background:#1faa52;display:grid;place-items:center;box-shadow:0 12px 30px rgba(31,170,82,.45);
   transition:.3s;animation:wa-pulse 2.4s infinite;
 }
@@ -685,7 +687,7 @@ section[id]{scroll-margin-top:84px}
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
 .toast .t-close{border:0;background:none;color:#b3a98f;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.9em .5em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
-@media(max-width:1080px){.toast{bottom:calc(84px + env(safe-area-inset-bottom))}}
+@media(max-width:1080px){.toast{bottom:calc(84px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}}
 
 /* ---- back to top ---- */
 .to-top{
@@ -700,7 +702,7 @@ section[id]{scroll-margin-top:84px}
 .to-top svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
 /* the WhatsApp button sits at bottom:22px and is 50px tall, and it has the
    higher z-index — stack back-to-top above it rather than under its tap area */
-@media(max-width:1080px){.to-top{bottom:calc(84px + env(safe-area-inset-bottom));right:24px}}
+@media(max-width:1080px){.to-top{bottom:calc(84px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));right:24px}}
 
 /* ---- lead capture modal ---- */
 .lead-backdrop{position:fixed;inset:0;z-index:1240;background:rgba(10,8,4,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.3s}
@@ -713,7 +715,7 @@ section[id]{scroll-margin-top:84px}
   .cmp-modal{
     left:0;right:0;top:auto;bottom:0;width:100%;max-height:88vh;
     border-radius:20px 20px 0 0;border-left:0;border-right:0;border-bottom:0;
-    padding:1.5rem 1rem calc(1.2rem + env(safe-area-inset-bottom));
+    padding:1.5rem 1rem calc(1.2rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));
     transform:translateY(106%);
   }
   .cmp-modal.open{transform:translateY(0)}
@@ -824,7 +826,7 @@ section[id]{scroll-margin-top:84px}
 .role-pick{
   position:fixed;inset:0;z-index:1300;background:var(--ink);color:#f3ecdc;
   display:flex;flex-direction:column;align-items:center;overflow-y:auto;overscroll-behavior:contain;
-  padding:calc(28px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(24px + env(safe-area-inset-bottom));
+  padding:calc(28px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(24px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));
   opacity:0;pointer-events:none;visibility:hidden;
   transition:opacity .3s, visibility 0s linear .3s;
 }
