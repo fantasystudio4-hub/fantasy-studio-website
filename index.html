@@ -18,7 +18,10 @@
     sessionStorage.setItem('fs_app_started', '1');
     if(location.hash || location.search) return;   /* a shared or section link */
     const p = localStorage.getItem('fs_app_portal');
-    if(p === 'team/' || p === 'client/' || p === 'studio/') location.replace(p);
+    if(p === 'team/' || p === 'client/' || p === 'studio/'){ location.replace(p); return; }
+    /* signed in to nothing: ask who they are before the brochure paints
+       (#rolePick) — unless they have already said they are just browsing */
+    if(localStorage.getItem('fs_app_role') !== 'browse') document.documentElement.classList.add('fs-pick');
   }catch(e){}
 })();
 </script>
@@ -811,9 +814,83 @@ section[id]{scroll-margin-top:84px}
   .rate-grid{grid-template-columns:1fr}
   .bc-steps{flex-direction:column;gap:.5rem}
 }
+
+/* ============================================================
+   STORE APP: WHO ARE YOU?
+   Shown only by html.fs-pick, which the <head> script sets inside the
+   app on a cold start with nobody signed in — present on the first
+   paint, so the brochure never flashes behind it. Dark like the
+   portals it leads to. Android draws the app under the status bar and
+   passes its height as --safe-area-inset-top, so pad by that too.
+   ============================================================ */
+.role-pick{
+  position:fixed;inset:0;z-index:1300;background:var(--ink);color:#f3ecdc;
+  display:flex;flex-direction:column;align-items:center;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(28px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(24px + env(safe-area-inset-bottom));
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .3s, visibility 0s linear .3s;
+}
+html.fs-pick .role-pick{opacity:1;pointer-events:auto;visibility:visible;transition:opacity .3s, visibility 0s}
+html.fs-pick body{overflow:hidden}
+.role-pick:focus{outline:none}
+.rp-in{width:100%;max-width:420px;margin:auto 0;text-align:center}
+.rp-in .logo-mark{width:58px;height:58px;margin:0 auto 1rem}
+.rp-in h2{font-size:1.65rem;color:#fff;margin-bottom:.35rem}
+.rp-in > p{color:#b3a98f;font-size:.92rem;margin-bottom:1.5rem}
+.rp-opt{
+  display:flex;align-items:center;gap:.9rem;width:100%;min-height:64px;text-align:left;
+  background:#241e12;border:1px solid rgba(226,194,117,.28);border-radius:16px;
+  padding:.85rem 1rem;margin-bottom:.7rem;color:#f3ecdc;transition:border-color .2s, background .2s;
+}
+.rp-opt:active{border-color:var(--gold);background:rgba(184,144,43,.16)}
+@media(hover:hover){ .rp-opt:hover{border-color:var(--gold)} }
+.rp-ic{flex:0 0 auto;width:1.6em;font-size:1.5rem;line-height:1;text-align:center}
+.rp-t{flex:1;min-width:0}
+.rp-t b{display:block;font-family:var(--serif);font-weight:600;font-size:1.08rem;color:#fff}
+.rp-t em{display:block;font-style:normal;font-size:.8rem;color:#b3a98f;margin-top:.1rem}
+.rp-go{flex:0 0 auto;color:var(--gold-bright);font-size:1.1rem}
+.rp-browse{
+  margin-top:.9rem;min-height:44px;padding:.5em 1em;background:none;border:0;cursor:pointer;
+  color:var(--gold-bright);font-family:var(--sans);font-size:.88rem;letter-spacing:.04em;
+  text-decoration:underline;text-underline-offset:4px;
+}
 </style>
 </head>
 <body>
+
+<!-- ============ STORE APP: WHO ARE YOU? ============
+     Only the store app ever shows this (html.fs-pick, set in <head>). The
+     links are "./x/" on purpose: the Login-link scripts at the end of the
+     page rewrite every a[href="client/"] and must never rewrite these. -->
+<div class="role-pick" id="rolePick" role="dialog" aria-modal="true" aria-labelledby="rpTitle" tabindex="-1">
+  <div class="rp-in">
+    <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+      <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+      <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+      <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+      <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
+    </svg>
+    <h2 id="rpTitle">Welcome to Fantasy Studio</h2>
+    <p>Who are you? We'll take you to the right place.</p>
+    <a class="rp-opt" href="./client/" data-role="client">
+      <span class="rp-ic" aria-hidden="true">💍</span>
+      <span class="rp-t"><b>My booking</b><em>I booked my event with Fantasy Studio</em></span>
+      <span class="rp-go" aria-hidden="true">→</span>
+    </a>
+    <a class="rp-opt" href="./team/" data-role="team">
+      <span class="rp-ic" aria-hidden="true">🎬</span>
+      <span class="rp-t"><b>Crew</b><em>I shoot or edit for Fantasy Studio</em></span>
+      <span class="rp-go" aria-hidden="true">→</span>
+    </a>
+    <a class="rp-opt" href="./studio/" data-role="studio">
+      <span class="rp-ic" aria-hidden="true">🏢</span>
+      <span class="rp-t"><b>Partner studio</b><em>My studio books Fantasy Studio for events</em></span>
+      <span class="rp-go" aria-hidden="true">→</span>
+    </a>
+    <button class="rp-browse" type="button" id="rpBrowse">Just browsing — show me the studio</button>
+  </div>
+</div>
 
 <a href="#main" class="skip-link">Skip to main content</a>
 
@@ -1355,12 +1432,16 @@ function ovClosed(name, fromPop){
 window.addEventListener('popstate', ()=>{
   if($('#mobileMenu').classList.contains('open')) closeMobileMenu(true);
   else if($('#cmpModal').classList.contains('open')) closeCompare(true);
+  else if(rolePickOpen()) closeRolePick(true);
 });
 
 /* Focus management for every dialog. Tab is trapped inside whichever dialog is
    open, focus moves into it on open, and returns to whatever opened it. */
 const DIALOGS = ['#cmpModal','#mobileMenu'];
-function openDialog(){ return DIALOGS.map($).find(d=>d && d.classList.contains('open')) || null; }
+function openDialog(){
+  if(rolePickOpen()) return $('#rolePick');   /* shown by html.fs-pick, not .open */
+  return DIALOGS.map($).find(d=>d && d.classList.contains('open')) || null;
+}
 function dialogFocusables(d){
   return $$('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])', d)
     .filter(el=>!el.disabled && el.offsetParent !== null);
@@ -1385,7 +1466,7 @@ function restoreOpener(){
   if(_lastOpener && _lastOpener.focus && document.contains(_lastOpener)) _lastOpener.focus();
   _lastOpener = null;
 }
-document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeCompare(); closeMobileMenu(); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeCompare(); closeMobileMenu(); closeRolePick(); } });
 
 /* ============================================================
    NAV / MENU / SCROLL
@@ -1579,9 +1660,54 @@ scrollSpy();
 try{
   const p = localStorage.getItem('fs_app_portal');
   const label = { 'team/':'Crew Page', 'studio/':'Partner Page' }[p];
-  if(label && navigator.userAgent.indexOf('FantasyStudioApp') !== -1)
+  const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1;
+  if(label && inApp)
     $$('a[href="client/"]').forEach(a=>{ a.setAttribute('href', p); a.textContent = label; });
+  /* signed in to nothing: Login asks who you are rather than assuming a
+     client — crew and partners otherwise had to spot a small link at the
+     bottom of the client sign-in */
+  else if(inApp && p !== 'client/')
+    $$('a[href="client/"]').forEach(a=>a.addEventListener('click', e=>{ e.preventDefault(); openRolePick(); }));
 }catch(e){}
+
+/* ============================================================
+   STORE APP: WHO ARE YOU?
+   The <head> script puts html.fs-pick on a cold start when this phone is
+   signed in to no portal, so the question is there on the first paint.
+   The answer is kept (fs_app_role) only so that "Just browsing" stops
+   asking; once someone signs in, the portals' fs_app_portal reopen
+   routing takes over. Signing out means being asked again on the next
+   open, which is the quickest way back to their own sign-in.
+   ============================================================ */
+function rolePickOpen(){ return document.documentElement.classList.contains('fs-pick'); }
+function openRolePick(){
+  /* A Login tap inside the menu: the menu has just closed WITHOUT stepping
+     back (its link handler passes the event as fromPop), so take over its
+     history entry rather than stacking a second one on it. */
+  if(history.state && history.state.ov === 'menu'){ try{ history.replaceState({ov:'role'}, ''); }catch(e){} }
+  else ovOpen('role');
+  document.documentElement.classList.add('fs-pick');
+  focusDialog('#rolePick');
+}
+function closeRolePick(fromPop){
+  if(!rolePickOpen()) return;
+  document.documentElement.classList.remove('fs-pick');
+  ovClosed('role', fromPop);
+  restoreOpener();
+}
+$$('#rolePick [data-role]').forEach(a=>a.addEventListener('click', ()=>{
+  try{ localStorage.setItem('fs_app_role', a.dataset.role); }catch(e){}
+}));
+$('#rpBrowse').addEventListener('click', ()=>{
+  try{ localStorage.setItem('fs_app_role', 'browse'); }catch(e){}
+  closeRolePick();
+});
+/* on a cold start it is already showing: give the back gesture something to
+   close, and put focus in it without lighting up the first option */
+if(rolePickOpen()){
+  ovOpen('role');
+  setTimeout(()=>{ try{ $('#rolePick').focus({ preventScroll:true }); }catch(e){} }, 0);
+}
 
 /* retry any enquiry that could not be written on a previous visit */
 flushLeadQueue();
