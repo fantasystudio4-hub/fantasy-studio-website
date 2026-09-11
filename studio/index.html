@@ -444,12 +444,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 /* CDN imports can fail on a flaky connection — fail to a view with a call
    button, never a blank page (same guard the client portal carries) */
 let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber;
-let getFirestore, collection, doc, getDoc, query, where, onSnapshot;
+let getFirestore, collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot;
 try{
   ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
   ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ getFirestore, collection, doc, getDoc, query, where, onSnapshot } =
+  ({ getFirestore, collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   $('#errMsg').textContent = 'Could not reach the sign-in service — check your connection and try again.';
@@ -654,8 +654,8 @@ $('#verifyOtp').addEventListener('click', async ()=>{
   finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
 });
 $('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
-$('#logoutBtn').addEventListener('click', ()=>signOut(auth));
-$('#naLogout').addEventListener('click', ()=>signOut(auth));
+$('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
+$('#naLogout').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
 $('#errRetry').addEventListener('click', ()=>location.reload());
 
 /* ---------- data: my studio(s) + their jobs, live ---------- */
@@ -670,12 +670,14 @@ let _jobsSig = '';                   // last rendered job data, so a no-op snaps
 let _pkgErrs = new Map();            // studio id -> its packages listener error (per-studio, so one studio's success never hides another's failure)
 let _pkgSeen = new Set();            // studio ids whose packages listener has delivered once
 let _openJobs = null;                // Set of expanded package ids (null = not initialised)
+let _pushFor = '';                   // phone10 this page load registered for push
 
 function stopData(){
   try{ if(_stuUnsub) _stuUnsub(); }catch(e){} _stuUnsub = null;
   _pkgUnsubs.forEach(u=>{ try{ u(); }catch(e){} }); _pkgUnsubs.clear();
   STUS = []; PKGMAP = new Map(); _stuLoaded = false; _stuErr = null; _stuFresh = false;
   _pkgErrs = new Map(); _pkgSeen = new Set(); _openJobs = null; _jobsSig = '';
+  _pushFor = '';
   clearTimeout(_noAccessT); _noAccessT = null;
   clearInterval(_cdT);
 }
@@ -687,6 +689,42 @@ function rememberPortal(on){
   try{
     if(on) localStorage.setItem('fs_app_portal', 'studio/');
     else if(localStorage.getItem('fs_app_portal') === 'studio/') localStorage.removeItem('fs_app_portal');
+  }catch(e){}
+}
+
+/* ---------- push notifications (store app only) ----------
+   The same registration the client portal does. packageAlerts already sends
+   B2B job updates to the studio's phone10 — it just never had a token to
+   send to, because nothing on this page wrote one. The token doc's id IS the
+   token; the rules pin phone10 to the verified phone. In a browser the plugin
+   is absent and this is a no-op; it must never break the page. */
+const PUSH_KEY = 'fs_push_token_studio';
+async function registerPush(){
+  if(!_phone10 || _pushFor === _phone10) return;
+  _pushFor = _phone10;
+  try{
+    const C = window.Capacitor;
+    if(!C || !C.isPluginAvailable || !C.isPluginAvailable('FirebaseMessaging')) return;
+    const FM = C.Plugins.FirebaseMessaging;
+    const perm = await FM.requestPermissions();
+    if(!perm || perm.receive !== 'granted') return;
+    const { token } = await FM.getToken();
+    if(!token) return;
+    await setDoc(doc(db,'pushTokens', token), {
+      phone10: _phone10,
+      platform: C.getPlatform ? C.getPlatform() : 'app',
+      updatedAt: serverTimestamp()
+    });
+    try{ localStorage.setItem(PUSH_KEY, token); }catch(e){}
+  }catch(e){ /* push is a bonus */ }
+}
+/* a shared office phone must stop getting alerts once this login signs out */
+async function unregisterPush(){
+  try{
+    const t = localStorage.getItem(PUSH_KEY);
+    if(!t) return;
+    await deleteDoc(doc(db,'pushTokens', t));
+    localStorage.removeItem(PUSH_KEY);
   }catch(e){}
 }
 
@@ -778,6 +816,8 @@ function route(){
   if(!STUS.every(s=>_pkgSeen.has(s.id))){ show('loadingView'); return; }
   show('appView');
   render();
+  /* only a number the server has confirmed as an active partner */
+  registerPush();
 }
 
 /* ---------- render ---------- */
@@ -1094,11 +1134,13 @@ function renderJobs(jobs){
   const errNames = STUS.filter(s=>_pkgErrs.has(s.id)).map(s=>s.name||'one studio');
   if(errNames.length && !jobs.length){
     box.innerHTML = `<h2 class="secl">Your jobs</h2>
-      <div class="empty">Could not load your jobs (${esc((_pkgErrs.values().next().value||{}).code||'error')}) — pull to refresh or try again in a minute.</div>`;
+      <div class="empty">Could not load your jobs (${esc((_pkgErrs.values().next().value||{}).code||'error')}) — check your connection and tap Try again.
+      <div class="rowbtns"><button class="mini" type="button" data-reload>Try again</button></div></div>`;
     return;
   }
   const warn = errNames.length
-    ? `<div class="empty" style="margin-top:.9rem;border-color:rgba(224,122,106,.4)">⚠ Jobs for ${esc(errNames.join(', '))} could not load right now — what's below may be incomplete. Pull to refresh in a minute.</div>`
+    ? `<div class="empty" style="margin-top:.9rem;border-color:rgba(224,122,106,.4)">⚠ Jobs for ${esc(errNames.join(', '))} could not load right now — what's below may be incomplete.
+      <div class="rowbtns"><button class="mini" type="button" data-reload>Try again</button></div></div>`
     : '';
   if(!jobs.length){
     box.innerHTML = `<h2 class="secl">Your jobs</h2>
@@ -1203,6 +1245,8 @@ function renderRates(){
 
 /* toggle job cards + jump to money */
 document.addEventListener('click', e=>{
+  /* the app has no pull-to-refresh, so a failed load says Try again instead */
+  if(e.target.closest('[data-reload]')){ location.reload(); return; }
   const tog = e.target.closest('[data-jobtoggle]');
   if(tog){
     const card = tog.closest('.pkg');

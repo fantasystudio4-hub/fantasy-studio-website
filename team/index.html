@@ -803,6 +803,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   function installable(){
     if(standalone()) return false;                      /* already on the home screen */
+    /* the store app IS the installed app — its iOS webview is neither
+       standalone nor Safari, so without this it told crew to "tap Share in
+       Safari" from inside the app itself */
+    if(navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) return false;
     return !!window.__bipEvent || isIOS();              /* Android fires the event; iOS never does */
   }
   function snoozed(){
