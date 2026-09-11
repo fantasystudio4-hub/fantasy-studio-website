@@ -470,7 +470,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div class="amtwrap"><b>₹</b><input id="payAmt" type="number" min="1" inputmode="numeric" aria-label="Amount to pay" /></div>
   <div class="qamt" id="payQuick"></div>
   <div id="payApps"></div>
-  <p class="paynote">Your UPI app opens with the amount already filled in — check the name on screen before you confirm. <b>Fantasy Studio records the payment manually</b>, so it may take a little while to show here.</p>
+  <p class="paynote">Your UPI app opens with the amount already filled in — check the name on screen before you confirm. <b>Fantasy Studio records the payment manually</b>, so it may take a little while to show here. If no app opens, tap <b>Copy ID</b> and pay from any UPI app.</p>
   <a class="paydone" id="paySent" href="#" target="_blank" rel="noopener">✓ I've paid — tell the studio</a>
 </div>
 
@@ -1199,16 +1199,31 @@ $('#payApps').addEventListener('click', e=>{
     catch(err){ toast(v); }
     return;
   }
-  /* the app's own scheme first; the generic upi:// link on the anchor stays as
-     the fallback the browser follows if that app is not installed */
   const go = e.target.closest('.go[data-i]');
   if(go){
+    /* the anchor's own upi:// href must never be followed as well — see openUpi */
+    e.preventDefault();
     const u = upiIds()[Number(go.dataset.i)]; if(!u) return;
     const amt = Math.max(0, Math.round(Number($('#payAmt').value)||0));
     if(!amt){ toast('Enter how much you want to pay'); return; }
-    try{ location.href = u.scheme(upiQuery(u.vpa, amt, _payCtx.quoteNo ? 'Booking ' + _payCtx.quoteNo : 'Fantasy Studio')); }catch(err){}
+    openUpi(upiQuery(u.vpa, amt, _payCtx.quoteNo ? 'Booking ' + _payCtx.quoteNo : 'Fantasy Studio'), u.scheme);
   }
 });
+/* One navigation, never two. Pay used to set location.href to the app's own
+   scheme AND let the anchor follow its upi:// href, so both fired — and in the
+   store app every navigation becomes its own intent, so Android could open
+   PhonePe and then a UPI chooser on top of it. Android has a system-wide
+   upi:// handler that lists every UPI app on the phone, so it gets the
+   standard link (it works whichever app they have); iOS has no such handler,
+   so it gets the app's own scheme. The row still decides which of the
+   studio's UPI IDs the money goes to. */
+const IS_ANDROID = /android/i.test(navigator.userAgent);
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);   /* iPadOS */
+function openUpi(q, scheme){
+  if(!IS_ANDROID && !IS_IOS){ toast('Open this page on your phone to pay, or copy the UPI ID into your payment app'); return; }
+  try{ location.href = IS_ANDROID ? 'upi://pay?' + q : scheme(q); }catch(err){}
+}
 
 $('#pkgList').addEventListener('click', e=>{
   const pay = e.target.closest('[data-pay]');
