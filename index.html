@@ -815,10 +815,10 @@ section[id]{scroll-margin-top:84px}
 }
 
 /* ============================================================
-   STORE APP: WHO ARE YOU SIGNING IN AS?
+   SIGN-IN CHOOSER: WHO ARE YOU SIGNING IN AS?
    Shown by html.fs-pick, which openRolePick sets when Login is tapped
-   inside the app with nobody signed in. Dark like the portals it leads
-   to. Android draws the app under the status bar and passes its height
+   with nobody signed in — in the app and on the website. Dark like the
+   portals it leads to. Android draws the app under the status bar and passes its height
    as --safe-area-inset-top, so pad by that too.
    ============================================================ */
 .role-pick{
@@ -856,8 +856,8 @@ html.fs-pick body{overflow:hidden}
 </head>
 <body>
 
-<!-- ============ STORE APP: WHO ARE YOU SIGNING IN AS? ============
-     Only the store app shows this, and only from Login (openRolePick). The
+<!-- ============ SIGN-IN CHOOSER: WHO ARE YOU SIGNING IN AS? ============
+     Shown from Login (openRolePick), in the app and on the website. The
      links are "./x/" on purpose: the Login-link scripts at the end of the
      page rewrite every a[href="client/"] and must never rewrite these. -->
 <div class="role-pick" id="rolePick" role="dialog" aria-modal="true" aria-labelledby="rpTitle" tabindex="-1">
@@ -1642,7 +1642,9 @@ scrollSpy();
         all.onsuccess = ()=>{
           const signedIn = (all.result||[]).some(r=>r && typeof r.fbase_key === 'string'
             && r.fbase_key.indexOf('authUser') !== -1 && r.fbase_key.indexOf(':client') !== -1 && r.value);
-          if(signedIn) $$('a[href="client/"]').forEach(a=>{ a.textContent = 'My Booking'; });
+          /* data-signed-in also tells the Login click (below) to go straight
+             to the booking instead of asking who is signing in */
+          if(signedIn) $$('a[href="client/"]').forEach(a=>{ a.textContent = 'My Booking'; a.dataset.signedIn = '1'; });
           db.close();
         };
         all.onerror = ()=>{ try{ db.close(); }catch(e){} };
@@ -1661,20 +1663,26 @@ try{
   const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1;
   if(label && inApp)
     $$('a[href="client/"]').forEach(a=>{ a.setAttribute('href', p); a.textContent = label; });
-  /* signed in to nothing: Login asks who you are rather than assuming a
+  /* Signed in to nothing: Login asks who you are rather than assuming a
      client — crew and partners otherwise had to spot a small link at the
-     bottom of the client sign-in */
-  else if(inApp && p !== 'client/')
-    $$('a[href="client/"]').forEach(a=>a.addEventListener('click', e=>{ e.preventDefault(); openRolePick(); }));
+     bottom of the client sign-in. In the app and on the website alike
+     (owner, 11 Sep 2026). A client already signed in goes straight to
+     their booking: in the app that is fs_app_portal, in a browser the
+     "My Booking" check above (data-signed-in). A modified click (new tab,
+     new window) keeps its ordinary meaning. */
+  else if(!(inApp && p === 'client/'))
+    $$('a[href="client/"]').forEach(a=>a.addEventListener('click', e=>{
+      if(a.dataset.signedIn || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+      e.preventDefault(); openRolePick();
+    }));
 }catch(e){}
 
 /* ============================================================
-   STORE APP: WHO ARE YOU SIGNING IN AS?
-   Opened by the Login links above, inside the app, when this phone is
-   signed in to no portal. It used to open by itself on every cold
-   start; the owner asked for it on Login only (11 Sep 2026). Once
-   someone signs in, the portals' fs_app_portal reopen routing takes
-   over.
+   SIGN-IN CHOOSER: WHO ARE YOU SIGNING IN AS?
+   Opened by the Login links above when nobody is signed in — in the app
+   and, since the owner asked (11 Sep 2026), on the website too. It never
+   opens by itself. Once someone signs in, the app's fs_app_portal reopen
+   routing and the website's "My Booking" link take over.
    ============================================================ */
 function rolePickOpen(){ return document.documentElement.classList.contains('fs-pick'); }
 function openRolePick(){
@@ -1694,6 +1702,13 @@ function closeRolePick(fromPop){
 }
 /* not closeRolePick itself: a click handler's event would read as fromPop */
 $('#rpCancel').addEventListener('click', ()=>closeRolePick());
+/* The Package Builder's Login link lands here as #signin, because the
+   chooser lives on this page only. Take the fragment off the address
+   (before the load-time scroll reads it) and ask. */
+if(location.hash === '#signin'){
+  try{ history.replaceState(history.state, '', location.pathname + location.search); }catch(e){}
+  openRolePick();
+}
 
 /* retry any enquiry that could not be written on a previous visit */
 flushLeadQueue();

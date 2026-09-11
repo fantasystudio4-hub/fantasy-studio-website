@@ -2598,13 +2598,31 @@ flushLeadQueue();
           const signedIn = (all.result||[]).some(r=>r && typeof r.fbase_key === 'string'
             && r.fbase_key.indexOf('authUser') !== -1 && r.fbase_key.indexOf(':client') !== -1 && r.value);
           const link = document.getElementById('portalLink');
-          if(signedIn && link) link.textContent = 'My Booking';
+          /* data-signed-in also tells the Login click (below) to go straight
+             to the booking instead of asking who is signing in */
+          if(signedIn && link){ link.textContent = 'My Booking'; link.dataset.signedIn = '1'; }
           db.close();
         };
         all.onerror = ()=>{ try{ db.close(); }catch(e){} };
       }catch(e){ try{ db.close(); }catch(e2){} }
     };
   }catch(e){}
+})();
+
+/* Login asks who is signing in, like the home page — whose chooser it lands
+   on as #signin, since the chooser lives there only. A signed-in client (the
+   relabel above) goes straight to their booking; in the store app, a phone
+   signed in to the crew or partner page goes back to it (fs_app_portal, as
+   the home page's Login does). A modified click keeps its ordinary meaning. */
+(function(){
+  const link = document.getElementById('portalLink'); if(!link) return;
+  link.addEventListener('click', e=>{
+    if(link.dataset.signedIn || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+    e.preventDefault();
+    let p = '';
+    try{ if(navigator.userAgent.indexOf('FantasyStudioApp') !== -1) p = localStorage.getItem('fs_app_portal') || ''; }catch(err){}
+    location.href = (p === 'team/' || p === 'studio/' || p === 'client/') ? '../' + p : '../#signin';
+  });
 })();
 
 track('builder_page_view');
