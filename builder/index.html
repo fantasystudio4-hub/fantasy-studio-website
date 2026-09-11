@@ -141,7 +141,9 @@ img{max-width:100%;display:block}
   position:sticky;top:0;z-index:1000;
   background:rgba(251,248,241,.94);backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line);
-  padding-top:env(safe-area-inset-top);
+  /* the Android app passes the status bar height as --safe-area-inset-top,
+     where env() reads 0; max() never adds the two */
+  padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px));
 }
 .hdr-in{max-width:var(--maxw);margin:0 auto;padding:0 clamp(14px,3vw,30px);height:var(--hdr);display:flex;align-items:center;gap:1rem}
 .hdr-back{display:inline-flex;align-items:center;gap:.55rem;flex:0 0 auto;padding:.4em .2em}

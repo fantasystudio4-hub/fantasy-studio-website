@@ -30,7 +30,7 @@ body{
   line-height:1.65;
   min-height:100vh;
   display:flex;align-items:center;justify-content:center;
-  padding:calc(28px + env(safe-area-inset-top)) 1.2rem calc(36px + env(safe-area-inset-bottom));
+  padding:calc(28px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(36px + env(safe-area-inset-bottom));
 }
 main{max-width:560px;width:100%;text-align:center}
 .mark{width:66px;height:66px;margin:0 auto 1.6rem;display:block}

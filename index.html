@@ -201,8 +201,10 @@ section{position:relative}
 header.nav{
   position:fixed;top:0;left:0;right:0;z-index:1000;
   /* env() is 0 in a normal browser tab; it only pushes the bar down where the
-     status bar sits over the page — installed PWA and the store app's webview */
-  padding:calc(18px + env(safe-area-inset-top)) 0 18px;
+     status bar sits over the page — installed PWA and the store app's webview.
+     The Android app reports that height as --safe-area-inset-top instead (env()
+     reads 0 there), so take whichever is larger; max() never adds both. */
+  padding:calc(18px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 0 18px;
   transition:.4s ease;
   background:transparent;
 }
@@ -210,7 +212,7 @@ header.nav.scrolled{
   background:rgba(251,248,241,.86);
   backdrop-filter:blur(14px);
   box-shadow:0 1px 0 var(--line);
-  padding:calc(11px + env(safe-area-inset-top)) 0 11px;
+  padding:calc(11px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 0 11px;
 }
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .nav .logo-text b{color:#fff;transition:.4s}
@@ -231,7 +233,7 @@ header.nav.scrolled{
 .mobile-menu{
   position:fixed;inset:0;z-index:1150;background:var(--ink);
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1.5rem;
-  padding:calc(72px + env(safe-area-inset-top)) 1rem calc(24px + env(safe-area-inset-bottom));
+  padding:calc(72px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1rem calc(24px + env(safe-area-inset-bottom));
   overflow-y:auto;
   /* visibility:hidden is what actually takes a closed overlay out of the tab order
      and the accessibility tree — opacity:0 alone leaves every control focusable.
@@ -245,7 +247,7 @@ header.nav.scrolled{
 .mobile-menu .mm-close-bottom{margin-bottom:auto}
 .mobile-menu a{color:#fff;font-family:var(--serif);font-size:1.7rem;font-style:italic}
 .mobile-menu a:hover{color:var(--gold-bright)}
-.mm-close{position:absolute;top:16px;right:16px;width:48px;height:48px;display:grid;place-items:center;background:none;border:0;color:#fff;font-size:2rem;cursor:pointer}
+.mm-close{position:absolute;top:calc(16px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)));right:16px;width:48px;height:48px;display:grid;place-items:center;background:none;border:0;color:#fff;font-size:2rem;cursor:pointer}
 .mm-close:active{color:var(--gold-bright)}
 /* dedicated close below the menu items */
 .mm-close-bottom{
