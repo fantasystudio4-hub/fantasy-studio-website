@@ -1077,7 +1077,25 @@ function tickNextUp(){
     <div><b>${String(m).padStart(2,'0')}</b><span>mins</span></div>`;
 }
 /* an all-day calendar entry built in the browser — no server, no account */
+/* In the store app a downloaded file has nowhere to go — neither app's
+   webview can save one — so the button hands the event to Google Calendar,
+   which the app opens outside itself (the Calendar app on Android, Safari on
+   iPhone). Browsers keep the .ics download, which every calendar opens. */
+const IN_APP = navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || !!window.Capacitor;
+function gcalUrl(title, date, venue, details){
+  const end = new Date(date + 'T00:00'); end.setDate(end.getDate() + 1);
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(title)
+    + '&dates=' + date.replace(/-/g,'') + '/' + end.toLocaleDateString('en-CA').replace(/-/g,'')
+    + (venue ? '&location=' + encodeURIComponent(venue) : '')
+    + (details ? '&details=' + encodeURIComponent(details) : '');
+}
 function downloadIcs(ev){
+  if(IN_APP){
+    location.href = gcalUrl(String(ev.title||'Event') + ' — Fantasy Studio', ev.date, ev.venue,
+      'Photography & video by Fantasy Studio' + (ev.quoteNo ? ' (' + ev.quoteNo + ')' : ''));
+    return;
+  }
   const stamp = s => String(s||'').replace(/-/g,'');
   const end = new Date(ev.date+'T00:00'); end.setDate(end.getDate()+1);
   const lines = [
@@ -1146,9 +1164,25 @@ function openPay(bal, quoteNo, pid){
     ...(half > 0 && half !== bal ? [{ l:'Half ' + inr(half), v:half }] : []),
   ].map(q=>`<button type="button" data-q="${q.v}">${q.l}</button>`).join('');
   renderPayApps();
+  /* syncOpenPaySheet re-opens it over itself when the balance moves */
+  const was = $('#paySheet').classList.contains('open');
   $('#paySheet').classList.add('open'); $('#payBack').classList.add('open');
+  if(!was) ovOpen('pay');
 }
-function closePay(){ $('#paySheet').classList.remove('open'); $('#payBack').classList.remove('open'); }
+function closePay(fromPop){
+  if(!$('#paySheet').classList.contains('open')) return;
+  $('#paySheet').classList.remove('open'); $('#payBack').classList.remove('open');
+  ovClosed('pay', fromPop === true);
+}
+/* The sheet takes a history entry, so Back — the phone's or the browser's —
+   closes it instead of leaving the page (the home page's overlays already
+   work this way). A click handler passes its event as the first argument,
+   hence fromPop === true rather than a truthy test. */
+function ovOpen(name){ try{ history.pushState({ ov:name }, ''); }catch(e){} }
+function ovClosed(name, fromPop){
+  if(!fromPop && history.state && history.state.ov === name){ try{ history.back(); }catch(e){} }
+}
+window.addEventListener('popstate', ()=>{ closePay(true); });
 $('#payBack').addEventListener('click', closePay);
 document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closePay(); });
 $('#payAmt').addEventListener('input', renderPayApps);

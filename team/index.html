@@ -773,7 +773,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-          collection, doc, getDoc, setDoc, updateDoc, deleteField, query, where, onSnapshot, serverTimestamp } =
+          collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, query, where, onSnapshot, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   /* a NAMED app gives the crew page its own session storage — signing in here
@@ -792,7 +792,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
-  $('#logoutBtn').addEventListener('click', ()=>signOut(auth));
+  $('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
 
   /* ---------- install to the phone's app list ----------
      A shoot day is exactly when the signal is worst and the venue is
@@ -993,7 +993,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _meErr = null, _reqErr = null;
   /* a SERVER-confirmed team snapshot has arrived — see route() */
   let _meFresh = false, _meWatchdog = null;
-  let _pastOpen = false, _phone10 = '', _pretty = '';
+  let _pastOpen = false, _phone10 = '', _pretty = '', _pushFor = '';
 
   function stopData(){
     [_meUnsub, _asgsUnsub, _reqUnsub, _ejUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
@@ -1002,11 +1002,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _meLoaded = _asgsLoaded = _reqLoaded = false;
     _meErr = _reqErr = null;
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
+    _pushFor = '';
   }
 
   function route(){
     if(!_meLoaded || !_reqLoaded){ show('loadingView'); refreshInstall(); return; }
-    if(ME){ show('appView'); render(); refreshInstall(); return; }
+    if(ME){ show('appView'); render(); refreshInstall(); registerPush(); return; }
     /* a listener ERROR is a server/connection problem, not "you're not on the
        team" — showing the join-request flow here misled real members */
     if(_meErr || _reqErr){
@@ -1051,6 +1052,43 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       else if(localStorage.getItem('fs_app_portal') === 'team/') localStorage.removeItem('fs_app_portal');
     }catch(e){}
   };
+
+  /* ---------- push notifications (store app only) ----------
+     The same registration the client and partner pages do. The
+     assignmentAlerts Cloud Function tells a member about a new assignment
+     and about each payment recorded against one, looked up by
+     memberPhone10 — the last-10 this page signs in with. Only a confirmed
+     member registers, never a pending join request. In a browser the plugin
+     is absent and this is a no-op; it must never break the page. */
+  const PUSH_KEY = 'fs_push_token_team';
+  async function registerPush(){
+    if(!_phone10 || _pushFor === _phone10) return;
+    _pushFor = _phone10;
+    try{
+      const C = window.Capacitor;
+      if(!C || !C.isPluginAvailable || !C.isPluginAvailable('FirebaseMessaging')) return;
+      const FM = C.Plugins.FirebaseMessaging;
+      const perm = await FM.requestPermissions();
+      if(!perm || perm.receive !== 'granted') return;
+      const { token } = await FM.getToken();
+      if(!token) return;
+      await setDoc(doc(db,'pushTokens', token), {
+        phone10: _phone10,
+        platform: C.getPlatform ? C.getPlatform() : 'app',
+        updatedAt: serverTimestamp()
+      });
+      try{ localStorage.setItem(PUSH_KEY, token); }catch(e){}
+    }catch(e){ /* push is a bonus */ }
+  }
+  /* a borrowed phone must stop getting someone's assignments once they sign out */
+  async function unregisterPush(){
+    try{
+      const t = localStorage.getItem(PUSH_KEY);
+      if(!t) return;
+      await deleteDoc(doc(db,'pushTokens', t));
+      localStorage.removeItem(PUSH_KEY);
+    }catch(e){}
+  }
 
   onAuthStateChanged(auth, user=>{
     stopData();
@@ -1826,20 +1864,31 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .forEach(el=>{ const k = el.dataset.ejnote || el.dataset.ejprice;
                      const v = keep[(el.tagName + k)]; if(v) el.value = v; });
   }
+  /* The sheet takes a history entry, so Back — the phone's or the browser's —
+     closes it instead of leaving the page (the home page's overlays already
+     work this way). A click handler passes its event as the first argument,
+     hence fromPop === true rather than a truthy test. */
+  const ovOpen = name => { try{ history.pushState({ ov:name }, ''); }catch(e){} };
+  const ovClosed = (name, fromPop) => {
+    if(!fromPop && history.state && history.state.ov === name){ try{ history.back(); }catch(e){} }
+  };
+  window.addEventListener('popstate', ()=>{ if(_edOpen) closeEd(true); });
   function openEd(id){
     _edOpen = id;
     _edScrollY = window.scrollY;
     edPaint();
     $('#edBackdrop').hidden = false; $('#edSheet').hidden = false;
     document.documentElement.classList.add('ed-lock');
+    ovOpen('ed');
     setTimeout(()=>$('#edClose').focus(), 60);
   }
-  function closeEd(){
+  function closeEd(fromPop){
     if(!_edOpen) return;
     _edOpen = null;
     $('#edBackdrop').hidden = true; $('#edSheet').hidden = true;
     document.documentElement.classList.remove('ed-lock');
     window.scrollTo(0, _edScrollY);
+    ovClosed('ed', fromPop === true);
   }
   $('#editList').addEventListener('click', e=>{
     const r = e.target.closest('[data-edopen]'); if(!r) return;
