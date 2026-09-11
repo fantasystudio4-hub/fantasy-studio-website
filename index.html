@@ -3,6 +3,25 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<script>
+/* The store app always launches here (capacitor server.url), so a crew member
+   who closed the app reopened on the brochure, not their schedule, though
+   still signed in. The crew, client and partner portals note in the app that
+   this phone is signed in to them (fs_app_portal); on a cold start only,
+   go straight back there. sessionStorage dies with the app, so a tap on
+   Home from inside the app still shows this page. Runs in <head>, before
+   anything paints. */
+(function(){
+  try{
+    if(navigator.userAgent.indexOf('FantasyStudioApp') === -1) return;
+    if(sessionStorage.getItem('fs_app_started')) return;
+    sessionStorage.setItem('fs_app_started', '1');
+    if(location.hash || location.search) return;   /* a shared or section link */
+    const p = localStorage.getItem('fs_app_portal');
+    if(p === 'team/' || p === 'client/' || p === 'studio/') location.replace(p);
+  }catch(e){}
+})();
+</script>
 
 <!-- ============ SEO ============ -->
 <title>Fantasy Studio — Wedding Photography & Cinematography in Hyderabad</title>

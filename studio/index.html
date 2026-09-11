@@ -675,15 +675,27 @@ function stopData(){
   clearInterval(_cdT);
 }
 
+/* the store app always launches on the home page; this tells it to come
+   straight back here while signed in (see the <head> of /index.html) */
+function rememberPortal(on){
+  if(navigator.userAgent.indexOf('FantasyStudioApp') === -1) return;
+  try{
+    if(on) localStorage.setItem('fs_app_portal', 'studio/');
+    else if(localStorage.getItem('fs_app_portal') === 'studio/') localStorage.removeItem('fs_app_portal');
+  }catch(e){}
+}
+
 onAuthStateChanged(auth, user=>{
   stopData();
   $('#logoutBtn').hidden = !user;
   if(!user){
+    rememberPortal(false);
     show('loginView');
     $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
     return;
   }
   if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
+  rememberPortal(true);
   _phone10 = user.phoneNumber.slice(-10);
   show('loadingView');
   /* both conditions mirror the firestore.rules studios branch exactly —
