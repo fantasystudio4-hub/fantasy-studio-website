@@ -18,10 +18,7 @@
     sessionStorage.setItem('fs_app_started', '1');
     if(location.hash || location.search) return;   /* a shared or section link */
     const p = localStorage.getItem('fs_app_portal');
-    if(p === 'team/' || p === 'client/' || p === 'studio/'){ location.replace(p); return; }
-    /* signed in to nothing: ask who they are before the brochure paints
-       (#rolePick) — unless they have already said they are just browsing */
-    if(localStorage.getItem('fs_app_role') !== 'browse') document.documentElement.classList.add('fs-pick');
+    if(p === 'team/' || p === 'client/' || p === 'studio/') location.replace(p);
   }catch(e){}
 })();
 </script>
@@ -818,12 +815,11 @@ section[id]{scroll-margin-top:84px}
 }
 
 /* ============================================================
-   STORE APP: WHO ARE YOU?
-   Shown only by html.fs-pick, which the <head> script sets inside the
-   app on a cold start with nobody signed in — present on the first
-   paint, so the brochure never flashes behind it. Dark like the
-   portals it leads to. Android draws the app under the status bar and
-   passes its height as --safe-area-inset-top, so pad by that too.
+   STORE APP: WHO ARE YOU SIGNING IN AS?
+   Shown by html.fs-pick, which openRolePick sets when Login is tapped
+   inside the app with nobody signed in. Dark like the portals it leads
+   to. Android draws the app under the status bar and passes its height
+   as --safe-area-inset-top, so pad by that too.
    ============================================================ */
 .role-pick{
   position:fixed;inset:0;z-index:1300;background:var(--ink);color:#f3ecdc;
@@ -851,7 +847,7 @@ html.fs-pick body{overflow:hidden}
 .rp-t b{display:block;font-family:var(--serif);font-weight:600;font-size:1.08rem;color:#fff}
 .rp-t em{display:block;font-style:normal;font-size:.8rem;color:#b3a98f;margin-top:.1rem}
 .rp-go{flex:0 0 auto;color:var(--gold-bright);font-size:1.1rem}
-.rp-browse{
+.rp-cancel{
   margin-top:.9rem;min-height:44px;padding:.5em 1em;background:none;border:0;cursor:pointer;
   color:var(--gold-bright);font-family:var(--sans);font-size:.88rem;letter-spacing:.04em;
   text-decoration:underline;text-underline-offset:4px;
@@ -860,8 +856,8 @@ html.fs-pick body{overflow:hidden}
 </head>
 <body>
 
-<!-- ============ STORE APP: WHO ARE YOU? ============
-     Only the store app ever shows this (html.fs-pick, set in <head>). The
+<!-- ============ STORE APP: WHO ARE YOU SIGNING IN AS? ============
+     Only the store app shows this, and only from Login (openRolePick). The
      links are "./x/" on purpose: the Login-link scripts at the end of the
      page rewrite every a[href="client/"] and must never rewrite these. -->
 <div class="role-pick" id="rolePick" role="dialog" aria-modal="true" aria-labelledby="rpTitle" tabindex="-1">
@@ -873,8 +869,8 @@ html.fs-pick body{overflow:hidden}
       <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
       <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
     </svg>
-    <h2 id="rpTitle">Welcome to Fantasy Studio</h2>
-    <p>Who are you? We'll take you to the right place.</p>
+    <h2 id="rpTitle">Sign in to Fantasy Studio</h2>
+    <p>Who are you signing in as?</p>
     <a class="rp-opt" href="./client/" data-role="client">
       <span class="rp-ic" aria-hidden="true">💍</span>
       <span class="rp-t"><b>My booking</b><em>I booked my event with Fantasy Studio</em></span>
@@ -890,7 +886,7 @@ html.fs-pick body{overflow:hidden}
       <span class="rp-t"><b>Partner studio</b><em>My studio books Fantasy Studio for events</em></span>
       <span class="rp-go" aria-hidden="true">→</span>
     </a>
-    <button class="rp-browse" type="button" id="rpBrowse">Just browsing — show me the studio</button>
+    <button class="rp-cancel" type="button" id="rpCancel">Cancel</button>
   </div>
 </div>
 
@@ -1673,13 +1669,12 @@ try{
 }catch(e){}
 
 /* ============================================================
-   STORE APP: WHO ARE YOU?
-   The <head> script puts html.fs-pick on a cold start when this phone is
-   signed in to no portal, so the question is there on the first paint.
-   The answer is kept (fs_app_role) only so that "Just browsing" stops
-   asking; once someone signs in, the portals' fs_app_portal reopen
-   routing takes over. Signing out means being asked again on the next
-   open, which is the quickest way back to their own sign-in.
+   STORE APP: WHO ARE YOU SIGNING IN AS?
+   Opened by the Login links above, inside the app, when this phone is
+   signed in to no portal. It used to open by itself on every cold
+   start; the owner asked for it on Login only (11 Sep 2026). Once
+   someone signs in, the portals' fs_app_portal reopen routing takes
+   over.
    ============================================================ */
 function rolePickOpen(){ return document.documentElement.classList.contains('fs-pick'); }
 function openRolePick(){
@@ -1697,19 +1692,8 @@ function closeRolePick(fromPop){
   ovClosed('role', fromPop);
   restoreOpener();
 }
-$$('#rolePick [data-role]').forEach(a=>a.addEventListener('click', ()=>{
-  try{ localStorage.setItem('fs_app_role', a.dataset.role); }catch(e){}
-}));
-$('#rpBrowse').addEventListener('click', ()=>{
-  try{ localStorage.setItem('fs_app_role', 'browse'); }catch(e){}
-  closeRolePick();
-});
-/* on a cold start it is already showing: give the back gesture something to
-   close, and put focus in it without lighting up the first option */
-if(rolePickOpen()){
-  ovOpen('role');
-  setTimeout(()=>{ try{ $('#rolePick').focus({ preventScroll:true }); }catch(e){} }, 0);
-}
+/* not closeRolePick itself: a click handler's event would read as fromPop */
+$('#rpCancel').addEventListener('click', ()=>closeRolePick());
 
 /* retry any enquiry that could not be written on a previous visit */
 flushLeadQueue();
