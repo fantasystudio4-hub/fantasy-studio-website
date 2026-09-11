@@ -1572,6 +1572,17 @@ scrollSpy();
   }catch(e){}
 })();
 
+/* In the store app a crew member or partner who tapped Home on their page
+   needs a way back, and iOS has no back gesture there: the Login links lead
+   to the page this phone is signed in to (fs_app_portal, see <head>). The
+   client check above looks for href="client/", so it never relabels these. */
+try{
+  const p = localStorage.getItem('fs_app_portal');
+  const label = { 'team/':'Crew Page', 'studio/':'Partner Page' }[p];
+  if(label && navigator.userAgent.indexOf('FantasyStudioApp') !== -1)
+    $$('a[href="client/"]').forEach(a=>{ a.setAttribute('href', p); a.textContent = label; });
+}catch(e){}
+
 /* retry any enquiry that could not be written on a previous visit */
 flushLeadQueue();
 

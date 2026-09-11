@@ -48,7 +48,10 @@ body{font-family:var(--sans);background:linear-gradient(180deg,#1a150c,#14110a 4
 h1,h2,h3{font-family:var(--serif)}
 button,input,textarea{font-family:var(--sans);font-size:16px}
 .wrap{max-width:640px;margin:0 auto;padding:0 max(14px,env(safe-area-inset-left)) calc(60px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-right))}
-header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+/* In the Android app the page is drawn under the status bar. Capacitor passes
+   its height as --safe-area-inset-top; env() covers iOS and newer WebViews.
+   Both are 0 wherever nothing overlaps, and max() never adds them twice. */
+header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))}
 .hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
 .hd svg{width:34px;height:34px;flex:0 0 auto}
 .hd b{font-family:var(--serif);font-size:1.05rem}
@@ -338,7 +341,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd .net + .out{margin-left:.45rem}
 .hd .inst{border-color:var(--gold);color:var(--gold-b)}
 .hd .inst + .out{margin-left:.45rem}
-@media(max-width:400px){ .hd .inst{font-size:0;padding:.35em .7em} .hd .inst::first-letter{font-size:.85rem} }
+/* the title takes the free space, so the buttons sit right whichever of them
+   are hidden — `+ .out` rules still match after a hidden sibling. No
+   min-width:0: squeezed, the title wraps rather than sliding under a badge. */
+.hd > div{flex:1}
+.hd a.out{text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center}
+@media(max-width:400px){ .hd .inst{font-size:0;padding:.35em .7em} .hd .inst::first-letter{font-size:.85rem}
+  /* offline shrinks to a red dot, so the title still fits beside Home and Logout */
+  .hd .net{font-size:0;width:10px;height:10px;padding:0;border-radius:50%;background:var(--err);flex:0 0 auto} }
 
 /* install card — offered once, and only where it can actually work */
 .instcard{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;background:linear-gradient(150deg,rgba(201,163,71,.15),rgba(36,30,18,.92) 60%);border:1px solid rgba(226,194,117,.4);border-radius:16px;padding:.9rem 1rem;margin:0 0 1rem;box-shadow:0 10px 26px rgba(0,0,0,.24)}
@@ -474,6 +484,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <div><b>Fantasy Studio</b><span>Crew</span></div>
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
+    <a class="out" id="homeLink" href="../">Home</a>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>

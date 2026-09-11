@@ -45,7 +45,10 @@ a{color:var(--gold-b)}
 button,input,textarea{font-family:var(--sans);font-size:16px}
 :focus-visible{outline:2px solid var(--gold-b);outline-offset:2px;border-radius:4px}
 
-header{position:sticky;top:0;z-index:20;background:rgba(20,17,10,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding-top:env(safe-area-inset-top)}
+header{position:sticky;top:0;z-index:20;background:rgba(20,17,10,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  /* env() alone reads 0 in the Android app, where Capacitor passes the status
+     bar height as --safe-area-inset-top instead; max() never adds them twice */
+  padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))}
 header::after{content:"";display:block;height:1px;background:linear-gradient(90deg,transparent,var(--gold-b),transparent);opacity:.5}
 .hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.65rem;padding:.65rem clamp(14px,4vw,22px)}
 .hd svg{width:34px;height:34px;flex:none}
@@ -55,6 +58,7 @@ header::after{content:"";display:block;height:1px;background:linear-gradient(90d
 .net{font-size:.66rem;color:#e5b57f;border:1px solid rgba(229,181,127,.4);border-radius:20px;padding:.12rem .5rem;flex:none}
 .out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.34rem .7rem;font-size:.78rem;cursor:pointer;flex:none;min-height:44px}
 .out:active{color:var(--gold-b)}
+a.out{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
 
 .login{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.35rem 1.2rem;margin-top:1.6rem}
 .login h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:.3rem}
@@ -312,6 +316,7 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
     <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#B8902B" stroke-width="3"/><text x="50" y="62" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#E2C275">FS</text></svg>
     <div><b>Fantasy Studio</b><span class="tag">Partner</span></div>
     <span class="net" id="netDot" hidden>offline</span>
+    <a class="out" id="homeLink" href="../">Home</a>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
