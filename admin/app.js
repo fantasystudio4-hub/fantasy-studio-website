@@ -4589,7 +4589,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       by[k] = by[k] || { name: (memberById(a.memberId)||{}).name || a.memberName || '—', id: a.memberId, n:0, amt:0 };
       by[k].n++; by[k].amt += Number((a.pay||{}).amount)||0;
     });
-    return Object.values(by).sort((a,b)=>b.n - a.n || b.amt - a.amt);
+    /* by earnings — the fees on completed shoots — highest first, lowest
+       last (owner, 15 Sep 2026: "who earns more is 1, who earns less is
+       last"); the shoot count only breaks a tie */
+    return Object.values(by).sort((a,b)=>b.amt - a.amt || b.n - a.n);
   }
   /* ---- each member's place, written onto their own team doc ----
      The crew page can read only its own team doc and its own assignments, so
@@ -4604,7 +4607,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      strip a place someone holds. Same shape as syncStudioCrew. */
   let _rankSyncT = null, _rankSyncBusy = false, _rankSyncAgain = false;
   const _rankKey = lb => ['m','y','all']
-    .map(k=>{ const r = (lb||{})[k] || {}; return [r.pos, r.of, r.n].map(v=>Number(v)||0).join(':'); })
+    .map(k=>{ const r = (lb||{})[k] || {}; return [r.pos, r.of, r.n, r.amt].map(v=>Number(v)||0).join(':'); })
     .join('|');
   function syncCrewRanks(){
     if(DEMO || !_asgsFresh || !_teamLoaded) return;
@@ -4618,7 +4621,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           const lb = {};
           for(const k of Object.keys(boards)){
             const i = boards[k].findIndex(r=>r.id && r.id === m.id);
-            lb[k] = { pos: i + 1, of: boards[k].length, n: i < 0 ? 0 : boards[k][i].n };
+            lb[k] = { pos: i + 1, of: boards[k].length,
+                      n: i < 0 ? 0 : boards[k][i].n, amt: i < 0 ? 0 : boards[k][i].amt };
           }
           if(_rankKey(lb) === _rankKey(m.lb)) continue;
           if(!m.lb && !Object.values(lb).some(r=>r.pos > 0)) continue;
@@ -4641,7 +4645,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       el.innerHTML = `<div class="empty" style="padding:.8rem 0">No shoots completed ${_lbPeriod==='m'?'this month':_lbPeriod==='y'?'this year':'yet'}.</div>`;
       return;
     }
-    const top = rows[0].n || 1;
+    /* the amount leads, since that is the order; the bar is the amount too.
+       A board with no fees on it at all (every shoot unpriced) falls back to
+       the count, so the bars are never all empty. */
+    const money = rows.some(r=>r.amt > 0);
+    const top = (money ? rows[0].amt : rows[0].n) || 1;
     const medal = i => i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1);
     el.innerHTML = rows.slice(0,12).map((r,i)=>`
       <div class="lb-row ${i<3?'top g'+(i+1):''}">
@@ -4649,9 +4657,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="av">${esc(initials(r.name))}</span>
         <span class="lb-mid">
           <b>${esc(r.name)}</b>
-          <span class="lb-bar"><i style="width:${Math.round(100*r.n/top)}%"></i></span>
+          <span class="lb-bar"><i style="width:${Math.round(100*(money ? r.amt : r.n)/top)}%"></i></span>
         </span>
-        <span class="lb-n"><b>${r.n}</b><span>${r.amt ? inr(r.amt) : 'shoots'}</span></span>
+        <span class="lb-n"><b>${money ? inr(r.amt) : r.n}</b><span>${r.n} shoot${r.n===1?'':'s'}</span></span>
       </div>`).join('');
   }
   on('#lbTog', 'click', e=>{

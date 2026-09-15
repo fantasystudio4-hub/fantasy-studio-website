@@ -1638,7 +1638,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Where you stand among the crew. This page can read only its own work, so
      it cannot rank itself; the studio's panel computes its 🏆 Crew leaderboard
      from everyone's assignments and writes each member's place onto their own
-     team doc — lb.m / lb.y / lb.all = { pos, of, n } — whenever it changes.
+     team doc — lb.m / lb.y / lb.all = { pos, of, n, amt } — whenever it
+     changes. The board is ordered by earnings (fees on completed shoots).
      The year board leads, as it does in the panel; all time stands in during
      the first weeks of a year with nothing on it yet. Nothing until the panel
      has run once after this ships. */
@@ -1650,8 +1651,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const r = lb[pick[0]];
     const medal = r.pos === 1 ? '🥇 ' : r.pos === 2 ? '🥈 ' : r.pos === 3 ? '🥉 ' : '';
     $('#hqLbPos').innerHTML = `${medal}#${Number(r.pos)}<em>of ${Number(r.of)||1}</em>`;
-    const n = Number(r.n)||0;
-    $('#hqLbSub').textContent = `${n} shoot${n===1?'':'s'} ${pick[1]}`;
+    /* the board is ordered by earnings, so say the earnings first */
+    const n = Number(r.n)||0, amt = Number(r.amt)||0;
+    $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} shoot${n===1?'':'s'} ${pick[1]}`;
   }
 
   /* ---------- next shoot, counting down ---------- */
