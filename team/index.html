@@ -172,6 +172,20 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .asg .lines{margin-top:.5rem}
 .asg .notes{margin-top:.5rem;background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text)}
 .asg .notes b{color:var(--gold-b);font-weight:500}
+/* ---- the shoot card (crew who go out, not editors) ----
+   Two rows on top instead of one that wrapped wherever the title ran long:
+   the date row — weekday first, because a shoot day is planned by weekday —
+   with the confirm chip pinned to its right, then the function on a line of
+   its own. The Date line that repeated the header is gone from the body, and
+   call time leads it: on the morning itself that is the one number read. */
+.asg-d{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.asg-d .when{font-family:var(--serif);color:var(--gold-b);font-size:.95rem;white-space:nowrap}
+.daytag{font-style:normal;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600;
+        color:#ffb054;background:rgba(255,176,84,.14);border-radius:20px;padding:.22em .6em;white-space:nowrap}
+.asg-t{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-top:.15rem}
+.asg-t b{font-family:var(--serif);color:#fff;font-size:1.15rem;line-height:1.25}
+.asg-t .slotpill{margin-left:0}
+.asg .ln .ct{font-family:var(--serif);color:var(--gold-b);font-size:1rem}
 /* ---- the editing job's own record, on the editor's side ---- */
 /* The footage link is the first thing an editor needs and the only reason
    some of them open this page at all, so it is a target, not a line of text. */
@@ -279,8 +293,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .paycard h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
 .payrow{display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:var(--mut);padding:.32rem 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
 .payrow:last-of-type{border-bottom:0}
-.payrow .ev2{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.payrow .ev2 span{color:var(--mut)}
+/* Two lines, not one clipped one: the client's name was the part that got cut
+   to "P…" at phone width, and it is the part that says which job this was. */
+.payrow .ev2{flex:1;min-width:0;color:var(--text);display:flex;flex-direction:column;line-height:1.3}
+.payrow .ev2 .ev-l{font-weight:500;color:var(--text)}
+.payrow .ev2 .who{font-style:normal;font-size:.74rem;color:var(--mut);overflow-wrap:anywhere}
+.payrow .ev2 .who:empty{display:none}
+.payrow .ev2 .who .slotpill{margin-left:.35em}
+.payrow .ev2 .who .slotpill:first-child{margin-left:0}
 .payrow .amt{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
 .paypill{flex:0 0 auto;border-radius:14px;padding:.2em .7em;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
 .paypill.yes{color:var(--ok);background:rgba(76,175,125,.13)}
@@ -396,6 +416,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .hq-chips:empty{display:none;margin:0;padding:0;border:0}
 .hq-chips b{background:rgba(184,144,43,.13);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.28em .8em;font-size:.68rem;font-weight:500;white-space:nowrap}
 .hq-chips b.hot{color:#ffb054;background:rgba(255,176,84,.13);border-color:rgba(255,176,84,.35)}
+/* where you stand among the crew — the same place the studio's 🏆 Crew
+   leaderboard shows, written to the member's own record by the panel */
+.hq-lb{display:flex;align-items:center;gap:.6rem;margin-top:.6rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.07)}
+.hq-lb .lbl{flex:1;min-width:0;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.hq-lb .lbl b{display:block;font-size:.76rem;letter-spacing:.01em;text-transform:none;color:var(--text);font-weight:500;margin-top:.12rem}
+.hq-lb .pos{flex:0 0 auto;font-family:var(--serif);font-size:1.4rem;color:var(--gold-b);line-height:1;white-space:nowrap}
+.hq-lb .pos em{font-style:normal;font-family:var(--sans);font-size:.7rem;color:var(--mut);margin-left:.3rem;letter-spacing:.02em}
 
 /* next shoot — a live countdown, because "in 3 days" is the whole question */
 /* Medium, like the rank card above it. The clock was three 1.45rem numerals
@@ -451,7 +478,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(hover:hover){ .crewhelp a:hover{background:var(--gold);color:#fff} }
 /* the very next event stands out from the rest of the schedule */
 #upList .asg:first-child{border-color:rgba(226,194,117,.55)}
-#upList .asg:first-child .asg-h .when{font-size:1.1rem}
+#upList .asg:first-child .asg-d .when{font-size:1.1rem}
 </style>
 </head>
 <body>
@@ -600,6 +627,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
           <div class="xpbar"><i id="hqXpFill"></i></div>
           <span class="xpn" id="hqXp"></span>
         </div>
+      </div>
+      <!-- the member's place on the studio's crew leaderboard (team/{id}.lb) -->
+      <div class="hq-lb" id="hqLb" hidden>
+        <span class="lbl">🏆 Crew leaderboard<b id="hqLbSub"></b></span>
+        <span class="pos" id="hqLbPos"></span>
       </div>
       <div class="hq-chips" id="hqChips"></div>
     </div>
@@ -1172,25 +1204,42 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---------- member dashboard ---------- */
+  /* "Tue 15 Sept": the weekday is what a shoot day is planned by. The year
+     only when it is not this one — the Past list reaches back years, and
+     "27 Dec" alone does not say which. */
+  const fmtDay = d => {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return d||'—';
+    const s = new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}).replace(/,/g,'');
+    return d.slice(0,4) === todayISO().slice(0,4) ? s : s + ' ' + d.slice(0,4);
+  };
+  const fmtShortY = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') && d.slice(0,4) !== todayISO().slice(0,4)
+    ? fmtShort(d) + ' ' + d.slice(0,4) : fmtShort(d);
+  /* the two days that matter more than their date */
+  const dayTag = d => {
+    const t = todayISO();
+    if(d === t) return '<i class="daytag">Today</i>';
+    const tm = new Date(t+'T00:00'); tm.setDate(tm.getDate()+1);
+    return d === tm.toLocaleDateString('en-CA') ? '<i class="daytag">Tomorrow</i>' : '';
+  };
   function asgCard(a, past){
     const seen = a.status === 'acknowledged';
     /* the member's own sign-off, from the DAY of the shoot — a wedding is
        finished that night, not the next morning when the card moves to Past */
     const done = (a.date||'') <= todayISO();
+    /* call time first, then where, then who: the order the day is read in */
     return `
     <div class="asg ${past?'past':''}">
-      <div class="asg-h">
-        <span class="when">${esc(fmtShort(a.date))}</span>
-        <b>${esc(a.eventTitle||'Event')}${slotTag(a.slot)}</b>
+      <div class="asg-d">
+        <span class="when">${esc(fmtDay(a.date))}</span>${past ? '' : dayTag(a.date)}
         ${past
           ? (seen ? '<span class="chip seen">✓ confirmed</span>' : '')
           : `<span class="chip ${seen?'seen':'wait'}">${seen ? '✓ confirmed' : 'please confirm'}</span>`}
       </div>
+      <div class="asg-t"><b>${esc(a.eventTitle||'Event')}</b>${slotTag(a.slot)}</div>
       <div class="lines">
-        <div class="ln"><span>Date</span><span>${esc(fmtDate(a.date))}${slotName(a.slot) ? ' · ' + esc(slotName(a.slot)) : ''}</span></div>
-        ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
+        ${a.callTime ? `<div class="ln"><span>Call time</span><span class="ct">${esc(fmtTime(a.callTime))}</span></div>` : ''}
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
-        ${a.callTime ? `<div class="ln"><span>Call time</span><span>${esc(fmtTime(a.callTime))}</span></div>` : ''}
+        ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
         <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
@@ -1563,11 +1612,32 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* "🎬 N done" and "⏭ N ahead" are the first two stat tiles directly
        below this card, word for word. What is left is what the tiles do not
        say: the streak, how many weddings that adds up to, and this month. */
+    const lbm = (ME.lb || {}).m || {};
     $('#hqChips').innerHTML =
-      (streak > 1 ? `<b class="hot">🔥 ${streak}-month streak</b>` : '')
+      (lbm.pos ? `<b>🏆 #${lbm.pos} this month</b>` : '')
+      + (streak > 1 ? `<b class="hot">🔥 ${streak}-month streak</b>` : '')
       + (weddings ? `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>` : '')
       + (thisMonth ? `<b>📆 ${thisMonth} this month</b>` : '');
+    renderLb();
     $('#hqCard').hidden = false;
+  }
+  /* Where you stand among the crew. This page can read only its own work, so
+     it cannot rank itself; the studio's panel computes its 🏆 Crew leaderboard
+     from everyone's assignments and writes each member's place onto their own
+     team doc — lb.m / lb.y / lb.all = { pos, of, n } — whenever it changes.
+     The year board leads, as it does in the panel; all time stands in during
+     the first weeks of a year with nothing on it yet. Nothing until the panel
+     has run once after this ships. */
+  function renderLb(){
+    const lb = (ME && ME.lb) || {};
+    const pick = (lb.y && lb.y.pos > 0) ? ['y','this year'] : (lb.all && lb.all.pos > 0) ? ['all','all time'] : null;
+    $('#hqLb').hidden = !pick;
+    if(!pick) return;
+    const r = lb[pick[0]];
+    const medal = r.pos === 1 ? '🥇 ' : r.pos === 2 ? '🥈 ' : r.pos === 3 ? '🥉 ' : '';
+    $('#hqLbPos').innerHTML = `${medal}#${Number(r.pos)}<em>of ${Number(r.of)||1}</em>`;
+    const n = Number(r.n)||0;
+    $('#hqLbSub').textContent = `${n} shoot${n===1?'':'s'} ${pick[1]}`;
   }
 
   /* ---------- next shoot, counting down ---------- */
@@ -1817,7 +1887,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                    : st === 'part' ? `${inr(payDue(a))} left`
                    : 'due';
         return `<div class="payrow">
-          <span class="ev2">${esc(fmtShort(a.date))} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)}${a.clientName ? ` <span>· ${esc(a.clientName)}</span>` : ''}</span>
+          <span class="ev2"><b class="ev-l">${esc(fmtShortY(a.date))} · ${esc(a.eventTitle||'Event')}</b><em class="who">${esc(a.clientName||'')}${slotTag(a.slot)}</em></span>
           <span class="amt">${inr(payFee(a))}</span>
           <span class="paypill ${st === 'paid' ? 'yes' : st === 'part' ? 'part' : 'no'}">${esc(pill)}</span>
           ${hist}

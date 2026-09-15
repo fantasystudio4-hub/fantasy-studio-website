@@ -3982,6 +3982,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
           warnIfCapped('team members', snap.size, TEAM_CAP);
           _teamLoaded = true;
+          syncCrewRanks();    /* the roster is what the places are written onto */
           renderTeam();
           renderEditTab();    /* editor names and the editor filter chips */
         }, err=>{
@@ -4000,6 +4001,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           _asgsLoaded = true;
           if(!snap.metadata.fromCache) _asgsFresh = true;
           syncStudioCrew();   /* partner portal reads crew off the package doc */
+          syncCrewRanks();    /* each member's leaderboard place, onto their team doc */
           renderTeam();
           renderEditTab();    /* who is on an edit, and whether they signed off */
           renderPkgStats();   /* the crew-pay tile on Home reads these */
@@ -4573,21 +4575,68 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* the league table — the one view that says who is actually carrying the season */
   let _lbPeriod = 'y';
-  function renderLeaderboard(){
-    const sec = $('#lbSec'), el = $('#lbList'); if(!sec || !el) return;
+  /* The table's rows for a period — 'm' this month, 'y' this year, anything
+     else all time. ONE function, because the same rows are written to each
+     member's crew page (syncCrewRanks below): the number a member sees there
+     must be the number on this screen, never a second computation of it. */
+  function lbRows(period){
     const today = todayISO();
-    const from = _lbPeriod === 'm' ? today.slice(0,7) : _lbPeriod === 'y' ? today.slice(0,4) : '';
+    const from = period === 'm' ? today.slice(0,7) : period === 'y' ? today.slice(0,4) : '';
     const done = ASGS.filter(a=>(a.date||'') < today && (!from || (a.date||'').startsWith(from)));
-    /* visibility belongs to applyTeamSeg — this section lives under Crew */
-    LB_HAS = !!ASGS.length;
-    if(!ASGS.length) return;
     const by = {};
     done.forEach(a=>{
       const k = a.memberId || a.memberName || '?';
       by[k] = by[k] || { name: (memberById(a.memberId)||{}).name || a.memberName || '—', id: a.memberId, n:0, amt:0 };
       by[k].n++; by[k].amt += Number((a.pay||{}).amount)||0;
     });
-    const rows = Object.values(by).sort((a,b)=>b.n - a.n || b.amt - a.amt);
+    return Object.values(by).sort((a,b)=>b.n - a.n || b.amt - a.amt);
+  }
+  /* ---- each member's place, written onto their own team doc ----
+     The crew page can read only its own team doc and its own assignments, so
+     it has no way to know where it stands among the others. This panel does.
+     After every server-fresh assignments snapshot it takes the same rows the
+     table above shows — month, year, all time — and writes each member's
+     position, the size of the board and their count to team/{id}.lb, only
+     when that changed (the echo snapshot then matches and writes nothing).
+     An admin-only write on a doc the member may already read: no rules
+     change. A member who has never been on any board gets no doc write at
+     all. Never in demo, and never from a cache image — a stale window could
+     strip a place someone holds. Same shape as syncStudioCrew. */
+  let _rankSyncT = null, _rankSyncBusy = false, _rankSyncAgain = false;
+  const _rankKey = lb => ['m','y','all']
+    .map(k=>{ const r = (lb||{})[k] || {}; return [r.pos, r.of, r.n].map(v=>Number(v)||0).join(':'); })
+    .join('|');
+  function syncCrewRanks(){
+    if(DEMO || !_asgsFresh || !_teamLoaded) return;
+    clearTimeout(_rankSyncT);
+    _rankSyncT = setTimeout(async ()=>{
+      if(_rankSyncBusy){ _rankSyncAgain = true; return; }
+      _rankSyncBusy = true;
+      try{
+        const boards = { m: lbRows('m'), y: lbRows('y'), all: lbRows('all') };
+        for(const m of TEAM){
+          const lb = {};
+          for(const k of Object.keys(boards)){
+            const i = boards[k].findIndex(r=>r.id && r.id === m.id);
+            lb[k] = { pos: i + 1, of: boards[k].length, n: i < 0 ? 0 : boards[k][i].n };
+          }
+          if(_rankKey(lb) === _rankKey(m.lb)) continue;
+          if(!m.lb && !Object.values(lb).some(r=>r.pos > 0)) continue;
+          m.lb = lb;   /* keep the local copy in step — no rewrite on the echo */
+          await settle(updateDoc(doc(db,'team',m.id), { lb: { ...lb, at: serverTimestamp() } }));
+        }
+      }finally{
+        _rankSyncBusy = false;
+        if(_rankSyncAgain){ _rankSyncAgain = false; syncCrewRanks(); }
+      }
+    }, 1500);
+  }
+  function renderLeaderboard(){
+    const sec = $('#lbSec'), el = $('#lbList'); if(!sec || !el) return;
+    /* visibility belongs to applyTeamSeg — this section lives under Crew */
+    LB_HAS = !!ASGS.length;
+    if(!ASGS.length) return;
+    const rows = lbRows(_lbPeriod);
     if(!rows.length){
       el.innerHTML = `<div class="empty" style="padding:.8rem 0">No shoots completed ${_lbPeriod==='m'?'this month':_lbPeriod==='y'?'this year':'yet'}.</div>`;
       return;
