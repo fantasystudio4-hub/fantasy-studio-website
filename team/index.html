@@ -636,7 +636,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       </div>
       <!-- the member's place on the studio's crew leaderboard (team/{id}.lb) -->
       <div class="hq-lb" id="hqLb" hidden>
-        <span class="lbl">🏆 Crew leaderboard<b id="hqLbSub"></b></span>
+        <span class="lbl"><span id="hqLbTtl">🏆 Crew leaderboard</span><b id="hqLbSub"></b></span>
         <span class="pos" id="hqLbPos"></span>
       </div>
       <div class="hq-chips" id="hqChips"></div>
@@ -1640,6 +1640,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      from everyone's assignments and writes each member's place onto their own
      team doc — lb.m / lb.y / lb.all = { pos, of, n, amt } — whenever it
      changes. The board is ordered by earnings (fees on completed shoots).
+     Outdoor and Office are TWO boards with their own numbering: lb.cat says
+     which one this place is on, and the card is titled by it. A place
+     written before the boards were split has no lb.cat and keeps the plain
+     "Crew leaderboard" title until the panel runs once more.
      The year board leads, as it does in the panel; all time stands in during
      the first weeks of a year with nothing on it yet. Nothing until the panel
      has run once after this ships. */
@@ -1648,12 +1652,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pick = (lb.y && lb.y.pos > 0) ? ['y','this year'] : (lb.all && lb.all.pos > 0) ? ['all','all time'] : null;
     $('#hqLb').hidden = !pick;
     if(!pick) return;
+    const cat = lb.cat === 'office' ? 'office' : lb.cat === 'outdoor' ? 'outdoor' : '';
+    $('#hqLbTtl').textContent = '🏆 ' + (cat === 'office' ? 'Office' : cat === 'outdoor' ? 'Outdoor' : 'Crew') + ' leaderboard';
     const r = lb[pick[0]];
     const medal = r.pos === 1 ? '🥇 ' : r.pos === 2 ? '🥈 ' : r.pos === 3 ? '🥉 ' : '';
     $('#hqLbPos').innerHTML = `${medal}#${Number(r.pos)}<em>of ${Number(r.of)||1}</em>`;
     /* the board is ordered by earnings, so say the earnings first */
     const n = Number(r.n)||0, amt = Number(r.amt)||0;
-    $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} shoot${n===1?'':'s'} ${pick[1]}`;
+    /* shooters shoot; the office does jobs (the member's own record decides
+       when the place predates the split) */
+    const unit = ((cat || ME.cat) === 'office' ? 'job' : 'shoot') + (n === 1 ? '' : 's');
+    $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} ${unit} ${pick[1]}`;
   }
 
   /* ---------- next shoot, counting down ---------- */

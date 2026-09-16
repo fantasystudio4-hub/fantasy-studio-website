@@ -4576,13 +4576,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* the league table — the one view that says who is actually carrying the season */
   let _lbPeriod = 'y';
   /* The table's rows for a period — 'm' this month, 'y' this year, anything
-     else all time. ONE function, because the same rows are written to each
-     member's crew page (syncCrewRanks below): the number a member sees there
-     must be the number on this screen, never a second computation of it. */
-  function lbRows(period){
+     else all time — on ONE board: 'outdoor' or 'office'. The two kinds of
+     people are ranked apart, each with its own numbering (owner, 17 Sep
+     2026: office crew see their numbering, outdoor a different numbering),
+     so an editor's fees are never measured against a cinematographer's. The
+     board a piece of work lands on is its member's category (catOf); work by
+     someone no longer on the roster counts as outdoor, the read default.
+     ONE function, because the same rows are written to each member's crew
+     page (syncCrewRanks below): the number a member sees there must be the
+     number on this screen, never a second computation of it. */
+  function lbRows(period, cat){
     const today = todayISO();
     const from = period === 'm' ? today.slice(0,7) : period === 'y' ? today.slice(0,4) : '';
-    const done = ASGS.filter(a=>(a.date||'') < today && (!from || (a.date||'').startsWith(from)));
+    const done = ASGS.filter(a=>(a.date||'') < today && (!from || (a.date||'').startsWith(from))
+      && catOf(memberById(a.memberId)) === cat);
     const by = {};
     done.forEach(a=>{
       const k = a.memberId || a.memberName || '?';
@@ -4599,15 +4606,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      it has no way to know where it stands among the others. This panel does.
      After every server-fresh assignments snapshot it takes the same rows the
      table above shows — month, year, all time — and writes each member's
-     position, the size of the board and their count to team/{id}.lb, only
-     when that changed (the echo snapshot then matches and writes nothing).
+     position, the size of the board and their count to team/{id}.lb — on
+     the board of their OWN category (lb.cat), outdoor or office — only when
+     that changed (the echo snapshot then matches and writes nothing).
      An admin-only write on a doc the member may already read: no rules
      change. A member who has never been on any board gets no doc write at
      all. Never in demo, and never from a cache image — a stale window could
      strip a place someone holds. Same shape as syncStudioCrew. */
   let _rankSyncT = null, _rankSyncBusy = false, _rankSyncAgain = false;
-  const _rankKey = lb => ['m','y','all']
-    .map(k=>{ const r = (lb||{})[k] || {}; return [r.pos, r.of, r.n, r.amt].map(v=>Number(v)||0).join(':'); })
+  const _rankKey = lb => [String((lb||{}).cat||'')].concat(['m','y','all']
+    .map(k=>{ const r = (lb||{})[k] || {}; return [r.pos, r.of, r.n, r.amt].map(v=>Number(v)||0).join(':'); }))
     .join('|');
   function syncCrewRanks(){
     if(DEMO || !_asgsFresh || !_teamLoaded) return;
@@ -4616,13 +4624,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(_rankSyncBusy){ _rankSyncAgain = true; return; }
       _rankSyncBusy = true;
       try{
-        const boards = { m: lbRows('m'), y: lbRows('y'), all: lbRows('all') };
+        /* one set of boards per category; each member is placed on their own */
+        const boards = {};
+        for(const c of TM_CATS) boards[c] = { m: lbRows('m', c), y: lbRows('y', c), all: lbRows('all', c) };
         for(const m of TEAM){
-          const lb = {};
-          for(const k of Object.keys(boards)){
-            const i = boards[k].findIndex(r=>r.id && r.id === m.id);
-            lb[k] = { pos: i + 1, of: boards[k].length,
-                      n: i < 0 ? 0 : boards[k][i].n, amt: i < 0 ? 0 : boards[k][i].amt };
+          const cat = catOf(m), b = boards[cat];
+          const lb = { cat };
+          for(const k of Object.keys(b)){
+            const i = b[k].findIndex(r=>r.id && r.id === m.id);
+            lb[k] = { pos: i + 1, of: b[k].length,
+                      n: i < 0 ? 0 : b[k][i].n, amt: i < 0 ? 0 : b[k][i].amt };
           }
           if(_rankKey(lb) === _rankKey(m.lb)) continue;
           if(!m.lb && !Object.values(lb).some(r=>r.pos > 0)) continue;
@@ -4635,14 +4646,36 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
     }, 1500);
   }
+  /* Which board is open, Outdoor or Office. The chips appear only once the
+     roster has both kinds of people; with one kind there is one board and
+     nothing to choose. */
+  let _lbCat = viewGet('lbCat', 'outdoor');
+  function renderLbCats(){
+    const el = $('#lbCats'); if(!el) return;
+    const have = new Set(TEAM.map(catOf));
+    if(!TM_CATS.includes(_lbCat)) _lbCat = 'outdoor';
+    /* a roster of one kind shows that kind, whatever was picked before */
+    if(have.size === 1 && !have.has(_lbCat)) _lbCat = [...have][0];
+    if(have.size < 2){ el.innerHTML = ''; return; }
+    el.innerHTML = TM_CATS.map(c=>`<button type="button" data-lbcat="${c}" class="${_lbCat===c?'on':''}">${
+      CAT_LABEL[c]} <b>${lbRows(_lbPeriod, c).length}</b></button>`).join('');
+  }
+  on('#lbCats', 'click', e=>{
+    const b = e.target.closest('[data-lbcat]'); if(!b || b.dataset.lbcat === _lbCat) return;
+    _lbCat = b.dataset.lbcat; viewSet('lbCat', _lbCat);
+    renderLeaderboard();
+  });
+  /* what a completed row is called on each board: shooters shoot, the office does jobs */
+  const lbUnit = (cat, n) => (cat === 'office' ? 'job' : 'shoot') + (n === 1 ? '' : 's');
   function renderLeaderboard(){
     const sec = $('#lbSec'), el = $('#lbList'); if(!sec || !el) return;
     /* visibility belongs to applyTeamSeg — this section lives under Crew */
     LB_HAS = !!ASGS.length;
     if(!ASGS.length) return;
-    const rows = lbRows(_lbPeriod);
+    renderLbCats();
+    const rows = lbRows(_lbPeriod, _lbCat);
     if(!rows.length){
-      el.innerHTML = `<div class="empty" style="padding:.8rem 0">No shoots completed ${_lbPeriod==='m'?'this month':_lbPeriod==='y'?'this year':'yet'}.</div>`;
+      el.innerHTML = `<div class="empty" style="padding:.8rem 0">No ${_lbCat} ${lbUnit(_lbCat, 0)} completed ${_lbPeriod==='m'?'this month':_lbPeriod==='y'?'this year':'yet'}.</div>`;
       return;
     }
     /* the amount leads, since that is the order; the bar is the amount too.
@@ -4659,7 +4692,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <b>${esc(r.name)}</b>
           <span class="lb-bar"><i style="width:${Math.round(100*(money ? r.amt : r.n)/top)}%"></i></span>
         </span>
-        <span class="lb-n"><b>${money ? inr(r.amt) : r.n}</b><span>${r.n} shoot${r.n===1?'':'s'}</span></span>
+        <span class="lb-n"><b>${money ? inr(r.amt) : r.n}</b><span>${r.n} ${lbUnit(_lbCat, r.n)}</span></span>
       </div>`).join('');
   }
   on('#lbTog', 'click', e=>{
