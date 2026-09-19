@@ -100,7 +100,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dwrap{position:relative;display:block}
 .dwrap>input[type=date]{color:transparent;-webkit-text-fill-color:transparent}
 .dwrap>.dtxt{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
-.dwrap>.dtxt.ph{opacity:.45}
+.dwrap>.dtxt.ph{opacity:.62}
 .pwrap input{padding-right:2.9em}
 .pwrap button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;padding:.4em;display:grid;place-items:center;border-radius:var(--r-sm)}
 .pwrap button svg{width:20px;height:20px;display:block}
@@ -236,9 +236,12 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dl3 .dprog{flex:0 0 56px}
 .dl3 b{font-size:var(--fs-sm);color:var(--mut);font-weight:600;letter-spacing:.04em;white-space:nowrap}
 .dl3 b.dv{color:var(--state-done);font-size:var(--fs-sm)}
+/* wraps: this is the stage the job is AT ("Cinematic teasers ready"). On a
+   320px phone it was cut to "Cinematic tea…", which is the one part of the
+   line that carries the news. Two short lines beat one unreadable one. */
 .dl3-now{
   min-width:0;flex:1;font-size:var(--fs-sm);color:var(--text);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  white-space:normal;overflow-wrap:anywhere;line-height:1.25;
 }
 .dtrack{margin:0 1rem;padding:.2rem 0 .85rem}
 .dt-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;font-size:var(--fs-sm);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-b)}
@@ -421,7 +424,7 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 /* tab icons + new-leads badge */
 .tabs button{position:relative}
 .tabs button i{display:none;font-style:normal}
-.tabs .badge{background:var(--err);color:var(--white);font-size:var(--fs-xs);font-weight:600;border-radius:var(--r-md);padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
+.tabs .badge{background:var(--err);color:var(--ink-0);font-size:var(--fs-xs);font-weight:600;border-radius:var(--r-md);padding:.05em .5em;font-family:var(--sans);line-height:1.5;margin-left:.35em;display:inline-block}
 
 /* app-style bottom navigation on phones */
 /* while the keyboard is up the bottom nav cannot be reached anyway, and the
@@ -677,7 +680,7 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .tsegs{display:flex;gap:.4rem;position:sticky;top:var(--hdr-h,56px);z-index:var(--z-subnav);background:var(--ink);padding:.5rem 0 .55rem;margin:-.2rem 0 .2rem}
 .tsegs button{flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;background:var(--field);border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.62em .3em;font-size:var(--fs-base);cursor:pointer;min-height:44px;white-space:nowrap}
 .tsegs button.on{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-weight:600}
-.tsegs .segb{background:var(--err);color:var(--white);border-radius:var(--r-pill);font-size:var(--fs-xs);padding:.05em .4em;font-weight:700}
+.tsegs .segb{background:var(--err);color:var(--ink-0);border-radius:var(--r-pill);font-size:var(--fs-xs);padding:.05em .4em;font-weight:700}
 .tsegs button.on .segb{background:var(--ink-0);color:var(--gold-b)}
 .pm-row .amt2{font-family:var(--serif);color:var(--gold-b);white-space:nowrap}
 /* the fee is a control now, not a label — it opens the Edit Fee sheet. It has
@@ -875,7 +878,9 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .lb-row.g2 .av{background:var(--rank-2-bg);color:var(--rank-2);border-color:var(--rank-2-ln)}
 .lb-row.g3 .av{background:var(--rank-3-bg);color:var(--rank-3);border-color:var(--rank-3-ln)}
 .lb-mid{flex:1;min-width:0}
-.lb-mid b{display:block;font-size:var(--fs-lg);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* a name wraps rather than being cut: on a 320px phone the whole-rupee amount
+   on the right left "Imran Qureshi" 83px and an ellipsis */
+.lb-mid b{display:block;font-size:var(--fs-lg);color:var(--text);white-space:normal;overflow-wrap:anywhere;line-height:1.25}
 .lb-bar{height:4px;border-radius:var(--r-xs);background:rgba(var(--white-rgb),.08);margin-top:.28rem;overflow:hidden}
 .lb-bar i{display:block;height:100%;border-radius:var(--r-xs);background:linear-gradient(90deg,var(--gold-l),var(--gold-b))}
 .lb-n{flex:0 0 auto;text-align:right;line-height:1.15}
@@ -891,7 +896,10 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .sq-av .rfg{fill:none;stroke:var(--gold-l);stroke-width:6;stroke-linecap:round;stroke-dasharray:113.1}
 .sq-av i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--serif);font-size:var(--fs-xl);color:var(--gold-b)}
 .sq-t{flex:1;min-width:0}
-.sq-t b{display:block;font-family:var(--serif);color:var(--white);font-size:var(--fs-xl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* up to two lines, like the role line under it: beside the avatar and the
+   Call / WhatsApp buttons a 320px phone leaves the name 83px, and one line
+   of that turned "Imran Qureshi" into "Imran Qu…" */
+.sq-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-family:var(--serif);color:var(--white);font-size:var(--fs-xl);white-space:normal;overflow:hidden;overflow-wrap:anywhere;line-height:1.2}
 /* "🎥 Outdoor · Photography · ₹18,000/event" is three separate facts and the
    rate was the one being cut. Two lines. */
 .sq-t span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:var(--fs-sm);color:var(--mut);white-space:normal;overflow:hidden}
@@ -997,7 +1005,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .fintiles .stat{padding:.55rem .3rem}
 .fintiles .stat b{font-size:var(--fs-lg)}
 .finyr{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .55rem}
-.finyr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.3em .85em;font-size:var(--fs-xl)}
+.finyr button{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-md);cursor:pointer;padding:.3em .85em;font-size:var(--fs-xl);min-width:var(--tap);min-height:var(--tap)}
+/* an expense is only useful if you can read what it was: the description
+   wraps instead of being cut to ~130px between the date and the amount */
+.exprow .what{white-space:normal;overflow:visible;overflow-wrap:anywhere;line-height:1.3;padding:.2rem 0}
 .finyr b{flex:1;text-align:center;font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-xl)}
 .finsplit{display:flex;gap:.7rem;flex-wrap:wrap;margin:0 0 .55rem;font-size:var(--fs-sm);color:var(--mut)}
 .finsplit b{color:var(--gold-b);font-weight:500}
@@ -1055,10 +1066,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .ledrow.finled .l-ev{font-size:var(--fs-md)}
 .ledrow.finled .l-ev span{color:var(--mut);font-size:var(--fs-xs)}
 .ledrow.finled.hd b{font-size:var(--fs-2xs)}
+/* three 76px number columns left the period 34px on a 320px phone — "Q1 A…".
+   The figures are short-form (₹36.1L) and fit 60px with room to spare. */
+@media(max-width:360px){ .ledrow.finled b{flex-basis:60px} }
 .ledrow.finled.annual{background:var(--gold-t1);border-radius:var(--r-sm);border-bottom:0;padding:.4rem .3rem;margin:.15rem 0 .1rem}
 .ledrow.finled.annual .l-ev{color:var(--gold-b);font-weight:600}
 .ledrow.finled.on{background:rgba(var(--gold-rgb),.09)}
-.ledrow.finled[data-fyr]{cursor:pointer}
+.ledrow.finled[data-fyr]{cursor:pointer;min-height:var(--tap)}   /* tappable, so it gets the touch floor — it was 29px */
 @media(hover:hover){ .ledrow.finled[data-fyr]:hover .l-ev{color:var(--gold-b)} }
 
 /* ==== phone fixes that MUST outrank the base rules above ====
@@ -1111,7 +1125,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    buys several services at once, so shares of a total would not sum to
    anything meaningful. Each row therefore prints its own absolute figure. */
 .ins-bar{display:flex;align-items:center;gap:.6rem;min-height:34px;padding:.2rem 0}
-.ib-l{flex:1 1 52%;min-width:0;font-size:var(--fs-base);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* wraps: "Video editing details received +4d on this step" lost its second
+   half — the half that says how late — to an ellipsis on a phone */
+.ib-l{flex:1 1 52%;min-width:0;font-size:var(--fs-base);color:var(--text);white-space:normal;overflow-wrap:anywhere;line-height:1.3}
 .ib-l em{font-style:normal;color:var(--mut);font-size:var(--fs-sm)}
 .ib-t{flex:0 1 24%;min-width:44px;height:6px;border-radius:var(--r-xs);background:var(--white-t4);overflow:hidden}
 .ib-t i{display:block;height:100%;border-radius:var(--r-xs);background:var(--state-info);transition:width .3s}
@@ -1683,7 +1699,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 }
 .ej-row:active{border-color:var(--gold);background:var(--gold-t3)}
 .ej-row.ok{opacity:.62}
-.ej-top{display:flex;align-items:center;gap:.4rem;min-width:0}
+/* wraps: the couple's name is the one thing on this line that must never
+   give way. On a narrow phone the badges drop to a second line instead of
+   the name being cut to "Farhan & Zo…" (it only ellipsises when the name
+   alone is wider than the row). */
+.ej-top{display:flex;align-items:center;gap:.3rem .4rem;min-width:0;flex-wrap:wrap}
 .ej-top b{
   font-size:var(--fs-lg);color:var(--text);font-weight:500;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;

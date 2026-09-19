@@ -97,7 +97,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div id="leadsView">
     <div class="stats" id="stats"></div>
     <div class="bar">
-      <input id="leadSearch" type="search" placeholder="Search name or phone…" />
+      <input id="leadSearch" type="search" placeholder="Name or phone" aria-label="Search leads by name or phone" />
       <button id="leadPick" type="button" aria-pressed="false" title="Select several leads">☑</button>
       <button id="refreshBtn">↻ Refresh</button>
     </div>
@@ -185,7 +185,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div id="pkgView" hidden>
     <div id="pkgListView">
       <div class="bar">
-        <input id="pkgSearch" type="search" placeholder="Search name, phone or quote #…" />
+        <input id="pkgSearch" type="search" placeholder="Name, phone, quote #" aria-label="Search packages by name, phone or quote number" />
         <button id="pkgRefresh" aria-label="Refresh">↻</button>
         <button class="btn btn--primary" id="pkgNew">＋ New</button>
       </div>

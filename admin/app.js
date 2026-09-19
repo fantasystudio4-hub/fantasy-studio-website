@@ -585,6 +585,44 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _focusReturn = null;
     }
   }
+  /* ---------- a field's label belongs to its field ----------
+     Every form row is <div class="fld"><label>…</label><input …></div>, and
+     almost none of the labels carried for= — so tapping "Amount" did nothing
+     (the label is the easier target on a phone), and a screen reader met
+     thirty unnamed text boxes. The static rows are linked once here; rows a
+     renderer builds later get the same tap behaviour from the delegated
+     click below, without touching their markup. */
+  const FLD_INPUT = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,textarea';
+  /* only the control that directly follows the label (or sits inside the
+     wrapper that does, like the date field's .dwrap): a label over a row of
+     pills must not grab some other text box further down the same row */
+  const fldInputOf = lab => {
+    const next = lab.nextElementSibling; if(!next) return null;
+    return next.matches(FLD_INPUT) ? next : next.querySelector(FLD_INPUT);
+  };
+  let _fldSeq = 0, _fldT = null;
+  function linkFieldLabels(){
+    document.querySelectorAll('.fld > label:not([for])').forEach(lab=>{
+      const inp = fldInputOf(lab); if(!inp) return;
+      if(!inp.id) inp.id = 'fldAuto' + (++_fldSeq);
+      lab.htmlFor = inp.id;
+    });
+  }
+  linkFieldLabels();
+  /* Config's forty-odd rate rows, the builder's fields and the quick-add form
+     are drawn after boot, so the pass above never saw them. One debounced
+     observer instead of a call at the end of every renderer: a renderer added
+     next year is covered without knowing this exists. Setting for= and id is
+     an attribute change, which childList does not report, so it cannot loop. */
+  new MutationObserver(()=>{ clearTimeout(_fldT); _fldT = setTimeout(linkFieldLabels, 300); })
+    .observe(document.body, { childList:true, subtree:true });
+  document.addEventListener('click', e=>{
+    const lab = e.target.closest && e.target.closest('.fld > label');
+    if(!lab || lab.htmlFor || e.target.closest('button,a,input,select,textarea')) return;
+    const inp = fldInputOf(lab);
+    if(inp && !inp.disabled) inp.focus();
+  });
+
   const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   document.addEventListener('keydown', e=>{
     if(e.key !== 'Tab') return;
@@ -8681,6 +8719,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the expense form sits inside the money sheet — one Escape should close
        the form, not the sheet out from under it */
     if(!$('#expForm').hidden){ closeExpForm(); return; }
+    /* Three sheets were never on the list below, so Escape did nothing on
+       them: the event-fee editor, the crew payment sheet and Insights. The
+       first two open ON TOP of another sheet, so they are tested first and
+       end the keypress — one Escape, one sheet. */
+    if($('#feeModal').classList.contains('open')){ closeFee(); return; }
+    if($('#cpModal').classList.contains('open')){ closeCrewPay(); return; }
+    if($('#insModal').classList.contains('open')){ closeIns(); return; }
     closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt(); closeTx();
   });
   /* Everything tappable here is a div — a calendar date, a shoot row, a stat
@@ -9428,7 +9473,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="up-ev exprow">
           <span class="when">${esc(dmy(x.date))}</span>
           <span class="what" data-exp="${esc(x.id)}" role="button" tabindex="0">${esc(catName(x.cat))}${x.note ? ' · ' + esc(x.note) : ''}${x.mode ? `<span> · ${esc(x.mode)}</span>` : ''}</span>
-          <b title="${inr(expAmt(x))}">${inrShort(expAmt(x))}</b>
+          <b>${inr(expAmt(x))}</b>
           <button class="icon-btn icon-btn--danger" data-exdel="${esc(x.id)}" title="Delete this expense">✕</button>
         </div>`).join('')
         + (expInFy.length > 8 ? `<button class="upall" type="button" id="expAll">${_expAll ? '− Show fewer' : `＋ See all ${expInFy.length}`}</button>` : '')

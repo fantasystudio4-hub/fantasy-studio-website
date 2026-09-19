@@ -178,8 +178,14 @@
   /* Nine steps. --fs-2xs exists because the panel genuinely needs a size below
      --fs-xs for the tiny uppercase kickers ("RECEIVED TODAY", "8 EVENTS"), and
      without it those had drifted to .5, .52, .55, .56 and .58rem — five values
-     doing one job. Every font-size in the panel is now one of these. */
-  --fs-2xs:.55rem; --fs-xs:.62rem; --fs-sm:.72rem; --fs-md:.78rem; --fs-base:.85rem;
+     doing one job. Every font-size in the panel is now one of these.
+     The two smallest were .55 and .62rem — 8.8px and 9.9px — which is what
+     the bottom-nav labels, the calendar legend and the DUE / PAID pills were
+     set in. Below any phone platform's floor (10–12), and against this
+     panel's own brief two blocks down: used standing at a venue, one-handed,
+     often in the dark. 19 Sep 2026: the floor is 10.4px; every view and sheet
+     was re-measured at 320 and 375px for clipping and overflow afterwards. */
+  --fs-2xs:.65rem; --fs-xs:.69rem; --fs-sm:.72rem; --fs-md:.78rem; --fs-base:.85rem;
   --fs-lg:.92rem; --fs-xl:1.05rem; --fs-2xl:1.25rem; --fs-3xl:1.5rem;
   --fs-input:16px;
 
