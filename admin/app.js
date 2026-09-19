@@ -2415,6 +2415,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const f = e.target.closest('[data-fin]');
     if(f){ openFin(); return; }
     if(e.target.closest('[data-ins]')){ openIns(); return; }
+    /* the labelled way into the transactions list: on a phone the header's 🧾
+       has no word beside it, and the owner never found it */
+    if(e.target.closest('[data-tx]')){ openTx(); return; }
     /* the tile is a money figure, so land on the money section — not whichever
        part of Team was open last */
     if(e.target.closest('[data-goteam]')){ $('#tabTeam').click(); setTeamSeg('pay'); return; }
@@ -2448,7 +2451,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + ' — open the Team tab' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span></div>
       <div class="stat wide" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
       <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>
-      <button class="upall insbtn" data-ins type="button">📊 Insights — what sells, what converts, when the season is</button>`;
+      <button class="upall insbtn" data-ins type="button">📊 Insights — what sells, what converts, when the season is</button>
+      <button class="upall insbtn" data-tx type="button">🧾 Transactions — every payment in and out, ＋ and −</button>`;
   }
   /* one shoot at a time: the very next event as a single tappable card —
      tapping it opens the full event + package sheet, with ‹ › to browse
@@ -9373,6 +9377,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const HD = '<div class="ledrow finled hd"><span class="l-ev">Period</span><b>Billed</b><b>Collected</b><b>Balance</b></div>';
     $('#finWho').textContent = 'Financial-year view (Apr–Mar) — billed / collected / balance per period, from confirmed bookings by event date';
     $('#finBody').innerHTML = `
+      <button class="upall" type="button" data-fintx style="margin:0 0 .7rem">🧾 See every transaction — in and out</button>
       <div class="fintiles">
         <div class="stat" title="${inr(outstanding)}"><b>${inrShort(outstanding)}</b><span>to collect</span></div>
         <div class="stat" title="${inr(bookedVal)}"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
@@ -9435,6 +9440,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#finBody', 'click', async e=>{
     const fy = e.target.closest('[data-fy]');
     if(fy){ finYear = Number(finYear) + Number(fy.dataset.fy); renderFin(); return; }
+    /* pushView replaces a sheet's history entry with the next sheet's, so
+       Back from the list still lands on the page, not on a closed sheet */
+    if(e.target.closest('[data-fintx]')){ closeFinUI(); openTx(); return; }
     if(e.target.closest('#expAdd')){ openExpForm(null); return; }
     if(e.target.closest('#expAll')){ _expAll = !_expAll; renderFin(); return; }
     const ed = e.target.closest('[data-exp]');
@@ -9597,6 +9605,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const q = _txQ.trim().toLowerCase();
     const all = txRows().filter(r=>{
       if(_txF === 'in'   && r.kind !== 'in')   return false;
+      if(_txF === 'out'  && r.dir >= 0)        return false;   /* crew pay + spending together */
       if(_txF === 'crew' && r.kind !== 'crew') return false;
       if(_txF === 'exp'  && r.kind !== 'exp')  return false;
       if(!q) return true;
@@ -9620,20 +9629,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="up-ev txrow" data-tx="${esc(r.kind + '|' + r.id)}" data-pid="${esc(r.pid)}" role="button" tabindex="0" title="Tap to open and correct this entry">
         <span class="when">${esc(ISO_RE.test(r.date||'') ? stepDate(r.date) : '—')}</span>
         <span class="what">${ICON[r.kind]} ${esc(r.who)}<span> · ${esc(r.sub)}${r.mode ? ' · ' + esc(r.mode) : ''}</span>${r.note ? `<em class="paynote">${esc(r.note)}</em>` : ''}</span>
-        <b class="${r.dir > 0 ? 'pos' : 'neg'}" title="${inr(r.amount)}">${r.dir > 0 ? '+' : '−'}${inrShort(r.amount)}</b>
+        <b class="${r.dir > 0 ? 'pos' : 'neg'}">${r.dir > 0 ? '+' : '−'}${inr(r.amount)}</b>
       </div>`;
+    /* Whole rupees everywhere on this sheet (owner, 15 Sep 2026: "5000, not
+       5k"): a list of entries is only useful if each reads as the figure that
+       was actually paid. Net carries its own sign — inr() of a negative prints
+       "₹-5,000". */
+    const net = gotIn - gotOut;
     $('#txBody').innerHTML = `
       <div class="finsplit txsum">
-        <span>➕ In <b style="color:var(--ok)">${inrShort(gotIn)}</b></span>
-        <span>➖ Out <b style="color:var(--money-out)">${inrShort(gotOut)}</b></span>
-        <span>💼 Net <b>${inrShort(gotIn - gotOut)}</b></span>
+        <span>➕ In <b style="color:var(--ok)">${inr(gotIn)}</b></span>
+        <span>➖ Out <b style="color:var(--money-out)">${inr(gotOut)}</b></span>
+        <span>💼 Net <b style="color:var(${net < 0 ? '--money-out' : '--ok'})">${net < 0 ? '−' : '+'}${inr(Math.abs(net))}</b></span>
       </div>
       ${!_asgsLoaded || !_expsLoaded ? '<div class="finnote">Still loading crew pay and expenses — the list fills in as they arrive.</div>' : ''}
       ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — spending is missing from this list. Close and reopen it to retry.</div>` : ''}
       ${all.length ? groups.map(g=>{
         const mi  = g.rows.reduce((n,r)=>n + (r.dir > 0 ? r.amount : 0), 0);
         const mo  = g.rows.reduce((n,r)=>n + (r.dir < 0 ? r.amount : 0), 0);
-        return `<div class="txmon"><span>${esc(monthName(g.k))}</span><i>${mi ? '+' + inrShort(mi) : ''}${mi && mo ? ' · ' : ''}${mo ? '−' + inrShort(mo) : ''}</i></div>`
+        return `<div class="txmon"><span>${esc(monthName(g.k))}</span><i>${mi ? '+' + inr(mi) : ''}${mi && mo ? ' · ' : ''}${mo ? '−' + inr(mo) : ''}</i></div>`
              + g.rows.map(row).join('');
       }).join('')
       : `<div class="empty" style="padding:.8rem 0">${q || _txF !== 'all'

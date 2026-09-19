@@ -36,7 +36,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
     <button class="out cfg" id="hdrSearch" title="Search everything (Ctrl+K)" aria-label="Search everything"><i>🔍</i><em>Search</em></button>
-    <button class="out cfg" id="hdrTxns" title="Ledger — every payment in and out" aria-label="Ledger"><i>🧾</i><em>Ledger</em></button>
+    <button class="out cfg" id="hdrTxns" title="Transactions — every payment in and out" aria-label="Transactions"><i>🧾</i><em>Transactions</em></button>
     <button class="out cfg" id="tabConfig" title="Site Config" aria-label="Site Config"><i>⚙️</i><em>Config</em></button>
     <button class="out" id="logoutBtn">Logout</button>
   </div>
@@ -681,9 +681,13 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      that place, and every row opens the sheet that owns it so it can be
      corrected on the spot. -->
 <div class="pay-backdrop" id="txBackdrop"></div>
-<div class="pay-modal fin" id="txModal" role="dialog" aria-modal="true" aria-label="Ledger — every transaction">
+<div class="pay-modal fin" id="txModal" role="dialog" aria-modal="true" aria-label="Transactions — every payment in and out">
   <button class="pay-close" id="txClose" type="button" aria-label="Close">&times;</button>
-  <h3>🧾 Ledger</h3>
+  <!-- "Transactions", the owner's own word (19 Sep 2026: "give a transaction
+       list option where I can see all transactions − + in one place"). It was
+       titled Ledger, and on a phone its only way in was an unlabelled 🧾 in
+       the header, so it went unfound. Same sheet, same #ledger hash. -->
+  <h3>🧾 Transactions</h3>
   <div class="who" id="txWho">Every transaction — money in and money out</div>
   <!-- filters and the search box sit OUTSIDE #txBody on purpose: that box is
        rebuilt on every packages, assignments or expenses snapshot, which would
@@ -691,6 +695,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="mode-pills txsegs" id="txSegs">
     <button type="button" data-txf="all" class="on">All</button>
     <button type="button" data-txf="in">➕ In</button>
+    <button type="button" data-txf="out">➖ Out</button>
     <button type="button" data-txf="crew">🎬 Crew</button>
     <button type="button" data-txf="exp">💸 Spend</button>
   </div>
