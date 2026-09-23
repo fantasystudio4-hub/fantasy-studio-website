@@ -419,6 +419,7 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
   <button class="mini" id="payClose" style="width:100%;margin-top:.8rem">Close</button>
 </div>
 
+<div id="recaptcha-box"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../firebase-config.js"></script>
@@ -549,13 +550,20 @@ function authMsg(err){
   if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
   if(c.includes('network-request-failed')) return 'No internet — check your connection.';
   if(c.includes('captcha-check-failed') || c.includes('missing-recaptcha'))
-    return 'That security check expired. Tap Resend OTP to get a fresh code.';
+    return 'That security check expired. Please try again for a fresh code.';
   if(c.includes('code-expired')) return 'That OTP has expired — tap Resend OTP for a new one.';
   if(c.includes('quota-exceeded')) return 'Too many sign-in attempts today — call Fantasy Studio and try later.';
   if(c.includes('user-disabled')) return 'This account has been disabled — talk to Fantasy Studio.';
-  return 'Sign-in did not go through. Please try again, or call Fantasy Studio.';
+  if(/internal-error|app-credential|argument-error/.test(c) || (!c && /recaptcha/i.test((err && err.message) || '')))
+    return 'The security check did not load. Please try again.' + errRef(err);
+  /* the short Ref lets a screenshot of this message say what went wrong */
+  return 'Sign-in did not go through. Please try again, or call Fantasy Studio.' + errRef(err);
 }
-const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false; };
+const errRef = err => { const r = String((err && (err.code || err.message)) || '').replace(/^auth\//,'').slice(0,40); return r ? ' (Ref: ' + r + ')' : ''; };
+const showErr = (sel, err) => {
+  if(typeof err !== 'string') console.error('[sign-in]', err && err.code, err && err.message);
+  const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false;
+};
 const hideErr = sel => { $(sel).hidden = true; };
 
 function wireOtpBoxes(wrapSel, onFull){
@@ -616,32 +624,50 @@ function readPhone(ccSel, phSel){
 }
 
 let confirmation = null, verifier = null;
-/* fresh verifier per send — a cached grecaptcha token is single-use and
-   breaks the first Resend (same fix the other portals carry) */
-function getVerifier(btnId){
-  try{ if(verifier) verifier.clear(); }catch(e){}
-  verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
-  return verifier;
+/* A fresh verifier for every send (a cached grecaptcha token is single-use
+   and broke the first Resend), rendered into a fresh <div>, never onto the
+   button. An invisible widget stays bound to the element it was rendered on,
+   so a second one on #sendOtp threw "reCAPTCHA has already been rendered in
+   this element" on every Resend, Change number or retry (same fix as the
+   client portal, 23 Sep 2026). */
+function freshVerifier(old){
+  try{ if(old) old.clear(); }catch(e){}
+  const el = document.createElement('div');
+  $('#recaptcha-box').replaceChildren(el);
+  return new RecaptchaVerifier(auth, el, { size: 'invisible' });
 }
+/* a closed picture puzzle leaves verify() pending forever: bring the button
+   back after STALL_MS, and let a newer tap win over a late older answer */
+const STALL_MS = 25000;
+const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or tap Get OTP to try again.';
+let sendSeq = 0;
 
 async function doSendOtp(){
+  const my = ++sendSeq;
   hideErr('#loginErr');
   const ph = readPhone('#cc','#phone');
   if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
   const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
+  const idle = () => { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; };
+  let stall;
   try{
     if(!(await isKnownNumber(ph.last10))){
-      showErr('#loginErr', 'This number is not registered with Fantasy Studio yet — call us on ' + CONTACT.phone + ' to set up partner access.');
+      if(my === sendSeq) showErr('#loginErr', 'This number is not registered with Fantasy Studio yet — call us on ' + CONTACT.phone + ' to set up partner access.');
       return;
     }
-    confirmation = await signInWithPhoneNumber(auth, ph.full, getVerifier('sendOtp'));
+    if(my !== sendSeq) return;
+    stall = setTimeout(()=>{ if(my === sendSeq){ idle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
+    const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier));
+    if(my !== sendSeq) return;
+    confirmation = c;
+    hideErr('#loginErr');
     $('#otpTo').textContent = ph.pretty;
     $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
     clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
     startCooldown($('#otpResend'));
     toast('OTP sent to ' + ph.pretty);
-  }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
-  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
+  }catch(err){ if(my === sendSeq) showErr('#loginErr', err); }
+  finally{ clearTimeout(stall); if(my === sendSeq) idle(); }
 }
 $('#sendOtp').addEventListener('click', doSendOtp);
 $('#otpResend').addEventListener('click', doSendOtp);

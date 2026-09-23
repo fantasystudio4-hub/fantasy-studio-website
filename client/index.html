@@ -598,17 +598,24 @@ function authMsg(err){
   if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
   if(c.includes('network-request-failed')) return 'No internet — check your connection.';
   if(c.includes('captcha-check-failed') || c.includes('missing-recaptcha'))
-    return 'That security check expired. Tap Resend OTP to get a fresh code.';
+    return 'That security check expired. Please try again for a fresh code.';
   if(c.includes('code-expired')) return 'That OTP has expired — tap Resend OTP for a new one.';
   if(c.includes('quota-exceeded')) return 'Too many sign-in attempts today. Please call the studio and we will help.';
   if(c.includes('user-disabled')) return 'This account has been disabled — please call the studio.';
   if(c.includes('credential-already-in-use') || c.includes('account-exists'))
     return 'This mobile number is already linked to another sign-in. Try signing in with Phone OTP directly.';
-  /* never show a raw Firebase code to a bride — say what to do instead */
+  if(/internal-error|app-credential|argument-error/.test(c) || (!c && /recaptcha/i.test((err && err.message) || '')))
+    return 'The security check did not load. Please try again.' + errRef(err);
+  /* say what to do, not a raw Firebase code. The short Ref at the end is only
+     there so a screenshot of this message tells the studio what went wrong. */
   return 'Sign-in did not go through. Please try again, or call the studio on ' +
-         ((contact().phone) || '+91 86868 68803') + ' and we will sort it out.';
+         ((contact().phone) || '+91 86868 68803') + ' and we will sort it out.' + errRef(err);
 }
-const showErr = (sel, err) => { const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false; };
+const errRef = err => { const r = String((err && (err.code || err.message)) || '').replace(/^auth\//,'').slice(0,40); return r ? ' (Ref: ' + r + ')' : ''; };
+const showErr = (sel, err) => {
+  if(typeof err !== 'string') console.error('[sign-in]', err && err.code, err && err.message);
+  const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false;
+};
 const hideErr = sel => { $(sel).hidden = true; };
 
 /* ---------- OTP box behaviour ---------- */
@@ -698,37 +705,62 @@ $('#phone').addEventListener('input', ()=>{ $('#noBook').hidden = true; });
 
 /* ---------- phone OTP sign-in ---------- */
 let confirmation = null, verifier = null;
-/* RecaptchaVerifier.verify() returns the CACHED grecaptcha response until the
-   widget is reset, and that token is single-use. Caching the verifier across
-   sends meant the first "Resend OTP" always failed with captcha-check-failed —
-   exactly when a bride who never got the SMS needs it to work. Tear it down
-   and build a fresh one for every send. */
-function getVerifier(btnId){
-  try{ if(verifier) verifier.clear(); }catch(e){}
-  verifier = new RecaptchaVerifier(auth, btnId, { size: 'invisible' });
-  return verifier;
+/* The App Review demo login. It is a Firebase test number (fixed OTP, no SMS),
+   so reCAPTCHA is skipped for it alone: the reviewer never meets a picture
+   puzzle. Firebase honours the skip only for test numbers, so every other
+   number still gets a real check. If this number is ever taken off Firebase's
+   test list, delete it here too, or its sign-in fails. */
+const DEMO_PHONE = '+919000000001';
+/* A fresh verifier for every send, rendered into a fresh <div>, never onto
+   the button.
+   - Fresh verifier: verify() returns the CACHED grecaptcha token, which is
+     single-use, so reusing one made the first Resend fail.
+   - Fresh <div>: an invisible widget stays bound to the element it was
+     rendered on (clear() does not remove it), so rendering a second verifier
+     onto #sendOtp threw "reCAPTCHA has already been rendered in this element".
+     That hit every Resend, Change number, sign-out-and-back-in and retry, and
+     it is the error App Review saw (23 Sep 2026). */
+function freshVerifier(old, full){
+  try{ if(old) old.clear(); }catch(e){}
+  const el = document.createElement('div');
+  $('#recaptcha-box').replaceChildren(el);
+  auth.settings.appVerificationDisabledForTesting = full === DEMO_PHONE;
+  try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
+  finally{ auth.settings.appVerificationDisabledForTesting = false; }
 }
+/* A picture puzzle that is closed leaves verify() pending forever. The button
+   comes back after STALL_MS so a new tap can take over. sendSeq makes that new
+   tap win: a late answer from an older attempt is ignored. */
+const STALL_MS = 25000;
+const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or tap Get OTP to try again.';
+let sendSeq = 0;
 async function doSendLoginOtp(){
+  const my = ++sendSeq;
   hideErr('#loginErr');
   $('#noBook').hidden = true;
   const ph = readPhone('#cc','#phone');
   if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
   const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Checking…';
+  const idle = () => { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; };
   if(!(await isKnownClient(ph.last10))){
-    btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP';
-    showNoBook(ph.pretty);
+    if(my === sendSeq){ idle(); showNoBook(ph.pretty); }
     return;
   }
+  if(my !== sendSeq) return;
   btn.textContent = 'Sending OTP…';
+  const stall = setTimeout(()=>{ if(my === sendSeq){ idle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
   try{
-    confirmation = await signInWithPhoneNumber(auth, ph.full, getVerifier('sendOtp'));
+    const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier, ph.full));
+    if(my !== sendSeq) return;
+    confirmation = c;
+    hideErr('#loginErr');
     $('#otpTo').textContent = ph.pretty;
     $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
     clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
     startCooldown($('#otpResend'));
     toast('OTP sent to ' + ph.pretty);
-  }catch(err){ showErr('#loginErr', err); try{ verifier && verifier.clear(); }catch(e){} verifier = null; }
-  finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; }
+  }catch(err){ if(my === sendSeq) showErr('#loginErr', err); }
+  finally{ clearTimeout(stall); if(my === sendSeq) idle(); }
 }
 $('#sendOtp').addEventListener('click', doSendLoginOtp);
 $('#otpResend').addEventListener('click', doSendLoginOtp);
@@ -757,8 +789,7 @@ async function doSendLinkOtp(){
   }
   btn.textContent = 'Sending OTP…';
   try{
-    try{ if(linkVerifier) linkVerifier.clear(); }catch(e){}
-    linkVerifier = new RecaptchaVerifier(auth, 'linkSend', { size: 'invisible' });
+    linkVerifier = freshVerifier(linkVerifier, ph.full);
     linkConfirm = await linkWithPhoneNumber(auth.currentUser, ph.full, linkVerifier);
     $('#linkPhoneStep').hidden = true; $('#linkOtpStep').hidden = false;
     clearBoxes('#linkOtpBoxes'); $$('#linkOtpBoxes input')[0].focus();
