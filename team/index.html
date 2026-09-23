@@ -1005,23 +1005,31 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      client portal, 23 Sep 2026). */
   function freshVerifier(old){
     try{ if(old) old.clear(); }catch(e){}
-    const el = document.createElement('div');
-    $('#recaptcha-box').replaceChildren(el);
+    const el = document.createElement('div'), box = $('#recaptcha-box');
+    box.textContent = ''; box.appendChild(el);
     return new RecaptchaVerifier(auth, el, { size: 'invisible' });
   }
   /* a closed picture puzzle leaves verify() pending forever: bring the button
-     back after STALL_MS, and let a newer tap win over a late older answer */
-  const STALL_MS = 25000;
-  const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or tap Get OTP to try again.';
-  let sendSeq = 0;
+     back after STALL_MS, and let a newer tap win over a late older answer.
+     Until then `sending` swallows extra taps (one Resend tap, one SMS). */
+  const STALL_MS = 30000;
+  const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or try again.';
+  let sendSeq = 0, sending = false;
+  function sendIdle(){ sending = false; const b = $('#sendOtp'); b.disabled = false; b.classList.remove('busy'); b.textContent = 'Get OTP'; }
+  /* signed in: forget any send in flight and take the badge off the screen */
+  function endLoginSend(){
+    sendSeq++; sendIdle();
+    try{ if(verifier) verifier.clear(); }catch(e){}
+    verifier = null; $('#recaptcha-box').textContent = '';
+  }
   async function doSendOtp(){
-    const my = ++sendSeq;
+    if(sending) return;
     hideErr('#loginErr');
     const ph = readPhone('#cc','#phone');
     if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
+    const my = ++sendSeq; sending = true;
     const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
-    const idle = () => { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; };
-    const stall = setTimeout(()=>{ if(my === sendSeq){ idle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
+    const stall = setTimeout(()=>{ if(my === sendSeq){ sendIdle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
     try{
       const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier));
       if(my !== sendSeq) return;
@@ -1033,7 +1041,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       startCooldown($('#otpResend'));
       toast('OTP sent to ' + ph.pretty);
     }catch(err){ if(my === sendSeq) showErr('#loginErr', err); }
-    finally{ clearTimeout(stall); if(my === sendSeq) idle(); }
+    finally{ clearTimeout(stall); if(my === sendSeq) sendIdle(); }
   }
   $('#sendOtp').addEventListener('click', doSendOtp);
   $('#otpResend').addEventListener('click', doSendOtp);
@@ -1046,7 +1054,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     catch(err){ showErr('#loginErr', err); }
     finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
   });
-  $('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
+  /* Change number drops a Resend still in flight, so it can't flip the page back */
+  $('#otpBack').addEventListener('click', ()=>{ sendSeq++; sendIdle(); $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
 
   /* ---------- data + routing ---------- */
   let ME = null, ASGS = [], REQ = null, EJOBS = {};
@@ -1159,8 +1168,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       rememberPortal(false);
       show('loginView');
       $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
+      hideErr('#loginErr');
       return;
     }
+    endLoginSend();
     if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
     rememberPortal(true);
     _phone10 = user.phoneNumber.slice(-10);

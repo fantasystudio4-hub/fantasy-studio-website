@@ -672,14 +672,22 @@ function startCooldown(btn, secs = 30){
 /* ---------- pre-OTP check: is this number a client at all? ----------
    Reads the hashed phone index so no SMS is wasted on unknown numbers.
    If the check itself fails (offline, rules not published) we fail OPEN
-   and send the OTP — a genuine client must never be locked out. */
+   and send the OTP — a genuine client must never be locked out. A lookup
+   that hangs fails open too, after PRECHECK_MS: inside the iOS app it
+   sometimes sat on "Checking…" for ~30s (App Review testing, 23 Sep 2026). */
+const PRECHECK_MS = 4000;
 async function phoneKey(p){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fs:' + p));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 async function isKnownClient(p){
-  try{ return (await getDoc(doc(db,'phoneIndex', await phoneKey(p)))).exists(); }
-  catch(e){ return true; }
+  try{
+    const key = await phoneKey(p);
+    return await Promise.race([
+      getDoc(doc(db,'phoneIndex', key)).then(s => s.exists()),
+      new Promise(r => setTimeout(() => r(true), PRECHECK_MS)),
+    ]);
+  }catch(e){ return true; }
 }
 /* read a country-code + number pair; India keeps strict 10-digit checks,
    other countries accept 6–14 national digits (NRI clients) */
@@ -705,8 +713,8 @@ $('#phone').addEventListener('input', ()=>{ $('#noBook').hidden = true; });
 
 /* ---------- phone OTP sign-in ---------- */
 let confirmation = null, verifier = null;
-/* The App Review demo login. It is a Firebase test number (fixed OTP, no SMS),
-   so reCAPTCHA is skipped for it alone: the reviewer never meets a picture
+/* The App Review demo login. It is a Firebase test number (no SMS is sent),
+   so reCAPTCHA and the booking lookup are skipped for it alone: the reviewer never meets a picture
    puzzle. Firebase honours the skip only for test numbers, so every other
    number still gets a real check. If this number is ever taken off Firebase's
    test list, delete it here too, or its sign-in fails. */
@@ -722,33 +730,44 @@ const DEMO_PHONE = '+919000000001';
      it is the error App Review saw (23 Sep 2026). */
 function freshVerifier(old, full){
   try{ if(old) old.clear(); }catch(e){}
-  const el = document.createElement('div');
-  $('#recaptcha-box').replaceChildren(el);
+  const el = document.createElement('div'), box = $('#recaptcha-box');
+  box.textContent = ''; box.appendChild(el);
   auth.settings.appVerificationDisabledForTesting = full === DEMO_PHONE;
   try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
   finally{ auth.settings.appVerificationDisabledForTesting = false; }
 }
 /* A picture puzzle that is closed leaves verify() pending forever. The button
-   comes back after STALL_MS so a new tap can take over. sendSeq makes that new
-   tap win: a late answer from an older attempt is ignored. */
-const STALL_MS = 25000;
-const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or tap Get OTP to try again.';
-let sendSeq = 0;
+   comes back after STALL_MS so a new tap can take over, and sendSeq makes that
+   new tap win: a late answer from an older attempt is ignored. Until then,
+   `sending` swallows extra taps, so a double-tapped Resend sends one SMS, not
+   two with different codes. */
+const STALL_MS = 30000;
+const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or try again.';
+let sendSeq = 0, sending = false;
+function sendIdle(){ sending = false; const b = $('#sendOtp'); b.disabled = false; b.classList.remove('busy'); b.textContent = 'Get OTP'; }
+/* signed in: forget any send still in flight, and take the reCAPTCHA badge
+   off the screen (it lives outside the login view, so it would sit over the
+   dashboard) */
+function endLoginSend(){
+  sendSeq++; sendIdle();
+  try{ if(verifier) verifier.clear(); }catch(e){}
+  verifier = null; $('#recaptcha-box').textContent = '';
+}
 async function doSendLoginOtp(){
-  const my = ++sendSeq;
+  if(sending) return;
   hideErr('#loginErr');
   $('#noBook').hidden = true;
   const ph = readPhone('#cc','#phone');
   if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
+  const my = ++sendSeq; sending = true;
   const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Checking…';
-  const idle = () => { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Get OTP'; };
-  if(!(await isKnownClient(ph.last10))){
-    if(my === sendSeq){ idle(); showNoBook(ph.pretty); }
+  if(ph.full !== DEMO_PHONE && !(await isKnownClient(ph.last10))){
+    if(my === sendSeq){ sendIdle(); showNoBook(ph.pretty); }
     return;
   }
   if(my !== sendSeq) return;
   btn.textContent = 'Sending OTP…';
-  const stall = setTimeout(()=>{ if(my === sendSeq){ idle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
+  const stall = setTimeout(()=>{ if(my === sendSeq){ sendIdle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
   try{
     const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier, ph.full));
     if(my !== sendSeq) return;
@@ -760,7 +779,7 @@ async function doSendLoginOtp(){
     startCooldown($('#otpResend'));
     toast('OTP sent to ' + ph.pretty);
   }catch(err){ if(my === sendSeq) showErr('#loginErr', err); }
-  finally{ clearTimeout(stall); if(my === sendSeq) idle(); }
+  finally{ clearTimeout(stall); if(my === sendSeq) sendIdle(); }
 }
 $('#sendOtp').addEventListener('click', doSendLoginOtp);
 $('#otpResend').addEventListener('click', doSendLoginOtp);
@@ -773,7 +792,9 @@ $('#verifyOtp').addEventListener('click', async ()=>{
   catch(err){ showErr('#loginErr', err); }
   finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
 });
-$('#otpBack').addEventListener('click', ()=>{ $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
+/* Change number drops a Resend still in flight, so its late answer can't
+   flip the page back to the OTP step for the old number */
+$('#otpBack').addEventListener('click', ()=>{ sendSeq++; sendIdle(); $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
 
 /* ---------- phone verification for a pre-existing Google session ---------- */
 let linkConfirm = null, linkVerifier = null;
@@ -836,9 +857,11 @@ function route(user){
   stopPackages();
   if(!user){
     show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
+    hideErr('#loginErr');
     if(_redirectErr){ showErr('#loginErr', _redirectErr); _redirectErr = null; }
     return;
   }
+  endLoginSend();
   if(!user.phoneNumber){ show('linkView'); return; }
   show('loadingView');
   loadPackages(user).catch(err=>{ showLoadError(err, user); });
