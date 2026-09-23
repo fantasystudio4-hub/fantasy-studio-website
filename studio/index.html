@@ -638,10 +638,20 @@ let confirmation = null, verifier = null;
    so a second one on #sendOtp threw "reCAPTCHA has already been rendered in
    this element" on every Resend, Change number or retry (same fix as the
    client portal, 23 Sep 2026). */
-function freshVerifier(old){
+/* Google hangs each widget's picture puzzle on <body>, outside #recaptcha-box,
+   and clear() leaves it there, so an unsolved puzzle stayed on screen and
+   stacked under the next one (seen in the iOS app, 23 Sep 2026). Reset the old
+   widget and take its puzzle frame away as well. */
+function dropRecaptcha(old){
+  try{ if(old && old.widgetId != null && window.grecaptcha) grecaptcha.reset(old.widgetId); }catch(e){}
   try{ if(old) old.clear(); }catch(e){}
-  const el = document.createElement('div'), box = $('#recaptcha-box');
-  box.textContent = ''; box.appendChild(el);
+  $('#recaptcha-box').textContent = '';
+  document.querySelectorAll('iframe[src*="recaptcha/api2/bframe"]').forEach(f => { const c = f.closest('body > div'); if(c) c.remove(); });
+}
+function freshVerifier(old){
+  dropRecaptcha(old);
+  const el = document.createElement('div');
+  $('#recaptcha-box').appendChild(el);
   return new RecaptchaVerifier(auth, el, { size: 'invisible' });
 }
 /* a closed picture puzzle leaves verify() pending forever: bring the button
@@ -654,8 +664,7 @@ function sendIdle(){ sending = false; const b = $('#sendOtp'); b.disabled = fals
 /* signed in: forget any send in flight and take the badge off the screen */
 function endLoginSend(){
   sendSeq++; sendIdle();
-  try{ if(verifier) verifier.clear(); }catch(e){}
-  verifier = null; $('#recaptcha-box').textContent = '';
+  dropRecaptcha(verifier); verifier = null;
 }
 
 async function doSendOtp(){

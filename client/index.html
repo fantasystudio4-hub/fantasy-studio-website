@@ -728,10 +728,20 @@ const DEMO_PHONE = '+919000000001';
      onto #sendOtp threw "reCAPTCHA has already been rendered in this element".
      That hit every Resend, Change number, sign-out-and-back-in and retry, and
      it is the error App Review saw (23 Sep 2026). */
-function freshVerifier(old, full){
+/* Google hangs each widget's picture puzzle on <body>, outside #recaptcha-box,
+   and clear() leaves it there, so an unsolved puzzle stayed on screen and
+   stacked under the next one (seen in the iOS app, 23 Sep 2026). Reset the old
+   widget and take its puzzle frame away as well. */
+function dropRecaptcha(old){
+  try{ if(old && old.widgetId != null && window.grecaptcha) grecaptcha.reset(old.widgetId); }catch(e){}
   try{ if(old) old.clear(); }catch(e){}
-  const el = document.createElement('div'), box = $('#recaptcha-box');
-  box.textContent = ''; box.appendChild(el);
+  $('#recaptcha-box').textContent = '';
+  document.querySelectorAll('iframe[src*="recaptcha/api2/bframe"]').forEach(f => { const c = f.closest('body > div'); if(c) c.remove(); });
+}
+function freshVerifier(old, full){
+  dropRecaptcha(old);
+  const el = document.createElement('div');
+  $('#recaptcha-box').appendChild(el);
   auth.settings.appVerificationDisabledForTesting = full === DEMO_PHONE;
   try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
   finally{ auth.settings.appVerificationDisabledForTesting = false; }
@@ -750,8 +760,7 @@ function sendIdle(){ sending = false; const b = $('#sendOtp'); b.disabled = fals
    dashboard) */
 function endLoginSend(){
   sendSeq++; sendIdle();
-  try{ if(verifier) verifier.clear(); }catch(e){}
-  verifier = null; $('#recaptcha-box').textContent = '';
+  dropRecaptcha(verifier); verifier = null;
 }
 async function doSendLoginOtp(){
   if(sending) return;
