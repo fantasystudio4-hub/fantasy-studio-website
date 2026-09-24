@@ -501,6 +501,10 @@ document.addEventListener('keydown', e=>{
 /* ---------- contact: hardcoded fallback, upgraded from config/site ---------- */
 const DEFAULT_PHONE = '+91 86868 68803';
 let CONTACT = { phone: DEFAULT_PHONE, upi: '', upiAlt: '' };
+/* UPI payments are switched off for now (owner, 24 Sep 2026): the UPI IDs in
+   Site Config are not picked up, so "Pay now" never shows. Set this to true to
+   bring it back. */
+const UPI_PAY = false;
 /* The same checklist the admin panel ticks against a studio job, so the two
    can never show different progress. Kept in sync through config/site (which
    is world-readable); these are the built-in defaults it falls back to. */
@@ -521,8 +525,8 @@ const _siteReady = (async ()=>{
       const c = (s.data()||{}).contact || {};
       if(c.phone) CONTACT.phone = c.phone;
       const okVpa = v => /^[\w.\-]+@[\w.\-]+$/.test(String(v||''));
-      if(okVpa(c.upi)) CONTACT.upi = String(c.upi);
-      if(okVpa(c.upiAlt)) CONTACT.upiAlt = String(c.upiAlt);
+      if(UPI_PAY && okVpa(c.upi)) CONTACT.upi = String(c.upi);
+      if(UPI_PAY && okVpa(c.upiAlt)) CONTACT.upiAlt = String(c.upiAlt);
       const bs = (s.data()||{}).b2bDeliverySteps;
       if(Array.isArray(bs) && bs.length){
         const clean = bs.map(v=>String(v||'').trim()).filter(Boolean).slice(0,12);

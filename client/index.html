@@ -514,6 +514,10 @@ const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in
      "Pay now" does not appear at all — which is what the partner portal has
      always done. Set them in Site Config → Contact & Payment. */
   upi:'', upiAlt:'' };
+/* UPI payments are switched off for now (owner, 24 Sep 2026): no "Pay now"
+   button and no pay sheet, even if Site Config holds a UPI ID. Set this to
+   true to bring them back. */
+const UPI_PAY = false;
 
 if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   show('loginView'); $('#loginErr').textContent = 'Portal not configured yet.'; $('#loginErr').hidden = false;
@@ -1190,6 +1194,7 @@ function downloadIcs(ev){
    scheme for a direct jump. No card details, no gateway, no money touching
    this site: the client's own bank app does the payment. */
 function upiIds(){
+  if(!UPI_PAY) return [];
   const c = contact();
   return [
     { app:'PhonePe',    vpa: String(c.upi||'').trim(),    scheme: v=>'phonepe://pay?' + v },
