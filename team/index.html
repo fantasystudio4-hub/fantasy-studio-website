@@ -829,9 +829,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
   catch(e){ db = getFirestore(app); }
 
+  /* Local test hook, the admin panel's two locks: served from localhost AND
+     ?demo in the URL. It opens the App Review sample (startDemo, below)
+     without signing in, so the signed-in screens can be checked with no OTP.
+     On fantasystudio.in the first lock can never hold. No sign-in, no push,
+     no Firestore read or write. */
+  const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+                 && new URLSearchParams(location.search).has('demo');
+
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
-  $('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
+  /* the test hook never signed in: leaving it is this page without ?demo */
+  $('#logoutBtn').addEventListener('click', async ()=>{
+    if(DEMO_VIEW){ location.replace(location.pathname); return; }
+    await unregisterPush(); signOut(auth);
+  });
 
   /* ---------- install to the phone's app list ----------
      A shoot day is exactly when the signal is worst and the venue is
@@ -901,7 +913,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
   }
   wireHelp(DEFAULT_PHONE);
-  getDoc(doc(db,'config','site'))
+  if(!DEMO_VIEW) getDoc(doc(db,'config','site'))
     .then(s=>{ const c = s.exists() && s.data().contact; if(c && c.phone) wireHelp(c.phone); })
     .catch(()=>{});   /* the fallback number is already wired */
 
@@ -1013,11 +1025,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#recaptcha-box').textContent = '';
     document.querySelectorAll('iframe[src*="recaptcha/api2/bframe"]').forEach(f => { const c = f.closest('body > div'); if(c) c.remove(); });
   }
-  function freshVerifier(old){
+  /* The App Review demo login. It is a Firebase test number (no SMS is sent),
+     so reCAPTCHA is skipped for it alone: the reviewer never meets a picture
+     puzzle. Firebase honours the skip only for test numbers, so every other
+     number still gets a real check. If this number is ever taken off Firebase's
+     test list, delete it here too, or its sign-in fails.
+     Signed in, this number is shown the built-in crew sample (startDemo). */
+  const DEMO_PHONE = '+919000000001';
+  function freshVerifier(old, full){
     dropRecaptcha(old);
     const el = document.createElement('div');
     $('#recaptcha-box').appendChild(el);
-    return new RecaptchaVerifier(auth, el, { size: 'invisible' });
+    auth.settings.appVerificationDisabledForTesting = full === DEMO_PHONE;
+    try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
+    finally{ auth.settings.appVerificationDisabledForTesting = false; }
   }
   /* a closed picture puzzle leaves verify() pending forever: bring the button
      back after STALL_MS, and let a newer tap win over a late older answer.
@@ -1040,7 +1061,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
     const stall = setTimeout(()=>{ if(my === sendSeq){ sendIdle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
     try{
-      const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier));
+      const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier, ph.full));
       if(my !== sendSeq) return;
       confirmation = c;
       hideErr('#loginErr');
@@ -1074,6 +1095,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* a SERVER-confirmed team snapshot has arrived — see route() */
   let _meFresh = false, _meWatchdog = null;
   let _pastOpen = false, _phone10 = '', _pretty = '', _pushFor = '';
+  /* showing the App Review sample: nothing on screen has a document behind it */
+  let _demo = false;
 
   function stopData(){
     [_meUnsub, _asgsUnsub, _reqUnsub, _ejUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
@@ -1083,6 +1106,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _meErr = _reqErr = null;
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
     _pushFor = '';
+    _demo = false;
   }
 
   function route(){
@@ -1170,7 +1194,136 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(e){}
   }
 
-  onAuthStateChanged(auth, user=>{
+  /* ---------- the App Review sample ----------
+     Apple reviews this page signed in as DEMO_PHONE, which is on no crew list.
+     A made-up member with bookings and pay in the studio's own records would
+     reach the leaderboard, crew pay due, Transactions and the analytics, so
+     that number gets this built-in sample instead. It fills the same state
+     the listeners would and renders it with the same code; no listener is
+     started, so nothing is read or written. Names are invented and every
+     date counts from today, so it never goes stale. The fields are the ones
+     the cards below read: if a card starts reading a new one, add it here. */
+  function demoCrew(){
+    const phone10 = DEMO_PHONE.slice(-10);
+    const iso = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA'); };
+    /* this page reads a Firestore Timestamp only through toDate() */
+    const stamp = n => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(10, 15, 0, 0); return { toDate: () => d }; };
+    /* notes on the job thread carry a device ISO time, as the panel writes them */
+    const noteAt = (n, h) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, 20, 0, 0); return d.toISOString(); };
+    /* pay the way the panel writes it: payments[] is the record, paidAmount its sum */
+    const pay = (amount, paid = []) => {
+      const payments = paid.map(([amt, n, mode], i)=>({ id: 'smp' + i + n, amount: amt, date: iso(n), mode }));
+      const got = payments.reduce((s,p)=>s + p.amount, 0);
+      return { amount, payments, paidAmount: got, paid: amount > 0 && got >= amount,
+               paidDate: got ? payments[payments.length-1].date : '', mode: '' };
+    };
+    const bk = (id, n, no, clientName) => ({ pkgId: 'smp-' + id,
+      quoteNo: 'FS-' + iso(n).slice(0,4) + '-' + String(no).padStart(3,'0'), clientName });
+    const SI = bk('si', 5, 231, 'Sana & Imran'),       NS = bk('ns', 34, 244, 'Neha & Siddharth'),
+          PK = bk('pk', -9, 219, 'Priya & Karthik'),   MR = bk('mr', -38, 204, 'Meera & Rohan'),
+          ZA = bk('za', -70, 187, 'Zoya & Adil'),      AV = bk('av', -120, 162, 'Ananya & Vivek'),
+          FS = bk('fs', -200, 131, 'Fatima & Sameer'), HF = bk('hf', -290, 96, 'Hina & Faraz'),
+          KN = bk('kn', -380, 58, 'Kavya & Nikhil');
+    const ok = n => ({ status: 'acknowledged', ackAt: stamp(n) });
+    const fin = n => ({ workDone: true, workDoneAt: stamp(n) });
+    const edit = { kind: 'edit', role: 'editor', eventTitle: 'All functions', scope: 'package',
+                   slot: '', callTime: '', venue: '', dueDate: '', notes: '' };
+    const asgs = [
+      /* coming up: the Haldi is the countdown and still wants a Confirm */
+      { id: 'smp-a1', ...SI, kind: '', role: 'photography', eventTitle: 'Haldi', date: iso(5), slot: 'morning',
+        callTime: '06:30', venue: 'Golkonda Resorts, Gandipet', status: 'assigned',
+        notes: 'The bride gets ready from 6. Be at her suite by 6:30 for the getting-ready photos.', pay: pay(4500) },
+      { id: 'smp-a2', ...SI, kind: '', role: 'candid photography', eventTitle: 'Reception', date: iso(6), slot: 'evening',
+        callTime: '18:00', venue: 'N Convention, Madhapur', ...ok(-1),
+        notes: 'Stage portraits first, then the family groups. Carry spare batteries for both flashes.', pay: pay(5000) },
+      { id: 'smp-a3', ...NS, kind: '', role: 'cinematography', eventTitle: 'Wedding', date: iso(34), slot: 'full',
+        callTime: '08:30', venue: 'Taj Falaknuma Palace', status: 'assigned',
+        notes: 'Full day, from the baraat to the send-off.', pay: pay(8000) },
+      /* done: the latest one still waits for "Mark this event completed" */
+      { id: 'smp-a4', ...PK, kind: '', role: 'photography', eventTitle: 'Wedding', date: iso(-9), slot: 'full',
+        callTime: '08:00', venue: 'Park Hyatt, Banjara Hills', ...ok(-14), notes: '', pay: pay(6000) },
+      { id: 'smp-a5', ...PK, kind: '', role: 'candid photography', eventTitle: 'Sangeet', date: iso(-10), slot: 'evening',
+        callTime: '18:30', venue: 'Park Hyatt, Banjara Hills', ...ok(-14), ...fin(-10), notes: '',
+        pay: pay(4500, [[2000, -5, 'online']]) },
+      { id: 'smp-a6', ...MR, kind: '', role: 'drone', eventTitle: 'Engagement', date: iso(-38), slot: 'evening',
+        callTime: '17:00', venue: 'Novotel HICC', ...ok(-45), ...fin(-38), notes: 'Drone only on the lawn, not inside the hall.',
+        pay: pay(3500, [[3500, -30, 'cash']]) },
+      { id: 'smp-a7', ...ZA, kind: '', role: 'candid photography', eventTitle: 'Reception', date: iso(-70), slot: 'evening',
+        callTime: '18:00', venue: 'Chowmahalla Palace', ...ok(-76), ...fin(-70), notes: '',
+        pay: pay(5000, [[5000, -61, 'online']]) },
+      { id: 'smp-a8', ...AV, kind: '', role: 'cinematography', eventTitle: 'Wedding', date: iso(-120), slot: 'full',
+        callTime: '07:30', venue: 'Taj Krishna, Banjara Hills', ...ok(-127), ...fin(-120), notes: '',
+        pay: pay(8000, [[8000, -104, 'online']]) },
+      { id: 'smp-a9', ...FS, kind: '', role: 'photography', eventTitle: 'Mehendi', date: iso(-200), slot: 'morning',
+        callTime: '10:00', venue: 'Banquet Hall, Jubilee Hills', ...ok(-206), ...fin(-200), notes: '',
+        pay: pay(4000, [[4000, -190, 'cash']]) },
+      { id: 'smp-a10', ...HF, kind: '', role: 'candid photography', eventTitle: 'Walima', date: iso(-290), slot: 'evening',
+        callTime: '19:00', venue: 'Banquet Hall, Tolichowki', ...ok(-297), ...fin(-290), notes: '',
+        pay: pay(5000, [[2500, -286, 'online'], [2500, -270, 'online']]) },
+      { id: 'smp-a11', ...KN, kind: '', role: 'photography', eventTitle: 'Wedding', date: iso(-380), slot: 'full',
+        callTime: '08:00', venue: 'Garden Venue, Shamshabad', ...ok(-386), ...fin(-380), notes: '',
+        pay: pay(6000, [[6000, -372, 'online']]) },
+      /* the editing desk: one new with no fee yet, one under way, one finished */
+      { id: 'smp-e1', ...PK, ...edit, date: iso(-9), deliver: 'Highlights film + 3 reels', status: 'assigned', pay: pay(0) },
+      { id: 'smp-e2', ...MR, ...edit, date: iso(-38), deliver: 'Teaser + 1 reel', ...ok(-35), pay: pay(3000) },
+      { id: 'smp-e3', ...AV, ...edit, date: iso(-120), deliver: 'Wedding film', ...ok(-118), ...fin(-93),
+        pay: pay(7000, [[7000, -88, 'online']]) },
+    ];
+    const job = (b, more) => ({ id: b.pkgId, pkgId: b.pkgId, editors: [phone10], urgent: 0, comments: [], ...more });
+    const svc = (service, qty) => ({ service, qty });
+    const ejobs = {
+      [PK.pkgId]: job(PK, { stage: 'assigned', deadline: iso(12),
+        footage: '2 cards · 512 GB — collect from the studio',
+        brief: 'A 4–5 minute highlights film and three 30-second reels. No music over the vows, and warm, natural colour. Their song list is on the first card.',
+        scope: { units: 4, functions: 2, services: [svc('Cinematography', 3), svc('Drone', 1)],
+                 rows: [{ date: iso(-10), title: 'Sangeet', n: 1, svc: [svc('Cinematography', 1)] },
+                        { date: iso(-9), title: 'Wedding', n: 3, svc: [svc('Cinematography', 2), svc('Drone', 1)] }] },
+        comments: [{ id: 'smp-n1', at: noteAt(-3, 11), by: 'Fantasy Studio',
+                     text: 'Both days are on the two cards in the edit room. Send us the first cut when it is ready.' }] }),
+      [MR.pkgId]: job(MR, { stage: 'progress', deadline: iso(20),
+        footage: '1 card · 128 GB — on the studio drive',
+        brief: 'A 60-second teaser and one reel for Instagram. Upbeat, with the ring exchange and the drone shots of the lawn.',
+        scope: { units: 2, functions: 1, services: [svc('Cinematography', 1), svc('Drone', 1)],
+                 rows: [{ date: iso(-38), title: 'Engagement', n: 2, svc: [svc('Cinematography', 1), svc('Drone', 1)] }] } }),
+      [AV.pkgId]: job(AV, { stage: 'delivered', deadline: iso(-92),
+        footage: '1 drive · 740 GB',
+        brief: 'A wedding film of about 20 minutes. Keep the speeches in full.',
+        scope: { units: 3, functions: 2, services: [svc('Cinematography', 2), svc('Drone', 1)],
+                 rows: [{ date: iso(-121), title: 'Sangeet', n: 1, svc: [svc('Cinematography', 1)] },
+                        { date: iso(-120), title: 'Wedding', n: 2, svc: [svc('Cinematography', 1), svc('Drone', 1)] }] },
+        comments: [
+          { id: 'smp-n2', at: noteAt(-105, 16), by: 'Arjun Rao', text: 'First cut is on the drive. Should the speeches stay in full?' },
+          { id: 'smp-n3', at: noteAt(-104, 10), by: 'Fantasy Studio', text: 'Yes, keep them in full. The colour looks lovely.' },
+          { id: 'smp-n4', at: noteAt(-93, 18), by: 'Fantasy Studio', text: 'The couple loved it. Delivered today, thank you!' },
+        ] }),
+    };
+    /* the leaderboard place, worked out from the sample itself the way the
+       panel's lbRows() does (fees on work before today), so the rank card and
+       the tiles under it tell the same story */
+    const today = todayISO();
+    const place = (from, pos, of) => {
+      const d = asgs.filter(a=>a.date < today && a.date.startsWith(from));
+      return d.length ? { pos, of, n: d.length, amt: d.reduce((s,a)=>s + payFee(a), 0) } : { pos: 0, of, n: 0, amt: 0 };
+    };
+    const me = { id: 'smp-crew', name: 'Arjun Rao', cat: 'outdoor', role: 'photography', phone10, active: true,
+                 lb: { cat: 'outdoor', m: place(today.slice(0,7), 2, 8), y: place(today.slice(0,4), 3, 9),
+                       all: place('', 4, 11), at: stamp(0) } };
+    return { me, asgs, ejobs };
+  }
+  function startDemo(){
+    _demo = true;
+    const d = demoCrew();
+    ME = d.me; ASGS = d.asgs; EJOBS = d.ejobs;
+    /* every "has the server answered" flag, or route() waits for listeners
+       that are never started */
+    _meLoaded = _reqLoaded = _asgsLoaded = true;
+    _meFresh = true;
+    route();
+  }
+
+  /* The test hook never signs in; it opens the sample from the end of this
+     module instead (see there). */
+  if(!DEMO_VIEW) onAuthStateChanged(auth, user=>{
     stopData();
     $('#logoutBtn').hidden = !user;
     if(!user){
@@ -1185,6 +1338,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     rememberPortal(true);
     _phone10 = user.phoneNumber.slice(-10);
     _pretty = user.phoneNumber;
+    /* the App Review number: the sample, and none of the listeners below */
+    if(user.phoneNumber === DEMO_PHONE){ startDemo(); return; }
     show('loadingView');
     /* all three are pinned to this verified phone / this uid — exactly what
        the Firestore rules require; anything broader is refused server-side */
@@ -2065,7 +2220,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ask.disabled = true; ask.textContent = 'Sending…';
     }
     try{
-      await updateDoc(doc(db,'assignments',id),
+      /* the review sample has no document behind it: the change stays on screen */
+      if(!_demo) await updateDoc(doc(db,'assignments',id),
         proposal ? { payProposal: proposal } : { payProposal: deleteField() });
       /* paint from what we know; the snapshot confirms with the real stamp */
       if(proposal) a.payProposal = { amount: proposal.amount, at: new Date().toISOString() };
@@ -2095,8 +2251,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                     text: text.slice(0,1000) };
     btn.disabled = true; btn.textContent = 'Sending…';
     try{
-      await updateDoc(doc(db,'editingJobs',pkgId), { comments: [...had, entry], updatedAt: serverTimestamp() });
+      if(!_demo) await updateDoc(doc(db,'editingJobs',pkgId), { comments: [...had, entry], updatedAt: serverTimestamp() });
       j.comments = [...had, entry];
+      /* empty the box first, or the repaint puts the sent note back in it */
+      document.querySelectorAll(`[data-ejnote="${CSS.escape(pkgId)}"]`).forEach(b => { b.value = ''; });
       render();
       toast('Sent ✓ — the studio can see it');
     }catch(err){
@@ -2112,7 +2270,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const a = ASGS.find(v=>v.id===id); if(!a) return;
     if(done){ if(done.disabled) return; done.disabled = true; done.textContent = 'Saving…'; }
     try{
-      await updateDoc(doc(db,'assignments',id), { workDone: !!done, workDoneAt: serverTimestamp() });
+      if(!_demo) await updateDoc(doc(db,'assignments',id), { workDone: !!done, workDoneAt: serverTimestamp() });
       a.workDone = !!done;
       delete a.workDoneAt;   /* the server timestamp arrives with the next snapshot */
       render();
@@ -2132,7 +2290,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const a = ASGS.find(v=>v.id===b.dataset.ack); if(!a) return;
     b.disabled = true; b.textContent = 'Confirming…';
     try{
-      await updateDoc(doc(db,'assignments',a.id), { status:'acknowledged', ackAt: serverTimestamp() });
+      if(!_demo) await updateDoc(doc(db,'assignments',a.id), { status:'acknowledged', ackAt: serverTimestamp() });
       a.status = 'acknowledged';
       render();
       toast('Confirmed ✓ — the studio can see it');
@@ -2140,6 +2298,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment";
       toast(navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal');
     }
+  }
+
+  /* The local test hook enters the sample here, last in the module on
+     purpose (as in the admin panel): render() reads consts declared all
+     through the body above, which a call from further up would reach before
+     they exist. _phone10 stays empty, so registerPush() does nothing. */
+  if(DEMO_VIEW){
+    $('#logoutBtn').hidden = false;
+    _pretty = DEMO_PHONE;
+    startDemo();
   }
 }
 </script>

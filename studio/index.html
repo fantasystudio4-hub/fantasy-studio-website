@@ -466,6 +466,14 @@ const app  = initializeApp(window.FIREBASE_CONFIG, 'studio');
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
+/* Local test hook, the same two locks as the admin panel's ?demo: served from
+   localhost AND ?demo in the URL. It opens the signed-in screens on the
+   built-in sample account (demoStudio below) with no sign-in, no push and no
+   partner data read, so they can be checked without an OTP. On
+   fantasystudio.in the first lock can never hold. */
+const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+               && new URLSearchParams(location.search).has('demo');
+
 /* ---------- shared helpers (same conventions as crew/client portals) ---------- */
 const todayISO = () => new Date().toLocaleDateString('en-CA');
 const isDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'');
@@ -505,7 +513,8 @@ function applyContact(){
   [['#naCall',tel],['#errCall',tel],['#helpCall',tel]].forEach(([s,h])=>{ const el=$(s); if(el) el.href = h; });
   [['#naWa',wa],['#helpWa',wa]].forEach(([s,h])=>{ const el=$(s); if(el) el.href = h; });
 }
-(async ()=>{
+/* kept so the sample account can redraw once the UPI IDs are in (startDemo) */
+const _siteReady = (async ()=>{
   try{
     const s = await getDoc(doc(db,'config','site'));
     if(s.exists()){
@@ -632,6 +641,14 @@ function readPhone(ccSel, phSel){
 }
 
 let confirmation = null, verifier = null;
+/* The App Review demo login. It is a Firebase test number (no SMS is sent),
+   so reCAPTCHA and the phone-index lookup are skipped for it alone: the
+   reviewer never meets a picture puzzle. Firebase honours the skip only for
+   test numbers, so every other number still gets a real check. Once signed
+   in, this number sees the built-in sample account (demoStudio below), never
+   Firestore. If it is ever taken off Firebase's test list, delete it here
+   too, or its sign-in fails. Same number as the client and crew pages. */
+const DEMO_PHONE = '+919000000001';
 /* A fresh verifier for every send (a cached grecaptcha token is single-use
    and broke the first Resend), rendered into a fresh <div>, never onto the
    button. An invisible widget stays bound to the element it was rendered on,
@@ -648,11 +665,13 @@ function dropRecaptcha(old){
   $('#recaptcha-box').textContent = '';
   document.querySelectorAll('iframe[src*="recaptcha/api2/bframe"]').forEach(f => { const c = f.closest('body > div'); if(c) c.remove(); });
 }
-function freshVerifier(old){
+function freshVerifier(old, full){
   dropRecaptcha(old);
   const el = document.createElement('div');
   $('#recaptcha-box').appendChild(el);
-  return new RecaptchaVerifier(auth, el, { size: 'invisible' });
+  auth.settings.appVerificationDisabledForTesting = full === DEMO_PHONE;
+  try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
+  finally{ auth.settings.appVerificationDisabledForTesting = false; }
 }
 /* a closed picture puzzle leaves verify() pending forever: bring the button
    back after STALL_MS, and let a newer tap win over a late older answer.
@@ -676,13 +695,13 @@ async function doSendOtp(){
   const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
   let stall;
   try{
-    if(!(await isKnownNumber(ph.last10))){
+    if(ph.full !== DEMO_PHONE && !(await isKnownNumber(ph.last10))){
       if(my === sendSeq) showErr('#loginErr', 'This number is not registered with Fantasy Studio yet — call us on ' + CONTACT.phone + ' to set up partner access.');
       return;
     }
     if(my !== sendSeq) return;
     stall = setTimeout(()=>{ if(my === sendSeq){ sendIdle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
-    const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier));
+    const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier, ph.full));
     if(my !== sendSeq) return;
     confirmation = c;
     hideErr('#loginErr');
@@ -707,7 +726,11 @@ $('#verifyOtp').addEventListener('click', async ()=>{
 });
 /* Change number drops a Resend still in flight, so it can't flip the page back */
 $('#otpBack').addEventListener('click', ()=>{ sendSeq++; sendIdle(); $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
-$('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
+$('#logoutBtn').addEventListener('click', async ()=>{
+  /* the ?demo view never signed in: leave it for the plain login screen */
+  if(DEMO_VIEW){ location.replace(location.pathname); return; }
+  await unregisterPush(); signOut(auth);
+});
 $('#naLogout').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
 $('#errRetry').addEventListener('click', ()=>location.reload());
 
@@ -753,7 +776,8 @@ function rememberPortal(on){
    is absent and this is a no-op; it must never break the page. */
 const PUSH_KEY = 'fs_push_token_studio';
 async function registerPush(){
-  if(!_phone10 || _pushFor === _phone10) return;
+  /* the ?demo view has no session to register a token against */
+  if(DEMO_VIEW || !_phone10 || _pushFor === _phone10) return;
   _pushFor = _phone10;
   try{
     const C = window.Capacitor;
@@ -781,7 +805,122 @@ async function unregisterPush(){
   }catch(e){}
 }
 
+/* ---------- sample partner account (App Review) ----------
+   What the review number sees once signed in, and what ?demo shows locally.
+   Every name, venue and rupee is invented. Dates count from today, so the
+   countdown, the job that is ready to collect and the handed-over job never
+   go stale between reviews. It lives in memory only: no studios or packages
+   doc exists for it, so none of it reaches the owner's figures, and this
+   page writes nothing but its push token, so there is no save to hold back.
+   Field names are the ones the render code below reads. The upcoming job is
+   part-paid, so the dues tiles and the ledger have something to show. */
+function demoStudio(){
+  const iso = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA'); };
+  const name = 'Lumière Wedding Co.';
+  const studio = { id:'lwc', name, ownerName:'Rahul', city:'Hyderabad', phone10:'9000000001', active:true,
+    paymentTerms:'50% advance to book · balance before the shoot',
+    rateCard:{ 'Candid Photography':15000, 'Cinematography':20000, 'Drone Coverage':8000,
+               'Traditional Photography':6000, 'Traditional Videography':7000 } };
+  const items = (...svc) => svc.map(([service, qty = 1]) => ({ service, qty, rate: studio.rateCard[service] }));
+  const quote = (n, d) => 'FS-' + d.slice(0,4) + '-' + n;
+  const money = (gross, discount, paid) =>
+    ({ gross, discount, finalPrice: gross - discount, advance: paid, balance: gross - discount - paid });
+  /* the checklist can be renamed in config/site, which may land after this
+     runs, so the ticks are read against the live list each time a card draws */
+  const ticks = (...dates) => dates.map((date, i) => ({ step: B2B_STEPS[i], date })).filter(d => d.step);
+  const base = { clientType:'studio', studioId: studio.id, studioName: name, clientName: name, clientPhone:'' };
+  const jobs = [
+    { ...base, id:'lwc-1', status:'booked', whiteLabel:true, endClientName:'Sana & Imran',
+      quoteNo: quote(931, iso(-25)), quoteDate: iso(-25),
+      events:[
+        { date: iso(12), title:'Manje', slot:'morning', venue:'Banquet Hall, Tolichowki',
+          items: items(['Candid Photography'], ['Traditional Videography']) },
+        { date: iso(12), title:'Mehndi', slot:'evening', venue:'Banquet Hall, Tolichowki',
+          items: items(['Candid Photography'], ['Cinematography']) },
+        { date: iso(13), title:'Nikah', slot:'full', venue:'Taj Falaknuma Palace',
+          items: items(['Candid Photography', 2], ['Cinematography'], ['Drone Coverage']) },
+      ],
+      /* day 1 is crewed, day 2 is not yet: the "Crew to be confirmed" line */
+      crew:[
+        { name:'Arjun Rao',   role:'candid photography', date: iso(12), slot:'morning', kind:'' },
+        { name:'Rohan Das',   role:'videography',        date: iso(12), slot:'morning', kind:'' },
+        { name:'Arjun Rao',   role:'candid photography', date: iso(12), slot:'evening', kind:'' },
+        { name:'Kiran Varma', role:'cinematography',     date: iso(12), slot:'evening', kind:'' },
+      ],
+      delivery:[],
+      totals: money(115000, 15000, 50000),
+      payments:[ { id:'lp1', amount:50000, date: iso(-24), mode:'online' } ] },
+    { ...base, id:'lwc-2', status:'booked', whiteLabel:false, endClientName:'Priya & Karthik',
+      quoteNo: quote(927, iso(-40)), quoteDate: iso(-40),
+      events:[
+        { date: iso(-6), title:'Haldi', slot:'morning', venue:'Banquet Hall, Kompally',
+          items: items(['Traditional Photography'], ['Traditional Videography']) },
+        { date: iso(-5), title:'Wedding', slot:'full', venue:'HICC Novotel, Madhapur',
+          items: items(['Candid Photography'], ['Cinematography'], ['Drone Coverage']) },
+      ],
+      crew:[
+        { name:'Rohan Das',    role:'photography',        date: iso(-6), slot:'morning', kind:'' },
+        { name:'Kiran Varma',  role:'videography',        date: iso(-6), slot:'morning', kind:'' },
+        { name:'Arjun Rao',    role:'candid photography', date: iso(-5), slot:'full',    kind:'' },
+        { name:'Kiran Varma',  role:'cinematography',     date: iso(-5), slot:'full',    kind:'' },
+        { name:'Faisal Ahmed', role:'drone',              date: iso(-5), slot:'full',    kind:'' },
+      ],
+      /* shot, and the data is ready to collect: the green stage */
+      get delivery(){ return ticks(iso(-4), iso(-1)); },
+      totals: money(56000, 6000, 50000),
+      payments:[ { id:'lp3', amount:25000, date: iso(-38), mode:'online' },
+                 { id:'lp4', amount:25000, date: iso(-8),  mode:'cash' } ] },
+    { ...base, id:'lwc-3', status:'delivered', whiteLabel:true, endClientName:'Meher & Zaid',
+      quoteNo: quote(912, iso(-80)), quoteDate: iso(-80), deliveredAt: iso(-44),
+      events:[
+        { date: iso(-61), title:'Mehndi', slot:'evening', venue:'Banquet Hall, Banjara Hills',
+          items: items(['Candid Photography'], ['Traditional Videography']) },
+        { date: iso(-60), title:'Valima / Reception', slot:'evening', venue:'Taj Krishna, Banjara Hills',
+          items: items(['Candid Photography'], ['Cinematography'], ['Drone Coverage']) },
+      ],
+      crew:[
+        { name:'Arjun Rao',    role:'candid photography', date: iso(-61), slot:'evening', kind:'' },
+        { name:'Rohan Das',    role:'videography',        date: iso(-61), slot:'evening', kind:'' },
+        { name:'Arjun Rao',    role:'candid photography', date: iso(-60), slot:'evening', kind:'' },
+        { name:'Kiran Varma',  role:'cinematography',     date: iso(-60), slot:'evening', kind:'' },
+        { name:'Faisal Ahmed', role:'drone',              date: iso(-60), slot:'evening', kind:'' },
+      ],
+      /* handed over: every step on the live checklist is ticked */
+      get delivery(){ return B2B_STEPS.map((step, i) => ({ step, date: iso(Math.min(-44, -59 + i*7)) })); },
+      totals: money(65000, 5000, 60000),
+      payments:[ { id:'lp5', amount:30000, date: iso(-78), mode:'online' },
+                 { id:'lp6', amount:30000, date: iso(-62), mode:'online' } ] },
+    /* a quote still waiting on its advance */
+    { ...base, id:'lwc-4', status:'sent', whiteLabel:false, endClientName:'Neha & Aditya',
+      quoteNo: quote(948, iso(-3)), quoteDate: iso(-3),
+      events:[
+        { date: iso(70), title:'Engagement', slot:'evening', venue:'Banquet Hall, Gachibowli',
+          items: items(['Candid Photography'], ['Cinematography'], ['Drone Coverage']) },
+      ],
+      crew:[], delivery:[],
+      totals: money(43000, 3000, 0),
+      payments:[] },
+  ];
+  return { studio, jobs };
+}
+/* draws the sample account through the normal route(); no listener starts */
+function startDemo(){
+  const d = demoStudio();
+  STUS = [d.studio];
+  PKGMAP.set(d.studio.id, d.jobs); _pkgSeen.add(d.studio.id);
+  _stuLoaded = true; _stuFresh = true;
+  route();
+  /* with no server round trip of its own, this draws before config/site has
+     brought the UPI IDs, and renderJobs skips a redraw of unchanged jobs, so
+     Pay now would never appear. Draw the jobs once more when it lands. */
+  _siteReady.then(()=>{
+    if(STUS[0] !== d.studio || $('#appView').hidden) return;   /* signed out since */
+    _jobsSig = ''; render();
+  });
+}
+
 onAuthStateChanged(auth, user=>{
+  if(DEMO_VIEW) return;   /* the sample account owns the view; a real session would overwrite it */
   stopData();
   $('#logoutBtn').hidden = !user;
   if(!user){
@@ -795,6 +934,8 @@ onAuthStateChanged(auth, user=>{
   if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
   rememberPortal(true);
   _phone10 = user.phoneNumber.slice(-10);
+  /* the review number: sample jobs, and not one Firestore listener */
+  if(user.phoneNumber === DEMO_PHONE){ startDemo(); return; }
   show('loadingView');
   /* both conditions mirror the firestore.rules studios branch exactly —
      anything broader is refused server-side */
@@ -1419,6 +1560,10 @@ $('#vpaCopy').addEventListener('click', async ()=>{
   try{ await navigator.clipboard.writeText($('#vpaText').textContent); toast('UPI ID copied'); }
   catch(e){ toast('Could not copy — long-press the ID instead'); }
 });
+
+/* Last in the module on purpose: render() reads lets declared all through
+   it, so starting the ?demo view any earlier meets them uninitialised. */
+if(DEMO_VIEW){ $('#logoutBtn').hidden = false; startDemo(); }
 
 }
 </script>
