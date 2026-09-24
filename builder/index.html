@@ -370,6 +370,7 @@ img{max-width:100%;display:block}
 .stepper{display:inline-flex;align-items:center;border:1px solid var(--gold);border-radius:40px;background:#fff;overflow:hidden}
 .stepper button{width:34px;height:34px;flex:0 0 auto;border:0;background:rgba(184,144,43,.14);color:var(--gold-deep);cursor:pointer;font-size:1.1rem;line-height:1;transition:.2s}
 .stepper button:hover{background:var(--gold);color:#fff}
+.stepper button:disabled{opacity:.35;cursor:default;background:rgba(184,144,43,.14);color:var(--gold-deep)}
 .stepper input{
   width:38px;height:34px;text-align:center;border:0;background:transparent;
   color:var(--ink);font-family:var(--sans);font-size:.88rem;-moz-appearance:textfield;
@@ -1168,6 +1169,11 @@ img{max-width:100%;display:block}
    presented and how a visitor fills a cart with it.
    ============================================================ */
 
+/* catalog.js sets MAX_QTY. A catalog.js cached before 24 Sep 2026 does not,
+   and the worker can serve that copy on a slow connection, so fall back to
+   the same cap rather than throw on the first + tap. */
+if(typeof MAX_QTY === 'undefined') var MAX_QTY = 10;
+
 const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const smooth = REDUCE_MOTION ? 'auto' : 'smooth';
 
@@ -1369,8 +1375,8 @@ function eventPanelHTML(ev, idx){
       ${on
         ? `<span class="stepper">
              <button type="button" data-act="dec" aria-label="Remove one ${esc(s.label)}">−</button>
-             <input type="number" min="0" step="1" value="${qty}" data-qty aria-label="${esc(s.label)} quantity" />
-             <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
+             <input type="number" min="0" max="${MAX_QTY}" step="1" value="${qty}" data-qty aria-label="${esc(s.label)} quantity" />
+             <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}"${qty >= MAX_QTY ? ' disabled' : ''}>+</button>
            </span>`
         : '<span class="add-pill">＋ Add</span>'}
       </span>
@@ -1443,8 +1449,8 @@ function refreshProd(evId, key){
   card.querySelector('.prod-act').innerHTML = q>0
     ? `<span class="stepper">
          <button type="button" data-act="dec" aria-label="Remove one ${esc(s.label)}">−</button>
-         <input type="number" min="0" step="1" value="${q}" data-qty aria-label="${esc(s.label)} quantity" />
-         <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}">+</button>
+         <input type="number" min="0" max="${MAX_QTY}" step="1" value="${q}" data-qty aria-label="${esc(s.label)} quantity" />
+         <button type="button" data-act="inc" aria-label="Add one ${esc(s.label)}"${q >= MAX_QTY ? ' disabled' : ''}>+</button>
        </span>`
     : '<span class="add-pill">＋ Add</span>';
   /* the row is only a button while it is off */
@@ -1596,7 +1602,7 @@ document.addEventListener('click', e=>{
     else if(kind === 'inc') q += 1;
     else                    q -= 1;
     if(q < 0) q = 0;
-    if(q > 50) q = 50;
+    if(q > MAX_QTY) q = MAX_QTY;
     const before = chosenCount(ev);
     if(q > 0) ev.services[key] = q; else delete ev.services[key];
     if(q > 0) markBuilderStarted();
@@ -1701,8 +1707,9 @@ document.addEventListener('input', e=>{
   if(e.target.value === '') return;            // let the user clear it while typing
   let q = parseInt(e.target.value, 10);
   if(isNaN(q) || q < 0) q = 0;
-  if(q > 50) q = 50;
+  if(q > MAX_QTY){ q = MAX_QTY; e.target.value = q; }   // show the cap, not the typed 25
   if(q > 0) ev.services[card.dataset.svc] = q; else delete ev.services[card.dataset.svc];
+  const inc = card.querySelector('[data-act="inc"]'); if(inc) inc.disabled = q >= MAX_QTY;
   markCustomised();
   /* price only — never re-render the field the caret is sitting in */
   refreshEventChrome(ev);

@@ -138,6 +138,10 @@ var EVENT_META = {
 };
 
 var SERVICE_KEYS = new Set(SERVICES.map(function(s){ return s.key; }));
+/* The most of any one service a quote can hold per event. It was 50, which
+   let a quote hold nonsense amounts (Play tester, 23 Sep 2026); bigger crews
+   are quoted by the studio directly. */
+var MAX_QTY = 10;
 
 /* ---- ready-made packages ----
    `events` are applied straight into the builder, then fine-tuned. */
@@ -326,7 +330,7 @@ function normalizeEvent(raw){
   Object.keys(r.services||{}).forEach(function(k){
     if(!SERVICE_KEYS.has(k)) return;             // not a real service — drop it
     var q = Math.floor(Number(r.services[k]));
-    if(q > 0) services[k] = Math.min(50, q);     // NaN fails this test, so it drops
+    if(q > 0) services[k] = Math.min(MAX_QTY, q); // NaN fails this test, so it drops
   });
   return { id: ++eid, type: type, date: date, services: services };
 }
@@ -662,7 +666,7 @@ function applyRemoteConfig(cfg){
             if(!SERVICE_KEYS.has(sk)) return;
             var q = Number(ev.services[sk]);
             if(!isFinite(q) || q < 0){ ok = false; return; }
-            if(q > 0) services[sk] = Math.min(50, Math.floor(q));
+            if(q > 0) services[sk] = Math.min(MAX_QTY, Math.floor(q));
           });
           events.push({ type: String(ev.type||'Event').slice(0,40), services: services });
         });
