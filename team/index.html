@@ -2310,6 +2310,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(window.FSApp) FSApp.hide();   /* a modal sheet: the app's tab bar steps aside */
     setTimeout(()=>$('#edClose').focus(), 60);
   }
+  /* In the app, iOS keeps a fixed sheet anchored to the layout viewport and
+     pans the visual viewport down to reveal the focused field, so with the
+     keyboard up the sheet's header sat above the screen and its body under
+     the clock. Pin the sheet to the visual viewport while a field has focus
+     (html.fs-kb), and let it go on blur. App only: browsers never have fs-kb. */
+  (function(){
+    var vv = window.visualViewport; if(!vv || !document.documentElement.classList.contains('fs-app')) return;
+    var html = document.documentElement, sheet = document.getElementById('edSheet');
+    function fit(){
+      var on = html.classList.contains('fs-kb') && !sheet.hidden;
+      sheet.style.top = on ? vv.offsetTop + 'px' : ''; sheet.style.height = on ? vv.height + 'px' : ''; sheet.style.maxHeight = on ? 'none' : '';
+      if(on){ var el = document.activeElement; if(el && /^(INPUT|TEXTAREA)$/.test(el.tagName)){ try{ el.scrollIntoView({ block:'nearest' }); }catch(e){} } }
+    }
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+    document.addEventListener('focusin', function(){ setTimeout(fit, 0); });
+    document.addEventListener('focusout', function(){ setTimeout(fit, 0); });
+  })();
   function closeEd(fromPop){
     if(!_edOpen) return;
     _edOpen = null;
