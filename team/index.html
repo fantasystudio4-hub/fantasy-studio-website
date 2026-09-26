@@ -513,6 +513,7 @@ html.fs-app[data-tab]:not([data-tab="me"]) #meWrap{display:none}
 /* the toast sat 34px up — under the bar; the bar's height carries the safe area */
 html.fs-app.fs-tabs-on .toast{bottom:calc(var(--fs-tabs-h) + 14px)}
 html.fs-app.fs-tabs-on #logoutBtn{display:none}   /* Me › Sign out does this job */
+html.fs-app.fs-kb #edSheet{padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))}   /* keyboard up: the sheet slides, its header must not sit under the clock */
 /* .fs-app-only hands an element its UA display (block); a section heading is a flex row */
 html.fs-app .fs-app-only.grp{display:flex}
 /* the Me tab's account card: who is signed in, then one row per action */

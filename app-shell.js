@@ -162,3 +162,23 @@
   /* the app's sign-in chooser; replace, so Back cannot return to a signed-out page */
   FSApp.exitToStart = function(){ location.replace('/start/'); };
 })();
+
+/* Status-bar text colour. The app sets light text (StatusBar style DARK) for
+   its dark pages, and the native setting outlives a page, so every app page
+   restates its own on load: the cream builder asks for dark text with
+   data-fs-status="light" on <html>, everything else gets light text. */
+(function(){
+  var html = document.documentElement;
+  if(!html.classList.contains('fs-app')) return;
+  function set(){
+    try{
+      var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar;
+      if(!SB || !SB.setStyle) return;
+      var p = SB.setStyle({ style: html.getAttribute('data-fs-status') === 'light' ? 'LIGHT' : 'DARK' });
+      if(p && p.catch) p.catch(function(){});
+    }catch(e){}
+  }
+  if(window.FSApp) window.FSApp.statusBar = set;
+  set();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', set);
+})();

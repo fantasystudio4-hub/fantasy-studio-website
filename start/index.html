@@ -12,6 +12,12 @@
 if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
 </script>
 <script>
+/* light status-bar text on this dark page (the cream builder sets dark text
+   and the native setting outlives a page) */
+(function(){ function set(){ try{ var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar; if(SB && SB.setStyle){ var p = SB.setStyle({ style:'DARK' }); if(p && p.catch) p.catch(function(){}); } }catch(e){} }
+  if(document.documentElement.classList.contains('fs-app')){ set(); document.addEventListener('DOMContentLoaded', set); } })();
+</script>
+<script>
 /* Already signed in on this phone? Go straight there, before anything paints.
    1. fs_app_portal — the page the app was last signed in to (each portal
       writes it on sign-in in the app and removes it on sign-out).
