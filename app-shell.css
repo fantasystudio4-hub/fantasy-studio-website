@@ -1,0 +1,83 @@
+/* Fantasy Studio — app shell (store app only)
+   Every rule here is gated on html.fs-app, which the 3-line <head> script
+   sets in the Capacitor webview and nowhere else, so a browser matches
+   nothing in this file but the one base rule that hides app-only bits.
+   The pages keep their own look; this only adds the bottom tab bar and the
+   two helper classes:
+     .fs-web-only   website chrome the app must not show (Home links, install cards…)
+     .fs-app-only   app-only bits a browser must never see (Me tab rows…)
+   Tab contents are the pages' own section ids under html.fs-app[data-tab]. */
+
+/* app-only bits do not exist for a browser… */
+.fs-app-only{display:none}
+/* …and the website chrome does not exist for the app. `revert` hands an
+   .fs-app-only element back its UA display (block, inline, list-item), so
+   put the class on a plain wrapper, not on something that needs display:flex. */
+html.fs-app .fs-web-only{display:none!important}
+html.fs-app .fs-app-only{display:revert}
+
+html.fs-app{
+  --fs-tabs-h:58px;                       /* refreshed by app-shell.js from the real bar */
+  --fs-tabs-bg:rgba(20,17,10,.97);
+  --fs-tabs-line:rgba(226,194,117,.22);
+  --fs-tabs-mut:#b3a98f;
+  --fs-tabs-gold:#E2C275;
+  --fs-tabs-safe:max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px));
+}
+
+/* keep the page's last rows above the bar; the pages' own bottom padding
+   is unchanged, this adds to it only while the bar is showing */
+html.fs-app.fs-tabs-on body{padding-bottom:var(--fs-tabs-h)}
+
+html.fs-app .fs-tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:1200;
+  display:flex;justify-content:center;
+  background:var(--fs-tabs-bg);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  border-top:1px solid var(--fs-tabs-line);
+  /* Android draws the app under the gesture bar and passes its height as
+     --safe-area-inset-bottom; env() covers iOS. max() never adds them twice. */
+  padding:0 max(0px,env(safe-area-inset-right)) var(--fs-tabs-safe) max(0px,env(safe-area-inset-left));
+}
+html.fs-app .fs-tabs[hidden]{display:none}
+/* the keyboard is up: a fixed bar would ride on top of it and cover the field */
+html.fs-app.fs-kb .fs-tabs{display:none}
+
+html.fs-app .fs-tab{
+  flex:1 1 0;min-width:0;max-width:200px;min-height:56px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:6px 4px 7px;margin:0;
+  background:none;border:0;border-radius:0;cursor:pointer;
+  font-family:'Jost',system-ui,sans-serif;color:var(--fs-tabs-mut);
+  -webkit-tap-highlight-color:transparent;
+  position:relative;transition:color .18s;
+}
+/* a thin gold rule above the open tab, like the underline the site uses on nav */
+html.fs-app .fs-tab::before{
+  content:'';position:absolute;top:-1px;left:22%;right:22%;height:2px;border-radius:0 0 2px 2px;
+  background:var(--fs-tabs-gold);opacity:0;transform:scaleX(.4);transition:opacity .18s,transform .18s;
+}
+html.fs-app .fs-tab[aria-selected="true"]{color:var(--fs-tabs-gold)}
+html.fs-app .fs-tab[aria-selected="true"]::before{opacity:1;transform:none}
+html.fs-app .fs-tab:active{color:var(--fs-tabs-gold)}
+html.fs-app .fs-tab:focus{outline:none}
+html.fs-app .fs-tab:focus-visible{outline:2px solid var(--fs-tabs-gold);outline-offset:-4px;border-radius:10px}
+html.fs-app .fs-tab[hidden]{display:none}
+
+html.fs-app .fs-tab-ic{
+  display:flex;align-items:center;justify-content:center;width:26px;height:24px;
+  font-size:20px;line-height:1;
+  filter:grayscale(1) opacity(.8);transition:filter .18s;
+}
+html.fs-app .fs-tab[aria-selected="true"] .fs-tab-ic{filter:none}
+html.fs-app .fs-tab-ic svg{width:22px;height:22px;fill:currentColor}
+html.fs-app .fs-tab-lb{
+  font-size:11px;font-weight:500;letter-spacing:.04em;line-height:1.1;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+@media (prefers-reduced-motion:reduce){
+  html.fs-app .fs-tab,
+  html.fs-app .fs-tab::before,
+  html.fs-app .fs-tab-ic{transition:none}
+}

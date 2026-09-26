@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<script>
+/* app mode: the Capacitor webview carries this marker; browsers never do */
+if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
+</script>
 
 <!-- ============ SEO ============ -->
 <title>Package Builder — Fantasy Studio, Hyderabad</title>
@@ -154,6 +158,16 @@ img{max-width:100%;display:block}
 .hdr-right{display:flex;align-items:center;gap:.5rem;flex:0 0 auto;margin-left:auto}
 .hdr-link{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:.5em .6em;transition:.2s}
 .hdr-link:hover{color:var(--gold-deep)}
+/* store app: the builder is a screen reached from the sign-in chooser, so the
+   brand link home and Contact are hidden there (.fs-web-only, ../app-shell.css)
+   and a back link to the chooser takes the brand's place. .fs-app-only only
+   hands the link its plain display back; this outranks it with the flex row. */
+html.fs-app .hdr-start.fs-app-only{
+  display:inline-flex;align-items:center;gap:.3rem;flex:0 0 auto;min-height:44px;
+  margin-left:-.3em;padding:.4em .6em .4em .3em;
+  font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-deep);
+}
+html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .cart-btn{
   position:relative;display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;
   background:var(--ink);color:#fff;border:1px solid rgba(226,194,117,.4);border-radius:40px;
@@ -865,6 +879,9 @@ img{max-width:100%;display:block}
   .hdr,.mq-bar,.quote-sheet,.sheet-backdrop,.lead-modal,.lead-backdrop,.toast,.cmp-modal{display:none!important}
 }
 </style>
+<!-- the store app's shell: the fs-app-only / fs-web-only helpers. A browser
+     matches nothing in it but the one rule that hides app-only bits. -->
+<link rel="stylesheet" href="../app-shell.css" />
 </head>
 <body>
 
@@ -873,7 +890,7 @@ img{max-width:100%;display:block}
 <!-- ============ HEADER ============ -->
 <header class="hdr">
   <div class="hdr-in">
-    <a href="../" class="hdr-back" aria-label="Back to Fantasy Studio home">
+    <a href="../" class="hdr-back fs-web-only" aria-label="Back to Fantasy Studio home">
       <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
         <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
         <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
@@ -883,10 +900,14 @@ img{max-width:100%;display:block}
       </svg>
       <span class="nm"><b>Fantasy Studio</b><span>Package Builder</span></span>
     </a>
+    <!-- store app only: back to the sign-in chooser the builder opens from -->
+    <a href="../start/" class="hdr-start fs-app-only" aria-label="Back to sign in">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Back
+    </a>
 
 
     <div class="hdr-right">
-      <a class="hdr-link hide-sm" href="../#contact">Contact</a>
+      <a class="hdr-link hide-sm fs-web-only" href="../#contact">Contact</a>
       <a class="hdr-link" href="../client/" id="portalLink">Login</a>
       <button class="cart-btn" id="cartBtn" type="button" aria-label="View your quote">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.55L20.5 8H6.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
@@ -1159,6 +1180,7 @@ img{max-width:100%;display:block}
 
 <script src="../firebase-config.js"></script>
 <script src="../catalog.js"></script>
+<script src="../app-shell.js"></script>
 <script>
 /* ============================================================
    FANTASY STUDIO — PACKAGE BUILDER
@@ -2618,17 +2640,19 @@ flushLeadQueue();
 
 /* Login asks who is signing in, like the home page — whose chooser it lands
    on as #signin, since the chooser lives there only. A signed-in client (the
-   relabel above) goes straight to their booking; in the store app, a phone
+   relabel above) goes straight to their booking. In the store app a phone
    signed in to the crew or partner page goes back to it (fs_app_portal, as
-   the home page's Login does). A modified click keeps its ordinary meaning. */
+   the home page's Login does), and anyone else to the app's own chooser,
+   /start/ — never the home page. A modified click keeps its ordinary meaning. */
 (function(){
   const link = document.getElementById('portalLink'); if(!link) return;
   link.addEventListener('click', e=>{
     if(link.dataset.signedIn || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
     e.preventDefault();
+    const app = document.documentElement.classList.contains('fs-app');
     let p = '';
-    try{ if(navigator.userAgent.indexOf('FantasyStudioApp') !== -1) p = localStorage.getItem('fs_app_portal') || ''; }catch(err){}
-    location.href = (p === 'team/' || p === 'studio/' || p === 'client/') ? '../' + p : '../#signin';
+    try{ if(app) p = localStorage.getItem('fs_app_portal') || ''; }catch(err){}
+    location.href = (p === 'team/' || p === 'studio/' || p === 'client/') ? '../' + p : (app ? '../start/' : '../#signin');
   });
 })();
 

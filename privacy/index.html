@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- app mode: in the store app the way back is the portal's Me tab, never the
+     marketing home (Apple, Guideline 4.2). Gated on html.fs-app like every
+     other app page; browsers never get the class. -->
+<script>if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');</script>
+<link rel="stylesheet" href="../app-shell.css" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Privacy Policy — Fantasy Studio</title>
 <meta name="description" content="How Fantasy Studio collects, uses and protects your information on our website and mobile apps." />
@@ -97,7 +102,15 @@ a{color:var(--gold-b)}
     Email: <a href="mailto:fantasystudio4@gmail.com">fantasystudio4@gmail.com</a></p>
   </div>
 
-  <a class="back" href="../">← Back to Fantasy Studio</a>
+  <a class="back fs-web-only" href="../">← Back to Fantasy Studio</a>
+  <a class="back fs-app-only" href="../start/" id="appBack">← Back</a>
+  <script>
+  /* in-app: go back to the page that linked here (its Me tab reopens on the
+     remembered tab); with no history, the app's own entry page */
+  document.getElementById('appBack').addEventListener('click', function(e){
+    if(history.length > 1){ e.preventDefault(); history.back(); }
+  });
+  </script>
 </main>
 </body>
 </html>

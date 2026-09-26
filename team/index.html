@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<!-- app mode: the store app's webview carries this marker; browsers never do.
+     Everything in-app hangs off html.fs-app (app-shell.css/js and the rules
+     at the end of <style>), so a browser matches none of it. First, before
+     anything paints. -->
+<script>if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');</script>
 <title>Fantasy Studio — Crew</title>
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="../icons/icon-192.png" />
@@ -485,7 +490,45 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* the very next event stands out from the rest of the schedule */
 #upList .asg:first-child{border-color:rgba(226,194,117,.55)}
 #upList .asg:first-child .asg-d .when{font-size:1.1rem}
+
+/* ==== the store app (html.fs-app, set by the first script in <head>;
+   app-shell.css/js draw the bottom tab bar) ====
+   A tab is only html[data-tab]: every section stays in the DOM and these
+   rules pick which ones show, so the renderers, the countdown timer and the
+   onSnapshot listeners run exactly as on the website. The greeting stays on
+   every tab. A browser never has html.fs-app and matches none of this. */
+html.fs-app[data-tab]:not([data-tab="shoots"]) #cdCard,
+html.fs-app[data-tab]:not([data-tab="shoots"]) #upHead,
+html.fs-app[data-tab]:not([data-tab="shoots"]) #upList,
+html.fs-app[data-tab]:not([data-tab="shoots"]) #pastWrap,
+html.fs-app[data-tab]:not([data-tab="editing"]) #editWrap,
+html.fs-app[data-tab]:not([data-tab="pay"]) #crewStats,
+html.fs-app[data-tab]:not([data-tab="pay"]) #anaCard,
+html.fs-app[data-tab]:not([data-tab="pay"]) #payCard,
+html.fs-app[data-tab]:not([data-tab="me"]) #hqCard,
+html.fs-app[data-tab]:not([data-tab="me"]) #bdgWrap,
+html.fs-app[data-tab]:not([data-tab="me"]) #meHelpHead,
+html.fs-app[data-tab]:not([data-tab="me"]) #appView > .crewhelp,
+html.fs-app[data-tab]:not([data-tab="me"]) #meWrap{display:none}
+/* the toast sat 34px up — under the bar; the bar's height carries the safe area */
+html.fs-app.fs-tabs-on .toast{bottom:calc(var(--fs-tabs-h) + 14px)}
+html.fs-app.fs-tabs-on #logoutBtn{display:none}   /* Me › Sign out does this job */
+/* .fs-app-only hands an element its UA display (block); a section heading is a flex row */
+html.fs-app .fs-app-only.grp{display:flex}
+/* the Me tab's account card: who is signed in, then one row per action */
+html.fs-app .mewho{display:flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .5rem;padding-bottom:.6rem;border-bottom:1px dashed var(--line)}
+html.fs-app .mewho b{font-family:var(--serif);color:#fff;font-size:1.05rem}
+html.fs-app .mewho span{color:var(--mut);font-size:.85rem}
+html.fs-app .mewho em{flex-basis:100%;font-style:normal;color:var(--gold-b);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase}
+html.fs-app .merow{display:flex;align-items:center;justify-content:space-between;gap:.6rem;width:100%;min-height:48px;padding:.4rem 0;
+  border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;color:var(--text);
+  font:inherit;font-size:.9rem;text-align:left;text-decoration:none;cursor:pointer}
+html.fs-app .merow:last-child{border-bottom:0}
+html.fs-app .merow:active{color:var(--gold-b)}
+html.fs-app .merow b{flex:0 0 auto;color:var(--gold-b);font-weight:500;font-size:.78rem;white-space:nowrap}
+html.fs-app .merow.warn span{color:var(--err)}
 </style>
+<link rel="stylesheet" href="../app-shell.css" />
 </head>
 <body>
 <noscript>
@@ -516,8 +559,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Crew</span></div>
     <span class="net" id="netDot" hidden>offline</span>
-    <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
-    <a class="out" id="homeLink" href="../">Home</a>
+    <!-- .fs-web-only: the store app has no website to go home to and IS the install -->
+    <button class="out inst fs-web-only" id="installBtn" hidden>&#11015; Install</button>
+    <a class="out fs-web-only" id="homeLink" href="../">Home</a>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
@@ -535,7 +579,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div id="phoneStep">
         <div class="fld"><label>Mobile number</label>
           <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
-          <div class="cchint">Outside India? Change 91 to your country code.</div>
+          <div class="cchint fs-web-only">Outside India? Change 91 to your country code.</div>
         </div>
         <button class="gbtn" id="sendOtp">Get OTP</button>
       </div>
@@ -551,7 +595,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="err" id="loginErr" role="alert" hidden></div>
       <div class="note">Use your own mobile number — if you're not on the team list yet, you can request to join after signing in.</div>
       <!-- partner studios land here too sometimes — their portal is /studio/ -->
-      <a class="crewlink" href="../studio/">🏢 Partner studio? <b>Sign in here</b> →</a>
+      <a class="crewlink fs-web-only" href="../studio/">🏢 Partner studio? <b>Sign in here</b> →</a>
+      <!-- in the store app every sign-in is picked on one page, /start/ -->
+      <div class="fs-app-only"><a class="crewlink" href="../start/"><b>Choose another sign-in</b> →</a></div>
     </div>
   </div>
 
@@ -600,7 +646,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
     <p id="helloSub"></p>
 
     <!-- put it on their phone: a shoot day is exactly when signal is worst -->
-    <div class="instcard" id="instCard" hidden>
+    <div class="instcard fs-web-only" id="instCard" hidden>
       <span class="ic">📲</span>
       <div class="it">
         <b>Keep this on your phone</b>
@@ -688,9 +734,27 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
       <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
     </div>
+    <!-- the store app's Me tab titles the contact block (app-shell.css keeps
+         .fs-app-only from browsers); the block itself is the same on the web -->
+    <div class="grp fs-app-only" id="meHelpHead">Contact the studio</div>
     <div class="crewhelp">
       <a id="crewCall" href="#">📞 Call the studio</a>
       <a id="crewWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+    </div>
+    <!-- the rest of the Me tab: who is signed in and the account rows a store
+         listing has to offer. Delete my account is a request to the studio
+         over WhatsApp — the studio takes the member off its list in the
+         panel, and this page keeps no write for it on purpose. -->
+    <div class="fs-app-only" id="meWrap">
+      <div class="grp">Account</div>
+      <div class="paycard">
+        <div class="mewho"><b id="meName">—</b><span id="mePhone"></span><em id="meRole">Crew</em></div>
+        <div class="merow" id="meNotifRow" hidden><span>Notifications</span><b id="meNotif"></b></div>
+        <a class="merow" href="../privacy/"><span>Privacy policy</span><b>Read →</b></a>
+        <a class="merow warn" id="meDel" href="#" target="_blank" rel="noopener"><span>Delete my account</span><b>Ask on WhatsApp →</b></a>
+        <button type="button" class="merow" id="meOut"><span>Sign out</span><b>→</b></button>
+        <button type="button" class="merow" id="meSwitch"><span>Switch account</span><b>→</b></button>
+      </div>
     </div>
   </div>
 
@@ -754,6 +818,8 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
+<!-- the store app's tab bar; a classic script, so FSApp exists before the module runs -->
+<script src="../app-shell.js"></script>
 <script type="module">
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -903,8 +969,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      Config like everywhere else, with the printed one as the fallback so the
      links work even if that read fails. */
   const DEFAULT_PHONE = '+91 86868 68803';
+  /* the same digits, kept for the Me tab's "Delete my account" request (renderMe) */
+  let _studioNo = '';
   function wireHelp(phone){
     const p = String(phone||DEFAULT_PHONE).replace(/\D/g,'');
+    _studioNo = p;
     const msg = encodeURIComponent('Salaam! This is about my crew assignment — ');
     [['#crewCall','#crewWa'],['#pendCall','#pendWa']].forEach(([c,w])=>{
       const ca = $(c), wa = $(w);
@@ -914,7 +983,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   wireHelp(DEFAULT_PHONE);
   if(!DEMO_VIEW) getDoc(doc(db,'config','site'))
-    .then(s=>{ const c = s.exists() && s.data().contact; if(c && c.phone) wireHelp(c.phone); })
+    .then(s=>{ const c = s.exists() && s.data().contact; if(c && c.phone){ wireHelp(c.phone); if(ME) renderMe(); } })
     .catch(()=>{});   /* the fallback number is already wired */
 
   /* the divs that act as buttons are focusable now — give them a button's keys */
@@ -1157,6 +1226,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(e){}
   };
 
+  /* ---------- the store app's tab bar (app-shell.js) ----------
+     Four tabs over the sections this page already has: the rules under
+     html.fs-app[data-tab] in <style> show and hide them. In a browser there
+     is no html.fs-app, mount() returns null and the page is as before.
+     The bar shows only while the dashboard is on screen. The Editing tab
+     goes once the assignments have arrived with no edits among them —
+     render() hides #editWrap and the shell watches that; before they arrive
+     it stays, so a remembered Editing tab survives a cold start.
+     Mounted here, before the sheet's popstate handler further down: on Back
+     the shell's handler then runs first and the sheet's scroll restore has
+     the last word. */
+  if(window.FSApp) FSApp.mount({
+    portal: 'crew',
+    tabs: [
+      { id:'shoots',  label:'Shoots',  icon:'📸' },
+      { id:'editing', label:'Editing', icon:'✂️', hiddenWhen: ()=>_asgsLoaded && $('#editWrap').hidden },
+      { id:'pay',     label:'Pay',     icon:'💰' },
+      { id:'me',      label:'Me',      icon:'👤' },
+    ],
+    visibleWhen: ()=>!$('#appView').hidden
+  });
+
   /* ---------- push notifications (store app only) ----------
      The same registration the client and partner pages do. The
      assignmentAlerts Cloud Function tells a member about a new assignment
@@ -1182,6 +1273,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         updatedAt: serverTimestamp()
       });
       try{ localStorage.setItem(PUSH_KEY, token); }catch(e){}
+      renderMe();   /* the Me tab's Notifications row */
     }catch(e){ /* push is a bonus */ }
   }
   /* a borrowed phone must stop getting someone's assignments once they sign out */
@@ -2122,6 +2214,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#payGot').textContent = inr(got);
       $('#payDue').textContent = inr(due);
     }
+    renderMe();
   }
 
   $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });
@@ -2132,6 +2225,43 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pc = $('#payCard');
     if(!pc || pc.hidden){ toast('No payments recorded yet'); return; }
     pc.scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+
+  /* ---------- the store app's Me tab ----------
+     Who is signed in and the account rows. app-shell.css keeps #meWrap from
+     browsers, so there this only fills text nobody sees. Notifications
+     reports the push registration above, and only where the plugin exists.
+     Delete my account is a WhatsApp request to the studio, which takes the
+     member off its list in the panel; this page keeps no write for it. */
+  /* +91 90000 00001, the way /start/ and the partner page print it */
+  const prettyPhone = p => String(p||'').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+  function renderMe(){
+    $('#meName').textContent = (ME && ME.name) || 'Crew member';
+    $('#mePhone').textContent = prettyPhone(_pretty);
+    const role = String((ME && ME.role) || '').trim();
+    $('#meRole').textContent = 'Crew' + (role ? ' · ' + role.replace(/\b\w/g,c=>c.toUpperCase()) : '');
+    const C = window.Capacitor;
+    const push = !!(C && C.isPluginAvailable && C.isPluginAvailable('FirebaseMessaging'));
+    let on = false; try{ on = !!localStorage.getItem(PUSH_KEY); }catch(e){}
+    $('#meNotif').textContent = on ? 'On' : 'Off';
+    $('#meNotifRow').hidden = !push;
+    $('#meDel').href = 'https://wa.me/' + _studioNo + '?text='
+      + encodeURIComponent('Please delete my Fantasy Studio account for ' + (prettyPhone(_pretty) || 'my number'));
+  }
+  /* Sign out is the header's Logout, the same path. Switch account signs out
+     the same way and then opens the app's chooser — and waits for it: the
+     auth session has to be gone from IndexedDB and fs_app_portal removed
+     BEFORE /start/ loads, or it routes straight back to this page. The test
+     hook never signed in, so there it has nothing to undo. */
+  $('#meOut').addEventListener('click', ()=>$('#logoutBtn').click());
+  $('#meSwitch').addEventListener('click', async ()=>{
+    $('#meSwitch').disabled = true;
+    if(!DEMO_VIEW){
+      await unregisterPush();
+      try{ await signOut(auth); }catch(e){}
+      rememberPortal(false);
+    }
+    if(window.FSApp) FSApp.exitToStart();
   });
 
   /* the member's sign-off — on today's card in the upcoming list as well as
@@ -2162,7 +2292,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      closes it instead of leaving the page (the home page's overlays already
      work this way). A click handler passes its event as the first argument,
      hence fromPop === true rather than a truthy test. */
-  const ovOpen = name => { try{ history.pushState({ ov:name }, ''); }catch(e){} };
+  /* the store app's tab bar keeps the open tab in history.state (fsTab) —
+     carry it along, so this entry still names the tab it was opened from */
+  const ovOpen = name => { try{ history.pushState({ ...(history.state && typeof history.state === 'object' ? history.state : {}), ov:name }, ''); }catch(e){} };
   const ovClosed = (name, fromPop) => {
     if(!fromPop && history.state && history.state.ov === name){ try{ history.back(); }catch(e){} }
   };
@@ -2174,6 +2306,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#edBackdrop').hidden = false; $('#edSheet').hidden = false;
     document.documentElement.classList.add('ed-lock');
     ovOpen('ed');
+    if(window.FSApp) FSApp.hide();   /* a modal sheet: the app's tab bar steps aside */
     setTimeout(()=>$('#edClose').focus(), 60);
   }
   function closeEd(fromPop){
@@ -2181,6 +2314,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _edOpen = null;
     $('#edBackdrop').hidden = true; $('#edSheet').hidden = true;
     document.documentElement.classList.remove('ed-lock');
+    if(window.FSApp) FSApp.show();   /* the bar, and its body padding, back before the scroll is put back */
     window.scrollTo(0, _edScrollY);
     ovClosed('ed', fromPop === true);
   }

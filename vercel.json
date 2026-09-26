@@ -18,7 +18,7 @@
       ]
     },
     {
-      "source": "/(admin|client|team|studio)(/.*)?",
+      "source": "/(admin|client|team|studio|start)(/.*)?",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
       ]

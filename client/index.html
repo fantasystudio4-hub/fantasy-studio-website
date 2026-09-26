@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<script>
+/* app mode: the Capacitor webview carries this marker; browsers never do */
+if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
+</script>
 <title>Fantasy Studio — My Booking</title>
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="../icons/icon-192.png" />
@@ -320,7 +324,48 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
 .gbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
+
+/* ==== store app: bottom tabs (html.fs-app only) ====
+   app-shell.js sets html[data-tab]. Every booking card still carries every
+   section, exactly as on the website; the open tab decides which of them
+   show, so the renderer, the countdown and the snapshot listener run
+   untouched. The card header stays on every tab, so two bookings still read
+   as two. A browser never has html.fs-app and matches none of this. */
+html.fs-app[data-tab] #dashView [data-tab]{display:none}
+html.fs-app[data-tab="booking"]  #dashView [data-tab~="booking"],
+html.fs-app[data-tab="schedule"] #dashView [data-tab~="schedule"],
+html.fs-app[data-tab="payments"] #dashView [data-tab~="payments"],
+html.fs-app[data-tab="me"]       #dashView [data-tab~="me"]{display:block}
+/* a booking folded away from its header stays folded whichever tab is open */
+html.fs-app[data-tab] #dashView .pkg.collapsed .sec{display:none}
+/* the greeting's top margin led the page; on the other tabs a card does */
+html.fs-app[data-tab] #dashView{padding-top:1rem}
+html.fs-app[data-tab] #dashView .hello{margin-top:.3rem}
+/* on a tab the last section shown is rarely the card's last child, so the
+   dashed rule goes above each section instead of below it */
+html.fs-app[data-tab] #dashView .pkg-h{border-bottom:0}
+html.fs-app[data-tab] #dashView .pkg > [data-tab]{border-bottom:0;border-top:1px dashed var(--line)}
+/* Home is website chrome (fs-web-only); the sibling rule above still fires
+   for a hidden Home, which would pull Logout in from the right */
+html.fs-app .hd .back + .out{margin-left:auto}
+/* while the bar is up, signing out lives on the Me tab */
+html.fs-app.fs-tabs-on #logoutBtn{display:none}
+/* the toast and the page's own bottom padding clear the bar (the bar's
+   height already includes the safe area) */
+html.fs-app.fs-tabs-on .toast{bottom:calc(var(--fs-tabs-h) + 14px)}
+html.fs-app.fs-tabs-on .wrap{padding-bottom:24px}
+/* the Me tab's rows: links and buttons drawn the same */
+html.fs-app .merow{display:flex;align-items:center;justify-content:space-between;gap:.6rem;width:100%;min-height:48px;
+  padding:.5rem 0;margin:0;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;
+  color:var(--text);font:inherit;font-size:.9rem;text-align:left;text-decoration:none;cursor:pointer}
+html.fs-app .merow:last-child{border-bottom:0}
+html.fs-app .merow b{color:var(--mut);font-weight:500;font-size:.85rem;flex:0 0 auto}
+html.fs-app .merow.danger{color:var(--err)}
+html.fs-app .merow:active{background:rgba(184,144,43,.08)}
 </style>
+<!-- the store app's shell: the fs-app-only / fs-web-only helpers and the tab
+     bar. A browser matches nothing in it but the one rule that hides app-only bits. -->
+<link rel="stylesheet" href="../app-shell.css" />
 </head>
 <body>
 <noscript>
@@ -350,7 +395,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   <div class="hd">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Client Area</span></div>
-    <a class="back" id="backLink" href="../">Home</a>
+    <a class="back fs-web-only" id="backLink" href="../">Home</a>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
@@ -369,7 +414,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div id="phoneStep">
         <div class="fld"><label>Mobile number</label>
           <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
-          <div class="cchint">Outside India? Change 91 to your country code.</div>
+          <div class="cchint fs-web-only">Outside India? Change 91 to your country code.</div>
         </div>
         <button class="gbtn" id="sendOtp">Get OTP</button>
         <div class="nobook" id="noBook" hidden>
@@ -393,8 +438,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div class="note">Use the same mobile number you gave the studio while booking.</div>
       <!-- crew arrive at this link too: their number is not a client's, so the
            OTP here would only ever tell them "no booking found" -->
-      <a class="crewlink" href="../team/">🎬 Fantasy Studio crew? <b>Sign in here</b> →</a>
-      <a class="crewlink" style="margin-top:.4rem;padding-top:.5rem;border-top:0" href="../studio/">🏢 Partner studio? <b>Sign in here</b> →</a>
+      <a class="crewlink fs-web-only" href="../team/">🎬 Fantasy Studio crew? <b>Sign in here</b> →</a>
+      <a class="crewlink fs-web-only" style="margin-top:.4rem;padding-top:.5rem;border-top:0" href="../studio/">🏢 Partner studio? <b>Sign in here</b> →</a>
+      <!-- the store app has one door out of this box: its own chooser -->
+      <div class="fs-app-only"><a class="crewlink" href="../start/">Not a client? <b>Choose another sign-in</b> →</a></div>
     </div>
   </div>
 
@@ -406,7 +453,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
       <div id="linkPhoneStep">
         <div class="fld"><label>Mobile number</label>
           <div class="phwrap"><b>+</b><input id="linkCc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="linkPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" /></div>
-          <div class="cchint">Outside India? Change 91 to your country code.</div>
+          <div class="cchint fs-web-only">Outside India? Change 91 to your country code.</div>
         </div>
         <button class="gbtn" id="linkSend">Get OTP</button>
       </div>
@@ -425,14 +472,36 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 
   <!-- dashboard -->
   <div id="dashView" hidden>
-    <h1 class="hello" id="hello">Hi!</h1>
-    <p id="helloSub"></p>
-    <div class="nextup" id="nextUp" hidden></div>
+    <!-- data-tab names the store app's tab(s) a block belongs to; a browser
+         ignores it (see the tab rules at the end of the stylesheet) -->
+    <h1 class="hello" id="hello" data-tab="booking">Hi!</h1>
+    <p id="helloSub" data-tab="booking"></p>
+    <div class="nextup" id="nextUp" data-tab="schedule" hidden></div>
+    <!-- store app only: the Me tab. Who is signed in sits above the bookings'
+         own Questions? blocks, the account rows below them. Both are
+         fs-app-only, so a browser never shows them. -->
+    <div class="pkg fs-app-only" id="meWho" data-tab="me">
+      <div class="pkg-h">
+        <div class="ph-t"><h2 id="meName">Client</h2><span class="ph-when" id="mePhone"></span></div>
+        <span class="chip booked">Client</span>
+      </div>
+    </div>
     <!-- Only when there is more than one booking: every booking is open on
          this page now, so a client with three of them needs a way to reach the
          third without scrolling past the other two. -->
-    <div class="jump" id="pkgJump" hidden></div>
+    <div class="jump" id="pkgJump" data-tab="booking schedule payments" hidden></div>
     <div id="pkgList"></div>
+    <div class="pkg fs-app-only" id="meAcct" data-tab="me">
+      <div class="sec"><h3>Your account</h3>
+        <div class="merow"><span>Notifications</span><b id="meNotif">Off</b></div>
+        <a class="merow" href="../privacy/"><span>Privacy policy</span><b>›</b></a>
+        <button class="merow" id="meSwitch" type="button"><span>Switch account</span><b>›</b></button>
+        <button class="merow" id="meSignOut" type="button"><span>Sign out</span><b>›</b></button>
+        <!-- a request to the studio, not a self-service wipe: the booking
+             record has to outlive the sign-in -->
+        <a class="merow danger" id="meDelete" href="#" target="_blank" rel="noopener"><span>Delete my account</span><b>›</b></a>
+      </div>
+    </div>
   </div>
 
   <div id="emptyView" hidden>
@@ -487,9 +556,13 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 }
 </script>
 <script src="../firebase-config.js"></script>
+<!-- the store app's tab bar (window.FSApp); a no-op without html.fs-app -->
+<script src="../app-shell.js"></script>
 <script type="module">
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
+/* the store app, and nothing else: set by the <head> script */
+const FS_APP = document.documentElement.classList.contains('fs-app');
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 /* time of day on an event, denormalised onto the assignment by the panel */
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
@@ -500,6 +573,23 @@ const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
 const show = id => { ['loadingView','loginView','linkView','dashView','emptyView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+
+/* ---------- store app: bottom tabs ----------
+   FSApp.mount returns null without html.fs-app, so a browser never gets a
+   bar. A tab is only html[data-tab]; the stylesheet shows the matching
+   sections (data-tab on the dashboard's blocks and in pkgHTML). Mounted
+   before Firebase loads, so the bar is ready whatever the network does; it
+   only shows while the dashboard is on screen. */
+if(window.FSApp) FSApp.mount({
+  portal: 'client',
+  tabs: [
+    { id:'booking',  label:'Booking',  icon:'<svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>' },
+    { id:'schedule', label:'Schedule', icon:'<svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>' },
+    { id:'payments', label:'Payments', icon:'<svg viewBox="0 0 24 24"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>' },
+    { id:'me',       label:'Me',       icon:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>' },
+  ],
+  visibleWhen: () => !$('#dashView').hidden,
+});
 
 const DEFAULT_STEPS = ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'];
 const DEFAULT_CONTACT = { phone:'+91 86868 68803', website:'www.fantasystudio.in',
@@ -849,7 +939,36 @@ $('#linkVerify').addEventListener('click', async ()=>{
 });
 $('#linkBack').addEventListener('click', ()=>{ $('#linkOtpStep').hidden = true; $('#linkPhoneStep').hidden = false; hideErr('#linkErr'); });
 $('#linkLogout').addEventListener('click', ()=>signOut(auth));
-$('#logoutBtn').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
+async function logout(){ await unregisterPush(); signOut(auth); }
+$('#logoutBtn').addEventListener('click', logout);
+
+/* ---------- store app: the Me tab ----------
+   Sign out is the header button's own path. Switch account leaves for
+   /start/, which reads Firebase's IndexedDB record (signOut removes it) and
+   fs_app_portal — both must be gone BEFORE it goes, or /start/ bounces
+   straight back here. Delete my account is a request to the studio over
+   WhatsApp; this page cannot write. */
+if(FS_APP){
+  $('#meSignOut').addEventListener('click', logout);
+  $('#meSwitch').addEventListener('click', async ()=>{
+    await unregisterPush();
+    try{ await signOut(auth); }catch(e){}
+    rememberPortal(false);
+    if(window.FSApp) FSApp.exitToStart(); else location.replace('../start/');
+  });
+}
+function fillMe(user, pkgs){
+  if(!FS_APP) return;
+  /* +919000000001 → +91 90000 00001, as /start/ and the OTP screen print it */
+  const mine = String(user.phoneNumber||'').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+  $('#meName').textContent = (pkgs[0] && pkgs[0].clientName) || user.displayName || 'Client';
+  $('#mePhone').textContent = mine;
+  const ph = (contact().phone||'').replace(/\D/g,'');
+  $('#meDelete').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Please delete my Fantasy Studio account for ' + mine);
+  /* registerPush keeps the token it registered; no token, no alerts */
+  let on = false; try{ on = !!localStorage.getItem('fs_push_token'); }catch(e){}
+  $('#meNotif').textContent = on ? 'On' : 'Off';
+}
 
 /* ---------- routing ---------- */
 onAuthStateChanged(auth, user=>{ rememberPortal(!!user); route(user); });
@@ -973,6 +1092,7 @@ function renderPackages(snap, user){
   const name = pkgs[0].clientName || user.displayName || '';
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
   $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio — all of them are below.`;
+  fillMe(user, pkgs);
   renderJump(pkgs);
   renderNextUp(pkgs);
   /* Which bookings are open right now. On the first paint there is nothing to
@@ -1009,7 +1129,8 @@ function renderPackages(snap, user){
     }
   }
   show('dashView');
-  if(_pkgFirst){ _pkgFirst = false; registerPush(user); }
+  /* the Me tab's Notifications row reads the token registerPush leaves */
+  if(_pkgFirst){ _pkgFirst = false; registerPush(user).then(()=>fillMe(user, pkgs)); }
 }
 /* The pay sheet lives outside #pkgList, so a re-render leaves it untouched —
    including its prefilled amount. If the studio records a payment while the
@@ -1236,10 +1357,12 @@ function openPay(bal, quoteNo, pid){
   const was = $('#paySheet').classList.contains('open');
   $('#paySheet').classList.add('open'); $('#payBack').classList.add('open');
   if(!was) ovOpen('pay');
+  if(window.FSApp) FSApp.hide();   /* the store app's tab bar would sit over the sheet */
 }
 function closePay(fromPop){
   if(!$('#paySheet').classList.contains('open')) return;
   $('#paySheet').classList.remove('open'); $('#payBack').classList.remove('open');
+  if(window.FSApp) FSApp.show();
   ovClosed('pay', fromPop === true);
 }
 /* The sheet takes a history entry, so Back — the phone's or the browser's —
@@ -1386,7 +1509,7 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
   const alb = (x.album && Number(x.album.sheets)>0)
     ? `<div class="ln"><span>Premium album</span><span>${Number(x.album.sheets)} sheets</span></div>` : '';
   const addons = (x.addons||[]).length
-    ? `<div class="sec"><h3>Included extras</h3><ul class="addons">${x.addons.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>` : '';
+    ? `<div class="sec" data-tab="booking"><h3>Included extras</h3><ul class="addons">${x.addons.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>` : '';
   const pays = (x.payments||[]).length
     ? `<div class="sec"><h3>Payments received</h3>${x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
   const curStep = steps.find(s=>!(s in done));
@@ -1419,7 +1542,7 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
     : _daysTo != null ? `Your dates are locked in. ${_daysTo} day${_daysTo===1?'':'s'} to go.`
     : 'Your booking is confirmed. We will confirm the dates with you shortly.';
   const stage = (st === 'booked' || st === 'delivered')
-    ? `<div class="stage">
+    ? `<div class="stage" data-tab="booking">
          <div class="stage-row">
            ${STAGES.map((lab,i)=>`
              <div class="stg ${i < stageIdx ? 'past' : i === stageIdx ? 'now' : ''}">
@@ -1442,7 +1565,7 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
   const _done = (st === 'delivered');
   const pctShown = _done ? 100 : pct;
   const track = (st==='booked'||st==='delivered') && steps.length
-    ? `<div class="sec"><h3>Your photos &amp; films</h3>
+    ? `<div class="sec" data-tab="booking"><h3>Your photos &amp; films</h3>
         <div class="dring">
           <span class="rw">
             <svg viewBox="0 0 62 62" aria-hidden="true">
@@ -1500,10 +1623,10 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
       ${canToggle ? '<span class="chev">▾</span>' : ''}
     </div>
     ${stage}
-    <div class="sec"><h3>${_dayCount > 1 ? `Your ${_dayCount} days` : 'Your event'}</h3>${events || '<div class="evm">Details coming soon.</div>'}</div>
+    <div class="sec" data-tab="booking schedule"><h3>${_dayCount > 1 ? `Your ${_dayCount} days` : 'Your event'}</h3>${events || '<div class="evm">Details coming soon.</div>'}</div>
     ${addons}
     ${track}
-    <div class="sec pricing"><h3>Payment</h3>
+    <div class="sec pricing" data-tab="payments"><h3>Payment</h3>
       <div class="sums">
         <div><b>${inr(tt.finalPrice||0)}</b><span>package</span></div>
         <div><b>${inr(paid)}</b><span>paid</span></div>
@@ -1531,7 +1654,7 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
           x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}` : ''}
       </details>` : ''}
     </div>
-    <div class="sec"><h3>Questions?</h3>
+    <div class="sec" data-tab="me"><h3>Questions?</h3>
       <p class="qref">Quote ${esc(x.quoteNo||'—')} — quote this if you message us.</p>
       <div class="contact">
         <a href="tel:+${ph}">📞 Call the studio</a>

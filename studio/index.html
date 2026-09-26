@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<script>
+/* app mode: the Capacitor webview carries this marker; browsers never do */
+if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Fantasy Studio — Partner</title>
 <meta name="robots" content="noindex, nofollow" />
@@ -285,7 +289,50 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* ==== store app only (html.fs-app, set by the first script in <head>) ====
+   The bottom tab bar comes from ../app-shell.js; these rules say which of
+   the existing sections each tab shows. Everything stays in the DOM, so the
+   renderers and the live listeners never know about the tabs. The greeting
+   (#helloBox) stays on every tab. A browser matches none of this. */
+html.fs-app[data-tab] #nextupBox,html.fs-app[data-tab] #schedBox,
+html.fs-app[data-tab] #tilesBox,html.fs-app[data-tab] #jobsBox,
+html.fs-app[data-tab] #ledgerBox,html.fs-app[data-tab] #ratesBox,
+html.fs-app[data-tab] #meWho,html.fs-app[data-tab] #helpBox,html.fs-app[data-tab] #meBox{display:none}
+html.fs-app[data-tab="jobs"] #tilesBox,html.fs-app[data-tab="jobs"] #jobsBox,
+html.fs-app[data-tab="schedule"] #nextupBox,html.fs-app[data-tab="schedule"] #schedBox,
+html.fs-app[data-tab="account"] #ledgerBox,html.fs-app[data-tab="account"] #ratesBox,
+html.fs-app[data-tab="me"] #meWho,html.fs-app[data-tab="me"] #helpBox,html.fs-app[data-tab="me"] #meBox{display:block}
+/* the toast rises above the bar instead of hiding behind it */
+html.fs-app.fs-tabs-on .toast{bottom:calc(var(--fs-tabs-h) + 14px)}
+html.fs-app.fs-tabs-on #logoutBtn{display:none}   /* Me › Sign out does this job */
+/* Schedule tab: every upcoming event across the jobs, one line each */
+html.fs-app .sch{display:flex;align-items:flex-start;gap:.8rem;padding:.6rem 1rem;border-bottom:1px dashed var(--line)}
+html.fs-app .sch:last-child{border-bottom:0}
+html.fs-app .sch-d{flex:none;width:44px;text-align:center;line-height:1.1}
+html.fs-app .sch-d b{display:block;font-family:var(--serif);font-size:1.25rem;color:var(--gold-b);font-variant-numeric:tabular-nums}
+html.fs-app .sch-d span{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+html.fs-app .sch-t{flex:1;min-width:0}
+html.fs-app .sch-t b{font-weight:500;overflow-wrap:anywhere}
+html.fs-app .sch-w{flex:none;font-size:.7rem;color:var(--mut);letter-spacing:.04em;white-space:nowrap;padding-top:.2rem}
+html.fs-app .sch.today .sch-w{color:var(--gold-b);font-weight:600}
+/* Me tab: who is signed in, then one row per action */
+html.fs-app .me{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:.9rem;overflow:hidden}
+html.fs-app .me-who{padding:.9rem 1rem}
+html.fs-app .me-who b{display:block;font-family:var(--serif);font-size:1.05rem}
+html.fs-app .me-who span{font-size:.8rem;color:var(--mut)}
+html.fs-app .me-row{display:flex;align-items:center;gap:.7rem;width:100%;min-height:52px;padding:.65rem 1rem;
+  background:none;border:0;border-top:1px dashed var(--line);border-radius:0;color:var(--text);text-align:left;text-decoration:none;font-size:.92rem;line-height:1.35}
+html.fs-app .me-row:first-child{border-top:0}
+html.fs-app a.me-row,html.fs-app button.me-row{cursor:pointer}
+html.fs-app a.me-row:active,html.fs-app button.me-row:active{background:rgba(184,144,43,.12)}
+html.fs-app .me-ic{flex:none;width:1.5em;text-align:center}
+html.fs-app .me-t{flex:1;min-width:0}
+html.fs-app .me-t em{display:block;font-style:normal;font-size:.76rem;color:var(--mut)}
+html.fs-app .me-go{flex:none;color:var(--mut)}
+html.fs-app .me-row.warn{color:#f0b3a8}
 </style>
+<link rel="stylesheet" href="../app-shell.css" />
 </head>
 <body>
 <noscript>
@@ -316,7 +363,7 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
     <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#B8902B" stroke-width="3"/><text x="50" y="62" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#E2C275">FS</text></svg>
     <div><b>Fantasy Studio</b><span class="tag">Partner</span></div>
     <span class="net" id="netDot" hidden>offline</span>
-    <a class="out" id="homeLink" href="../">Home</a>
+    <a class="out fs-web-only" id="homeLink" href="../">Home</a>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
@@ -334,7 +381,7 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
       <div id="phoneStep">
         <div class="fld"><label>Registered mobile number</label>
           <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
-          <div class="cchint">Outside India? Change 91 to your country code.</div>
+          <div class="cchint fs-web-only">Outside India? Change 91 to your country code.</div>
         </div>
         <button class="gbtn" id="sendOtp">Get OTP</button>
       </div>
@@ -357,8 +404,10 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
       </div>
       <div class="err" id="loginErr" role="alert" hidden></div>
       <div class="note">Use the mobile number Fantasy Studio has on file for your studio.</div>
-      <a class="crewlink" href="../client/">💍 Booked your own wedding with us? <b>Client login</b> →</a>
-      <a class="crewlink" style="margin-top:.4rem;padding-top:.5rem;border-top:0" href="../team/">🎬 Fantasy Studio crew? <b>Sign in here</b> →</a>
+      <a class="crewlink fs-web-only" href="../client/">💍 Booked your own wedding with us? <b>Client login</b> →</a>
+      <a class="crewlink fs-web-only" style="margin-top:.4rem;padding-top:.5rem;border-top:0" href="../team/">🎬 Fantasy Studio crew? <b>Sign in here</b> →</a>
+      <!-- in the app the other sign-ins live on one page -->
+      <div class="fs-app-only"><a class="crewlink" href="../start/">Not a partner studio? <b>Choose another sign-in</b> →</a></div>
     </div>
   </div>
 
@@ -371,7 +420,9 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
         <a class="mini" id="naWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a>
         <button class="mini" id="naLogout">Sign out</button>
       </div>
-      <a class="crewlink" href="../client/">💍 Looking for your own wedding booking? <b>Client login</b> →</a>
+      <a class="crewlink fs-web-only" href="../client/">💍 Looking for your own wedding booking? <b>Client login</b> →</a>
+      <!-- in the app: this number is signed in here, so sign out first, then the chooser (naSwitch below) -->
+      <div class="fs-app-only"><a class="crewlink" id="naSwitch" href="../start/">Looking for your own booking? <b>Choose another sign-in</b> →</a></div>
     </div>
   </div>
 
@@ -389,16 +440,28 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
   <div id="appView" hidden>
     <div class="hello" id="helloBox"></div>
     <div id="nextupBox"></div>
+    <div id="schedBox" class="fs-app-only"></div>
     <div id="tilesBox"></div>
     <div id="jobsBox"></div>
     <div id="ledgerBox"></div>
     <div id="ratesBox"></div>
+    <div id="meWho" class="fs-app-only me"></div>
     <div class="help" id="helpBox">
       <p>Questions about a job or a payment? We're one tap away.</p>
       <div class="rowbtns">
         <a class="mini" id="helpCall" href="tel:+918686868803">📞 Call</a>
         <a class="mini" id="helpWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a>
       </div>
+    </div>
+    <!-- Me tab (store app): the rows Apple expects an account to have. Delete
+         is a WhatsApp request to the studio, which removes the account from
+         the panel — this page writes nothing. -->
+    <div id="meBox" class="fs-app-only me">
+      <div class="me-row"><span class="me-ic" aria-hidden="true">🔔</span><span class="me-t">Notifications<em id="mePushSt"></em></span></div>
+      <a class="me-row" href="../privacy/"><span class="me-ic" aria-hidden="true">🔒</span><span class="me-t">Privacy policy</span><span class="me-go" aria-hidden="true">→</span></a>
+      <a class="me-row warn" id="meDelete" href="https://wa.me/918686868803" target="_blank" rel="noopener"><span class="me-ic" aria-hidden="true">🗑</span><span class="me-t">Delete my account<em>Sends us a WhatsApp message asking to remove it</em></span><span class="me-go" aria-hidden="true">→</span></a>
+      <button class="me-row" type="button" id="meLogout"><span class="me-ic" aria-hidden="true">↩</span><span class="me-t">Sign out</span></button>
+      <button class="me-row" type="button" id="meSwitch"><span class="me-ic" aria-hidden="true">🔁</span><span class="me-t">Switch account<em>Sign out and choose another sign-in</em></span><span class="me-go" aria-hidden="true">→</span></button>
     </div>
   </div>
 
@@ -423,6 +486,8 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../firebase-config.js"></script>
+<!-- the store app's tab bar; defines window.FSApp, inert in a browser -->
+<script src="../app-shell.js"></script>
 <script>
 /* site-wide worker: network-first pages, so deploys always show instantly */
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
@@ -473,6 +538,9 @@ const db   = getFirestore(app);
    fantasystudio.in the first lock can never hold. */
 const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
                && new URLSearchParams(location.search).has('demo');
+/* the store app (html.fs-app, set in <head>): the tabs, the Schedule list
+   and the Me tab exist only there; a browser never draws them */
+const FS_APP = document.documentElement.classList.contains('fs-app');
 
 /* ---------- shared helpers (same conventions as crew/client portals) ---------- */
 const todayISO = () => new Date().toLocaleDateString('en-CA');
@@ -516,6 +584,8 @@ function applyContact(){
   const wa  = 'https://wa.me/' + contactDigits();
   [['#naCall',tel],['#errCall',tel],['#helpCall',tel]].forEach(([s,h])=>{ const el=$(s); if(el) el.href = h; });
   [['#naWa',wa],['#helpWa',wa]].forEach(([s,h])=>{ const el=$(s); if(el) el.href = h; });
+  /* the Me tab, once drawn, keeps its delete request on the current number */
+  if(FS_APP && $('#meWho').childElementCount) $('#meDelete').href = deleteHref();
 }
 /* kept so the sample account can redraw once the UPI IDs are in (startDemo) */
 const _siteReady = (async ()=>{
@@ -737,9 +807,21 @@ $('#logoutBtn').addEventListener('click', async ()=>{
 });
 $('#naLogout').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
 $('#errRetry').addEventListener('click', ()=>location.reload());
+/* Me tab (store app). Sign out is the header button's own path. Switch
+   account signs out first — signOut clears the saved session and
+   rememberPortal(false) the portal note — or /start/ would find this page
+   still signed in and bounce straight back here. */
+async function switchAccount(){
+  if(!DEMO_VIEW){ await unregisterPush(); await signOut(auth); }
+  rememberPortal(false);
+  if(window.FSApp) FSApp.exitToStart(); else location.replace('../start/');
+}
+$('#meLogout').addEventListener('click', ()=>$('#logoutBtn').click());
+$('#meSwitch').addEventListener('click', switchAccount);
+$('#naSwitch').addEventListener('click', e=>{ e.preventDefault(); switchAccount(); });
 
 /* ---------- data: my studio(s) + their jobs, live ---------- */
-let _phone10 = '';
+let _phone10 = '', _phoneFull = '';
 let STUS = [];                       // my studio docs
 let PKGMAP = new Map();              // studioId -> its packages
 let _stuUnsub = null, _pkgUnsubs = new Map();
@@ -937,7 +1019,7 @@ onAuthStateChanged(auth, user=>{
   endLoginSend();
   if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
   rememberPortal(true);
-  _phone10 = user.phoneNumber.slice(-10);
+  _phone10 = user.phoneNumber.slice(-10); _phoneFull = user.phoneNumber;
   /* the review number: sample jobs, and not one Firestore listener */
   if(user.phoneNumber === DEMO_PHONE){ startDemo(); return; }
   show('loadingView');
@@ -1044,6 +1126,7 @@ function render(){
   renderJobs(jobs);
   renderLedger(jobs);
   renderRates();
+  if(FS_APP) renderMe();
 }
 
 /* the greeting reads the partner's own clock — a studio opening this at
@@ -1074,6 +1157,7 @@ function renderNextUp(jobs){
     (x.events||[]).filter(e=>isDate(e.date) && e.date >= t)
       .map(e=>({ ...e, job: x }))
   ).sort((a,b)=>a.date.localeCompare(b.date));
+  if(FS_APP) renderSched(upcoming);
   const nu = upcoming[0];
   if(!nu){ $('#nextupBox').innerHTML = ''; return; }
   $('#nextupBox').innerHTML = `
@@ -1104,6 +1188,48 @@ function renderNextUp(jobs){
   };
   tick();
   _cdT = setInterval(tick, 30000);
+}
+
+/* Schedule tab (store app): the same upcoming list renderNextUp computes,
+   every event across every job, one line each, soonest first */
+function renderSched(upcoming){
+  const box = $('#schedBox');
+  if(!upcoming.length){
+    box.innerHTML = '<div class="empty"><h2>Nothing coming up</h2>Upcoming events across your jobs appear here.</div>';
+    return;
+  }
+  const t = todayISO();
+  const day0 = new Date(t + 'T00:00');
+  const rows = upcoming.map(e=>{
+    const d = new Date(e.date + 'T00:00');
+    const days = Math.round((d - day0)/864e5);
+    const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'in ' + days + ' days';
+    return `<div class="sch${days === 0 ? ' today' : ''}">
+      <div class="sch-d"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
+      <div class="sch-t"><b>${esc(e.title||'Event')}${slotTag(e.slot)}</b>
+        <div class="evm">${esc(jobLabel(e.job))}${e.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(e.venue)}" target="_blank" rel="noopener">📍 ${esc(e.venue)}</a>` : ''}</div>
+      </div>
+      <span class="sch-w">${when}</span>
+    </div>`;
+  }).join('');
+  box.innerHTML = `<h2 class="secl">Coming up <small>${upcoming.length} event${upcoming.length === 1 ? '' : 's'}</small></h2>
+    <div class="ledger">${rows}</div>`;
+}
+
+/* Me tab (store app). +919000000001 → +91 90000 00001, as /start/ prints it;
+   the ?demo view never signed in, so it reads the sample studio's number. */
+const mePhone = () => (_phoneFull || (STUS[0] && STUS[0].phone10 ? '+91' + STUS[0].phone10 : ''))
+  .replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+/* a WhatsApp message to the studio, nothing written anywhere: the owner
+   removes the account from the panel */
+const deleteHref = () => 'https://wa.me/' + contactDigits() + '?text='
+  + encodeURIComponent('Please delete my Fantasy Studio account for ' + mePhone());
+function renderMe(){
+  $('#meWho').innerHTML = `<div class="me-who"><b>${esc(STUS.map(s=>s.name||'Your studio').join(' · '))}</b>
+    <span>${esc(mePhone())} · Partner studio</span></div>`;
+  let tok = ''; try{ tok = localStorage.getItem(PUSH_KEY) || ''; }catch(e){}
+  $('#mePushSt').textContent = tok ? 'On for this phone' : 'Not on for this phone';
+  $('#meDelete').href = deleteHref();
 }
 
 /* In the store app a downloaded file has nowhere to go — neither app's
@@ -1423,7 +1549,11 @@ function renderLedger(jobs){
   const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'))
     .sort((a,b)=>String(a.quoteDate||'').localeCompare(String(b.quoteDate||'')));   /* oldest first — running balance */
   const box = $('#ledgerBox');
-  if(!conf.length){ box.innerHTML = ''; return; }
+  if(!conf.length){
+    /* in the app this is a whole tab, so say why it is empty */
+    box.innerHTML = FS_APP ? '<div class="empty"><h2>No account yet</h2>Your first confirmed job opens your account with Fantasy Studio here.</div>' : '';
+    return;
+  }
   let run = 0;
   const rows = conf.map(x=>{
     const t = x.totals||{};
@@ -1538,11 +1668,13 @@ function openPay(bal, q, jobId){
   renderPayApps();
   const was = $('#paySheet').classList.contains('open');
   $('#payBack').classList.add('open'); $('#paySheet').classList.add('open');
+  if(window.FSApp) FSApp.hide();   /* the app's tab bar, under the sheet otherwise */
   if(!was) ovOpen('pay');
 }
 function closePay(fromPop){
   if(!$('#paySheet').classList.contains('open')) return;
   $('#payBack').classList.remove('open'); $('#paySheet').classList.remove('open');
+  if(window.FSApp) FSApp.show();
   ovClosed('pay', fromPop === true);
 }
 /* The sheet takes a history entry, so Back — the phone's or the browser's —
@@ -1563,6 +1695,21 @@ $('#payHalf').addEventListener('click', ()=>{ $('#payAmt').value = Math.ceil((_p
 $('#vpaCopy').addEventListener('click', async ()=>{
   try{ await navigator.clipboard.writeText($('#vpaText').textContent); toast('UPI ID copied'); }
   catch(e){ toast('Could not copy — long-press the ID instead'); }
+});
+
+/* The store app's bottom tab bar. mount() returns null in a browser (no
+   html.fs-app), so nothing here touches the website. Which sections each
+   tab shows is the CSS block at the end of <style>; the bar itself only
+   appears while the signed-in view is on screen. */
+if(window.FSApp) FSApp.mount({
+  portal: 'studio',
+  visibleWhen: ()=>!$('#appView').hidden,
+  tabs: [
+    { id:'jobs',     label:'Jobs',     icon:'<svg viewBox="0 0 24 24"><path d="M9 4h6a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6a2 2 0 0 1 2-2zm0 3h6V6H9v1z"/></svg>' },
+    { id:'schedule', label:'Schedule', icon:'<svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2zM5 10v10h14V10H5z"/></svg>' },
+    { id:'account',  label:'Account',  icon:'<svg viewBox="0 0 24 24"><path d="M5 2h14v20l-2.5-1.5L14 22l-2-1.5L10 22l-2.5-1.5L5 22V2zm3 5v2h8V7H8zm0 4v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>' },
+    { id:'me',       label:'Me',       icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6z"/></svg>' },
+  ],
 });
 
 /* Last in the module on purpose: render() reads lets declared all through

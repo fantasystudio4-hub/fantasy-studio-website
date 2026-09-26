@@ -2,7 +2,9 @@
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets, and
    network-first-with-timeout for app code (see APP_CODE below). */
-const CACHE = 'fs-cache-v15';   // v15: catalog.js gained MAX_QTY (10 per service),
+const CACHE = 'fs-cache-v16';   // v16: the store app's entry page, start/, and the
+                                //      app shell (app-shell.css/js) every portal loads
+                                // v15: catalog.js gained MAX_QTY (10 per service),
                                 //      which the builder reads
                                 // v14: the album came out of the builder — a cached
                                 //      v13 catalog.js priced st.albumSheets (now absent)
@@ -13,6 +15,7 @@ const PREFIX = 'fs-cache-';
 // open; both are cached on their own first visit by the asset path below.
 const PRECACHE = [
   './',
+  'start/',            // the store app's entry page: must open with no signal
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -115,7 +118,10 @@ self.addEventListener('fetch', e => {
           }
           return res;
         })
-        .catch(() => caches.match(req).then(m => m || caches.match('./')))
+        // offline and never cached: the home page falls back to itself, every
+        // other page to the app entry (start/ is precached), so an offline
+        // in-app navigation can never land on the brochure
+        .catch(() => caches.match(req).then(m => m || caches.match(url.pathname === '/' ? './' : 'start/')))
     );
     return;
   }
@@ -136,7 +142,9 @@ self.addEventListener('fetch', e => {
   // copy is served and the panel boots — which is the venue-on-one-bar case
   // the app is built around — while the fetch carries on and refreshes the
   // cache for next time.
-  if (url.origin === location.origin && /\/(app|tokens|ui|catalog)\.(js|css)$/.test(url.pathname)) {
+  // app-shell.css/js belong here too: a portal page deployed with a new tab
+  // bar against yesterday's cached shell is the same skew.
+  if (url.origin === location.origin && /\/(app|app-shell|tokens|ui|catalog)\.(js|css)$/.test(url.pathname)) {
     e.respondWith(freshOrCached(req, 2500));
     return;
   }

@@ -7,8 +7,9 @@
 <meta name="robots" content="noindex, nofollow" />
 <script>
 // Admin is browser/PWA only. The store app's webview appends this marker to
-// its user agent; anything carrying it gets bounced before the page loads.
-if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) location.replace('/');
+// its user agent; anything carrying it gets bounced before the page loads —
+// to the app's own entry page, never the brochure.
+if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) location.replace('/start/');
 </script>
 <link rel="icon" href="../icons/admin-192.png" />
 <link rel="manifest" href="manifest.webmanifest" />

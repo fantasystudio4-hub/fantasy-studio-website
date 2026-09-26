@@ -4,21 +4,24 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <script>
-/* The store app always launches here (capacitor server.url), so a crew member
+/* The store app used to launch here (capacitor server.url), so a crew member
    who closed the app reopened on the brochure, not their schedule, though
    still signed in. The crew, client and partner portals note in the app that
    this phone is signed in to them (fs_app_portal); on a cold start only,
-   go straight back there. sessionStorage dies with the app, so a tap on
-   Home from inside the app still shows this page. Runs in <head>, before
-   anything paints. */
+   go straight back there. Signed in to nothing, the app goes to its own
+   entry page, /start/ (Apple, Guideline 4.2: the brochure is not an app) —
+   ?web is the escape hatch that shows this page in the app regardless.
+   Every visit, not just the first: nothing in the app links here on purpose,
+   so a plain '/' in-app is always a stray (a Back link, a universal link)
+   and must never land on the brochure. Runs in <head>, before anything
+   paints. */
 (function(){
   try{
-    if(navigator.userAgent.indexOf('FantasyStudioApp') === -1) return;
-    if(sessionStorage.getItem('fs_app_started')) return;
-    sessionStorage.setItem('fs_app_started', '1');
-    if(location.hash || location.search) return;   /* a shared or section link */
+    if(navigator.userAgent.indexOf('FantasyStudioApp') === -1 && !window.Capacitor) return;
+    if(location.hash || location.search) return;   /* a shared or section link, or ?web */
     const p = localStorage.getItem('fs_app_portal');
     if(p === 'team/' || p === 'client/' || p === 'studio/') location.replace(p);
+    else location.replace('start/');
   }catch(e){}
 })();
 </script>
@@ -1662,9 +1665,14 @@ scrollSpy();
 try{
   const p = localStorage.getItem('fs_app_portal');
   const label = { 'team/':'Crew Page', 'studio/':'Partner Page' }[p];
-  const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1;
+  const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || !!window.Capacitor;
   if(label && inApp)
     $$('a[href="client/"]').forEach(a=>{ a.setAttribute('href', p); a.textContent = label; });
+  /* In the app, signed in to nothing: Login is the app's own sign-in page,
+     /start/, not the chooser overlay — a plain link, so it never stacks a
+     history entry on the brochure. A signed-in client keeps client/. */
+  else if(inApp && p !== 'client/')
+    $$('a[href="client/"]').forEach(a=>a.setAttribute('href', 'start/'));
   /* Signed in to nothing: Login asks who you are rather than assuming a
      client — crew and partners otherwise had to spot a small link at the
      bottom of the client sign-in. In the app and on the website alike
@@ -1709,7 +1717,9 @@ $('#rpCancel').addEventListener('click', ()=>closeRolePick());
    (before the load-time scroll reads it) and ask. */
 if(location.hash === '#signin'){
   try{ history.replaceState(history.state, '', location.pathname + location.search); }catch(e){}
-  openRolePick();
+  /* in the app the chooser is its own page */
+  if(navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) location.replace('start/');
+  else openRolePick();
 }
 
 /* retry any enquiry that could not be written on a previous visit */

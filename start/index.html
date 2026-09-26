@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sign in — Fantasy Studio</title>
+<!-- The store app's entry page (capacitor server.url). Not linked from the
+     site: a browser that lands here just gets the sign-in chooser. -->
+<meta name="robots" content="noindex, nofollow" />
+<script>
+/* app mode: the Capacitor webview carries this marker; browsers never do */
+if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
+</script>
+<script>
+/* Already signed in on this phone? Go straight there, before anything paints.
+   1. fs_app_portal — the page the app was last signed in to (each portal
+      writes it on sign-in in the app and removes it on sign-out).
+   2. Failing that, Firebase's own saved sessions: the three portals are
+      separate Firebase apps named client, crew and studio, and the auth SDK
+      keeps each session in IndexedDB under firebase:authUser:<key>:<name>.
+      One session → that page. Several → "Continue as" rows (the script at
+      the end of the page draws them). None → the chooser below.
+   Only ever LOOK at the database: opening a name that does not exist would
+   create it empty, and the auth SDK would then find no store inside it. */
+(function(){
+  var MAP = { client:'client/', crew:'team/', studio:'studio/' };
+  var html = document.documentElement;
+  html.classList.add('fs-checking');
+  function go(p){ location.replace('../' + p); }
+  try{
+    var p = localStorage.getItem('fs_app_portal');
+    if(p === 'client/' || p === 'team/' || p === 'studio/'){ go(p); return; }
+  }catch(e){}
+  var done = false;
+  var timer = setTimeout(function(){ finish([]); }, 1500);   /* a missing DB must never hold the page */
+  function finish(found){
+    if(done) return; done = true; clearTimeout(timer);
+    if(found.length === 1){ go(found[0].portal); return; }
+    window.FS_SESSIONS = found;
+    if(window.FS_ON_SESSIONS) window.FS_ON_SESSIONS(found);   /* the tail script, if it got there first */
+    html.classList.remove('fs-checking');
+  }
+  try{
+    if(!window.indexedDB){ finish([]); return; }
+    var look = function(){
+      var req = indexedDB.open('firebaseLocalStorageDb');
+      /* upgradeneeded means the DB was not there: abort so it is not created */
+      req.onupgradeneeded = function(){ try{ req.transaction.abort(); }catch(e){} finish([]); };
+      req.onerror = req.onblocked = function(){ finish([]); };
+      req.onsuccess = function(){
+        var db = req.result, found = [];
+        try{
+          if(!db.objectStoreNames.contains('firebaseLocalStorage')){ db.close(); finish([]); return; }
+          var all = db.transaction('firebaseLocalStorage','readonly').objectStore('firebaseLocalStorage').getAll();
+          all.onsuccess = function(){
+            (all.result || []).forEach(function(r){
+              var m = r && typeof r.fbase_key === 'string' && r.value && /^firebase:authUser:.*:(client|crew|studio)$/.exec(r.fbase_key);
+              if(m && !found.some(function(f){ return f.portal === MAP[m[1]]; }))
+                found.push({ role:m[1], portal:MAP[m[1]], phone:(r.value.phoneNumber || '') });
+            });
+            try{ db.close(); }catch(e){}
+            finish(found);
+          };
+          all.onerror = function(){ try{ db.close(); }catch(e){} finish([]); };
+        }catch(e){ try{ db.close(); }catch(e2){} finish([]); }
+      };
+    };
+    /* where the browser can list its databases, skip the open when ours is absent */
+    if(indexedDB.databases) indexedDB.databases().then(function(dbs){
+      if(dbs.some(function(d){ return d && d.name === 'firebaseLocalStorageDb'; })) look(); else finish([]);
+    }, function(){ look(); });
+    else look();
+  }catch(e){ finish([]); }
+})();
+</script>
+<meta name="theme-color" content="#14110a" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.28);
+  --text:#f3ecdc; --mut:#b3a98f;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{
+  font-family:var(--sans);color:var(--text);line-height:1.5;
+  background:linear-gradient(180deg,#1a150c,#14110a 40%);
+  min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;
+  /* Android draws the page under the status bar and passes its height as
+     --safe-area-inset-top; env() covers iOS. max() never adds them twice. */
+  padding:calc(28px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))
+          max(1.2rem,env(safe-area-inset-right))
+          calc(24px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))
+          max(1.2rem,env(safe-area-inset-left));
+}
+main{width:100%;max-width:420px;margin:auto 0;text-align:center}
+.logo-mark{width:58px;height:58px;margin:0 auto 1rem;display:block}
+h1{font-family:var(--serif);font-weight:600;font-size:1.65rem;line-height:1.15;color:#fff;margin-bottom:.35rem}
+.sub{color:var(--mut);font-size:.92rem;margin-bottom:1.5rem}
+/* the rows come after the sessions check, never before */
+html.fs-checking .rows{visibility:hidden}
+.opt{
+  display:flex;align-items:center;gap:.9rem;width:100%;min-height:64px;text-align:left;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:.85rem 1rem;margin-bottom:.7rem;color:var(--text);text-decoration:none;
+  transition:border-color .2s, background .2s;
+}
+.opt:active{border-color:var(--gold);background:rgba(184,144,43,.16)}
+@media(hover:hover){ .opt:hover{border-color:var(--gold)} }
+.ic{flex:0 0 auto;width:1.6em;font-size:1.5rem;line-height:1;text-align:center}
+.t{flex:1;min-width:0}
+.t b{display:block;font-family:var(--serif);font-weight:600;font-size:1.08rem;color:#fff}
+.t em{display:block;font-style:normal;font-size:.8rem;color:var(--mut);margin-top:.1rem}
+.go{flex:0 0 auto;color:var(--gold-b);font-size:1.1rem}
+/* saved sessions sit above the chooser, in gold */
+.cont .opt{border-color:rgba(226,194,117,.6);background:rgba(184,144,43,.12)}
+.cont .t b{color:var(--gold-b)}
+.or{color:var(--mut);font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;margin:.4rem 0 .9rem}
+/* the one signed-out path: a quote, for anyone */
+.plan{margin-top:.5rem;background:none;border-style:dashed}
+.plan .t b{font-family:var(--sans);font-weight:500;font-size:1rem}
+footer{margin-top:1.4rem;color:var(--mut);font-size:.72rem;letter-spacing:.06em}
+footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.9em .6em;margin:-.9em -.6em}   /* 44px target */
+@media (prefers-reduced-motion:reduce){ .opt{transition:none} }
+</style>
+</head>
+<body>
+<main>
+  <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
+    <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+    <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+    <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+    <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+    <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
+  </svg>
+  <h1>Sign in to Fantasy Studio</h1>
+  <p class="sub" id="sub">Who are you signing in as?</p>
+
+  <div class="rows">
+    <!-- saved sessions on this phone, when there is more than one -->
+    <div class="cont" id="cont" hidden></div>
+
+    <a class="opt" href="../client/" data-role="client">
+      <span class="ic" aria-hidden="true">💍</span>
+      <span class="t"><b>My booking</b><em>I booked my event with Fantasy Studio</em></span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
+    <a class="opt" href="../team/" data-role="crew">
+      <span class="ic" aria-hidden="true">🎬</span>
+      <span class="t"><b>Crew</b><em>I shoot or edit for Fantasy Studio</em></span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
+    <a class="opt" href="../studio/" data-role="studio">
+      <span class="ic" aria-hidden="true">🏢</span>
+      <span class="t"><b>Partner studio</b><em>My studio books Fantasy Studio for events</em></span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
+    <a class="opt plan" href="../builder/">
+      <span class="ic" aria-hidden="true">✨</span>
+      <span class="t"><b>Plan a shoot — get a quote</b><em>Build a package and see the price live</em></span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
+  </div>
+
+  <footer>Hyderabad · since 2012 · <a href="../privacy/">Privacy</a></footer>
+</main>
+
+<script>
+/* "Continue as …" — drawn only when the head script found more than one
+   saved session; with exactly one it has already left this page */
+(function(){
+  var NAME = { client:'Continue to my booking', crew:'Continue as crew', studio:'Continue as partner studio' };
+  var ICON = { client:'💍', crew:'🎬', studio:'🏢' };
+  function draw(list){
+    if(!list || list.length < 2) return;
+    var box = document.getElementById('cont');
+    list.forEach(function(s){
+      var a = document.createElement('a');
+      a.className = 'opt'; a.href = '../' + s.portal;
+      a.innerHTML = '<span class="ic" aria-hidden="true"></span><span class="t"><b></b><em></em></span><span class="go" aria-hidden="true">→</span>';
+      a.firstChild.textContent = ICON[s.role] || '';
+      a.querySelector('b').textContent = NAME[s.role] || s.role;
+      /* +919000000001 → +91 90000 00001, as the portals print it */
+      var ph = String(s.phone || '').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+      a.querySelector('em').textContent = ph ? 'Signed in as ' + ph : 'Signed in on this phone';
+      box.appendChild(a);
+    });
+    box.hidden = false;
+    document.getElementById('sub').textContent = 'This phone is signed in to more than one page.';
+    var or = document.createElement('p'); or.className = 'or'; or.textContent = 'or sign in as';
+    box.parentNode.insertBefore(or, box.nextSibling);
+  }
+  /* the check may still be running (its 1.5 s ceiling): it calls back */
+  if(window.FS_SESSIONS) draw(window.FS_SESSIONS);
+  else window.FS_ON_SESSIONS = draw;
+})();
+</script>
+</body>
+</html>
