@@ -331,6 +331,14 @@ html.fs-app .me-t{flex:1;min-width:0}
 html.fs-app .me-t em{display:block;font-style:normal;font-size:.76rem;color:var(--mut)}
 html.fs-app .me-go{flex:none;color:var(--mut)}
 html.fs-app .me-row.warn{color:#f0b3a8}
+/* the lock switch on the Me tab: a checkbox drawn as a switch */
+html.fs-app label.me-row{cursor:pointer}
+html.fs-app .me-sw{appearance:none;-webkit-appearance:none;flex:none;width:46px;height:28px;margin:0;border:0;border-radius:14px;
+  background:rgba(179,169,143,.35);position:relative;cursor:pointer;transition:background .18s}
+html.fs-app .me-sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .18s}
+html.fs-app .me-sw:checked{background:linear-gradient(135deg,#C9A347,#8E6E1E)}
+html.fs-app .me-sw:checked::after{transform:translateX(18px)}
+html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
 </style>
 <link rel="stylesheet" href="../app-shell.css" />
 </head>
@@ -458,6 +466,8 @@ html.fs-app .me-row.warn{color:#f0b3a8}
          the panel — this page writes nothing. -->
     <div id="meBox" class="fs-app-only me">
       <div class="me-row"><span class="me-ic" aria-hidden="true">🔔</span><span class="me-t">Notifications<em id="mePushSt"></em></span></div>
+      <!-- the biometric lock: only a build of the app with the plugin shows this row (renderMeLock) -->
+      <label class="me-row" id="meLockRow" hidden><span class="me-ic" aria-hidden="true">🔐</span><span class="me-t"><span id="meLockT">App lock</span><em id="meLockSt"></em></span><input class="me-sw" type="checkbox" role="switch" id="meLock" /></label>
       <a class="me-row" href="../privacy/"><span class="me-ic" aria-hidden="true">🔒</span><span class="me-t">Privacy policy</span><span class="me-go" aria-hidden="true">→</span></a>
       <a class="me-row warn" id="meDelete" href="https://wa.me/918686868803" target="_blank" rel="noopener"><span class="me-ic" aria-hidden="true">🗑</span><span class="me-t">Delete my account<em>Sends us a WhatsApp message asking to remove it</em></span><span class="me-go" aria-hidden="true">→</span></a>
       <button class="me-row" type="button" id="meLogout"><span class="me-ic" aria-hidden="true">↩</span><span class="me-t">Sign out</span></button>
@@ -511,12 +521,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 /* CDN imports can fail on a flaky connection — fail to a view with a call
    button, never a blank page (same guard the client portal carries) */
 let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber;
-let getFirestore, collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot;
+let getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+    collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot;
 try{
   ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
   ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ getFirestore, collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } =
+  ({ getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+     collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   $('#errMsg').textContent = 'Could not reach the sign-in service — check your connection and try again.';
@@ -529,7 +541,19 @@ try{
    here never touches an admin, crew or client session on the same phone */
 const app  = initializeApp(window.FIREBASE_CONFIG, 'studio');
 const auth = getAuth(app);
-const db   = getFirestore(app);
+/* the store app (html.fs-app, set in <head>): the tabs, the Schedule list,
+   the Me tab, the lock and pull-to-refresh exist only there; a browser
+   never draws them */
+const FS_APP = document.documentElement.classList.contains('fs-app');
+/* In the app the jobs are kept on the phone (the persistent cache the crew
+   page uses), so a partner opening this with no signal still sees the last
+   schedule instead of a spinner. Browsers are untouched: getFirestore, as
+   before. */
+let db;
+if(FS_APP){
+  try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+  catch(e){ db = getFirestore(app); }
+}else db = getFirestore(app);
 
 /* Local test hook, the same two locks as the admin panel's ?demo: served from
    localhost AND ?demo in the URL. It opens the signed-in screens on the
@@ -538,9 +562,6 @@ const db   = getFirestore(app);
    fantasystudio.in the first lock can never hold. */
 const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
                && new URLSearchParams(location.search).has('demo');
-/* the store app (html.fs-app, set in <head>): the tabs, the Schedule list
-   and the Me tab exist only there; a browser never draws them */
-const FS_APP = document.documentElement.classList.contains('fs-app');
 
 /* ---------- shared helpers (same conventions as crew/client portals) ---------- */
 const todayISO = () => new Date().toLocaleDateString('en-CA');
@@ -554,6 +575,8 @@ const shMoney = n => { n = Math.round(Number(n)||0);
   if(n >= 1e3) return '₹' + (+((n/1e3).toFixed(1))) + 'k';
   return '₹' + n.toLocaleString('en-IN'); };
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
+/* when a slot's day starts: the countdown and the calendar event both read it */
+const SLOT_HOUR = { morning: 8, evening: 17, full: 8 };
 const slotTag = s => SLOT_LABEL[String(s||'')] ? `<span class="slotpill ${esc(s)}">${esc(SLOT_LABEL[s])}</span>` : '';
 const STATUS_LABEL = s => s === 'unconfirmed' ? 'not confirmed' : s;
 
@@ -587,8 +610,9 @@ function applyContact(){
   /* the Me tab, once drawn, keeps its delete request on the current number */
   if(FS_APP && $('#meWho').childElementCount) $('#meDelete').href = deleteHref();
 }
-/* kept so the sample account can redraw once the UPI IDs are in (startDemo) */
-const _siteReady = (async ()=>{
+/* kept so the sample account can redraw once the UPI IDs are in (startDemo);
+   loadSite() runs again on a pull-to-refresh in the app */
+async function loadSite(){
   try{
     const s = await getDoc(doc(db,'config','site'));
     if(s.exists()){
@@ -612,7 +636,8 @@ const _siteReady = (async ()=>{
     }
   }catch(e){}
   applyContact();
-})();
+}
+const _siteReady = loadSite();
 
 /* ---------- login: pre-OTP check against the hashed phone index ----------
    Fails OPEN — a genuine partner must never be locked out by an offline
@@ -803,16 +828,16 @@ $('#otpBack').addEventListener('click', ()=>{ sendSeq++; sendIdle(); $('#otpStep
 $('#logoutBtn').addEventListener('click', async ()=>{
   /* the ?demo view never signed in: leave it for the plain login screen */
   if(DEMO_VIEW){ location.replace(location.pathname); return; }
-  await unregisterPush(); signOut(auth);
+  await pushOff(); signOut(auth);
 });
-$('#naLogout').addEventListener('click', async ()=>{ await unregisterPush(); signOut(auth); });
+$('#naLogout').addEventListener('click', async ()=>{ await pushOff(); signOut(auth); });
 $('#errRetry').addEventListener('click', ()=>location.reload());
 /* Me tab (store app). Sign out is the header button's own path. Switch
    account signs out first — signOut clears the saved session and
    rememberPortal(false) the portal note — or /start/ would find this page
    still signed in and bounce straight back here. */
 async function switchAccount(){
-  if(!DEMO_VIEW){ await unregisterPush(); await signOut(auth); }
+  if(!DEMO_VIEW){ await pushOff(); await signOut(auth); }
   rememberPortal(false);
   if(window.FSApp) FSApp.exitToStart(); else location.replace('../start/');
 }
@@ -842,6 +867,10 @@ function stopData(){
   _pushFor = '';
   clearTimeout(_noAccessT); _noAccessT = null;
   clearInterval(_cdT);
+  /* the next session unlocks afresh, and a prompt still up for this one
+     can no longer open (or cover) it */
+  _unlocked = false; _locking = null; _lockSess++;
+  if(canLock()) FSApp.lock.hide();
 }
 
 /* the store app always launches on the home page; this tells it to come
@@ -890,6 +919,10 @@ async function unregisterPush(){
     localStorage.removeItem(PUSH_KEY);
   }catch(e){}
 }
+/* deleteDoc waits for the server, which never answers with no signal, so a
+   sign-out gives the clean-up two seconds and then goes anyway: Sign out
+   (the lock screen's way out too) must always work offline */
+function pushOff(){ return Promise.race([unregisterPush(), new Promise(r=>setTimeout(r, 2000))]); }
 
 /* ---------- sample partner account (App Review) ----------
    What the review number sees once signed in, and what ?demo shows locally.
@@ -1005,10 +1038,17 @@ function startDemo(){
   });
 }
 
+/* A sign-in that comes after this page load showed the login screen went
+   through an OTP here, which is proof enough: the app's lock lets that
+   session straight in (gate {fresh}), so a phone whose Face ID keeps
+   failing is never locked out for good by Sign out, OTP, the lock again. */
+let _sawOut = false, _fresh = false;
 onAuthStateChanged(auth, user=>{
   if(DEMO_VIEW) return;   /* the sample account owns the view; a real session would overwrite it */
   stopData();
   $('#logoutBtn').hidden = !user;
+  _fresh = !!user && _sawOut;
+  _sawOut = !user;
   if(!user){
     rememberPortal(false);
     show('loginView');
@@ -1096,6 +1136,14 @@ function route(){
   clearTimeout(_noAccessT); _noAccessT = null;
   /* wait for every studio's first packages answer — no flash of "no jobs" */
   if(!STUS.every(s=>_pkgSeen.has(s.id))){ show('loadingView'); return; }
+  /* the store app: the lock first, the jobs after. unlock() comes back here
+     once through; while its lock screen is up a snapshot must not start a
+     second prompt, and a relock keeps the (covered) jobs on screen. */
+  if(FS_APP && canLock() && !_unlocked){
+    if($('#appView').hidden) show('loadingView');
+    if(!FSApp.lock.shown()) unlock();
+    return;
+  }
   show('appView');
   render();
   /* only a number the server has confirmed as an active partner */
@@ -1172,10 +1220,9 @@ function renderNextUp(jobs){
         ${nu.venue ? `<a class="mini" style="text-decoration:none" href="https://maps.google.com/?q=${encodeURIComponent(nu.venue)}" target="_blank" rel="noopener">🧭 Directions</a>` : ''}
       </div>
     </div>`;
-  $('#icsBtn').addEventListener('click', ()=>downloadIcs(nu));
-  const HOUR = { morning: 8, evening: 17, full: 8 };
+  $('#icsBtn').addEventListener('click', e=>addToCalendar(nu, e.currentTarget));
   const target = new Date(nu.date + 'T00:00');
-  target.setHours(HOUR[nu.slot] ?? 9, 0, 0, 0);
+  target.setHours(SLOT_HOUR[nu.slot] ?? 9, 0, 0, 0);
   const tick = ()=>{
     const el = $('#cdBox'); if(!el){ clearInterval(_cdT); return; }
     const ms = target - Date.now();
@@ -1230,13 +1277,33 @@ function renderMe(){
   let tok = ''; try{ tok = localStorage.getItem(PUSH_KEY) || ''; }catch(e){}
   $('#mePushSt').textContent = tok ? 'On for this phone' : 'Not on for this phone';
   $('#meDelete').href = deleteHref();
+  renderMeLock();
 }
 
-/* In the store app a downloaded file has nowhere to go — neither app's
-   webview can save one — so the button hands the event to Google Calendar,
-   which the app opens outside itself (the Calendar app on Android, Safari on
-   iPhone). Browsers keep the .ics download, which every calendar opens. */
+/* Add to calendar, three ways. A build of the app with the calendar plugin
+   writes the event straight into the phone's calendar (addToCalendar). The
+   build before it has no plugin, and a downloaded file has nowhere to go in
+   a webview, so it hands the event to Google Calendar, which opens outside
+   the app (the Calendar app on Android, Safari on iPhone). Browsers keep
+   the .ics download, which every calendar opens. */
 const IN_APP = navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || !!window.Capacitor;
+const evTitle = nu => (nu.title||'Event') + ' — ' + jobLabel(nu.job);
+const evNotes = nu => 'Fantasy Studio' + (nu.job.quoteNo ? ' · ' + nu.job.quoteNo : '');
+async function addToCalendar(nu, btn){
+  if(!(IN_APP && window.FSApp && FSApp.calendar && FSApp.calendar.available())){ downloadIcs(nu); return; }
+  /* a timed event, where the other two paths make an all-day one: the slot
+     says when the day starts, and four hours is a function. Studio time
+     (IST), whatever zone the phone is set to. */
+  const start = new Date(nu.date + 'T' + String(SLOT_HOUR[nu.slot] ?? 9).padStart(2,'0') + ':00:00+05:30');
+  if(btn) btn.disabled = true;   /* one tap, one event */
+  const r = await FSApp.calendar.add({ title: evTitle(nu), start, end: start.getTime() + 4 * 3600000,
+    location: nu.venue || '', notes: evNotes(nu) });
+  if(btn) btn.disabled = false;
+  if(r === 'ok') toast('Added to your Calendar ✓');
+  else if(r === 'denied') toast('Calendar access is off for this app — allow it in Settings to add events');
+  else if(r === 'error') toast('Could not add it to your calendar — try again');
+  else downloadIcs(nu);   /* 'unavailable': the plugin went away between the check and the call */
+}
 function gcalUrl(title, date, venue, details){
   const end = new Date(date + 'T00:00'); end.setDate(end.getDate() + 1);
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
@@ -1246,18 +1313,14 @@ function gcalUrl(title, date, venue, details){
     + (details ? '&details=' + encodeURIComponent(details) : '');
 }
 function downloadIcs(nu){
-  if(IN_APP){
-    location.href = gcalUrl((nu.title||'Event') + ' — ' + jobLabel(nu.job), nu.date, nu.venue,
-      'Fantasy Studio' + (nu.job.quoteNo ? ' · ' + nu.job.quoteNo : ''));
-    return;
-  }
+  if(IN_APP){ location.href = gcalUrl(evTitle(nu), nu.date, nu.venue, evNotes(nu)); return; }
   const dt = nu.date.replace(/-/g,'');
   const end = new Date(nu.date + 'T00:00'); end.setDate(end.getDate()+1);
   const dtEnd = end.toLocaleDateString('en-CA').replace(/-/g,'');
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Fantasy Studio//Partner//EN','BEGIN:VEVENT',
     'UID:' + (nu.job.id||'fs') + '-' + dt + '@fantasystudio.in',
     'DTSTART;VALUE=DATE:' + dt, 'DTEND;VALUE=DATE:' + dtEnd,
-    'SUMMARY:' + String((nu.title||'Event') + ' — ' + jobLabel(nu.job)).replace(/[\n,;]/g,' '),
+    'SUMMARY:' + evTitle(nu).replace(/[\n,;]/g,' '),
     ...(nu.venue ? ['LOCATION:' + String(nu.venue).replace(/[\n,;]/g,' ')] : []),
     'END:VEVENT','END:VCALENDAR'];
   const a = document.createElement('a');
@@ -1593,7 +1656,7 @@ function renderRates(){
 
 /* toggle job cards + jump to money */
 document.addEventListener('click', e=>{
-  /* the app has no pull-to-refresh, so a failed load says Try again instead */
+  /* Try again is a reload; in the app a pull-to-refresh retries without one */
   if(e.target.closest('[data-reload]')){ location.reload(); return; }
   const tog = e.target.closest('[data-jobtoggle]');
   if(tog){
@@ -1711,6 +1774,109 @@ if(window.FSApp) FSApp.mount({
     { id:'me',       label:'Me',       icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6z"/></svg>' },
   ],
 });
+
+/* ---------- the biometric lock (store app, native pack) ----------
+   Face ID / Touch ID / a fingerprint before the jobs show, and again after
+   five minutes away. Every call goes through FSApp.lock, a quiet no-op in
+   a browser and in the app build that shipped without the plugin (gate()
+   answers 'skipped' there, and on a phone with nothing enrolled). Nobody
+   is locked out for good: a cancelled prompt gets the lock screen, with
+   Try again and Sign out. Per phone, in localStorage fs_lock_studio; a
+   partner's default is on, the Me tab has the switch. */
+const LOCK = { portal:'studio', reason:'Unlock your partner pages', defaultOn:true };
+let _unlocked = false;   /* this session has been through the lock */
+let _locking = null;     /* the gate in flight, so a second caller joins it */
+let _lockSess = 0;       /* bumped by stopData(): an answer for a session that has gone is dropped */
+let _bio = null;         /* the phone's last answer to available(): {ok, type, enrolled, lockedOut} */
+function canLock(){ return !!(FS_APP && window.FSApp && FSApp.lock && FSApp.lock.gate); }
+const bioName = t => t === 'touch' ? (IS_ANDROID ? 'your fingerprint' : 'Touch ID') : (IS_ANDROID ? 'your face' : 'Face ID');
+/* resolves true once the page may show, and routes again itself. The first
+   gate after an OTP sign-in here is fresh (no prompt); Try again and a
+   relock never are. */
+function unlock(){
+  if(_unlocked) return Promise.resolve(true);
+  if(_locking) return _locking;
+  const sess = _lockSess, fresh = _fresh;
+  _fresh = false;
+  const p = _locking = (async ()=>{
+    _bio = await FSApp.lock.available();
+    if(sess !== _lockSess) return false;
+    /* the Face ID sheet must not come up behind the launch splash */
+    if(!fresh && _bio.ok && FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn)) FSApp.splashHide();
+    const r = await FSApp.lock.gate(fresh ? { ...LOCK, fresh:true } : LOCK);
+    /* signed out while the prompt was up: neither open the next session
+       nor put a lock screen over the sign-in form */
+    if(sess !== _lockSess) return false;
+    if(r === 'failed'){ showLock(); return false; }
+    _unlocked = true; FSApp.lock.hide();
+    route();
+    return true;
+  })().finally(()=>{ if(_locking === p) _locking = null; });
+  return p;
+}
+function showLock(){
+  if(FSApp.lock.shown()) return;
+  FSApp.lock.screen({
+    type: _bio && _bio.type !== 'none' ? _bio.type : undefined,
+    text: 'This phone keeps your partner pages private until you unlock them.',
+    onTry: unlock,
+    onSignOut: ()=>$('#logoutBtn').click(),
+  });
+}
+/* the Me tab's switch: only a build with the plugin has one to show, and a
+   phone with nothing enrolled sees why it is greyed out */
+async function renderMeLock(){
+  const row = $('#meLockRow');
+  if(!canLock() || !FSApp.native.has('BiometricAuthNative')){ row.hidden = true; return; }
+  _bio = await FSApp.lock.available();
+  if(_bio.type === 'none'){ row.hidden = true; return; }
+  const what = bioName(_bio.type);
+  const on = FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn);
+  $('#meLockT').textContent = 'Lock with ' + what;
+  $('#meLock').checked = on && _bio.ok;
+  $('#meLock').disabled = !_bio.ok;
+  $('#meLockSt').textContent = !_bio.ok ? 'Set up ' + what + ' on this phone first'
+    : on ? 'Asked when you open the app, and after 5 minutes away'
+    : 'Off — anyone holding this phone can open your jobs';
+  row.hidden = false;
+}
+if(canLock()){
+  $('#meLock').addEventListener('change', e=>{
+    const on = e.target.checked;
+    FSApp.lock.setEnabled(LOCK.portal, on);
+    FSApp.haptic('light');
+    toast(on ? 'Lock on for this phone' : 'Lock off for this phone');
+    renderMeLock();
+  });
+  /* back from the background after five minutes: cover the jobs, then ask */
+  FSApp.lock.armBackground(5);
+  window.addEventListener('fs:relock', ()=>{
+    if(!_unlocked || $('#appView').hidden || !(_bio && _bio.ok)) return;
+    if(!FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn)) return;
+    _unlocked = false;
+    showLock();
+    unlock();
+  });
+}
+
+/* ---------- pull to refresh (store app) ----------
+   Only while the jobs are on screen (enabledWhen), so a drag on the sign-in
+   form does nothing. The jobs are live listeners, so there is nothing to fetch
+   again: a pull starts afresh any packages listener that failed, re-reads
+   config/site (contact, checklist wording) and redraws. The ?demo view
+   just redraws its sample. */
+async function refreshData(){
+  if($('#appView').hidden) return;
+  if(!DEMO_VIEW){
+    [..._pkgErrs.keys()].forEach(id=>{ try{ _pkgUnsubs.get(id)(); }catch(e){} _pkgUnsubs.delete(id); });
+    syncPkgListeners();
+    await Promise.race([loadSite(), new Promise(r=>setTimeout(r, 4000))]);
+  }
+  if($('#appView').hidden) return;   /* signed out mid-pull */
+  _jobsSig = ''; render();
+}
+if(FS_APP && window.FSApp && FSApp.pullToRefresh)
+  FSApp.pullToRefresh(refreshData, { enabledWhen: ()=>!$('#appView').hidden });
 
 /* Last in the module on purpose: render() reads lets declared all through
    it, so starting the ?demo view any earlier meets them uninitialised. */

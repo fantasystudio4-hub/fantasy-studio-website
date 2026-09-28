@@ -288,6 +288,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
   width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);
   border-radius:10px;color:var(--text);padding:.6em .75em;font:inherit;font-size:.9rem;resize:vertical;
 }
+/* iOS zooms the page into any field under 16px and leaves the sheet zoomed */
+html.fs-app .ejt-new textarea{font-size:16px}
 .ackbtn{width:100%;margin-top:.8rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.75em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
 .ackbtn:active{transform:scale(.98)}
 .ackbtn:disabled{opacity:.7;cursor:default}
@@ -528,6 +530,24 @@ html.fs-app .merow:last-child{border-bottom:0}
 html.fs-app .merow:active{color:var(--gold-b)}
 html.fs-app .merow b{flex:0 0 auto;color:var(--gold-b);font-weight:500;font-size:.78rem;white-space:nowrap}
 html.fs-app .merow.warn span{color:var(--err)}
+/* the Me tab's Face ID / Touch ID switch: a pill with a knob. The checkbox
+   itself stays the control (keyboard, screen reader), drawn off to one side. */
+html.fs-app .merow.lockrow{position:relative}
+html.fs-app .lockrow input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+html.fs-app .lockrow .sw{flex:0 0 auto;width:46px;height:28px;border-radius:28px;background:rgba(255,255,255,.14);border:1px solid var(--line);position:relative;transition:background .18s}
+html.fs-app .lockrow .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#f3ecdc;transition:transform .18s}
+html.fs-app .lockrow input:checked + .sw{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent}
+html.fs-app .lockrow input:checked + .sw::after{transform:translateX(18px)}
+html.fs-app .lockrow input:focus-visible + .sw{outline:2px solid var(--gold);outline-offset:2px}
+/* one tap into the phone's calendar, on the countdown card and each upcoming
+   shoot (app only: the button is rendered only where the plugin is). An
+   outline pill, second to the gold Confirm above it. */
+html.fs-app .calrow{margin-top:.6rem}
+html.fs-app .calbtn{display:inline-flex;align-items:center;gap:.35em;min-height:44px;padding:.5em 1.1em;
+  background:none;border:1px solid rgba(184,144,43,.6);color:var(--gold-b);border-radius:40px;
+  font-size:.82rem;cursor:pointer}
+html.fs-app .calbtn:active{background:rgba(184,144,43,.16)}
+html.fs-app .calbtn:disabled{opacity:.6;cursor:default}
 </style>
 <link rel="stylesheet" href="../app-shell.css" />
 </head>
@@ -751,6 +771,9 @@ html.fs-app .merow.warn span{color:var(--err)}
       <div class="paycard">
         <div class="mewho"><b id="meName">—</b><span id="mePhone"></span><em id="meRole">Crew</em></div>
         <div class="merow" id="meNotifRow" hidden><span>Notifications</span><b id="meNotif"></b></div>
+        <!-- Face ID / Touch ID before the pages show (renderLockRow): named for
+             what the phone has, and not there at all with nothing enrolled -->
+        <label class="merow lockrow" id="meLockRow" hidden><span id="meLockLbl">Face ID lock</span><input type="checkbox" id="meLock" role="switch" /><i class="sw" aria-hidden="true"></i></label>
         <a class="merow" href="../privacy/"><span>Privacy policy</span><b>Read →</b></a>
         <a class="merow warn" id="meDel" href="#" target="_blank" rel="noopener"><span>Delete my account</span><b>Ask on WhatsApp →</b></a>
         <button type="button" class="merow" id="meOut"><span>Sign out</span><b>→</b></button>
@@ -879,7 +902,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-          collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, query, where, onSnapshot, serverTimestamp } =
+          collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, query, where, onSnapshot, serverTimestamp,
+          disableNetwork, enableNetwork } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   /* a NAMED app gives the crew page its own session storage — signing in here
@@ -906,10 +930,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
-  /* the test hook never signed in: leaving it is this page without ?demo */
+  /* the test hook never signed in: leaving it is this page without ?demo.
+     The lock screen's "Sign out instead" lands here too, so the push
+     clean-up (see pushOff) can never hold the sign-out up. */
   $('#logoutBtn').addEventListener('click', async ()=>{
     if(DEMO_VIEW){ location.replace(location.pathname); return; }
-    await unregisterPush(); signOut(auth);
+    await pushOff(); signOut(auth);
   });
 
   /* ---------- install to the phone's app list ----------
@@ -1177,11 +1203,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
     _pushFor = '';
     _demo = false;
+    lockReset();   /* the next sign-in meets the store app's lock again */
   }
 
   function route(){
     if(!_meLoaded || !_reqLoaded){ show('loadingView'); refreshInstall(); return; }
-    if(ME){ show('appView'); render(); refreshInstall(); registerPush(); return; }
+    if(ME){
+      /* the store app: Face ID / Touch ID before the dashboard is on screen.
+         Every snapshot comes through here, so with the lock screen up it
+         changes nothing behind it and waits for a tap on Try again, rather
+         than raising the prompt itself. */
+      if(!lockPassed()){ if(!FSApp.lock.shown()){ show('loadingView'); lockGate(); } return; }
+      show('appView'); render(); refreshInstall(); registerPush(); return;
+    }
     /* a listener ERROR is a server/connection problem, not "you're not on the
        team" — showing the join-request flow here misled real members */
     if(_meErr || _reqErr){
@@ -1249,6 +1283,109 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     visibleWhen: ()=>!$('#appView').hidden
   });
 
+  /* ---------- the store app's lock (FSApp.lock, app-shell.js) ----------
+     Face ID / Touch ID before the dashboard shows, and again when the app
+     comes back after five minutes away. On by default for crew, per phone
+     (Me › Face ID lock). A failure never locks anyone out for good: a phone
+     with no biometry, or none enrolled, is skipped without a word, and a
+     cancelled prompt gets the lock screen with Try again and Sign out. A
+     sign-in with an OTP on this page is let through without a prompt (the
+     OTP was the check), so Sign out is always a way back in, even on a phone
+     whose prompt keeps failing. In a browser, and in the app build from
+     before the plugin, every call here is a no-op and the page is exactly
+     as it was. The ?demo hook meets the same gate. Any sign-out goes
+     through stopData, which resets it. */
+  const LOCK = { portal:'crew', reason:'Unlock your crew pages', defaultOn:true };
+  const inApp = () => document.documentElement.classList.contains('fs-app');
+  const hasLock = () => !!(inApp() && window.FSApp && FSApp.lock);
+  const appPlatform = () => { try{ const C = window.Capacitor; return C && C.getPlatform ? String(C.getPlatform()) : ''; }catch(e){ return ''; } };
+  let _lockOk = false, _lockRun = null, _lockGen = 0;
+  /* the member arrived by an OTP on this page load (onAuthStateChanged):
+     the next gate passes {fresh:true} and is not asked */
+  let _lockFresh = false;
+  /* {ok, type} from the last check: the Me row, and the lock screen's wording */
+  let _biom = null;
+  function lockPassed(){ return _lockOk || !hasLock(); }
+  /* a new session never joins the last one's prompt, nor inherits its pass */
+  function lockReset(){ _lockOk = false; _lockRun = null; _lockFresh = false; _lockGen++; if(hasLock()) FSApp.lock.hide(); }
+  /* one prompt at a time; its answer is dropped if the sign-in changed under it */
+  function lockGate(relock){
+    if(_lockRun) return _lockRun;
+    const fresh = !relock && _lockFresh; _lockFresh = false;
+    /* over the dashboard (a relock) the lock screen goes up first, so nothing
+       shows while the prompt is on its way — unless this phone will not be
+       asked at all */
+    if(relock && FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn) && (!_biom || _biom.ok)) lockScreen();
+    const gen = _lockGen;
+    const run = _lockRun = (fresh ? Promise.resolve(null) : FSApp.lock.available()).then(b => {
+      /* the Face ID sheet must not come up behind the launch splash */
+      if(b){ _biom = b; if(b.ok && FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn) && FSApp.splashHide) FSApp.splashHide(); }
+      return FSApp.lock.gate({ ...LOCK, fresh });
+    }).catch(() => 'failed').then(r => {
+      if(_lockRun === run) _lockRun = null;
+      if(gen !== _lockGen) return false;
+      if(r === 'failed'){ if(ME) lockScreen(); return false; }
+      /* through, or nothing to ask: the lock goes even if the member has
+         gone meanwhile, and route() shows whatever is right now */
+      _lockOk = true;
+      FSApp.lock.hide();
+      route();
+      return true;
+    });
+    return run;
+  }
+  function lockScreen(){
+    FSApp.lock.screen({
+      type: _biom ? _biom.type : undefined,
+      onTry: () => lockGate(),
+      onSignOut: () => $('#logoutBtn').click()
+    });
+  }
+  if(hasLock()){
+    /* the pass is taken back first, so no snapshot repaints the dashboard
+       and a Confirm that arrives after the relock waits for it */
+    window.addEventListener('fs:relock', () => {
+      if(!ME || !_lockOk || !FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn)) return;
+      _lockOk = false;
+      lockGate(true);
+    });
+    FSApp.lock.armBackground(5);
+  }
+  /* the Me tab's row: named for what the phone has, gone when it has nothing
+     enrolled; the switch is the per-phone setting the gate reads */
+  function renderLockRow(){
+    const row = $('#meLockRow');
+    if(!hasLock()){ row.hidden = true; return; }
+    FSApp.lock.available().then(b => {
+      _biom = b;
+      row.hidden = !b.ok;
+      if(!b.ok) return;
+      const apple = appPlatform() !== 'android';
+      $('#meLockLbl').textContent = b.type === 'touch' ? (apple ? 'Touch ID lock' : 'Fingerprint lock')
+                                                        : (apple ? 'Face ID lock' : 'Face lock');
+      $('#meLock').checked = FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn);
+    });
+  }
+  if(inApp()) $('#meLock').addEventListener('change', e => {
+    if(!hasLock()) return;
+    FSApp.lock.setEnabled(LOCK.portal, e.target.checked);
+    toast(e.target.checked ? 'Lock on — this phone asks before showing your pages' : 'Lock off');
+  });
+
+  /* ---------- pull to refresh (FSApp.pullToRefresh, app only) ----------
+     The listeners below are live, so a pull rarely has anything new to
+     fetch; what it is for is the stream that went quiet in the background.
+     Closing and re-opening Firestore's connection makes every listener
+     re-sync with the server (resume tokens keep that to what changed), and
+     the page repaints from whatever comes. The sample has no server: it
+     only repaints. */
+  if(window.FSApp && FSApp.pullToRefresh) FSApp.pullToRefresh(async ()=>{
+    if(!ME) return;
+    /* the network always comes back on, or every listener stays offline */
+    if(!_demo){ try{ try{ await disableNetwork(db); } finally { await enableNetwork(db).catch(()=>{}); } }catch(e){} }
+    render();
+  }, { enabledWhen: ()=>!$('#appView').hidden });   /* the sign-in form has nothing to refresh */
+
   /* ---------- push notifications (store app only) ----------
      The same registration the client and partner pages do. The
      assignmentAlerts Cloud Function tells a member about a new assignment
@@ -1285,6 +1422,83 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       await deleteDoc(doc(db,'pushTokens', t));
       localStorage.removeItem(PUSH_KEY);
     }catch(e){}
+  }
+  /* deleteDoc settles only when the server answers, which with no signal is
+     never: give it two seconds, then sign out regardless. The key stays
+     until a delete goes through, so the next sign-out tries again. */
+  const pushOff = () => Promise.race([unregisterPush(), new Promise(r=>setTimeout(r, 2000))]);
+
+  /* ---------- Confirm, straight from the push (app only) ----------
+     The "New assignment" push carries the assignment id. In the app, its
+     Confirm button (notificationActionPerformed, actionId CONFIRM) or a
+     link to /team/?ack=<id> confirms that assignment through the same code
+     the card's Confirm button uses — the write, or the sample's local
+     change under ?demo. It waits for the member's assignments and for the
+     lock, so a tap that cold-starts the app still lands.
+     The push is about a NEW assignment, and the first list to arrive is
+     usually without it: the phone's saved copy on a cold start, or a
+     listener that stalled in the background on a warm one. So the id is
+     kept until the listener brings it (render() asks again on every
+     snapshot), for ACK_WAIT at most once the page is ready to act. The
+     list holds only the member's own assignments, so an id that never
+     shows up (someone else's, or taken back) does nothing. The query
+     comes off the URL once it is settled either way, so a reload does not
+     confirm again. A tap on the push body opens the tab it is about. A
+     browser reads none of this. */
+  const ACK_WAIT = 30000;
+  let _pendingAck = inApp() ? (new URLSearchParams(location.search).get('ack') || '') : '';
+  let _ackUntil = 0, _ackTimer = null;
+  const openTab = id => { if(window.FSApp && FSApp.current && FSApp.current() !== id) FSApp.setTab(id); };
+  function runPendingAck(){
+    if(!_pendingAck || !ME || !_asgsLoaded || !lockPassed()) return;
+    const id = _pendingAck;
+    /* the first look: Shoots, where the card will be, and the clock starts */
+    if(!_ackUntil){ _ackUntil = Date.now() + ACK_WAIT; openTab('shoots'); }
+    const a = ASGS.find(v=>v.id === id);
+    if(!a){
+      const left = _ackUntil - Date.now();
+      if(left > 0){ clearTimeout(_ackTimer); _ackTimer = setTimeout(runPendingAck, left + 50); return; }
+      ackSettled();   /* never came: quietly let it go */
+      return;
+    }
+    ackSettled();
+    if(a.status === 'acknowledged'){ toast('Already confirmed ✓'); return; }
+    ackAsg(a, null, 'Confirmed ✓');
+  }
+  function ackSettled(){
+    _pendingAck = ''; _ackUntil = 0;
+    clearTimeout(_ackTimer); _ackTimer = null;
+    dropAckQuery();
+  }
+  function dropAckQuery(){
+    if(!/[?&]ack=/.test(location.search)) return;
+    const q = location.search.slice(1).split('&').filter(p => p && !/^ack=/.test(p)).join('&');
+    try{ history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); }catch(e){}
+  }
+  /* which tab a tap on the push opens: its data.type where it has one (only
+     the assignment push does today), else its title, the way alerts.js
+     words them; Android hands a tapped push over without its title */
+  function pushTab(n){
+    const type = String((n && n.data && n.data.type) || '');
+    const title = String((n && n.title) || '');
+    if(type === 'payment' || /^payment/i.test(title)) return 'pay';
+    if(type === 'editing' || type === 'edit' || /^new editing/i.test(title)) return 'editing';
+    return 'shoots';
+  }
+  if(window.FSApp && FSApp.native && FSApp.native.has('FirebaseMessaging')){
+    const FM = FSApp.native.plugin('FirebaseMessaging');
+    const on = (ev, fn) => { try{ Promise.resolve(FM.addListener(ev, fn)).catch(()=>{}); }catch(e){} };
+    on('notificationActionPerformed', ev => {
+      const n = (ev && ev.notification) || {};
+      const data = n.data || {};
+      /* Confirm only ever rides on the assignment push */
+      if(ev && ev.actionId === 'CONFIRM' && data.asgId && (!data.type || data.type === 'assignment')){
+        _pendingAck = String(data.asgId); _ackUntil = 0;
+        runPendingAck();
+      }
+      else openTab(pushTab(n));
+    });
+    on('notificationReceived', ()=>{});   /* a push while the page is open: the listeners already carry the change */
   }
 
   /* ---------- the App Review sample ----------
@@ -1416,10 +1630,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* The test hook never signs in; it opens the sample from the end of this
      module instead (see there). */
+  /* this page load has shown the sign-in form: the next member to arrive
+     came through an OTP here, and the lock lets them in (lockGate, fresh) */
+  let _sawSignedOut = false;
   if(!DEMO_VIEW) onAuthStateChanged(auth, user=>{
     stopData();
     $('#logoutBtn').hidden = !user;
     if(!user){
+      _sawSignedOut = true;
       rememberPortal(false);
       show('loginView');
       $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
@@ -1428,6 +1646,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     endLoginSend();
     if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
+    _lockFresh = _sawSignedOut; _sawSignedOut = false;   /* after stopData, which clears it */
     rememberPortal(true);
     _phone10 = user.phoneNumber.slice(-10);
     _pretty = user.phoneNumber;
@@ -1519,6 +1738,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const tm = new Date(t+'T00:00'); tm.setDate(tm.getDate()+1);
     return d === tm.toLocaleDateString('en-CA') ? '<i class="daytag">Tomorrow</i>' : '';
   };
+  /* ---------- one tap into the phone's calendar (FSApp.calendar, app only) ----------
+     Drawn only where the plugin is on board — never in a browser, which
+     keeps nothing of this — on the countdown card and every upcoming
+     shoot. It starts at the call time, or failing that when the slot
+     usually does (morning and full day 09:00, evening 17:00), and takes
+     four hours on the calendar, so a morning shoot blocks the morning and
+     not the day. The alerts are the shell's: a day and two hours before.
+     The date and call time are the studio's, India time, so they are read
+     as that whatever zone the phone is set to. */
+  const SLOT_START = { morning:'09:00', evening:'17:00', full:'09:00' };
+  const shootStart = a => {
+    const t = /^\d{2}:\d{2}$/.test(a.callTime||'') ? a.callTime : (SLOT_START[String(a.slot||'')] || '09:00');
+    return new Date(a.date + 'T' + t + ':00+05:30');
+  };
+  const calOn = () => !!(inApp() && window.FSApp && FSApp.calendar && FSApp.calendar.available());
+  const calBtn = a => calOn() && /^\d{4}-\d{2}-\d{2}$/.test(a.date||'')
+    ? `<div class="fs-app-only calrow"><button type="button" class="calbtn" data-cal="${esc(a.id)}">📅 Add to calendar</button></div>` : '';
   function asgCard(a, past){
     const seen = a.status === 'acknowledged';
     /* the member's own sign-off, from the DAY of the shoot — a wedding is
@@ -1544,6 +1780,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${past ? '' : (seen
         ? `<div class="ackdone">✓ You confirmed this${a.ackAt && a.ackAt.toDate ? ' on ' + a.ackAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</div>`
         : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)}
+      ${past ? '' : calBtn(a)}
       ${done ? (a.workDone
         ? `<div class="ackdone">✓ Event completed${a.workDoneAt && a.workDoneAt.toDate ? ' on ' + a.workDoneAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
         : `<button class="ackbtn" data-workdone="${a.id}">✓ Mark this event completed</button>`) : ''}
@@ -1971,9 +2208,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       a.venue ? `<a href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a>` : '',
       a.clientName ? esc(a.clientName) : ''
     ].filter(Boolean).map(t=>`<span>${t}</span>`).join('');
-    $('#cdCta').innerHTML = a.status === 'acknowledged'
+    $('#cdCta').innerHTML = (a.status === 'acknowledged'
       ? '<div class="ackdone">✓ Confirmed — the studio knows you are on it</div>'
-      : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`;
+      : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)
+      + calBtn(a);
     tickCountdown();
     clearInterval(_cdTimer);
     _cdTimer = setInterval(tickCountdown, 30000);
@@ -2141,7 +2379,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   function render(){
-    if(!ME) return;
+    /* nothing is painted behind the store app's lock; route() paints once it passes */
+    if(!ME || !lockPassed()) return;
     $('#hello').textContent = `Hi ${(ME.name||'').split(' ')[0] || 'there'} 👋`;
     renderAnalytics();
     const today = todayISO();
@@ -2216,6 +2455,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#payDue').textContent = inr(due);
     }
     renderMe();
+    runPendingAck();   /* a Confirm from the push, once the assignments are here */
   }
 
   $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });
@@ -2246,6 +2486,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     let on = false; try{ on = !!localStorage.getItem(PUSH_KEY); }catch(e){}
     $('#meNotif').textContent = on ? 'On' : 'Off';
     $('#meNotifRow').hidden = !push;
+    renderLockRow();
     $('#meDel').href = 'https://wa.me/' + _studioNo + '?text='
       + encodeURIComponent('Please delete my Fantasy Studio account for ' + (prettyPhone(_pretty) || 'my number'));
   }
@@ -2258,7 +2499,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#meSwitch').addEventListener('click', async ()=>{
     $('#meSwitch').disabled = true;
     if(!DEMO_VIEW){
-      await unregisterPush();
+      await pushOff();
       try{ await signOut(auth); }catch(e){}
       rememberPortal(false);
     }
@@ -2440,16 +2681,40 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   async function ackClick(e){
     const b = e.target.closest('[data-ack]'); if(!b || b.disabled) return;
     const a = ASGS.find(v=>v.id===b.dataset.ack); if(!a) return;
-    b.disabled = true; b.textContent = 'Confirming…';
+    ackAsg(a, b);
+  }
+  /* the write itself — from the card's button, or from Confirm on the push
+     (runPendingAck), which has no button to hold and its own toast */
+  async function ackAsg(a, b, msg){
+    if(b){ b.disabled = true; b.textContent = 'Confirming…'; }
     try{
       if(!_demo) await updateDoc(doc(db,'assignments',a.id), { status:'acknowledged', ackAt: serverTimestamp() });
       a.status = 'acknowledged';
       render();
-      toast('Confirmed ✓ — the studio can see it');
+      toast(msg || 'Confirmed ✓ — the studio can see it');
     }catch(err){
-      b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment";
+      if(b){ b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment"; }
       toast(navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal');
     }
+  }
+
+  /* the calendar button on the countdown card and on the upcoming cards */
+  if(inApp()){ $('#cdCta').addEventListener('click', calClick); $('#upList').addEventListener('click', calClick); }   /* browsers never get a calendar button */
+  async function calClick(e){
+    const b = e.target.closest('[data-cal]'); if(!b || b.disabled) return;
+    const a = ASGS.find(v=>v.id===b.dataset.cal); if(!a) return;
+    const start = shootStart(a);
+    b.disabled = true;
+    const r = await FSApp.calendar.add({
+      title: (a.eventTitle || 'Event') + (a.clientName ? ' — ' + a.clientName : ''),
+      start, end: new Date(start.getTime() + 4*3600000),
+      location: a.venue || '',
+      notes: [a.quoteNo, String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase())].filter(Boolean).join(' · ')
+    }).catch(()=>'error');
+    b.disabled = false;
+    toast(r === 'ok' ? 'Added to your Calendar ✓'
+        : r === 'denied' ? 'Allow calendar access in Settings to add shoots'
+        : 'Could not add it to your calendar — try again');
   }
 
   /* The local test hook enters the sample here, last in the module on

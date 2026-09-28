@@ -2,8 +2,10 @@
    Every rule here is gated on html.fs-app, which the 3-line <head> script
    sets in the Capacitor webview and nowhere else, so a browser matches
    nothing in this file but the one base rule that hides app-only bits.
-   The pages keep their own look; this only adds the bottom tab bar and the
-   two helper classes:
+   The pages keep their own look; this only adds the bottom tab bar, the
+   native pack's two bits of UI (the lock screen #fsLock and the
+   pull-to-refresh row .fs-ptr, both drawn by app-shell.js) and the two
+   helper classes:
      .fs-web-only   website chrome the app must not show (Home links, install cards…)
      .fs-app-only   app-only bits a browser must never see (Me tab rows…)
    Tab contents are the pages' own section ids under html.fs-app[data-tab]. */
@@ -76,8 +78,64 @@ html.fs-app .fs-tab-lb{
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
+/* ---- the lock screen (FSApp.lock.screen) ----
+   Over everything, tab bar included (z 1300 > the bar's 1200); the page
+   underneath cannot scroll while it is up. Dark ink like /start/, the FS
+   mark, the site's gold-gradient button. */
+html.fs-app.fs-locked body{overflow:hidden}
+html.fs-app #fsLock{
+  position:fixed;inset:0;z-index:1300;
+  display:flex;align-items:center;justify-content:center;
+  padding:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)) 24px var(--fs-tabs-safe);
+  background:linear-gradient(180deg,#1a150c,#14110a 40%);color:#f3ecdc;
+  font-family:'Jost',system-ui,sans-serif;text-align:center;
+}
+html.fs-app .fs-lock-in{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center}
+html.fs-app .fs-lock-mark{width:64px;height:64px;margin-bottom:1.1rem}
+html.fs-app #fsLock h2{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.4rem;line-height:1.2;color:#fff;margin:0 0 .45rem;text-wrap:balance}
+html.fs-app .fs-lock-sub{color:var(--fs-tabs-mut);font-size:.88rem;line-height:1.45;margin:0 0 1.6rem}
+html.fs-app .fs-lock-btn{
+  width:100%;min-height:50px;margin:0;padding:.9em 1.2em;
+  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;border-radius:40px;color:#fff;
+  font-family:inherit;font-size:.9rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:opacity .18s;
+}
+html.fs-app .fs-lock-btn:active{opacity:.85}
+html.fs-app .fs-lock-btn:disabled{opacity:.55;cursor:default}
+html.fs-app .fs-lock-btn:focus{outline:none}
+html.fs-app .fs-lock-btn:focus-visible{outline:2px solid var(--fs-tabs-gold);outline-offset:3px}
+/* the way out: a quiet text link, but a full 44px tap target */
+html.fs-app .fs-lock-out{
+  margin:.9rem 0 0;padding:.8em 1em;background:none;border:0;
+  font-family:inherit;font-size:.85rem;color:var(--fs-tabs-mut);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(179,169,143,.5);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+html.fs-app .fs-lock-out:active{color:var(--fs-tabs-gold)}
+html.fs-app .fs-lock-out:focus{outline:none}
+html.fs-app .fs-lock-out:focus-visible{outline:2px solid var(--fs-tabs-gold);outline-offset:2px;border-radius:8px}
+
+/* ---- pull to refresh (FSApp.pullToRefresh) ----
+   A small pill under the status bar, fixed so the page never reflows;
+   appended when the drag passes the threshold, removed when the refresh
+   is done. The gold ring spins once the finger lets go. */
+html.fs-app .fs-ptr{
+  position:fixed;left:50%;top:calc(max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)) + 66px);z-index:1250;   /* below the header row and its gold rule */
+  display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:30px;
+  background:var(--fs-tabs-bg);border:1px solid var(--fs-tabs-line);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  color:var(--fs-tabs-gold);font:500 12px/1 'Jost',system-ui,sans-serif;letter-spacing:.04em;white-space:nowrap;
+  opacity:0;transform:translate(-50%,-8px);transition:opacity .15s,transform .15s;pointer-events:none;
+}
+html.fs-app .fs-ptr.on{opacity:1;transform:translate(-50%,0)}
+html.fs-app .fs-ptr i{display:block;width:14px;height:14px;border-radius:50%;border:2px solid var(--fs-tabs-line);border-top-color:var(--fs-tabs-gold)}
+html.fs-app .fs-ptr.spin i{animation:fs-ptr-spin .8s linear infinite}
+@keyframes fs-ptr-spin{to{transform:rotate(360deg)}}
+
 @media (prefers-reduced-motion:reduce){
   html.fs-app .fs-tab,
   html.fs-app .fs-tab::before,
-  html.fs-app .fs-tab-ic{transition:none}
+  html.fs-app .fs-tab-ic,
+  html.fs-app .fs-lock-btn,
+  html.fs-app .fs-ptr{transition:none}
+  html.fs-app .fs-ptr.spin i{animation-duration:1.6s}   /* still a sign of life, just calmer */
 }

@@ -362,6 +362,8 @@ html.fs-app .merow:last-child{border-bottom:0}
 html.fs-app .merow b{color:var(--mut);font-weight:500;font-size:.85rem;flex:0 0 auto}
 html.fs-app .merow.danger{color:var(--err)}
 html.fs-app .merow:active{background:rgba(184,144,43,.08)}
+/* the lock row reads On in gold, the way a switch that is on does */
+html.fs-app .merow[aria-pressed="true"] b{color:var(--gold-b)}
 </style>
 <!-- the store app's shell: the fs-app-only / fs-web-only helpers and the tab
      bar. A browser matches nothing in it but the one rule that hides app-only bits. -->
@@ -494,6 +496,9 @@ html.fs-app .merow:active{background:rgba(184,144,43,.08)}
     <div class="pkg fs-app-only" id="meAcct" data-tab="me">
       <div class="sec"><h3>Your account</h3>
         <div class="merow"><span>Notifications</span><b id="meNotif">Off</b></div>
+        <!-- only on a phone that can do it: lockRow() shows it, worded for
+             what the phone has (Face ID, Touch ID, a fingerprint) -->
+        <button class="merow" id="meLock" type="button" hidden aria-pressed="false"><span id="meLockLabel">Lock with Face ID</span><b id="meLockState">Off</b></button>
         <a class="merow" href="../privacy/"><span>Privacy policy</span><b>›</b></a>
         <button class="merow" id="meSwitch" type="button"><span>Switch account</span><b>›</b></button>
         <button class="merow" id="meSignOut" type="button"><span>Sign out</span><b>›</b></button>
@@ -563,6 +568,14 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 /* the store app, and nothing else: set by the <head> script */
 const FS_APP = document.documentElement.classList.contains('fs-app');
+/* Local test hook, the same two locks as the crew and partner pages' ?demo:
+   served from localhost AND ?demo in the URL. It draws the dashboard from a
+   built-in sample booking (demoClient, at the end) through the page's own
+   renderPackages — no sign-in, no push, no booking read — so the tabs, the
+   lock and the calendar button can be checked without an OTP. On
+   fantasystudio.in the first lock can never hold. */
+const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+               && new URLSearchParams(location.search).has('demo');
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 /* time of day on an event, denormalised onto the assignment by the panel */
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
@@ -620,13 +633,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
    vanished" panic the portal exists to prevent. */
 let initializeApp, getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
     getRedirectResult, linkWithPhoneNumber,
-    getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, deleteDoc, serverTimestamp;
+    getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+    collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, deleteDoc, serverTimestamp;
 try{
   ({ initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'));
   ({ getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber,
      getRedirectResult, linkWithPhoneNumber } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, deleteDoc, serverTimestamp } =
+  ({ getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+     collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, deleteDoc, serverTimestamp } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   const ph = (DEFAULT_CONTACT.phone||'').replace(/\D/g,'');
@@ -644,7 +659,15 @@ try{
    session persists until the client taps Logout themselves */
 const app  = initializeApp(window.FIREBASE_CONFIG, 'client');
 const auth = getAuth(app);
-const db   = getFirestore(app);
+/* In the store app the cache lives on disk, as the crew page's does, so the
+   last booking opens with no signal and the live stream picks up from there.
+   The multi-tab manager, as the crew and partner pages use: a relaunch
+   within seconds of a kill finds the old process still holding the cache,
+   and single-tab would quietly fall back to memory. A browser keeps the
+   in-memory getFirestore it has always had. */
+let db;
+try{ db = FS_APP ? initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }) : getFirestore(app); }
+catch(e){ db = getFirestore(app); }
 /* Google sign-in has been removed from this page. getRedirectResult stays for
    one reason only: a client who was mid-redirect when this shipped, or who
    still holds a Google session from before, must not be dropped silently —
@@ -939,7 +962,15 @@ $('#linkVerify').addEventListener('click', async ()=>{
 });
 $('#linkBack').addEventListener('click', ()=>{ $('#linkOtpStep').hidden = true; $('#linkPhoneStep').hidden = false; hideErr('#linkErr'); });
 $('#linkLogout').addEventListener('click', ()=>signOut(auth));
-async function logout(){ await unregisterPush(); signOut(auth); }
+/* The push clean-up waits for the server to confirm the delete, which
+   never comes with no signal — and Sign out is the lock screen's only way
+   out. Two seconds, then sign out regardless. */
+const pushOff = () => Promise.race([unregisterPush(), new Promise(r=>setTimeout(r, 2000))]);
+/* the ?demo view never signed in: leaving it is this page without ?demo */
+async function logout(){
+  if(DEMO_VIEW){ location.replace(location.pathname); return; }
+  await pushOff(); signOut(auth);
+}
 $('#logoutBtn').addEventListener('click', logout);
 
 /* ---------- store app: the Me tab ----------
@@ -951,7 +982,7 @@ $('#logoutBtn').addEventListener('click', logout);
 if(FS_APP){
   $('#meSignOut').addEventListener('click', logout);
   $('#meSwitch').addEventListener('click', async ()=>{
-    await unregisterPush();
+    await pushOff();
     try{ await signOut(auth); }catch(e){}
     rememberPortal(false);
     if(window.FSApp) FSApp.exitToStart(); else location.replace('../start/');
@@ -968,10 +999,115 @@ function fillMe(user, pkgs){
   /* registerPush keeps the token it registered; no token, no alerts */
   let on = false; try{ on = !!localStorage.getItem('fs_push_token'); }catch(e){}
   $('#meNotif').textContent = on ? 'On' : 'Off';
+  lockRow();
 }
 
+/* ---------- store app: Face ID / Touch ID lock ----------
+   Off until the client turns it on from the Me tab (fs_lock_client in
+   localStorage, per phone). While it is on, the signed-in views wait behind
+   the loading skeleton until the phone's own prompt has passed, and the page
+   asks again after RELOCK_MIN minutes in the background — with the lock
+   screen up first, so nothing shows behind that prompt. The branches are
+   FSApp.lock's: no biometry, or none enrolled, is a silent skip; a cancel
+   gets the lock screen with Try again and Sign out; a browser (no
+   html.fs-app) never meets any of it. */
+const LOCK = { portal:'client', defaultOn:false, reason:'Unlock your booking' };
+const RELOCK_MIN = 5;
+const LOCK_TEXT = 'Your booking stays private on this phone until you unlock it.';
+const lockable = () => FS_APP && !!(window.FSApp && FSApp.lock);
+const lockOn = () => lockable() && FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn);
+let _lockHeld = false, _lockView = '', _lockSeq = 0;
+/* An OTP typed on this page is proof enough: the first gate after it is
+   fresh, never a prompt, so Sign out on a lock that keeps failing is
+   always a way back in. Set when this page load saw nobody signed in, or a
+   session with no verified phone yet (only an OTP gives it one); spent by
+   the next lockGate. Relocks and Try again are never fresh. */
+let _otpFresh = false;
+/* the signed-in views' show(): kept back while the lock is closed */
+function reveal(id){
+  if(_lockHeld){ _lockView = id; return; }
+  show(id);
+}
+/* signed out, or routed again: a prompt still up no longer counts */
+function lockReset(){
+  _lockSeq++; _lockHeld = false; _lockView = '';
+  if(lockable()) FSApp.lock.hide();
+}
+function lockOpened(){
+  _lockHeld = false;
+  FSApp.lock.hide();
+  if(_lockView){ const v = _lockView; _lockView = ''; show(v); }
+}
+function lockScreen(my){
+  FSApp.lock.screen({
+    text: LOCK_TEXT,
+    onTry: () => FSApp.lock.gate(LOCK).then(r=>{ if(my === _lockSeq && r !== 'failed') lockOpened(); }),
+    onSignOut: logout,
+  });
+}
+/* on the way in: the prompt over the skeleton, the lock screen only if it fails */
+function lockGate(){
+  const fresh = _otpFresh; _otpFresh = false;
+  if(!lockOn()) return;
+  _lockHeld = true;
+  const my = ++_lockSeq;
+  /* the Face ID sheet must not come up behind the launch splash */
+  const ready = fresh ? Promise.resolve()
+    : FSApp.lock.available().then(a=>{ if(a.ok) FSApp.splashHide(); });
+  ready.then(()=>FSApp.lock.gate(fresh ? { ...LOCK, fresh:true } : LOCK)).then(r=>{
+    if(my !== _lockSeq) return;
+    if(r === 'failed') lockScreen(my); else lockOpened();
+  });
+}
+/* back from the background after RELOCK_MIN minutes: the screen goes up
+   first, then the prompt; only while a signed-in view is on screen */
+if(lockable()){
+  FSApp.lock.armBackground(RELOCK_MIN);
+  window.addEventListener('fs:relock', ()=>{
+    if(_lockHeld || !lockOn() || FSApp.lock.shown()) return;
+    if(!auth.currentUser && !DEMO_VIEW) return;
+    if($('#dashView').hidden && $('#emptyView').hidden) return;
+    _lockHeld = true;
+    const my = ++_lockSeq;
+    lockScreen(my);
+    FSApp.lock.gate(LOCK).then(r=>{ if(my === _lockSeq && r !== 'failed') lockOpened(); });
+  });
+}
+/* the Me row. Shown only on a phone with the plugin and some biometry,
+   worded for what it has. Switching it on runs the prompt once first: a
+   lock that cannot be opened must never be switched on. */
+const lockName = t => t === 'touch' ? (IS_ANDROID ? 'your fingerprint' : 'Touch ID')
+                    : IS_ANDROID ? 'your face' : 'Face ID';
+function lockRow(){
+  const row = $('#meLock');
+  if(!lockable() || !FSApp.native.has('BiometricAuthNative')) return;   /* the row stays hidden */
+  FSApp.lock.available().then(a=>{
+    row.hidden = a.type === 'none';
+    $('#meLockLabel').textContent = 'Lock with ' + lockName(a.type);
+    const on = lockOn();
+    row.setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('#meLockState').textContent = on ? 'On' : 'Off';
+  });
+}
+if(FS_APP) $('#meLock').addEventListener('click', async ()=>{
+  if(!lockable()) return;
+  if(lockOn()){ FSApp.lock.setEnabled(LOCK.portal, false); lockRow(); toast('Lock switched off'); return; }
+  const a = await FSApp.lock.available();
+  if(!a.ok){ toast('Set up ' + lockName(a.type) + " in your phone's Settings first"); return; }
+  FSApp.lock.setEnabled(LOCK.portal, true);
+  const r = await FSApp.lock.gate(LOCK);
+  if(r === 'failed'){ FSApp.lock.setEnabled(LOCK.portal, false); toast('Not switched on — ' + lockName(a.type) + ' did not go through'); }
+  else toast('Your booking now opens with ' + lockName(a.type));
+  lockRow();
+});
+
 /* ---------- routing ---------- */
-onAuthStateChanged(auth, user=>{ rememberPortal(!!user); route(user); });
+/* the ?demo view is drawn with nobody signed in; a real sign-in still wins */
+onAuthStateChanged(auth, user=>{
+  if(DEMO_VIEW && !user) return;
+  if(!user) _otpFresh = true;   /* whoever arrives next came through the OTP */
+  rememberPortal(!!user); route(user);
+});
 /* the store app always launches on the home page; this tells it to come
    straight back here while signed in (see the <head> of /index.html) */
 function rememberPortal(on){
@@ -987,6 +1123,7 @@ function route(user){
      phone signing out must not leave a live listener on the previous person's
      booking, and re-routing while one is open would otherwise stack a second. */
   stopPackages();
+  lockReset();
   if(!user){
     show('loginView'); $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
     hideErr('#loginErr');
@@ -994,8 +1131,9 @@ function route(user){
     return;
   }
   endLoginSend();
-  if(!user.phoneNumber){ show('linkView'); return; }
+  if(!user.phoneNumber){ _otpFresh = true; show('linkView'); return; }
   show('loadingView');
+  lockGate();   /* store app, and only once the client has switched it on */
   loadPackages(user).catch(err=>{ showLoadError(err, user); });
 }
 function showLoadError(err, user){
@@ -1009,7 +1147,8 @@ function showLoadError(err, user){
   $('#errWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! The client area could not load my booking. My number: ' + (user.phoneNumber||''));
   show('errorView');
 }
-$('#retryBtn').addEventListener('click', ()=>{ if(auth.currentUser) route(auth.currentUser); });
+/* retry the load only: a client already past Face ID is not asked again */
+$('#retryBtn').addEventListener('click', ()=>{ const u = auth.currentUser; if(!u) return; show('loadingView'); loadPackages(u).catch(err=>showLoadError(err, u)); });
 
 /* ---------- data ----------
    LIVE, not a one-shot read. This page was getDocs(): whatever the studio did
@@ -1022,20 +1161,28 @@ $('#retryBtn').addEventListener('click', ()=>{ if(auth.currentUser) route(auth.c
    Same query, same rules, same filtering. The only additions are keeping the
    client's place across a re-render and not tearing a working page down over
    a listener that drops. */
-let _pkgUnsub = null, _pkgFirst = true, _pkgSig = '', _pkgDead = false;
+/* _pkgLast: the stream's latest snapshot, so a pull can draw again without
+   opening a second one */
+let _pkgUnsub = null, _pkgFirst = true, _pkgSig = '', _pkgDead = false, _pkgLast = null;
 function stopPackages(){
   if(_pkgUnsub){ try{ _pkgUnsub(); }catch(e){} _pkgUnsub = null; }
+  _pkgLast = null;
 }
-function loadPackages(user){
+/* again: a pull starting a dead stream afresh. The page stays as the client
+   left it — folded cards folded, no second push registration — and only a
+   real change repaints it. */
+function loadPackages(user, again){
   return loadCfg().then(()=>{
     stopPackages();
-    _pkgFirst = true; _pkgSig = ''; _pkgDead = false;
+    if(!again){ _pkgFirst = true; _pkgSig = ''; }
+    _pkgDead = false;
     const last10 = String(user.phoneNumber||'').replace(/\D/g,'').slice(-10);
     return new Promise((resolve, reject)=>{
       let settled = false;
       _pkgUnsub = onSnapshot(
         query(collection(db,'packages'), where('clientPhone','==', last10)),
         snap=>{
+          _pkgLast = { snap, user };
           try{
             renderPackages(snap, user);
             if(!settled){ settled = true; resolve(); }
@@ -1067,6 +1214,30 @@ document.addEventListener('visibilitychange', ()=>{
   const u = auth.currentUser;
   if(u && u.phoneNumber) loadPackages(u).catch(()=>{});
 });
+/* ---------- store app: pull to refresh ----------
+   Only from the top of the dashboard. A live stream is already the truth,
+   so a pull re-reads Site Config and draws again from the last snapshot:
+   no second listener, no second push registration, folded cards stay
+   folded. Only a stream that has died is started again. A pull that fails
+   says so and leaves the page on screen alone. A browser has no
+   FSApp.pullToRefresh. */
+async function refreshCfg(){
+  try{ const s = await getDoc(doc(db,'config','site')); CFG = s.exists() ? s.data() : {}; }
+  catch(e){}   /* no signal: keep the config it has, never fall back to the defaults */
+}
+if(FS_APP && window.FSApp && FSApp.pullToRefresh) FSApp.pullToRefresh(async ()=>{
+  if($('#dashView').hidden) return;
+  const u = auth.currentUser;
+  if(DEMO_VIEW && !u){ demoDraw(); return; }
+  if(!u || !u.phoneNumber) return;
+  const was = JSON.stringify(CFG);
+  await Promise.race([refreshCfg(), new Promise(r=>setTimeout(r, 4000))]);
+  if(auth.currentUser !== u) return;   /* signed out meanwhile */
+  /* new delivery steps or contact details: the cards are drawn again */
+  if(JSON.stringify(CFG) !== was) _pkgSig = '';
+  if(_pkgDead) return loadPackages(u, true).catch(()=>{ toast("Couldn't refresh — check your connection"); });
+  if(_pkgUnsub && _pkgLast) renderPackages(_pkgLast.snap, _pkgLast.user);
+}, { enabledWhen: () => !$('#dashView').hidden });
 
 function renderPackages(snap, user){
   /* Drafts are the studio's working copy — half-built events, provisional
@@ -1084,7 +1255,7 @@ function renderPackages(snap, user){
      more than "Updated just now" and the generic line would otherwise
      overwrite it a few statements later. */
   const said = syncOpenPaySheet(pkgs);
-  if(!pkgs.length){ show('emptyView'); fillEmpty(user.phoneNumber); return; }
+  if(!pkgs.length){ reveal('emptyView'); fillEmpty(user.phoneNumber); return; }
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
     ((b.createdAt && b.createdAt.seconds)||0) - ((a.createdAt && a.createdAt.seconds)||0)
@@ -1128,9 +1299,9 @@ function renderPackages(snap, user){
       if(!said) toast('Updated just now');
     }
   }
-  show('dashView');
+  reveal('dashView');
   /* the Me tab's Notifications row reads the token registerPush leaves */
-  if(_pkgFirst){ _pkgFirst = false; registerPush(user).then(()=>fillMe(user, pkgs)); }
+  if(_pkgFirst){ _pkgFirst = false; if(!DEMO_VIEW) registerPush(user).then(()=>fillMe(user, pkgs)); }
 }
 /* The pay sheet lives outside #pkgList, so a re-render leaves it untouched —
    including its prefilled amount. If the studio records a payment while the
@@ -1223,7 +1394,7 @@ function renderNextUp(pkgs){
   const box = $('#nextUp'); if(!box) return;
   const today = new Date().toLocaleDateString('en-CA');
   const next = pkgs
-    .flatMap(p=>(p.events||[]).map(e=>({ title:e.title, date:e.date, venue:e.venue, quoteNo:p.quoteNo })))
+    .flatMap(p=>(p.events||[]).map(e=>({ title:e.title, date:e.date, slot:e.slot, venue:e.venue, quoteNo:p.quoteNo })))
     .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||'') && e.date >= today)
     .sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0)[0];
   _nuEvent = next || null;
@@ -1278,10 +1449,13 @@ function gcalUrl(title, date, venue, details){
     + (venue ? '&location=' + encodeURIComponent(venue) : '')
     + (details ? '&details=' + encodeURIComponent(details) : '');
 }
+const calTitle = ev => String(ev.title||'Event') + ' — Fantasy Studio';
+const calNotes = ev => 'Photography & video by Fantasy Studio' + (ev.quoteNo ? ' (' + ev.quoteNo + ')' : '');
 function downloadIcs(ev){
   if(IN_APP){
-    location.href = gcalUrl(String(ev.title||'Event') + ' — Fantasy Studio', ev.date, ev.venue,
-      'Photography & video by Fantasy Studio' + (ev.quoteNo ? ' (' + ev.quoteNo + ')' : ''));
+    /* the plugin build writes it straight into the phone's calendar */
+    if(window.FSApp && FSApp.calendar && FSApp.calendar.available()){ addToPhoneCalendar(ev); return; }
+    location.href = gcalUrl(calTitle(ev), ev.date, ev.venue, calNotes(ev));
     return;
   }
   const stamp = s => String(s||'').replace(/-/g,'');
@@ -1291,9 +1465,9 @@ function downloadIcs(ev){
     'UID:' + stamp(ev.date) + '-' + Math.abs(String(ev.title||'event').split('').reduce((a,c)=>a+c.charCodeAt(0),0)) + '@fantasystudio',
     'DTSTART;VALUE=DATE:' + stamp(ev.date),
     'DTEND;VALUE=DATE:' + stamp(end.toLocaleDateString('en-CA')),
-    'SUMMARY:' + String(ev.title||'Event') + ' — Fantasy Studio',
+    'SUMMARY:' + calTitle(ev),
     ev.venue ? 'LOCATION:' + String(ev.venue).replace(/,/g,'\\,') : '',
-    'DESCRIPTION:Photography & video by Fantasy Studio' + (ev.quoteNo ? ' (' + ev.quoteNo + ')' : ''),
+    'DESCRIPTION:' + calNotes(ev),
     'END:VEVENT','END:VCALENDAR'
   ].filter(Boolean);
   try{
@@ -1306,6 +1480,32 @@ function downloadIcs(ev){
     setTimeout(()=>URL.revokeObjectURL(url), 4000);
     toast('Saved — open it to add the date to your calendar');
   }catch(err){ toast('Could not create the calendar file on this phone'); }
+}
+/* One tap, no hand-off, through FSApp.calendar — absent in the app build
+   without the plugin, which is why the Google Calendar link above stays.
+   A timed entry, as the crew and partner pages write, where the .ics and
+   Google paths make an all-day one: the plugin has no all-day flag, and a
+   midnight-to-midnight block reads as a 24-hour event. The slot says when
+   the day starts (morning and full day 09:00, evening 17:00), four hours is
+   a function, and the time is pinned to India (+05:30) so a phone set to
+   another zone — an NRI family's — still shows the studio's hour. Alerts a
+   day and two hours before. A "no" to the permission prompt is told where
+   to change it rather than bounced into Safari; a write that fails falls
+   back to the hand-off, so the button always does something. */
+const CAL_START = { morning:'09:00', evening:'17:00', full:'09:00' };
+let _calBusy = false;
+async function addToPhoneCalendar(ev){
+  if(_calBusy) return;
+  _calBusy = true;
+  const start = new Date(ev.date + 'T' + (CAL_START[String(ev.slot||'')] || '09:00') + ':00+05:30');
+  let r = 'error';
+  try{ r = await FSApp.calendar.add({ title: calTitle(ev), start, end: new Date(start.getTime() + 4*3600000),
+    location: ev.venue || '', notes: calNotes(ev), alerts: [-1440, -120] }); }
+  catch(e){}
+  _calBusy = false;
+  if(r === 'ok'){ toast('Added to your Calendar ✓'); return; }
+  if(r === 'denied'){ toast("Calendar access is off for Fantasy Studio — turn it on in your phone's Settings"); return; }
+  location.href = gcalUrl(calTitle(ev), ev.date, ev.venue, calNotes(ev));
 }
 /* ---------- pay the balance from the page ----------
    The studio's UPI IDs come from Site Config; a mobile number is NOT a UPI
@@ -1663,6 +1863,38 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
     </div>
   </div>`;
 }
+
+/* ---------- the ?demo sample ----------
+   What the local ?demo view draws: one confirmed two-day booking with its
+   first function twelve days out, so the countdown, the calendar button and
+   every tab have something to show. The dates follow today, so it never
+   goes stale. Nothing here reads or writes Firestore. */
+const DEMO_USER = { phoneNumber:'+919000000001', displayName:'' };
+function demoClient(){
+  const d = n => { const t = new Date(); t.setDate(t.getDate() + n); return t.toLocaleDateString('en-CA'); };
+  return [{
+    id:'demo-1', quoteNo:'FS-2026-041', status:'booked', clientName:'Ayesha', clientPhone:'9000000001', clientType:'direct',
+    createdAt:{ seconds: 1758000000 },
+    events:[
+      { title:'Mehendi',   date:d(12), slot:'evening', venue:'Family function hall, Banjara Hills', items:[{ service:'Candid Photography', qty:1 }, { service:'Traditional Video', qty:1 }] },
+      { title:'Nikah',     date:d(13), slot:'morning', venue:'Family function hall, Banjara Hills', items:[{ service:'Candid Photography', qty:2 }, { service:'Cinematic Video', qty:1 }] },
+      { title:'Reception', date:d(13), slot:'evening', venue:'Family function hall, Banjara Hills', items:[{ service:'Candid Photography', qty:2 }, { service:'Drone', qty:1 }] },
+    ],
+    addons:['Premium album', 'Cinematic teaser'], album:{ sheets:40, price:0 },
+    delivery:[], payments:[{ date:d(-20), mode:'UPI', amount:25000 }],
+    totals:{ gross:98000, discount:8000, finalPrice:90000, advance:25000, balance:65000 },
+  }];
+}
+/* the sample through the page's own renderer, exactly as a snapshot would arrive */
+function demoDraw(){ renderPackages({ docs: demoClient().map(x=>({ id:x.id, data:()=>x })) }, DEMO_USER); }
+function startDemo(){
+  $('#logoutBtn').hidden = false;
+  show('loadingView');
+  lockGate();
+  demoDraw();
+}
+/* last in the module on purpose: the sample runs through consts declared all through it */
+if(DEMO_VIEW) startDemo();
 }
 </script>
 </body>
