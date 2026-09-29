@@ -368,8 +368,11 @@ async function route(user, fresh){
   const hook = FS.DEMO_VIEW && PARAMS.has('roles');
   const last = FS.DEMO_VIEW ? '' : ROLE_OF[lsGet('fs_app_portal')] || '';
   /* one page, or several with one remembered (the app): straight there.
-     A bounce back from that very page asks instead of sending it again. */
-  const target = roles => roles.length === 1 ? roles[0] : (roles.includes(last) ? last : '');
+     A bounce back from that very page asks instead of sending it again.
+     Crew and partner studio, and nothing else: one page, as both carry the
+     Crew | Partner switch at the top (owner, 29 Sep 2026), Crew first. */
+  const target = roles => roles.length === 1 ? roles[0] : roles.includes(last) ? last
+    : roles.length === 2 && roles.includes('crew') && roles.includes('studio') ? 'crew' : '';
   const direct = t => !!t && !PICK && (fresh || FS.PORTALS[t] !== window.FS_BOUNCED);
   /* a returning session goes on from the last clean answer at once; the
      portal checks its own access again when it opens */

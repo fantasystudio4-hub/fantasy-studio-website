@@ -94,6 +94,13 @@ button.crewlink{width:100%;background:none;border:0;border-top:1px dashed var(--
 .hello .hi{color:var(--mut);font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}
 .hello h1{font-family:var(--serif);font-size:1.5rem;line-height:1.25}
 .hello .sub{color:var(--mut);font-size:.85rem;margin-top:.15rem}
+/* Crew | Partner at the top, for a number that is crew AND a partner studio
+   (owner, 29 Sep 2026): this page lit, the other one tap away, Crew first.
+   The same rules are on team/. */
+.rolesw{display:flex;gap:4px;margin:1rem 0 0;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.rolesw > *{flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;border-radius:9px;font-size:.92rem;font-weight:600;text-decoration:none;color:var(--mut)}
+.rolesw .on{background:linear-gradient(135deg,var(--gold),var(--gold-b));color:var(--ink)}
+.rolesw a:active{color:var(--gold-b);background:rgba(226,194,117,.08)}
 
 .nextup{background:var(--panel);border:1px solid var(--gold-d);border-radius:14px;padding:1rem 1.1rem;margin-top:1.1rem}
 .nextup .lbl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b)}
@@ -286,6 +293,8 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
    the existing sections each tab shows. Everything stays in the DOM, so the
    renderers and the live listeners never know about the tabs. The greeting
    (#helloBox) stays on every tab. A browser matches none of this. */
+/* Crew | Partner: on the home tab (Jobs) only */
+html.fs-app[data-tab]:not([data-tab="jobs"]) #roleSw{display:none}
 html.fs-app[data-tab] #nextupBox,html.fs-app[data-tab] #schedBox,
 html.fs-app[data-tab] #tilesBox,html.fs-app[data-tab] #jobsBox,
 html.fs-app[data-tab] #ledgerBox,html.fs-app[data-tab] #ratesBox,
@@ -433,6 +442,12 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
   </div>
 
   <div id="appView" hidden>
+    <!-- a number that is crew AND a partner studio: both pages one tap apart
+         at the top, Crew first (renderRoleSwitch). Home tab only in the app. -->
+    <nav class="rolesw" id="roleSw" aria-label="Your pages" hidden>
+      <a href="../team/" id="roleSwGo"><span aria-hidden="true">🎬</span>Crew</a>
+      <span class="on" aria-current="page"><span aria-hidden="true">🏢</span>Partner</span>
+    </nav>
     <div class="hello" id="helloBox"></div>
     <div id="nextupBox"></div>
     <div id="schedBox" class="fs-app-only"></div>
@@ -1119,6 +1134,7 @@ function render(){
   renderLedger(jobs);
   renderRates();
   if(FS_APP) renderMe();
+  renderRoleSwitch();
 }
 
 /* the greeting reads the partner's own clock — a studio opening this at
@@ -1279,8 +1295,8 @@ function renderMe(){
 /* The number's other pages (a booking, the crew page) for Me's Switch row:
    what /start/ found (fs_roles), or asked once from here when this phone
    has no clean answer for them yet (a role found despite another one's
-   check failing still counts). Only the app draws Me, so a browser never
-   asks. The samples have all three. */
+   check failing still counts). The Crew | Partner switch asks the same, in
+   browsers too. The samples have all three. */
 const ROLE_PAGE = { client:'my booking', crew:'crew page' };
 function otherRoles(){
   const u = auth.currentUser;
@@ -1296,9 +1312,23 @@ function askRoles(u){
   FS.detectRoles(u).then(r=>{
     if(_rolesFor !== u.uid || auth.currentUser !== u) return;   /* signed out meanwhile */
     _rolesAns = r;
-    if(!$('#appView').hidden) renderMe();
+    if(!$('#appView').hidden){ if(FS_APP) renderMe(); renderRoleSwitch(); }
   });
 }
+/* Crew | Partner at the top of the dashboard, browser and app alike, when
+   this number is on the crew list too. Crew is the crew page, opened in
+   place of this one (replace: Back never bounces between the two). This
+   page is on screen, so its lock has been passed: the note writeFresh
+   leaves lets the crew page's first gate open without asking again. */
+function renderRoleSwitch(){ $('#roleSw').hidden = !otherRoles().includes('crew'); }
+$('#roleSwGo').href = '../team/' + (DEMO_VIEW ? '?demo' : '');
+$('#roleSwGo').addEventListener('click', e=>{
+  if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+  e.preventDefault();
+  const u = auth.currentUser;
+  if(FS_APP && u && !FS.isSample(u)) try{ FS.writeFresh(u.uid); }catch(err){}
+  location.replace($('#roleSwGo').href);
+});
 
 /* Add to calendar, three ways. A build of the app with the calendar plugin
    writes the event straight into the phone's calendar (addToCalendar). The

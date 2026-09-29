@@ -94,6 +94,13 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 
 .hello{margin:1.3rem 0 .1rem;font-size:1.25rem}
 .hello + p{color:var(--mut);font-size:.85rem;margin-bottom:1.1rem}
+/* Crew | Partner at the top, for a number that is crew AND a partner studio
+   (owner, 29 Sep 2026): this page lit, the other one tap away, Crew first.
+   The same rules are on studio/. */
+.rolesw{display:flex;gap:4px;margin:1rem 0 0;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.rolesw > *{flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;border-radius:9px;font-size:.92rem;font-weight:600;text-decoration:none;color:var(--mut)}
+.rolesw .on{background:linear-gradient(135deg,var(--gold),var(--gold-b));color:var(--ink)}
+.rolesw a:active{color:var(--gold-b);background:rgba(226,194,117,.08)}
 .grp{display:flex;align-items:center;gap:.6rem;margin:1.2rem 0 .5rem;color:var(--mut);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase}
 .grp::after{content:"";flex:1;height:1px;background:var(--line)}
 .grp b{color:var(--gold-b);font-weight:600}
@@ -489,6 +496,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    rules pick which ones show, so the renderers, the countdown timer and the
    onSnapshot listeners run exactly as on the website. The greeting stays on
    every tab. A browser never has html.fs-app and matches none of this. */
+html.fs-app[data-tab]:not([data-tab="shoots"]) #roleSw,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #cdCard,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upHead,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upList,
@@ -651,6 +659,12 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 
   <!-- member dashboard -->
   <div id="appView" hidden>
+    <!-- a number that is crew AND a partner studio: both pages one tap apart
+         at the top, Crew first (renderRoleSwitch). Home tab only in the app. -->
+    <nav class="rolesw" id="roleSw" aria-label="Your pages" hidden>
+      <span class="on" aria-current="page"><span aria-hidden="true">🎬</span>Crew</span>
+      <a href="../studio/" id="roleSwGo"><span aria-hidden="true">🏢</span>Partner</a>
+    </nav>
     <h1 class="hello" id="hello"></h1>
     <p id="helloSub"></p>
 
@@ -1174,9 +1188,23 @@ if(!CONFIGURED){
     _rolesAsked = true;
     FS.detectRoles(u).then(()=>{
       if(!auth.currentUser || auth.currentUser.uid !== u.uid) return;
-      if(ME) renderMe(); else if(!$('#notCrewView').hidden) renderOther();
+      if(ME){ renderMe(); renderRoleSwitch(); } else if(!$('#notCrewView').hidden) renderOther();
     });
   }
+  /* Crew | Partner at the top of the dashboard, browser and app alike, when
+     this number is a partner studio too. Partner is the studio page, opened
+     in place of this one (replace: Back never bounces between the two). This
+     page is on screen, so its lock has been passed: the note writeFresh
+     leaves lets the studio page's first gate open without asking again. */
+  function renderRoleSwitch(){ $('#roleSw').hidden = !otherRoles().includes('studio'); }
+  $('#roleSwGo').href = '../studio/' + (DEMO_VIEW ? '?demo' : '');
+  $('#roleSwGo').addEventListener('click', e=>{
+    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+    e.preventDefault();
+    const u = auth.currentUser;
+    if(inApp() && u && !FS.isSample(u)) try{ FS.writeFresh(u.uid); }catch(err){}
+    location.replace($('#roleSwGo').href);
+  });
 
   /* /start/ opens the store app straight on the page it was last signed in
      to; this keeps that note while signed in here, and takes it away when
@@ -2436,6 +2464,7 @@ if(!CONFIGURED){
       $('#payDue').textContent = inr(due);
     }
     renderMe();
+    renderRoleSwitch();
     runPendingAck();   /* a Confirm from the push, once the assignments are here */
   }
 
