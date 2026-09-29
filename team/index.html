@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-fs-cache="disk">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -8,6 +8,9 @@
      at the end of <style>), so a browser matches none of it. First, before
      anything paints. -->
 <script>if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');</script>
+<!-- data-fs-cache="disk": fs-auth.js keeps this page's Firestore cache on
+     disk in browsers too, as it always was here: the last schedule has to
+     open at a venue with one bar -->
 <title>Fantasy Studio — Crew</title>
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="../icons/icon-192.png" />
@@ -67,33 +70,23 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .login{max-width:400px;margin:8vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
 .login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
 .login p{color:var(--mut);font-size:.85rem;margin-bottom:1.3rem}
-.fld{margin-bottom:.9rem;text-align:left}
-.fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
-.fld input,.fld textarea{width:100%;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.75em .8em}
-.fld input:focus,.fld textarea:focus{outline:none;border-color:var(--gold)}
-.phwrap{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#171309}
-.phwrap b{display:grid;place-items:center;padding:0 .1em 0 .7em;color:var(--mut);font-weight:500}
-.phwrap input{flex:1;background:transparent;border:0;color:var(--text);padding:.75em .8em;min-width:0;letter-spacing:.06em}
-.phwrap input:focus{outline:none}
-.phwrap .ccin{flex:0 0 2.6em;width:2.6em;text-align:center;color:var(--mut);border-right:1px solid var(--line);padding:.75em .1em;letter-spacing:.02em}
-.cchint{color:var(--mut);font-size:.68rem;margin-top:.35rem;text-align:left}
+.login p b{color:var(--text);font-weight:500;white-space:nowrap}
 .gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .gbtn:active{transform:scale(.98)}
 .gbtn:disabled{opacity:.7;cursor:default}
 .gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.otp{display:flex;gap:.45rem;justify-content:center;margin:.4rem 0 1rem}
-.otp input{flex:1 1 0;min-width:0;max-width:52px;width:auto;height:52px;text-align:center;font-size:1.3rem;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--gold-b)}
-.otp input:focus{outline:none;border-color:var(--gold)}
 .mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
 .err{color:var(--err);font-size:.8rem;margin-top:.8rem}
 .note{color:var(--mut);font-size:.75rem;margin-top:1rem}
-/* the other door out of this box — partner studios have their own sign-in
-   (same pattern as the client portal's crewlink) */
+/* the not-set-up card's way to the person's other pages (/start/) */
 .crewlink{display:block;margin-top:1.1rem;padding-top:1rem;border-top:1px dashed var(--line);color:var(--mut);font-size:.8rem;text-decoration:none;min-height:44px}
 .crewlink b{color:var(--gold-b);font-weight:500}
 .crewlink:active b{text-decoration:underline}
 @media(hover:hover){ .crewlink:hover b{text-decoration:underline} }
+/* its last row: another number, and (app only) Delete my account */
+.nc-acts{display:flex;justify-content:center;flex-wrap:wrap;gap:0 .3rem;margin-top:.6rem}
+.nc-acts .mini{margin-top:0;min-height:44px;padding:.4em .9em}
 
 .skel{background:var(--panel);border:1px solid var(--line);border-radius:16px;height:90px;margin:1rem 0;position:relative;overflow:hidden}
 .skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.08),transparent);animation:shim 1.2s infinite}
@@ -398,9 +391,6 @@ html.fs-app .ejt-new textarea{font-size:16px}
 header{border-bottom:0}
 header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
 .login,.asg,.paycard,.empty{box-shadow:0 10px 26px rgba(0,0,0,.22)}
-.fld input:focus,.fld textarea:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
-.phwrap:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
-.otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
 .gbtn,.ackbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active,.ackbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
 /* ==== Crew HQ: rank, countdown, badges ====
@@ -507,6 +497,7 @@ html.fs-app[data-tab]:not([data-tab="editing"]) #editWrap,
 html.fs-app[data-tab]:not([data-tab="pay"]) #crewStats,
 html.fs-app[data-tab]:not([data-tab="pay"]) #anaCard,
 html.fs-app[data-tab]:not([data-tab="pay"]) #payCard,
+html.fs-app[data-tab]:not([data-tab="me"]) #meTop,
 html.fs-app[data-tab]:not([data-tab="me"]) #hqCard,
 html.fs-app[data-tab]:not([data-tab="me"]) #bdgWrap,
 html.fs-app[data-tab]:not([data-tab="me"]) #meHelpHead,
@@ -518,11 +509,23 @@ html.fs-app.fs-tabs-on #logoutBtn{display:none}   /* Me › Sign out does this j
 html.fs-app.fs-kb #edSheet{padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))}   /* keyboard up: the sheet slides, its header must not sit under the clock */
 /* .fs-app-only hands an element its UA display (block); a section heading is a flex row */
 html.fs-app .fs-app-only.grp{display:flex}
-/* the Me tab's account card: who is signed in, then one row per action */
-html.fs-app .mewho{display:flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .5rem;padding-bottom:.6rem;border-bottom:1px dashed var(--line)}
-html.fs-app .mewho b{font-family:var(--serif);color:#fff;font-size:1.05rem}
-html.fs-app .mewho span{color:var(--mut);font-size:.85rem}
+/* the Me tab's cards: who is signed in at the top (#meTop: their profile
+   photo, or their initials on gold), the account rows at the foot (#meWrap),
+   one row per action */
+html.fs-app .mewho{display:flex;align-items:center;gap:.8rem;padding-bottom:.7rem;border-bottom:1px dashed var(--line)}
+html.fs-app .meav{flex:0 0 auto;width:60px;height:60px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:2px solid rgba(226,194,117,.55)}
+html.fs-app .meav img{width:100%;height:100%;object-fit:cover;display:block}
+html.fs-app .meav i{font-style:normal;font-family:var(--serif);color:#fff;font-size:1.35rem;letter-spacing:.02em}
+html.fs-app .mewho-t{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .5rem}
+html.fs-app .mewho b{font-family:var(--serif);color:#fff;font-size:1.05rem;overflow-wrap:anywhere}
+html.fs-app .mewho-t span{color:var(--mut);font-size:.85rem}
 html.fs-app .mewho em{flex-basis:100%;font-style:normal;color:var(--gold-b);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase}
+/* "Complete your profile": a gold nudge while something is still empty,
+   gone once it is all there (the profile step itself is optional) */
+html.fs-app .merow.meprof{margin:.6rem 0 .2rem;padding:.55rem .8rem;border:1px dashed rgba(226,194,117,.5);border-radius:12px;background:rgba(184,144,43,.09)}
+html.fs-app .merow.meprof span{display:flex;flex-direction:column;color:var(--gold-b);font-weight:500}
+html.fs-app .merow.meprof small{font-size:.74rem;color:var(--mut);font-weight:400}
 html.fs-app .merow{display:flex;align-items:center;justify-content:space-between;gap:.6rem;width:100%;min-height:48px;padding:.4rem 0;
   border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;color:var(--text);
   font:inherit;font-size:.9rem;text-align:left;text-decoration:none;cursor:pointer}
@@ -548,6 +551,23 @@ html.fs-app .calbtn{display:inline-flex;align-items:center;gap:.35em;min-height:
   font-size:.82rem;cursor:pointer}
 html.fs-app .calbtn:active{background:rgba(184,144,43,.16)}
 html.fs-app .calbtn:disabled{opacity:.6;cursor:default}
+/* Delete my account: asked in a dialog of the page's own, so the button
+   can say exactly what goes and what the studio keeps */
+html.fs-app .md-bd{position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(2px);z-index:92}
+html.fs-app .md{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:93;width:min(400px,calc(100vw - 28px));
+  max-height:calc(100vh - 40px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  padding:1.3rem 1.2rem 1rem;box-shadow:0 18px 46px rgba(0,0,0,.55);text-align:center}
+html.fs-app .md h2{font-size:1.2rem;color:#fff;margin-bottom:.5rem}
+html.fs-app .md p{color:var(--mut);font-size:.86rem;line-height:1.55;margin-bottom:.6rem;text-align:left}
+html.fs-app .md p b{color:var(--text);font-weight:500}
+html.fs-app .md p.err{color:var(--err);margin:.2rem 0 .7rem;text-align:left}
+html.fs-app .md-del{display:block;width:100%;min-height:48px;margin-top:.5rem;border:0;border-radius:40px;padding:.8em;
+  background:#b8483a;color:#fff;font-size:.9rem;letter-spacing:.04em;cursor:pointer}
+html.fs-app .md-del:disabled{opacity:.7;cursor:default}
+html.fs-app .md-del.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
+html.fs-app .md-no{display:block;width:100%;min-height:48px;margin-top:.45rem;border:1px solid var(--line);border-radius:40px;padding:.7em;
+  background:none;color:var(--text);font-size:.9rem;cursor:pointer}
+html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 </style>
 <link rel="stylesheet" href="../app-shell.css" />
 </head>
@@ -557,8 +577,7 @@ html.fs-app .calbtn:disabled{opacity:.6;cursor:default}
        whole portal, sign-in included, is script-driven. Say so, and give the
        one thing that still works — a way to reach a human. -->
   <style>
-    #loadingView,#loginView,#appView,#errorView,#linkView,#emptyView,
-    #requestView,#pendingView,#noAccessView,.hdr,header{display:none!important}
+    #loadingView,#notCrewView,#appView,#errorView,.hdr,header{display:none!important}
     .ns-portal{max-width:34rem;margin:22vh auto 0;padding:0 1.3rem;text-align:center;
       font-family:'Jost',system-ui,sans-serif;color:#f3ecdc}
     .ns-portal h1{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:#fff;margin:0 0 .6rem}
@@ -591,66 +610,35 @@ html.fs-app .calbtn:disabled{opacity:.6;cursor:default}
 
   <div id="loadingView"><div class="skel"></div><div class="skel"></div></div>
 
-  <!-- phone OTP sign in — same flow crew already know from the client portal -->
-  <div id="loginView" hidden>
+  <!-- Signed in, and the server says this number is not on the crew list.
+       Signing in happens on /start/ now (one sign-in for every page), and
+       only numbers the studio adds get in: there is no request to join
+       (owner, 29 Sep 2026). The team listener stays on, so the moment the
+       studio adds the number this page opens by itself. -->
+  <div id="notCrewView" hidden>
     <div class="login">
-      <svg viewBox="0 0 100 100" style="width:54px;height:54px"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
-      <h1>Crew Sign In</h1>
-      <p>For Fantasy Studio team members</p>
-      <div id="phoneStep">
-        <div class="fld"><label>Mobile number</label>
-          <div class="phwrap"><b>+</b><input id="cc" class="ccin" type="tel" inputmode="numeric" maxlength="3" value="91" aria-label="Country code" /><input id="phone" type="tel" inputmode="numeric" maxlength="14" placeholder="98765 43210" autocomplete="tel-national" /></div>
-          <div class="cchint fs-web-only">Outside India? Change 91 to your country code.</div>
-        </div>
-        <button class="gbtn" id="sendOtp">Get OTP</button>
-      </div>
-      <div id="otpStep" hidden>
-        <div class="fld" style="text-align:center"><label style="text-align:center">Enter the OTP sent to <b id="otpTo" style="color:var(--text)"></b></label></div>
-        <div class="otp" id="otpBoxes">
-          <input type="tel" inputmode="numeric" autocomplete="one-time-code" aria-label="OTP digit 1 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 5 of 6" /><input type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 6 of 6" />
-        </div>
-        <button class="gbtn" id="verifyOtp">Verify &amp; Sign In</button>
-        <button class="mini" id="otpResend" type="button">Resend OTP</button>
-        <button class="mini" id="otpBack" type="button">← Change number</button>
-      </div>
-      <div class="err" id="loginErr" role="alert" hidden></div>
-      <div class="note">Use your own mobile number — if you're not on the team list yet, you can request to join after signing in.</div>
-      <!-- partner studios land here too sometimes — their portal is /studio/ -->
-      <a class="crewlink fs-web-only" href="../studio/">🏢 Partner studio? <b>Sign in here</b> →</a>
-      <!-- in the store app every sign-in is picked on one page, /start/ -->
-      <div class="fs-app-only"><a class="crewlink" href="../start/"><b>Choose another sign-in</b> →</a></div>
-    </div>
-  </div>
-
-  <!-- signed in, not a member yet → ask to join -->
-  <div id="requestView" hidden>
-    <div class="login">
-      <h1>Join the crew</h1>
-      <p>Your number <b id="reqPhone" style="color:var(--text)"></b> isn't on the Fantasy Studio team list yet. Send a request and the studio will add you.</p>
-      <div class="fld"><label>Your name</label><input id="reqName" autocomplete="name" maxlength="80" /></div>
-      <div class="fld"><label>Message <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional — e.g. your role)</span></label>
-        <textarea id="reqNote" rows="2" maxlength="300" placeholder="e.g. Photographer — worked the Ayesha wedding"></textarea></div>
-      <button class="gbtn" id="reqSend">Request to Join</button>
-      <div class="err" id="reqErr" hidden></div>
-    </div>
-  </div>
-
-  <!-- request sent, waiting for the studio -->
-  <div id="pendingView" hidden>
-    <div class="login">
-      <span class="bigic">⏳</span>
-      <h1>Request sent</h1>
-      <p id="pendingWho"></p>
-      <div class="note">Fantasy Studio has your request. The moment they add you, this page unlocks by itself — no need to sign in again.</div>
+      <svg viewBox="0 0 100 100" style="width:54px;height:54px" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+      <h1>This number isn't set up as crew yet</h1>
+      <p>The studio has not added <b id="ncPhone"></b> to its crew list. If they have a different number for you, sign in with that one — or reach us and we'll help you right away.</p>
       <div class="crewhelp">
-        <a id="pendCall" href="#">📞 Call the studio</a>
-        <a id="pendWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+        <a id="ncCall" href="#">📞 Call the studio</a>
+        <a id="ncWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+      </div>
+      <div class="note">The moment the studio adds this number, this page opens by itself.</div>
+      <!-- a number that is a client or a partner studio as well: those pages
+           are one tap away on /start/ -->
+      <a class="crewlink" id="ncOther" href="../start/" hidden><b id="ncOtherTo">Open my other pages</b> →</a>
+      <div class="nc-acts">
+        <button class="mini" id="ncOut" type="button">Sign in with another number</button>
+        <!-- signing in made a login for this number: the app lets it go from
+             here too, as there is no Me tab on this screen (Apple 5.1.1(v)) -->
+        <button class="mini fs-app-only" id="ncDel" type="button">Delete my account</button>
       </div>
     </div>
   </div>
 
-  <!-- load failed (network / permissions) — a member must never be misrouted
-       into the "request to join" flow because of a server-side error -->
+  <!-- load failed (network / permissions) — a member must never be told
+       they are not on the crew list because of a server-side error -->
   <div id="errorView" hidden>
     <div class="login">
       <span class="bigic">⚠️</span>
@@ -676,6 +664,20 @@ html.fs-app .calbtn:disabled{opacity:.6;cursor:default}
       <div class="ia">
         <button class="gbtn" id="instGo" type="button">Install</button>
         <button class="mini" id="instNo" type="button">Not now</button>
+      </div>
+    </div>
+
+    <!-- the top of the Me tab: who is signed in, from their own profile
+         (profiles/{uid}, made on /profile/), and the way to change it -->
+    <div class="fs-app-only" id="meTop">
+      <div class="paycard">
+        <div class="mewho">
+          <span class="meav" aria-hidden="true"><img id="meAvImg" alt="" hidden /><i id="meAvIni"></i></span>
+          <span class="mewho-t"><b id="meName">—</b><span id="mePhone"></span><em id="meRole">Crew</em></span>
+        </div>
+        <!-- the profile step is optional; this stays until it is filled in -->
+        <a class="merow meprof" id="meProf" href="../profile/?role=crew&amp;next=../team/" hidden><span>Complete your profile<small id="meProfWhat">Add your photo and an emergency contact</small></span><b>Add →</b></a>
+        <a class="merow" id="meEdit" href="../profile/?role=crew&amp;next=../team/"><span>Edit profile</span><b>→</b></a>
       </div>
     </div>
 
@@ -762,30 +764,38 @@ html.fs-app .calbtn:disabled{opacity:.6;cursor:default}
       <a id="crewCall" href="#">📞 Call the studio</a>
       <a id="crewWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
     </div>
-    <!-- the rest of the Me tab: who is signed in and the account rows a store
-         listing has to offer. Delete my account is a request to the studio
-         over WhatsApp — the studio takes the member off its list in the
-         panel, and this page keeps no write for it on purpose. -->
+    <!-- the rest of the Me tab: the account rows a store listing has to
+         offer (who is signed in is #meTop, at the top of the tab). Delete my
+         account runs the deleteMyAccount function (delGo below). -->
     <div class="fs-app-only" id="meWrap">
       <div class="grp">Account</div>
       <div class="paycard">
-        <div class="mewho"><b id="meName">—</b><span id="mePhone"></span><em id="meRole">Crew</em></div>
+        <!-- a number that is a client or a partner studio too: /start/ lists its pages -->
+        <button type="button" class="merow" id="meSwitch" hidden><span id="meSwTo">Switch pages</span><b>→</b></button>
         <div class="merow" id="meNotifRow" hidden><span>Notifications</span><b id="meNotif"></b></div>
         <!-- Face ID / Touch ID before the pages show (renderLockRow): named for
              what the phone has, and not there at all with nothing enrolled -->
         <label class="merow lockrow" id="meLockRow" hidden><span id="meLockLbl">Face ID lock</span><input type="checkbox" id="meLock" role="switch" /><i class="sw" aria-hidden="true"></i></label>
         <a class="merow" href="../privacy/"><span>Privacy policy</span><b>Read →</b></a>
-        <a class="merow warn" id="meDel" href="#" target="_blank" rel="noopener"><span>Delete my account</span><b>Ask on WhatsApp →</b></a>
+        <button type="button" class="merow warn" id="meDel"><span>Delete my account</span><b>→</b></button>
         <button type="button" class="merow" id="meOut"><span>Sign out</span><b>→</b></button>
-        <button type="button" class="merow" id="meSwitch"><span>Switch account</span><b>→</b></button>
       </div>
     </div>
   </div>
 
 </div>
 
-<div id="recaptcha-box"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<!-- Me › Delete my account, asked first (app only, like the row) -->
+<div class="md-bd fs-app-only" id="delBd" hidden></div>
+<div class="md fs-app-only" id="delDlg" role="alertdialog" aria-modal="true" aria-labelledby="delTtl" aria-describedby="delTxt" hidden>
+  <h2 id="delTtl">Delete your account?</h2>
+  <p id="delTxt">This deletes your Fantasy Studio sign-in and your profile — <b>photo, name and emergency contact</b> — and signs you out on this phone.</p>
+  <p id="delKeep">Your shoots, payments and editing history stay with the studio for its records, and the studio is told you deleted your account.</p>
+  <p class="err" id="delErr" role="alert" hidden></p>
+  <button type="button" class="md-del" id="delGo">Delete my account</button>
+  <button type="button" class="md-no" id="delNo">Cancel</button>
+</div>
 
 <script>
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
@@ -813,6 +823,9 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
       /* without this the page loads from cache and then says "Not configured
          yet" — the config is a separate <script src> */
       '../firebase-config.js',
+      /* the one sign-in the page imports (session, database): without it an
+         offline start stops at the error view */
+      '../fs-auth.js',
       './'
     ].map(u=>new URL(u, location.href).href);
 
@@ -887,7 +900,9 @@ const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
-const show = id => { ['loadingView','loginView','requestView','pendingView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+const show = id => { ['loadingView','notCrewView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+/* +91 90000 00001, the way /start/ and the partner page print it */
+const prettyPhone = p => String(p||'').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
 const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : (d||'—');
 const fmtShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : (d||'—');
 const fmtTime = t => {
@@ -897,47 +912,66 @@ const fmtTime = t => {
 };
 const todayISO = () => new Date().toLocaleDateString('en-CA');
 
-if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
+/* The one sign-in (fs-auth.js, Phase 3.5): the session, the database and the
+   profile this page shares with /start/, the client and the partner pages.
+   The phone + OTP box lives on /start/ now; this page only ever opens signed
+   in. A missing module or a blocked gstatic reaches the error view, never a
+   skeleton that loads for ever. */
+const CONFIGURED = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey);
+const FS = CONFIGURED
+  ? await import('../fs-auth.js').catch(e => { console.error('[crew] the sign-in module did not load', e); return null; })
+  : null;
+if(!CONFIGURED){
   document.body.innerHTML = '<div class="wrap"><div class="empty">Not configured yet.</div></div>';
+}else if(!FS){
+  $('#errWhat').textContent = navigator.onLine
+    ? 'Part of this page did not load. Check your connection and try again.'
+    : 'You are offline, and this phone has not saved this page yet. Open it once with signal and it will work without any afterwards.';
+  $('#errRetry').addEventListener('click', ()=>location.reload());
+  show('errorView');
 }else{
-  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const { getAuth, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } =
-    await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-          collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, query, where, onSnapshot, serverTimestamp,
+  /* the same 10.12.2 URLs fs-auth.js loaded: one module instance, so these
+     work with its auth and db (already in memory, no second download) */
+  const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const { collection, doc, setDoc, updateDoc, deleteDoc, deleteField, query, where, onSnapshot, serverTimestamp,
           disableNetwork, enableNetwork } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
-  /* a NAMED app gives the crew page its own session storage — signing in here
-     never touches the studio's admin session or a client-portal session on
-     the same phone */
-  const app  = initializeApp(window.FIREBASE_CONFIG, 'crew');
-  const auth = getAuth(app);
-  /* The install card promises the last schedule opens with no signal. It could
-     not: this was a plain getFirestore(), whose cache is in-memory and dies
-     with the page, so offline there was no "last schedule" to open at all —
-     just a spinner, on a shoot day, at a venue with one bar. Persist it, the
-     way the admin panel already does. */
-  let db;
-  try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
-  catch(e){ db = getFirestore(app); }
+  /* The session is the named app 'fs', never the admin's default app, so the
+     studio's own session on the same phone is untouched. The crew page kept
+     its Firestore cache on disk (the install card promises the last schedule
+     opens with no signal): <html data-fs-cache="disk"> asks fs-auth.js for
+     that in browsers too. */
+  const { auth, db, DEMO_PHONE } = FS;
 
-  /* Local test hook, the admin panel's two locks: served from localhost AND
-     ?demo in the URL. It opens the App Review sample (startDemo, below)
-     without signing in, so the signed-in screens can be checked with no OTP.
-     On fantasystudio.in the first lock can never hold. No sign-in, no push,
-     no Firestore read or write. */
-  const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
-                 && new URLSearchParams(location.search).has('demo');
+  /* Local test hook, the admin panel's two locks (fs-auth.js holds them):
+     served from localhost AND ?demo in the URL. It opens the App Review
+     sample (startDemo, below) without signing in, so the signed-in screens
+     can be checked with no OTP. On fantasystudio.in the first lock can
+     never hold. No sign-in, no push, no Firestore read or write. */
+  const DEMO_VIEW = FS.DEMO_VIEW;
 
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online', updNet); window.addEventListener('offline', updNet); updNet();
-  /* the test hook never signed in: leaving it is this page without ?demo.
-     The lock screen's "Sign out instead" lands here too, so the push
-     clean-up (see pushOff) can never hold the sign-out up. */
+
+  /* Leaving goes to /start/, the one sign-in, in the browser and the app
+     alike. The test hook goes to /start/'s own test view. */
+  const toStartNow = () => location.replace(DEMO_VIEW ? '../start/?demo' : '../start/');
+  /* Sign out signs out everywhere: the session is the crew, client and
+     partner pages' alike, so the home-screen widget goes whole. The push
+     token goes first, while the login the token rule needs is still here
+     (pushOff never holds it up for long). The lock screen's "Sign out
+     instead" lands here too. _leaving keeps the auth listener's own
+     signed-out handling out of the way meanwhile. */
+  let _leaving = false;
   $('#logoutBtn').addEventListener('click', async ()=>{
-    if(DEMO_VIEW){ await widgetOff(); location.replace(location.pathname); return; }
-    await pushOff(); signOut(auth);   /* the widget goes with the session (onAuthStateChanged) */
+    if(_leaving) return;
+    _leaving = true;
+    if(!DEMO_VIEW) await pushOff();
+    await widgetGone();
+    rememberPortal(false);
+    if(!DEMO_VIEW) await FS.signOutEverywhere();
+    toStartNow();
   });
 
   /* ---------- install to the phone's app list ----------
@@ -998,21 +1032,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      Config like everywhere else, with the printed one as the fallback so the
      links work even if that read fails. */
   const DEFAULT_PHONE = '+91 86868 68803';
-  /* the same digits, kept for the Me tab's "Delete my account" request (renderMe) */
-  let _studioNo = '';
+  /* the same digits, kept for the not-set-up card's links (wireNotCrew) */
+  let _studioNo = DEFAULT_PHONE.replace(/\D/g,'');
   function wireHelp(phone){
     const p = String(phone||DEFAULT_PHONE).replace(/\D/g,'');
     _studioNo = p;
-    const msg = encodeURIComponent('Salaam! This is about my crew assignment — ');
-    [['#crewCall','#crewWa'],['#pendCall','#pendWa']].forEach(([c,w])=>{
-      const ca = $(c), wa = $(w);
-      if(ca) ca.href = 'tel:+' + p;
-      if(wa) wa.href = 'https://wa.me/' + p + '?text=' + msg;
-    });
+    $('#crewCall').href = 'tel:+' + p;
+    $('#crewWa').href = 'https://wa.me/' + p + '?text=' + encodeURIComponent('Salaam! This is about my crew assignment — ');
   }
   wireHelp(DEFAULT_PHONE);
-  if(!DEMO_VIEW) getDoc(doc(db,'config','site'))
-    .then(s=>{ const c = s.exists() && s.data().contact; if(c && c.phone){ wireHelp(c.phone); if(ME) renderMe(); } })
+  /* fs-auth.js reads config/site once for every page (5 s ceiling, the
+     printed number when it cannot) */
+  if(!DEMO_VIEW) FS.getContact()
+    .then(c=>{ wireHelp(c.phone); if(!$('#notCrewView').hidden) wireNotCrew(); })
     .catch(()=>{});   /* the fallback number is already wired */
 
   /* the divs that act as buttons are focusable now — give them a button's keys */
@@ -1024,215 +1056,56 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     t.click();
   });
 
-  /* ---------- helpers shared with the client portal ---------- */
-  function authMsg(err){
-    const c = (err && err.code) || '';
-    if(c.includes('invalid-phone-number')) return 'That mobile number does not look right.';
-    if(c.includes('invalid-verification-code')) return 'Wrong OTP — check and try again.';
-    if(c.includes('too-many-requests')) return 'Too many tries — wait a few minutes and try again.';
-    if(c.includes('network-request-failed')) return 'No internet — check your connection.';
-    if(c.includes('captcha-check-failed') || c.includes('missing-recaptcha'))
-      return 'That security check expired. Please try again for a fresh code.';
-    if(c.includes('code-expired')) return 'That OTP has expired — tap Resend OTP for a new one.';
-    if(c.includes('quota-exceeded')) return 'Too many sign-in attempts today — tell the studio and try later.';
-    if(c.includes('user-disabled')) return 'This account has been disabled — talk to the studio.';
-    if(/internal-error|app-credential|argument-error/.test(c) || (!c && /recaptcha/i.test((err && err.message) || '')))
-      return 'The security check did not load. Please try again.' + errRef(err);
-    /* the short Ref lets a screenshot of this message say what went wrong */
-    return 'Sign-in did not go through. Please try again, or tell the studio.' + errRef(err);
-  }
-  const errRef = err => { const r = String((err && (err.code || err.message)) || '').replace(/^auth\//,'').slice(0,40); return r ? ' (Ref: ' + r + ')' : ''; };
-  const showErr = (sel, err) => {
-    if(typeof err !== 'string') console.error('[sign-in]', err && err.code, err && err.message);
-    const el=$(sel); el.textContent = typeof err==='string' ? err : authMsg(err); el.hidden = false;
-  };
-  const hideErr = sel => { $(sel).hidden = true; };
-
-  function wireOtpBoxes(wrapSel, onFull){
-    const boxes = $$(wrapSel + ' input');
-    const full = () => boxes.every(x=>x.value);
-    boxes.forEach((b,i)=>{
-      b.addEventListener('input', ()=>{
-        const v = b.value.replace(/\D/g,'');
-        if(v.length > 1){
-          v.split('').slice(0, boxes.length - i).forEach((ch,j)=>boxes[i+j].value = ch);
-          boxes[Math.min(i + v.length, boxes.length) - 1].focus();
-        }else{
-          b.value = v;
-          if(v && i < boxes.length-1) boxes[i+1].focus();
-        }
-        if(full() && onFull) onFull();
-      });
-      b.addEventListener('keydown', e=>{ if(e.key==='Backspace' && !b.value && i>0) boxes[i-1].focus(); });
-      b.addEventListener('paste', e=>{
-        const t = (e.clipboardData.getData('text')||'').replace(/\D/g,'');
-        if(t.length >= boxes.length){
-          e.preventDefault();
-          boxes.forEach((x,j)=>x.value = t[j]||'');
-          boxes[boxes.length-1].focus();
-          if(full() && onFull) onFull();
-        }
-      });
-    });
-    return () => boxes.map(b=>b.value).join('');
-  }
-  const otpCode = wireOtpBoxes('#otpBoxes', ()=>{ const b=$('#verifyOtp'); if(!$('#otpStep').hidden && !b.disabled) b.click(); });
-  const clearBoxes = sel => $$(sel + ' input').forEach(b=>b.value='');
-
-  const _cool = new Map();
-  function startCooldown(btn, secs = 30){
-    if(!btn) return;
-    clearInterval(_cool.get(btn));
-    let s = secs;
-    btn.disabled = true;
-    btn.textContent = `Resend OTP (${s}s)`;
-    const iv = setInterval(()=>{
-      s--;
-      if(s <= 0){ clearInterval(iv); btn.disabled = false; btn.textContent = 'Resend OTP'; }
-      else btn.textContent = `Resend OTP (${s}s)`;
-    }, 1000);
-    _cool.set(btn, iv);
-  }
-
-  /* India keeps strict 10-digit checks, other countries 6–14 national digits;
-     absorbs a duplicated country code and the trunk zero (same as the portal) */
-  function readPhone(ccSel, phSel){
-    let cc = ($(ccSel).value||'').replace(/\D/g,'') || '91';
-    let p  = ($(phSel).value||'').replace(/\D/g,'');
-    if(p.length > 10 && p.indexOf(cc) === 0) p = p.slice(cc.length);
-    p = p.replace(/^0+/, '');
-    const ok = cc === '91' ? p.length === 10 : (p.length >= 6 && p.length <= 14);
-    return { cc, p, ok, full: '+' + cc + p, pretty: '+' + cc + ' ' + p, last10: (cc + p).slice(-10) };
-  }
-
-  /* ---------- phone OTP sign-in ---------- */
-  let confirmation = null, verifier = null;
-  /* A fresh verifier for every send (a cached grecaptcha token is single-use
-     and broke the first Resend), rendered into a fresh <div>, never onto the
-     button. An invisible widget stays bound to the element it was rendered on,
-     so a second one on #sendOtp threw "reCAPTCHA has already been rendered in
-     this element" on every Resend, Change number or retry (same fix as the
-     client portal, 23 Sep 2026). */
-  /* Google hangs each widget's picture puzzle on <body>, outside #recaptcha-box,
-     and clear() leaves it there, so an unsolved puzzle stayed on screen and
-     stacked under the next one (seen in the iOS app, 23 Sep 2026). Reset the old
-     widget and take its puzzle frame away as well. */
-  function dropRecaptcha(old){
-    try{ if(old && old.widgetId != null && window.grecaptcha) grecaptcha.reset(old.widgetId); }catch(e){}
-    try{ if(old) old.clear(); }catch(e){}
-    $('#recaptcha-box').textContent = '';
-    document.querySelectorAll('iframe[src*="recaptcha/api2/bframe"]').forEach(f => { const c = f.closest('body > div'); if(c) c.remove(); });
-  }
-  /* The App Review demo login. It is a Firebase test number (no SMS is sent),
-     so reCAPTCHA is skipped for it alone: the reviewer never meets a picture
-     puzzle. Firebase honours the skip only for test numbers, so every other
-     number still gets a real check. If this number is ever taken off Firebase's
-     test list, delete it here too, or its sign-in fails.
-     Signed in, this number is shown the built-in crew sample (startDemo). */
-  const DEMO_PHONE = '+919000000001';
-  function freshVerifier(old, full){
-    dropRecaptcha(old);
-    const el = document.createElement('div');
-    $('#recaptcha-box').appendChild(el);
-    auth.settings.appVerificationDisabledForTesting = full === DEMO_PHONE;
-    try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
-    finally{ auth.settings.appVerificationDisabledForTesting = false; }
-  }
-  /* a closed picture puzzle leaves verify() pending forever: bring the button
-     back after STALL_MS, and let a newer tap win over a late older answer.
-     Until then `sending` swallows extra taps (one Resend tap, one SMS). */
-  const STALL_MS = 30000;
-  const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or try again.';
-  let sendSeq = 0, sending = false;
-  function sendIdle(){ sending = false; const b = $('#sendOtp'); b.disabled = false; b.classList.remove('busy'); b.textContent = 'Get OTP'; }
-  /* signed in: forget any send in flight and take the badge off the screen */
-  function endLoginSend(){
-    sendSeq++; sendIdle();
-    dropRecaptcha(verifier); verifier = null;
-  }
-  async function doSendOtp(){
-    if(sending) return;
-    hideErr('#loginErr');
-    const ph = readPhone('#cc','#phone');
-    if(!ph.ok){ showErr('#loginErr', ph.cc==='91' ? 'Enter your 10-digit mobile number.' : 'That number does not look right for country code +' + ph.cc + '.'); return; }
-    const my = ++sendSeq; sending = true;
-    const btn = $('#sendOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending OTP…';
-    const stall = setTimeout(()=>{ if(my === sendSeq){ sendIdle(); showErr('#loginErr', STALL_MSG); } }, STALL_MS);
-    try{
-      const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier, ph.full));
-      if(my !== sendSeq) return;
-      confirmation = c;
-      hideErr('#loginErr');
-      $('#otpTo').textContent = ph.pretty;
-      $('#phoneStep').hidden = true; $('#otpStep').hidden = false;
-      clearBoxes('#otpBoxes'); $$('#otpBoxes input')[0].focus();
-      startCooldown($('#otpResend'));
-      toast('OTP sent to ' + ph.pretty);
-    }catch(err){ if(my === sendSeq) showErr('#loginErr', err); }
-    finally{ clearTimeout(stall); if(my === sendSeq) sendIdle(); }
-  }
-  $('#sendOtp').addEventListener('click', doSendOtp);
-  $('#otpResend').addEventListener('click', doSendOtp);
-  $('#verifyOtp').addEventListener('click', async ()=>{
-    hideErr('#loginErr');
-    const code = otpCode();
-    if(code.length !== 6){ showErr('#loginErr','Enter the 6-digit OTP.'); return; }
-    const btn = $('#verifyOtp'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Verifying…';
-    try{ await confirmation.confirm(code); }
-    catch(err){ showErr('#loginErr', err); }
-    finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
-  });
-  /* Change number drops a Resend still in flight, so it can't flip the page back */
-  $('#otpBack').addEventListener('click', ()=>{ sendSeq++; sendIdle(); $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
-
   /* ---------- data + routing ---------- */
-  let ME = null, ASGS = [], REQ = null, EJOBS = {};
-  let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null, _ejUnsub = null;
-  let _meLoaded = false, _asgsLoaded = false, _reqLoaded = false;
-  let _meErr = null, _reqErr = null;
+  let ME = null, ASGS = [], EJOBS = {};
+  let _meUnsub = null, _asgsUnsub = null, _ejUnsub = null;
+  let _meLoaded = false, _asgsLoaded = false;
+  let _meErr = null;
   /* the assignments listener failed: the empty list is not "nothing coming" (the widget) */
   let _asgsFailed = false;
   /* a SERVER-confirmed team snapshot has arrived — see route() */
   let _meFresh = false, _meWatchdog = null;
-  let _pastOpen = false, _phone10 = '', _pretty = '', _pushFor = '';
+  let _pastOpen = false, _phone10 = '', _pretty = '', _pushFor = '', _uid = '';
   /* showing the App Review sample: nothing on screen has a document behind it */
   let _demo = false;
+  /* profiles/{uid} for the Me tab (loadProfile): undefined not read yet,
+     null none, false the read failed (unknown, not "none") */
+  let PROFILE, _profFor = '', _profGen = 0;
+  /* this page has asked detectRoles itself (otherRoles) */
+  let _rolesAsked = false;
 
   function stopData(){
-    [_meUnsub, _asgsUnsub, _reqUnsub, _ejUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
-    _meUnsub = _asgsUnsub = _reqUnsub = _ejUnsub = null;
-    ME = null; ASGS = []; REQ = null; EJOBS = {};
-    _meLoaded = _asgsLoaded = _reqLoaded = false;
-    _meErr = _reqErr = null; _asgsFailed = false;
+    [_meUnsub, _asgsUnsub, _ejUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
+    _meUnsub = _asgsUnsub = _ejUnsub = null;
+    ME = null; ASGS = []; EJOBS = {};
+    _meLoaded = _asgsLoaded = false;
+    _meErr = null; _asgsFailed = false;
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
     _pushFor = '';
     _demo = false;
+    PROFILE = undefined; _profFor = ''; _profGen++; _rolesAsked = false;
     lockReset();   /* the next sign-in meets the store app's lock again */
   }
 
   function route(){
-    if(!_meLoaded || !_reqLoaded){ show('loadingView'); refreshInstall(); return; }
+    if(!_meLoaded){ show('loadingView'); refreshInstall(); return; }
     if(ME){
       /* the store app: Face ID / Touch ID before the dashboard is on screen.
          Every snapshot comes through here, so with the lock screen up it
          changes nothing behind it and waits for a tap on Try again, rather
          than raising the prompt itself. */
       if(!lockPassed()){ if(!FSApp.lock.shown()){ show('loadingView'); lockGate(); } return; }
+      if(inApp()) loadProfile();   /* for Me, once per sign-in; renderMe paints it when it lands */
       show('appView'); render(); refreshInstall(); registerPush(); return;
     }
     /* a listener ERROR is a server/connection problem, not "you're not on the
-       team" — showing the join-request flow here misled real members */
-    if(_meErr || _reqErr){
-      const code = ((_meErr||_reqErr||{}).code)||'';
+       team" — telling a real member they are not on the list misled them */
+    if(_meErr){
+      const code = (_meErr.code)||'';
       $('#errWhat').textContent = code.includes('permission')
         ? 'Crew access is switched off on the server right now. The studio needs to update its access settings — nothing is wrong with your account.'
         : 'This looks like a connection problem. Check your internet and try again — your account is fine.';
       show('errorView'); refreshInstall();
-      return;
-    }
-    if(REQ){
-      $('#pendingWho').textContent = `${REQ.name||''} · ${_pretty}`;
-      show('pendingView'); refreshInstall(); widgetOff();   /* not (or no longer) on the crew list */
       return;
     }
     /* "you are not on the team" is a hard thing to say to someone who is. Now
@@ -1250,17 +1123,67 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, 9000);
       return;
     }
-    $('#reqPhone').textContent = _pretty;
-    show('requestView'); refreshInstall(); widgetOff();
+    notCrew();
   }
   $('#errRetry').addEventListener('click', ()=>location.reload());
 
-  /* the store app always launches on the home page; this tells it to come
-     straight back here while signed in (see the <head> of /index.html) */
+  /* Only numbers the studio has put on its crew list get in: there is no
+     request to join any more (owner, 29 Sep 2026). The server has said this
+     number is not on it, so say so, with the studio a tap away. This
+     phone's notes that sent the person here are dropped, so /start/ looks
+     again rather than sending them straight back: fs_app_portal, and
+     fs_roles when it still says crew (detectRoles then writes a fresh
+     answer, which also says whether they have other pages). */
+  function notCrew(){
+    $('#ncPhone').textContent = prettyPhone(_pretty) || 'this number';
+    wireNotCrew();
+    show('notCrewView'); refreshInstall(); widgetOff();
+    rememberPortal(false);
+    const r = FS.cachedRoles(_uid);
+    if(r && r.crew){ try{ localStorage.removeItem('fs_roles'); }catch(e){} _rolesAsked = false; }
+    renderOther();
+  }
+  function wireNotCrew(){
+    $('#ncCall').href = 'tel:+' + _studioNo;
+    $('#ncWa').href = 'https://wa.me/' + _studioNo + '?text=' + encodeURIComponent(
+      'Salaam! I tried to open the Fantasy Studio crew page but my number ' + (prettyPhone(_pretty) || '') + ' is not on the crew list. Can you help?');
+  }
+  function renderOther(){
+    const o = otherRoles();
+    $('#ncOther').hidden = !o.length;
+    if(o.length) $('#ncOtherTo').textContent = 'Open ' + otherText(o);
+  }
+  /* "Sign in with another number" is a sign-out: /start/ then asks for one */
+  $('#ncOut').addEventListener('click', ()=>$('#logoutBtn').click());
+
+  /* The person's other pages (client, partner studio), for the Me tab's
+     Switch row and the not-set-up card: what /start/ found (fs_roles), or
+     asked once from here when this phone has no clean answer for them yet.
+     The samples have all three. */
+  const ROLE_PAGE = { client:'my booking', studio:'partner studio' };
+  const otherText = list => list.map(k=>ROLE_PAGE[k]).join(' or ');
+  function otherRoles(){
+    if(FS.isSample(auth.currentUser)) return ['client','studio'];
+    const r = FS.cachedRoles(_uid);
+    if(!r){ askRoles(); return []; }
+    return ['client','studio'].filter(k=>r[k]);
+  }
+  function askRoles(){
+    const u = auth.currentUser;
+    if(_rolesAsked || !u || u.uid !== _uid) return;
+    _rolesAsked = true;
+    FS.detectRoles(u).then(()=>{
+      if(!auth.currentUser || auth.currentUser.uid !== u.uid) return;
+      if(ME) renderMe(); else if(!$('#notCrewView').hidden) renderOther();
+    });
+  }
+
+  /* /start/ opens the store app straight on the page it was last signed in
+     to; this keeps that note while signed in here, and takes it away when
+     this page is not the place to go (signed out, not on the crew list) */
   const rememberPortal = on => {
-    if(navigator.userAgent.indexOf('FantasyStudioApp') === -1) return;
     try{
-      if(on) localStorage.setItem('fs_app_portal', 'team/');
+      if(on){ if(inApp()) localStorage.setItem('fs_app_portal', 'team/'); }
       else if(localStorage.getItem('fs_app_portal') === 'team/') localStorage.removeItem('fs_app_portal');
     }catch(e){}
   };
@@ -1293,29 +1216,46 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      (Me › Face ID lock). A failure never locks anyone out for good: a phone
      with no biometry, or none enrolled, is skipped without a word, and a
      cancelled prompt gets the lock screen with Try again and Sign out. A
-     sign-in with an OTP on this page is let through without a prompt (the
-     OTP was the check), so Sign out is always a way back in, even on a phone
-     whose prompt keeps failing. In a browser, and in the app build from
-     before the plugin, every call here is a no-op and the page is exactly
-     as it was. The ?demo hook meets the same gate. Any sign-out goes
-     through stopData, which resets it. */
+     member who has just signed in with an OTP is let through without a
+     prompt (the OTP was the check), so Sign out is always a way back in,
+     even on a phone whose prompt keeps failing. In a browser, and in the
+     app build from before the plugin, every call here is a no-op and the
+     page is exactly as it was. The ?demo hook meets the same gate. Any
+     sign-out goes through stopData, which resets it. */
   const LOCK = { portal:'crew', reason:'Unlock your crew pages', defaultOn:true };
   const inApp = () => document.documentElement.classList.contains('fs-app');
   const hasLock = () => !!(inApp() && window.FSApp && FSApp.lock);
   const appPlatform = () => { try{ const C = window.Capacitor; return C && C.getPlatform ? String(C.getPlatform()) : ''; }catch(e){ return ''; } };
   let _lockOk = false, _lockRun = null, _lockGen = 0;
-  /* the member arrived by an OTP on this page load (onAuthStateChanged):
-     the next gate passes {fresh:true} and is not asked */
-  let _lockFresh = false;
+  /* the member arrived straight from an OTP on this phone (freshOtp): when
+     (Date.now()) this page took the pass, 0 for none. The next gate passes
+     {fresh:true} and is not asked, but only within LOCK_FRESH_MS of that:
+     a number the studio adds while this page sits on "not set up" reaches
+     its first gate later, and that one asks as usual */
+  let _lockFresh = 0;
+  const LOCK_FRESH_MS = 120000;
+  /* The OTP is typed on /start/ now, a page before this one, so "signed in
+     on this page load" cannot be seen here any more. /start/ leaves a note
+     on THIS phone when an OTP goes through here (fs_otp_fresh: the uid and
+     the time), and FS.takeFresh(user) says whether it is this login's and
+     under two minutes old, taking it away as it reads it: one pass, on
+     this phone only. Never the login's last sign-in time, which is the
+     account's on ANY device and would let someone else's sign-in skip this
+     phone's lock. An fs-auth.js without takeFresh (one launch of deploy
+     skew) just means the prompt, never a pass. */
+  function freshOtp(user){
+    try{ return !!(user && typeof FS.takeFresh === 'function' && FS.takeFresh(user) === true); }
+    catch(e){ return false; }
+  }
   /* {ok, type} from the last check: the Me row, and the lock screen's wording */
   let _biom = null;
   function lockPassed(){ return _lockOk || !hasLock(); }
   /* a new session never joins the last one's prompt, nor inherits its pass */
-  function lockReset(){ _lockOk = false; _lockRun = null; _lockFresh = false; _lockGen++; if(hasLock()) FSApp.lock.hide(); }
+  function lockReset(){ _lockOk = false; _lockRun = null; _lockFresh = 0; _lockGen++; if(hasLock()) FSApp.lock.hide(); }
   /* one prompt at a time; its answer is dropped if the sign-in changed under it */
   function lockGate(relock){
     if(_lockRun) return _lockRun;
-    const fresh = !relock && _lockFresh; _lockFresh = false;
+    const fresh = !relock && !!_lockFresh && Date.now() - _lockFresh < LOCK_FRESH_MS; _lockFresh = 0;
     /* over the dashboard (a relock) the lock screen goes up first, so nothing
        shows while the prompt is on its way — unless this phone will not be
        asked at all */
@@ -1399,6 +1339,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      is absent and this is a no-op; it must never break the page. */
   const PUSH_KEY = 'fs_push_token_team';
   async function registerPush(){
+    /* the review number never writes: no token, as on the client page */
+    if(FS.isDemo(auth.currentUser)) return;
     if(!_phone10 || _pushFor === _phone10) return;
     _pushFor = _phone10;
     try{
@@ -1420,6 +1362,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   /* a borrowed phone must stop getting someone's assignments once they sign out */
   async function unregisterPush(){
+    if(FS.isDemo(auth.currentUser)) return;   /* the review number: never deletes */
     try{
       const t = localStorage.getItem(PUSH_KEY);
       if(!t) return;
@@ -1639,39 +1582,45 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ME = d.me; ASGS = d.asgs; EJOBS = d.ejobs;
     /* every "has the server answered" flag, or route() waits for listeners
        that are never started */
-    _meLoaded = _reqLoaded = _asgsLoaded = true;
+    _meLoaded = _asgsLoaded = true;
     _meFresh = true;
     route();
   }
 
+  /* Signed out, here, in another tab or before this load: no crew shoot on
+     the home screen, no note sending /start/ back here, and /start/ itself,
+     the one sign-in (browser and app alike). */
+  function toStart(){
+    rememberPortal(false);
+    widgetGone().then(toStartNow, toStartNow);
+  }
   /* The test hook never signs in; it opens the sample from the end of this
-     module instead (see there). */
-  /* this page load has shown the sign-in form: the next member to arrive
-     came through an OTP here, and the lock lets them in (lockGate, fresh) */
-  let _sawSignedOut = false;
-  if(!DEMO_VIEW) onAuthStateChanged(auth, user=>{
+     module instead (see there). Everyone else waits for ready(): the SDK's
+     first answer, and any old per-portal crew session moved into the one
+     session, so a member signed in before Phase 3.5 is never sent to sign
+     in again. Only then is "signed out" final. The listener goes on after
+     that, so it never sees the null the SDK answers first. */
+  if(!DEMO_VIEW) FS.ready().then(first=>{
+    if(!first){ toStart(); return; }
+    onAuthStateChanged(auth, onUser);
+  }, toStart);
+  function onUser(user){
     stopData();
     $('#logoutBtn').hidden = !user;
-    if(!user){
-      _sawSignedOut = true;
-      rememberPortal(false);
-      widgetOff();   /* signed out, here or before this load: no crew shoot on the home screen */
-      show('loginView');
-      $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
-      hideErr('#loginErr');
-      return;
-    }
-    endLoginSend();
-    if(!user.phoneNumber){ signOut(auth); return; }   /* this page only ever signs in by phone */
-    _lockFresh = _sawSignedOut; _sawSignedOut = false;   /* after stopData, which clears it */
+    if(!user){ if(!_leaving) toStart(); return; }
+    /* the one session only ever signs in by phone; a login without a number
+       cannot be matched to the crew list */
+    if(!user.phoneNumber){ _leaving = true; FS.signOutEverywhere().then(toStart, toStart); return; }
+    _lockFresh = freshOtp(user) ? Date.now() : 0;   /* after stopData, which clears it */
     rememberPortal(true);
-    _phone10 = user.phoneNumber.slice(-10);
+    _uid = user.uid;
+    _phone10 = FS.phone10(user);
     _pretty = user.phoneNumber;
     /* the App Review number: the sample, and none of the listeners below */
-    if(user.phoneNumber === DEMO_PHONE){ startDemo(); return; }
+    if(FS.isDemo(user)){ startDemo(); return; }
     show('loadingView');
-    /* all three are pinned to this verified phone / this uid — exactly what
-       the Firestore rules require; anything broader is refused server-side */
+    /* all three are pinned to this verified phone — exactly what the
+       Firestore rules require; anything broader is refused server-side */
     _meUnsub = onSnapshot(query(collection(db,'team'), where('phone10','==',_phone10)),
         { includeMetadataChanges: true }, snap=>{
       _meLoaded = true; _meErr = null;
@@ -1680,11 +1629,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ME = docs.length ? { id: docs[0].id, ...docs[0].data() } : null;
       route();
     }, err=>{ _meLoaded = true; ME = null; _meErr = err; route(); });
-    _reqUnsub = onSnapshot(doc(db,'teamRequests',user.uid), snap=>{
-      _reqLoaded = true; _reqErr = null;
-      REQ = snap.exists() ? snap.data() : null;
-      route();
-    }, err=>{ _reqLoaded = true; REQ = null; _reqErr = err; route(); });
     _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberPhone10','==',_phone10)), snap=>{
       _asgsLoaded = true; _asgsFailed = false;
       ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -1712,30 +1656,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       console.warn('[editing] job listener stopped:', _ejErr, err);
       if(ME) render();
     });
-  });
-
-  /* ---------- join request ---------- */
-  $('#reqSend').addEventListener('click', async ()=>{
-    hideErr('#reqErr');
-    const name = $('#reqName').value.trim();
-    if(!name){ showErr('#reqErr','Type your name first.'); $('#reqName').focus(); return; }
-    const u = auth.currentUser; if(!u) return;
-    const btn = $('#reqSend'); btn.disabled = true; btn.classList.add('busy');
-    try{
-      await setDoc(doc(db,'teamRequests',u.uid), {
-        name, note: $('#reqNote').value.trim().slice(0,300),
-        phone10: _phone10, phoneFull: u.phoneNumber,
-        status: 'pending', createdAt: serverTimestamp()
-      });
-      toast('Request sent ✓');
-      /* the snapshot listener flips the view; nothing else to do */
-    }catch(err){
-      showErr('#reqErr', navigator.onLine
-        ? 'Could not send the request — please try again, or WhatsApp the studio directly.'
-        : 'You are offline — try again when you have signal.');
-    }
-    finally{ btn.disabled = false; btn.classList.remove('busy'); }
-  });
+  }
 
   /* ---------- member dashboard ---------- */
   /* "Tue 15 Sept": the weekday is what a shoot day is planned by. The year
@@ -2241,6 +2162,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return i > 0 ? up.slice(i) : up;
   }
   const widgetOff = () => (window.FSApp && FSApp.widget) ? FSApp.widget.clear('crew') : Promise.resolve();
+  /* signed out or deleted: the one session was every page's, so whatever
+     the widget holds goes (absent = "Sign in to Fantasy Studio") */
+  const widgetGone = () => (window.FSApp && FSApp.widget) ? FSApp.widget.clear() : Promise.resolve();
   const widgetItem = a => ({ title: shootTitle(a), who: '', start: hasCall(a) ? shootStart(a) : a.date,
     venue: a.venue || '', status: a.status === 'acknowledged' ? 'confirmed' : 'pending' });
   function widgetNext(list){
@@ -2526,43 +2450,172 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   /* ---------- the store app's Me tab ----------
-     Who is signed in and the account rows. app-shell.css keeps #meWrap from
-     browsers, so there this only fills text nobody sees. Notifications
-     reports the push registration above, and only where the plugin exists.
-     Delete my account is a WhatsApp request to the studio, which takes the
-     member off its list in the panel; this page keeps no write for it. */
-  /* +91 90000 00001, the way /start/ and the partner page print it */
-  const prettyPhone = p => String(p||'').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+     Who is signed in and the account rows. app-shell.css keeps #meTop and
+     #meWrap from browsers, and renderMe does nothing there. At the top, the
+     member's own profile (profiles/{uid}, made on /profile/): their photo,
+     or their initials on gold, and the name they gave, else the studio's
+     name for them. "Complete your profile" stays while anything is still
+     empty; the profile step itself is optional (owner, 29 Sep 2026).
+     Notifications reports the push registration above, and only where the
+     plugin exists. */
+  /* the profile screen, and back here after it; the test hook keeps ?demo on both */
+  const PROFILE_URL = DEMO_VIEW
+    ? '../profile/?role=crew&next=' + encodeURIComponent('../team/?demo') + '&demo'
+    : '../profile/?role=crew&next=../team/';
+  $('#meEdit').href = $('#meProf').href = PROFILE_URL;
+  /* Read once per sign-in (route), and again if this page comes back from
+     the profile screen out of the back-forward cache. A read that fails
+     (offline with nothing saved, rules not published yet) is "unknown", not
+     "no profile": no reminder then, and the studio's name stands in. The
+     samples get fs-auth.js's sample profile and read nothing. */
+  function loadProfile(force){
+    if(!_uid || (!force && _profFor === _uid)) return;
+    _profFor = _uid;
+    const gen = ++_profGen;
+    FS.getProfile(_uid).then(p=>{ if(gen === _profGen){ PROFILE = p || null; renderMe(); } }, err=>{
+      if(gen !== _profGen) return;
+      PROFILE = false; renderMe();
+      console.warn('[crew] profile not read:', err && (err.code || err.message));
+    });
+  }
+  window.addEventListener('pageshow', e=>{ if(e.persisted && ME) loadProfile(true); });
+  /* the photo is only ever the JPEG data URL the profile screen makes (the rules hold it to that) */
+  const PHOTO_OK = /^data:image\/jpeg;base64,/;
+  const initials = n => String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2)
+    .map(w=>Array.from(w)[0]).join('').toUpperCase();
+  const joinAnd = a => a.length < 2 ? a.join('') : a.slice(0,-1).join(', ') + ' and ' + a[a.length-1];
   function renderMe(){
-    $('#meName').textContent = (ME && ME.name) || 'Crew member';
+    /* a browser has no Me tab: nothing to fill, and no profile or roles to ask for */
+    if(!inApp()) return;
+    const prof = PROFILE || null;
+    const given = String((prof && prof.name) || (ME && ME.name) || '').trim();
+    $('#meName').textContent = given || 'Crew member';
     $('#mePhone').textContent = prettyPhone(_pretty);
     const role = String((ME && ME.role) || '').trim();
     $('#meRole').textContent = 'Crew' + (role ? ' · ' + role.replace(/\b\w/g,c=>c.toUpperCase()) : '');
+    const photo = prof && typeof prof.photo === 'string' && PHOTO_OK.test(prof.photo) ? prof.photo : '';
+    const img = $('#meAvImg');
+    if(photo){ if(img.getAttribute('src') !== photo) img.src = photo; img.hidden = false; }
+    else if(img.hasAttribute('src')){ img.hidden = true; img.removeAttribute('src'); }
+    $('#meAvIni').textContent = photo ? '' : (initials(given) || '👤');
+    /* what is still empty, in words; nothing while the profile is unknown */
+    const miss = (PROFILE === undefined || PROFILE === false) ? [] : FS.profileMissing(PROFILE, 'crew');
+    $('#meProf').hidden = !miss.length;
+    if(miss.length){
+      const want = [];
+      if(miss.includes('photo')) want.push('your photo');
+      if(miss.includes('name')) want.push('your name');
+      if(miss.some(m=>m.indexOf('crew.') === 0)) want.push('an emergency contact');
+      $('#meProfWhat').textContent = 'Add ' + joinAnd(want);
+    }
+    const other = otherRoles();
+    $('#meSwitch').hidden = !other.length;
+    if(other.length) $('#meSwTo').textContent = 'Switch to ' + otherText(other);
     const C = window.Capacitor;
     const push = !!(C && C.isPluginAvailable && C.isPluginAvailable('FirebaseMessaging'));
     let on = false; try{ on = !!localStorage.getItem(PUSH_KEY); }catch(e){}
     $('#meNotif').textContent = on ? 'On' : 'Off';
     $('#meNotifRow').hidden = !push;
     renderLockRow();
-    $('#meDel').href = 'https://wa.me/' + _studioNo + '?text='
-      + encodeURIComponent('Please delete my Fantasy Studio account for ' + (prettyPhone(_pretty) || 'my number'));
   }
-  /* Sign out is the header's Logout, the same path. Switch account signs out
-     the same way and then opens the app's chooser — and waits for it: the
-     auth session has to be gone from IndexedDB and fs_app_portal removed
-     BEFORE /start/ loads, or it routes straight back to this page. The test
-     hook never signed in, so there it has nothing to undo. */
+  /* Sign out is the header's Logout, the same path (to /start/). */
   $('#meOut').addEventListener('click', ()=>$('#logoutBtn').click());
-  $('#meSwitch').addEventListener('click', async ()=>{
+  /* A number that is also a client or a partner studio: /start/ lists its
+     pages ("Continue as …") once its note of this one is gone. Still signed
+     in, so nothing to undo; the widget keeps this member's shoot, which is
+     still theirs. */
+  $('#meSwitch').addEventListener('click', ()=>{
     $('#meSwitch').disabled = true;
-    if(!DEMO_VIEW){
-      await pushOff();
-      try{ await signOut(auth); }catch(e){}
-      rememberPortal(false);
-    }
-    await widgetOff();   /* gone before /start/ loads, the sample's too */
-    if(window.FSApp) FSApp.exitToStart();
+    rememberPortal(false);
+    toStartNow();
   });
+
+  /* ---------- Delete my account (Me) ----------
+     fs-auth.js calls the deleteMyAccount function, which deletes the login
+     and the profile and leaves the studio a note (deletionRequests); shoots,
+     pay and editing records stay with the studio. Asked first in the page's
+     own dialog, which says exactly that. The push token goes BEFORE the
+     call, while the login the token rule needs still exists; if the call
+     fails nothing else has changed and the person is still signed in, so
+     the token is put back and the dialog says to try again. After it this
+     phone forgets them (roles, last page, the tab and lock settings, the
+     widget) and /start/ opens. The review number and the test hook never
+     reach the function: fs-auth.js only signs them out.
+     The not-set-up card (#ncDel) opens the same dialog: signing in on
+     /start/ made a login for a number the studio never added, and the app
+     has to let that go too (Apple 5.1.1(v)). That person has no shoots, pay
+     or emergency contact here, so the dialog says only what /start/ and the
+     partner card say (DEL_PLAIN), with no member lines. */
+  let _deleting = false, _delFrom = null;
+  const DEL_PLAIN = 'This deletes your Fantasy Studio sign-in, and your profile if you made one, and signs you out on this phone.';
+  const DEL_TXT = $('#delTxt').innerHTML;   /* the member's wording, as in the markup */
+  function delOpen(e){
+    if(_deleting || _leaving) return;
+    _delFrom = (e && e.currentTarget) || null;
+    const plain = !ME || _delFrom === $('#ncDel');
+    if(plain) $('#delTxt').textContent = DEL_PLAIN; else $('#delTxt').innerHTML = DEL_TXT;
+    $('#delKeep').hidden = plain;
+    $('#delErr').hidden = true;
+    $('#delBd').hidden = false; $('#delDlg').hidden = false;
+    document.documentElement.classList.add('ed-lock');
+    if(window.FSApp) FSApp.hide();   /* a modal: the tab bar steps aside */
+    setTimeout(()=>$('#delNo').focus(), 60);
+  }
+  function delClose(){
+    if(_deleting || $('#delDlg').hidden) return;
+    $('#delBd').hidden = true; $('#delDlg').hidden = true;
+    document.documentElement.classList.remove('ed-lock');
+    if(window.FSApp) FSApp.show();
+    /* back to whichever row opened it, while it is still on screen */
+    const back = _delFrom && _delFrom.offsetParent ? _delFrom : null;
+    _delFrom = null;
+    if(back) back.focus();
+  }
+  function forgetPhone(){
+    try{
+      const drop = ['fs_roles', 'fs_app_portal', PUSH_KEY];
+      for(let i = 0; i < localStorage.length; i++){
+        const k = localStorage.key(i) || '';
+        if(/^fs_(tab|lock)_/.test(k)) drop.push(k);
+      }
+      drop.forEach(k=>localStorage.removeItem(k));
+    }catch(e){}
+  }
+  async function delGo(){
+    if(_deleting) return;
+    _deleting = _leaving = true;
+    const go = $('#delGo'), no = $('#delNo'), er = $('#delErr');
+    go.disabled = no.disabled = true; go.classList.add('busy'); go.textContent = 'Deleting…'; er.hidden = true;
+    if(!DEMO_VIEW) await pushOff();
+    try{ await FS.deleteMyAccount(); }
+    catch(err){
+      const code = String((err && (err.code || err.message)) || '');
+      console.error('[crew] delete my account:', code);
+      _deleting = _leaving = false;
+      go.disabled = no.disabled = false; go.classList.remove('busy'); go.textContent = 'Delete my account';
+      /* the short Ref lets a screenshot of this tell the studio what went wrong */
+      const ref = code.replace(/^functions\//,'').slice(0,40);
+      er.textContent = (navigator.onLine
+        ? 'Your account could not be deleted just now. Nothing has changed and you are still signed in. Please try again.'
+        : 'You are offline. Nothing has changed. Try again when you have signal.') + (ref ? ' (Ref: ' + ref + ')' : '');
+      er.hidden = false;
+      /* the token went first: put it back, for a member (the not-set-up
+         card never registers one) */
+      if(ME){ _pushFor = ''; registerPush(); }
+      return;
+    }
+    forgetPhone();
+    await widgetGone();
+    toStartNow();
+  }
+  $('#meDel').addEventListener('click', delOpen);
+  $('#ncDel').addEventListener('click', delOpen);
+  $('#delNo').addEventListener('click', delClose);
+  $('#delBd').addEventListener('click', delClose);
+  $('#delGo').addEventListener('click', delGo);
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape') delClose(); });
+  /* Back (Android, or a tab change) closes it instead of leaving it over another tab */
+  window.addEventListener('popstate', ()=>delClose());
 
   /* the member's sign-off — on today's card in the upcoming list as well as
      on past ones, so it is attached to both */
@@ -2778,10 +2831,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* The local test hook enters the sample here, last in the module on
      purpose (as in the admin panel): render() reads consts declared all
      through the body above, which a call from further up would reach before
-     they exist. _phone10 stays empty, so registerPush() does nothing. */
+     they exist. _phone10 stays empty, so registerPush() does nothing; the
+     uid is the test hook's own, so the Me tab shows the sample profile. */
   if(DEMO_VIEW){
     $('#logoutBtn').hidden = false;
     _pretty = DEMO_PHONE;
+    _uid = FS.DEMO_USER.uid;
     startDemo();
   }
 }

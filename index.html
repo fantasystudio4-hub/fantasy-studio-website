@@ -6,17 +6,20 @@
 <script>
 /* The store app used to launch here (capacitor server.url), so a crew member
    who closed the app reopened on the brochure, not their schedule, though
-   still signed in. The crew, client and partner portals note in the app that
-   this phone is signed in to them (fs_app_portal); on a cold start only,
-   go straight back there. Signed in to nothing, the app goes to its own
-   entry page, /start/ (Apple, Guideline 4.2: the brochure is not an app) —
-   ?web is the escape hatch that shows this page in the app regardless.
+   still signed in. /start/ and the portals note in the app which page this
+   phone is signed in to (fs_app_portal); on a cold start only, go straight
+   back there. Signed in to nothing, the app goes to its own entry page,
+   /start/ (Apple, Guideline 4.2: the brochure is not an app) — ?web is the
+   escape hatch that shows this page in the app regardless.
    Every visit, not just the first: nothing in the app links here on purpose,
    so a plain '/' in-app is always a stray (a Back link, a universal link)
    and must never land on the brochure. Runs in <head>, before anything
-   paints. */
+   paints.
+   #signin, where the Package Builder's Login used to point, is the one
+   sign-in now, /start/, in the app and in browsers alike. */
 (function(){
   try{
+    if(location.hash === '#signin'){ location.replace('start/'); return; }
     if(navigator.userAgent.indexOf('FantasyStudioApp') === -1 && !window.Capacitor) return;
     if(location.hash || location.search) return;   /* a shared or section link, or ?web */
     const p = localStorage.getItem('fs_app_portal');
@@ -818,82 +821,9 @@ section[id]{scroll-margin-top:84px}
   .rate-grid{grid-template-columns:1fr}
   .bc-steps{flex-direction:column;gap:.5rem}
 }
-
-/* ============================================================
-   SIGN-IN CHOOSER: WHO ARE YOU SIGNING IN AS?
-   Shown by html.fs-pick, which openRolePick sets when Login is tapped
-   with nobody signed in — in the app and on the website. Dark like the
-   portals it leads to. Android draws the app under the status bar and passes its height
-   as --safe-area-inset-top, so pad by that too.
-   ============================================================ */
-.role-pick{
-  position:fixed;inset:0;z-index:1300;background:var(--ink);color:#f3ecdc;
-  display:flex;flex-direction:column;align-items:center;overflow-y:auto;overscroll-behavior:contain;
-  padding:calc(28px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(24px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));
-  opacity:0;pointer-events:none;visibility:hidden;
-  transition:opacity .3s, visibility 0s linear .3s;
-}
-html.fs-pick .role-pick{opacity:1;pointer-events:auto;visibility:visible;transition:opacity .3s, visibility 0s}
-html.fs-pick body{overflow:hidden}
-.role-pick:focus{outline:none}
-.rp-in{width:100%;max-width:420px;margin:auto 0;text-align:center}
-.rp-in .logo-mark{width:58px;height:58px;margin:0 auto 1rem}
-.rp-in h2{font-size:1.65rem;color:#fff;margin-bottom:.35rem}
-.rp-in > p{color:#b3a98f;font-size:.92rem;margin-bottom:1.5rem}
-.rp-opt{
-  display:flex;align-items:center;gap:.9rem;width:100%;min-height:64px;text-align:left;
-  background:#241e12;border:1px solid rgba(226,194,117,.28);border-radius:16px;
-  padding:.85rem 1rem;margin-bottom:.7rem;color:#f3ecdc;transition:border-color .2s, background .2s;
-}
-.rp-opt:active{border-color:var(--gold);background:rgba(184,144,43,.16)}
-@media(hover:hover){ .rp-opt:hover{border-color:var(--gold)} }
-.rp-ic{flex:0 0 auto;width:1.6em;font-size:1.5rem;line-height:1;text-align:center}
-.rp-t{flex:1;min-width:0}
-.rp-t b{display:block;font-family:var(--serif);font-weight:600;font-size:1.08rem;color:#fff}
-.rp-t em{display:block;font-style:normal;font-size:.8rem;color:#b3a98f;margin-top:.1rem}
-.rp-go{flex:0 0 auto;color:var(--gold-bright);font-size:1.1rem}
-.rp-cancel{
-  margin-top:.9rem;min-height:44px;padding:.5em 1em;background:none;border:0;cursor:pointer;
-  color:var(--gold-bright);font-family:var(--sans);font-size:.88rem;letter-spacing:.04em;
-  text-decoration:underline;text-underline-offset:4px;
-}
 </style>
 </head>
 <body>
-
-<!-- ============ SIGN-IN CHOOSER: WHO ARE YOU SIGNING IN AS? ============
-     Shown from Login (openRolePick), in the app and on the website. The
-     links are "./x/" on purpose: the Login-link scripts at the end of the
-     page rewrite every a[href="client/"] and must never rewrite these. -->
-<div class="role-pick" id="rolePick" role="dialog" aria-modal="true" aria-labelledby="rpTitle" tabindex="-1">
-  <div class="rp-in">
-    <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
-      <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
-      <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
-      <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
-    </svg>
-    <h2 id="rpTitle">Sign in to Fantasy Studio</h2>
-    <p>Who are you signing in as?</p>
-    <a class="rp-opt" href="./client/" data-role="client">
-      <span class="rp-ic" aria-hidden="true">💍</span>
-      <span class="rp-t"><b>My booking</b><em>I booked my event with Fantasy Studio</em></span>
-      <span class="rp-go" aria-hidden="true">→</span>
-    </a>
-    <a class="rp-opt" href="./team/" data-role="team">
-      <span class="rp-ic" aria-hidden="true">🎬</span>
-      <span class="rp-t"><b>Crew</b><em>I shoot or edit for Fantasy Studio</em></span>
-      <span class="rp-go" aria-hidden="true">→</span>
-    </a>
-    <a class="rp-opt" href="./studio/" data-role="studio">
-      <span class="rp-ic" aria-hidden="true">🏢</span>
-      <span class="rp-t"><b>Partner studio</b><em>My studio books Fantasy Studio for events</em></span>
-      <span class="rp-go" aria-hidden="true">→</span>
-    </a>
-    <button class="rp-cancel" type="button" id="rpCancel">Cancel</button>
-  </div>
-</div>
 
 <a href="#main" class="skip-link">Skip to main content</a>
 
@@ -917,7 +847,7 @@ html.fs-pick body{overflow:hidden}
       <a href="#portfolio">Portfolio</a>
       <a href="#testimonials">Reviews</a>
       <a href="#contact">Contact</a>
-      <a href="client/">Login</a>
+      <a href="start/">Login</a>
     </nav>
     <a href="builder/" class="btn btn-gold nav-cta">Build Your Package</a>
     <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
@@ -932,7 +862,7 @@ html.fs-pick body{overflow:hidden}
   <a href="#portfolio">Portfolio</a>
   <a href="#testimonials">Reviews</a>
   <a href="#contact">Contact</a>
-  <a href="client/">Login</a>
+  <a href="start/">Login</a>
   <button class="mm-close-bottom" id="mmCloseBottom" type="button" aria-label="Close menu">&times;</button>
 </div>
 
@@ -1435,14 +1365,12 @@ function ovClosed(name, fromPop){
 window.addEventListener('popstate', ()=>{
   if($('#mobileMenu').classList.contains('open')) closeMobileMenu(true);
   else if($('#cmpModal').classList.contains('open')) closeCompare(true);
-  else if(rolePickOpen()) closeRolePick(true);
 });
 
 /* Focus management for every dialog. Tab is trapped inside whichever dialog is
    open, focus moves into it on open, and returns to whatever opened it. */
 const DIALOGS = ['#cmpModal','#mobileMenu'];
 function openDialog(){
-  if(rolePickOpen()) return $('#rolePick');   /* shown by html.fs-pick, not .open */
   return DIALOGS.map($).find(d=>d && d.classList.contains('open')) || null;
 }
 function dialogFocusables(d){
@@ -1469,7 +1397,7 @@ function restoreOpener(){
   if(_lastOpener && _lastOpener.focus && document.contains(_lastOpener)) _lastOpener.focus();
   _lastOpener = null;
 }
-document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeCompare(); closeMobileMenu(); closeRolePick(); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeCompare(); closeMobileMenu(); } });
 
 /* ============================================================
    NAV / MENU / SCROLL
@@ -1629,12 +1557,16 @@ $('#cmpBackdrop').addEventListener('click', closeCompare);
 observeReveals();
 scrollSpy();
 
-/* returning client? the portal keeps them signed in (named app 'client'),
-   so read its saved session from Firebase's IndexedDB store and relabel
-   the nav "Login" link to "My Booking" — the link itself never changes */
+/* Login is the one sign-in, start/, for everyone (Phase 3.5): it sends a
+   signed-in person straight on to their page, so the link never changes.
+   Signed in on this device? Name that page instead of "Login". Firebase
+   keeps the shared session in IndexedDB under firebase:authUser:<key>:fs,
+   or an old per-portal one under :client/:crew/:studio until fs-auth.js
+   moves it (fs_auth_migrated). Which page: fs_app_portal (the app), else
+   the last role check for that person (fs_roles). */
 (async function(){
   try{
-    if(!window.FIREBASE_CONFIG || !window.indexedDB || !indexedDB.databases) return;
+    if(!window.indexedDB || !indexedDB.databases) return;
     /* only look — never create the DB; that's the auth SDK's job */
     const dbs = await indexedDB.databases();
     if(!dbs.some(d=>d && d.name === 'firebaseLocalStorageDb')) return;
@@ -1645,82 +1577,32 @@ scrollSpy();
         if(![...db.objectStoreNames].includes('firebaseLocalStorage')){ db.close(); return; }
         const all = db.transaction('firebaseLocalStorage','readonly').objectStore('firebaseLocalStorage').getAll();
         all.onsuccess = ()=>{
-          const signedIn = (all.result||[]).some(r=>r && typeof r.fbase_key === 'string'
-            && r.fbase_key.indexOf('authUser') !== -1 && r.fbase_key.indexOf(':client') !== -1 && r.value);
-          /* data-signed-in also tells the Login click (below) to go straight
-             to the booking instead of asking who is signing in */
-          if(signedIn) $$('a[href="client/"]').forEach(a=>{ a.textContent = 'My Booking'; a.dataset.signedIn = '1'; });
+          let fsUser = null; const legacy = [];
+          (all.result||[]).forEach(r=>{
+            const m = r && r.value && typeof r.fbase_key === 'string' && /^firebase:authUser:.+:(fs|client|crew|studio)$/.exec(r.fbase_key);
+            if(m){ if(m[1] === 'fs') fsUser = r.value; else legacy.push(m[1]); }
+          });
           db.close();
+          let p = '', moved = false, roles = null;
+          try{
+            p = localStorage.getItem('fs_app_portal') || '';
+            moved = !!localStorage.getItem('fs_auth_migrated');
+            const c = JSON.parse(localStorage.getItem('fs_roles') || 'null');
+            if(fsUser && c && c.uid === fsUser.uid && c.roles) roles = ['client','crew','studio'].filter(k=>c.roles[k]);
+          }catch(e){}
+          if(!fsUser && (moved || !legacy.length)) return;   /* signed in to nothing */
+          const NAME = { client:'My Booking', crew:'Crew Page', studio:'Partner Page' };
+          const label = { 'client/':'My Booking', 'team/':'Crew Page', 'studio/':'Partner Page' }[p]
+            || (roles && roles.length === 1 && NAME[roles[0]])
+            || (roles && roles.length > 1 && 'My Account')
+            || (!fsUser && legacy.length === 1 && NAME[legacy[0]]) || '';
+          if(label) $$('a[href="start/"]').forEach(a=>{ a.textContent = label; });
         };
         all.onerror = ()=>{ try{ db.close(); }catch(e){} };
       }catch(e){ try{ db.close(); }catch(e2){} }
     };
   }catch(e){}
 })();
-
-/* In the store app a crew member or partner who tapped Home on their page
-   needs a way back, and iOS has no back gesture there: the Login links lead
-   to the page this phone is signed in to (fs_app_portal, see <head>). The
-   client check above looks for href="client/", so it never relabels these. */
-try{
-  const p = localStorage.getItem('fs_app_portal');
-  const label = { 'team/':'Crew Page', 'studio/':'Partner Page' }[p];
-  const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || !!window.Capacitor;
-  if(label && inApp)
-    $$('a[href="client/"]').forEach(a=>{ a.setAttribute('href', p); a.textContent = label; });
-  /* In the app, signed in to nothing: Login is the app's own sign-in page,
-     /start/, not the chooser overlay — a plain link, so it never stacks a
-     history entry on the brochure. A signed-in client keeps client/. */
-  else if(inApp && p !== 'client/')
-    $$('a[href="client/"]').forEach(a=>a.setAttribute('href', 'start/'));
-  /* Signed in to nothing: Login asks who you are rather than assuming a
-     client — crew and partners otherwise had to spot a small link at the
-     bottom of the client sign-in. In the app and on the website alike
-     (owner, 11 Sep 2026). A client already signed in goes straight to
-     their booking: in the app that is fs_app_portal, in a browser the
-     "My Booking" check above (data-signed-in). A modified click (new tab,
-     new window) keeps its ordinary meaning. */
-  else if(!(inApp && p === 'client/'))
-    $$('a[href="client/"]').forEach(a=>a.addEventListener('click', e=>{
-      if(a.dataset.signedIn || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
-      e.preventDefault(); openRolePick();
-    }));
-}catch(e){}
-
-/* ============================================================
-   SIGN-IN CHOOSER: WHO ARE YOU SIGNING IN AS?
-   Opened by the Login links above when nobody is signed in — in the app
-   and, since the owner asked (11 Sep 2026), on the website too. It never
-   opens by itself. Once someone signs in, the app's fs_app_portal reopen
-   routing and the website's "My Booking" link take over.
-   ============================================================ */
-function rolePickOpen(){ return document.documentElement.classList.contains('fs-pick'); }
-function openRolePick(){
-  /* A Login tap inside the menu: the menu has just closed WITHOUT stepping
-     back (its link handler passes the event as fromPop), so take over its
-     history entry rather than stacking a second one on it. */
-  if(history.state && history.state.ov === 'menu'){ try{ history.replaceState({ov:'role'}, ''); }catch(e){} }
-  else ovOpen('role');
-  document.documentElement.classList.add('fs-pick');
-  focusDialog('#rolePick');
-}
-function closeRolePick(fromPop){
-  if(!rolePickOpen()) return;
-  document.documentElement.classList.remove('fs-pick');
-  ovClosed('role', fromPop);
-  restoreOpener();
-}
-/* not closeRolePick itself: a click handler's event would read as fromPop */
-$('#rpCancel').addEventListener('click', ()=>closeRolePick());
-/* The Package Builder's Login link lands here as #signin, because the
-   chooser lives on this page only. Take the fragment off the address
-   (before the load-time scroll reads it) and ask. */
-if(location.hash === '#signin'){
-  try{ history.replaceState(history.state, '', location.pathname + location.search); }catch(e){}
-  /* in the app the chooser is its own page */
-  if(navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) location.replace('start/');
-  else openRolePick();
-}
 
 /* retry any enquiry that could not be written on a previous visit */
 flushLeadQueue();

@@ -158,10 +158,11 @@ img{max-width:100%;display:block}
 .hdr-right{display:flex;align-items:center;gap:.5rem;flex:0 0 auto;margin-left:auto}
 .hdr-link{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:.5em .6em;transition:.2s}
 .hdr-link:hover{color:var(--gold-deep)}
-/* store app: the builder is a screen reached from the sign-in chooser, so the
-   brand link home and Contact are hidden there (.fs-web-only, ../app-shell.css)
-   and a back link to the chooser takes the brand's place. .fs-app-only only
-   hands the link its plain display back; this outranks it with the flex row. */
+/* store app: the builder is a screen reached from the sign-in page, /start/,
+   so the brand link home and Contact are hidden there (.fs-web-only,
+   ../app-shell.css) and a back link to /start/ takes the brand's place.
+   .fs-app-only only hands the link its plain display back; this outranks it
+   with the flex row. */
 html.fs-app .hdr-start.fs-app-only{
   display:inline-flex;align-items:center;gap:.3rem;flex:0 0 auto;min-height:44px;
   margin-left:-.3em;padding:.4em .6em .4em .3em;
@@ -900,7 +901,7 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
       </svg>
       <span class="nm"><b>Fantasy Studio</b><span>Package Builder</span></span>
     </a>
-    <!-- store app only: back to the sign-in chooser the builder opens from -->
+    <!-- store app only: back to the sign-in page the builder opens from -->
     <a href="../start/" class="hdr-start fs-app-only" aria-label="Back to sign in">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Back
     </a>
@@ -908,7 +909,7 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 
     <div class="hdr-right">
       <a class="hdr-link hide-sm fs-web-only" href="../#contact">Contact</a>
-      <a class="hdr-link" href="../client/" id="portalLink">Login</a>
+      <a class="hdr-link" href="../start/" id="portalLink">Login</a>
       <button class="cart-btn" id="cartBtn" type="button" aria-label="View your quote">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.55L20.5 8H6.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
         <span class="amt" id="cartAmt">₹0</span>
@@ -2609,12 +2610,15 @@ onRemoteConfig(()=>{
 /* retry any enquiry that could not be written on a previous visit */
 flushLeadQueue();
 
-/* returning client? the portal keeps them signed in (named app 'client'), so
-   read its saved session from Firebase's IndexedDB store and relabel the
-   header "Login" link — the link itself never changes */
+/* Login is the one sign-in, ../start/, for everyone (Phase 3.5): it sends a
+   signed-in person straight on to their page, so the link never changes.
+   Signed in on this device? Name that page instead of "Login" — the home
+   page does the same: Firebase's IndexedDB session (:fs, or an old
+   :client/:crew/:studio one not yet moved), then fs_app_portal (the app)
+   or the last role check for that person (fs_roles). */
 (async function(){
   try{
-    if(!window.FIREBASE_CONFIG || !window.indexedDB || !indexedDB.databases) return;
+    if(!window.indexedDB || !indexedDB.databases) return;
     const dbs = await indexedDB.databases();     /* only look — never create the DB */
     if(!dbs.some(d=>d && d.name === 'firebaseLocalStorageDb')) return;
     const req = indexedDB.open('firebaseLocalStorageDb');
@@ -2624,36 +2628,32 @@ flushLeadQueue();
         if(![...db.objectStoreNames].includes('firebaseLocalStorage')){ db.close(); return; }
         const all = db.transaction('firebaseLocalStorage','readonly').objectStore('firebaseLocalStorage').getAll();
         all.onsuccess = ()=>{
-          const signedIn = (all.result||[]).some(r=>r && typeof r.fbase_key === 'string'
-            && r.fbase_key.indexOf('authUser') !== -1 && r.fbase_key.indexOf(':client') !== -1 && r.value);
-          const link = document.getElementById('portalLink');
-          /* data-signed-in also tells the Login click (below) to go straight
-             to the booking instead of asking who is signing in */
-          if(signedIn && link){ link.textContent = 'My Booking'; link.dataset.signedIn = '1'; }
+          let fsUser = null; const legacy = [];
+          (all.result||[]).forEach(r=>{
+            const m = r && r.value && typeof r.fbase_key === 'string' && /^firebase:authUser:.+:(fs|client|crew|studio)$/.exec(r.fbase_key);
+            if(m){ if(m[1] === 'fs') fsUser = r.value; else legacy.push(m[1]); }
+          });
           db.close();
+          let p = '', moved = false, roles = null;
+          try{
+            p = localStorage.getItem('fs_app_portal') || '';
+            moved = !!localStorage.getItem('fs_auth_migrated');
+            const c = JSON.parse(localStorage.getItem('fs_roles') || 'null');
+            if(fsUser && c && c.uid === fsUser.uid && c.roles) roles = ['client','crew','studio'].filter(k=>c.roles[k]);
+          }catch(e){}
+          if(!fsUser && (moved || !legacy.length)) return;   /* signed in to nothing */
+          const NAME = { client:'My Booking', crew:'Crew Page', studio:'Partner Page' };
+          const label = { 'client/':'My Booking', 'team/':'Crew Page', 'studio/':'Partner Page' }[p]
+            || (roles && roles.length === 1 && NAME[roles[0]])
+            || (roles && roles.length > 1 && 'My Account')
+            || (!fsUser && legacy.length === 1 && NAME[legacy[0]]) || '';
+          const link = document.getElementById('portalLink');
+          if(label && link) link.textContent = label;
         };
         all.onerror = ()=>{ try{ db.close(); }catch(e){} };
       }catch(e){ try{ db.close(); }catch(e2){} }
     };
   }catch(e){}
-})();
-
-/* Login asks who is signing in, like the home page — whose chooser it lands
-   on as #signin, since the chooser lives there only. A signed-in client (the
-   relabel above) goes straight to their booking. In the store app a phone
-   signed in to the crew or partner page goes back to it (fs_app_portal, as
-   the home page's Login does), and anyone else to the app's own chooser,
-   /start/ — never the home page. A modified click keeps its ordinary meaning. */
-(function(){
-  const link = document.getElementById('portalLink'); if(!link) return;
-  link.addEventListener('click', e=>{
-    if(link.dataset.signedIn || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
-    e.preventDefault();
-    const app = document.documentElement.classList.contains('fs-app');
-    let p = '';
-    try{ if(app) p = localStorage.getItem('fs_app_portal') || ''; }catch(err){}
-    location.href = (p === 'team/' || p === 'studio/' || p === 'client/') ? '../' + p : (app ? '../start/' : '../#signin');
-  });
 })();
 
 track('builder_page_view');

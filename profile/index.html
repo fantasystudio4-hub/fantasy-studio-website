@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<script>
+/* app mode: the Capacitor webview carries this marker; browsers never do */
+if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
+</script>
+<title>Your profile — Fantasy Studio</title>
+<!-- The optional profile step (one sign-in, Phase 3.5). /start/ sends a
+     person here the first time they sign in (?role=<role>&next=<portal>),
+     and Me › Edit profile opens it again. Name and photo for everyone, plus
+     only what the studio needs for the role the admin set the number up as.
+     Never load app-shell.js here, for the same reason as /start/: a widget
+     tap that cold-starts the app can pass through this page on its way to
+     the portal, and app-shell.js would take the retained tap and lose it.
+     app-shell.css is only rules, so it is safe. -->
+<meta name="robots" content="noindex, nofollow" />
+<script>
+/* light status-bar text on this dark page (the cream builder sets dark text
+   and the native setting outlives a page) */
+(function(){ function set(){ try{ var SB = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar; if(SB && SB.setStyle){ var p = SB.setStyle({ style:'DARK' }); if(p && p.catch) p.catch(function(){}); } }catch(e){} }
+  if(document.documentElement.classList.contains('fs-app')){ set(); document.addEventListener('DOMContentLoaded', set); } })();
+/* the status-bar strip (body::before) rides on the visual viewport: iOS pans
+   it down to show a focused field, and a fixed strip left behind would sit
+   above the screen with the page sliding under the clock again. The page's
+   own scroll re-reads it too: after a drag with a field focused, WKWebView
+   can report the pan a few points short until the scroll settles. */
+(function(){
+  var html = document.documentElement, vv = window.visualViewport;
+  if(!vv || !html.classList.contains('fs-app')) return;
+  function fit(){ html.style.setProperty('--fs-vv-top', Math.max(0, vv.offsetTop) + 'px'); }
+  vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+  window.addEventListener('scroll', fit, { passive: true }); fit();
+})();
+</script>
+<meta name="theme-color" content="#14110a" />
+<link rel="icon" href="../icons/icon-192.png" />
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../app-shell.css" />
+<style>
+:root{
+  --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.28);
+  --text:#f3ecdc; --mut:#b3a98f; --err:#e07a6a;
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{
+  font-family:var(--sans);color:var(--text);line-height:1.5;
+  background:linear-gradient(180deg,#1a150c,#14110a 40%);
+  min-height:100vh;min-height:100dvh;
+  /* Android draws the page under the status bar and passes its height as
+     --safe-area-inset-top; env() covers iOS. max() never adds them twice. */
+  padding:calc(22px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))
+          max(1rem,env(safe-area-inset-right))
+          calc(28px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))
+          max(1rem,env(safe-area-inset-left));
+}
+/* App only: a strip of the page's own top colour under the status bar, so
+   the title and fields never slide under the clock or the Dynamic Island
+   when the page scrolls (the keyboard up on the Email field). The portals'
+   sticky headers do this job; this page has no header. It follows the
+   visual viewport (--fs-vv-top, set below), because iOS pans that to reveal
+   a focused field and leaves anything fixed where it was. 16px taller than
+   the bar, to absorb the few points that reading can lag behind a drag;
+   at rest the body's own 22px top padding lies under it, so it hides
+   nothing. In a browser the browser draws its own bar, so no strip. */
+html.fs-app body::before{content:"";position:fixed;left:0;right:0;top:0;z-index:90;
+  height:calc(max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)) + 16px);
+  background:#1a150c;transform:translateY(var(--fs-vv-top,0px))}
+/* 16px in every field: iOS zooms into anything smaller and leaves the page zoomed */
+button,input{font-family:var(--sans);font-size:16px}
+main{width:100%;max-width:440px;margin:0 auto}
+
+.top{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+.logo-mark{width:44px;height:44px;flex:0 0 auto}
+.kicker{display:block;color:var(--gold-b);font-size:.68rem;letter-spacing:.28em;text-transform:uppercase}
+h1{font-family:var(--serif);font-weight:600;font-size:1.5rem;line-height:1.15;color:#fff}
+.sub{color:var(--mut);font-size:.9rem;margin:0 0 1.1rem}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.25rem 1.1rem 1.1rem}
+
+/* ---- photo ---- */
+/* the picture and its words side by side, the buttons in a row under both
+   (beside an 84px circle they stacked one per line on a phone) */
+.photo{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:.8rem 1rem;margin-bottom:1.2rem}
+.av{position:relative;width:84px;height:84px;border-radius:50%;overflow:hidden;
+  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:2px solid rgba(226,194,117,.55);
+  display:grid;place-items:center;color:#fff;font-family:var(--serif);font-weight:600;font-size:2.1rem;letter-spacing:.02em}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.av svg{width:46px;height:46px;fill:rgba(255,255,255,.85)}
+/* resizing a 12 MP photo takes a moment on an older phone */
+.av .busy{position:absolute;inset:0;background:rgba(20,17,10,.62);display:grid;place-items:center}
+.av .busy::after{content:"";width:26px;height:26px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.ph-side b{display:block;font-family:var(--serif);font-weight:600;font-size:1.02rem;color:#fff}
+.ph-side .hint{margin-top:.1rem}
+.ph-btns{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem}
+.pbtn{flex:1 1 auto;min-height:44px;background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.4em .9em;font-size:.84rem;cursor:pointer;white-space:nowrap}
+.pbtn.rm{flex:0 0 auto}
+.pbtn:active{background:rgba(184,144,43,.2)}
+.pbtn.rm{border-color:var(--line);color:var(--mut)}
+@media(hover:hover){ .pbtn:hover{background:rgba(184,144,43,.16)} }
+/* the pickers are opened by the buttons; the inputs stay in the page (not
+   display:none) so their click() is honoured everywhere */
+.file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%);pointer-events:none}
+
+/* ---- fields ---- */
+.fld{margin-bottom:.9rem}
+.fld label{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.fld input{width:100%;min-height:48px;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.72em .8em}
+.fld input::placeholder{color:rgba(179,169,143,.55)}
+.fld input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+.fld input[aria-invalid="true"]{border-color:var(--err);box-shadow:0 0 0 3px rgba(224,122,106,.16)}
+.hint{color:var(--mut);font-size:.78rem;line-height:1.4}
+.grp{border-top:1px dashed var(--line);margin-top:1.15rem;padding-top:1rem}
+.grp h2{font-family:var(--serif);font-weight:600;font-size:1.05rem;color:#fff}
+.grp .hint{margin:.1rem 0 .8rem}
+
+/* ---- actions ---- */
+.err{color:var(--err);font-size:.84rem;margin:.2rem 0 .8rem;text-align:center}
+.gbtn{display:block;width:100%;min-height:50px;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active{transform:scale(.98);box-shadow:0 3px 8px rgba(142,110,30,.3)}
+.gbtn:disabled{opacity:.7;cursor:default;transform:none}
+.gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
+.ghost{display:block;width:100%;min-height:48px;margin-top:.6rem;background:none;border:1px solid rgba(226,194,117,.45);color:var(--gold-b);border-radius:40px;padding:.75em;font-size:.88rem;letter-spacing:.04em;cursor:pointer}
+.ghost:active{background:rgba(184,144,43,.14)}
+@media(hover:hover){ .ghost:hover{border-color:var(--gold)} }
+@keyframes spin{to{transform:rotate(360deg)}}
+.note{color:var(--mut);font-size:.76rem;text-align:center;margin-top:1rem}
+.note a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.8em .5em;margin:-.8em -.5em}   /* 44px target */
+.who{color:var(--mut);font-size:.74rem;text-align:center;margin-top:1rem;letter-spacing:.03em}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.fld input:focus-visible{outline:none}
+
+/* ---- loading and "could not open" ---- */
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:12px;height:52px;margin-bottom:.8rem;position:relative;overflow:hidden}
+.skel.big{height:120px;border-radius:16px}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.08),transparent);animation:shim 1.2s infinite}
+@keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.msg{text-align:center}
+.msg b{display:block;font-family:var(--serif);font-weight:600;font-size:1.1rem;color:#fff;margin-bottom:.25rem}
+.msg span{display:block;color:var(--mut);font-size:.88rem;margin-bottom:1.1rem}
+
+.toast{position:fixed;left:50%;bottom:calc(26px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99;width:max-content;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){
+  .skel::after,.gbtn.busy::before,.av .busy::after{animation:none}
+  .gbtn:active{transform:none}
+  .toast{transition:none}
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+      <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+      <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+      <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+      <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
+    </svg>
+    <div>
+      <span class="kicker" id="kicker">Fantasy Studio</span>
+      <h1 id="title">Your profile</h1>
+    </div>
+  </div>
+  <p class="sub" id="sub" hidden></p>
+
+  <!-- while the session and the profile load -->
+  <div id="vLoad" aria-busy="true" aria-label="Loading your profile">
+    <div class="skel big"></div><div class="skel"></div><div class="skel"></div>
+  </div>
+
+  <!-- the sign-in module (or Firebase itself) could not load -->
+  <div class="card msg" id="vErr" hidden>
+    <b>We couldn’t open your profile</b>
+    <span>Check your internet connection and try again, or skip it for now and add it any time later.</span>
+    <button class="gbtn" id="retry" type="button">Try again</button>
+    <button class="ghost" id="errSkip" type="button">Skip for now</button>
+  </div>
+
+  <form class="card" id="vForm" novalidate hidden>
+    <div class="photo">
+      <div class="av" id="av">
+        <span id="avIni" aria-hidden="true"></span>
+        <img id="avImg" alt="Your photo" hidden />
+        <i class="busy" id="avBusy" hidden></i>
+      </div>
+      <div class="ph-side">
+        <b id="phLabel">Profile photo</b>
+        <p class="hint" id="phHint">A clear photo of your face.</p>
+      </div>
+      <div class="ph-btns" id="phBtns">
+        <button class="pbtn" id="takeBtn" type="button" hidden>Take photo</button>
+        <button class="pbtn" id="pickBtn" type="button">Choose photo</button>
+        <button class="pbtn rm" id="rmBtn" type="button" hidden>Remove</button>
+      </div>
+      <input class="file" id="takeIn" type="file" accept="image/*" capture="user" tabindex="-1" aria-hidden="true" />
+      <input class="file" id="pickIn" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
+    </div>
+
+    <div class="fld"><label for="fName" id="nameLabel">Full name</label>
+      <input id="fName" type="text" autocomplete="name" autocapitalize="words" maxlength="80" enterkeyhint="next" /></div>
+
+    <!-- one group per role; only the role(s) this number has are shown -->
+    <section class="grp" data-role="crew" aria-labelledby="gCrew" hidden>
+      <h2 id="gCrew">Emergency contact</h2>
+      <p class="hint">Someone we can call if anything happens to you on a shoot.</p>
+      <div class="fld"><label for="fEmName">Their name</label>
+        <input id="fEmName" type="text" autocomplete="off" autocapitalize="words" maxlength="80" enterkeyhint="next" /></div>
+      <div class="fld"><label for="fEmPhone">Their phone number</label>
+        <input id="fEmPhone" type="tel" inputmode="tel" autocomplete="off" maxlength="20" placeholder="98765 43210" enterkeyhint="next" /></div>
+    </section>
+
+    <section class="grp" data-role="client" aria-labelledby="gClient" hidden>
+      <h2 id="gClient">Email</h2>
+      <p class="hint">So the studio can email you about your booking.</p>
+      <div class="fld"><label for="fEmail">Email address</label>
+        <input id="fEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="120" placeholder="you@example.com" enterkeyhint="next" /></div>
+    </section>
+
+    <!-- studioName is 80 here: the rules' cap (fs-auth would trim at 120) -->
+    <section class="grp" data-role="studio" aria-labelledby="gStudio" hidden>
+      <h2 id="gStudio">Your studio</h2>
+      <p class="hint">How your studio shows up for Fantasy Studio.</p>
+      <div class="fld"><label for="fStName">Studio name</label>
+        <input id="fStName" type="text" autocomplete="organization" autocapitalize="words" maxlength="80" enterkeyhint="next" /></div>
+      <div class="fld"><label for="fStOwner">Owner's name</label>
+        <input id="fStOwner" type="text" autocomplete="off" autocapitalize="words" maxlength="80" enterkeyhint="next" /></div>
+      <div class="fld"><label for="fStCity">City</label>
+        <input id="fStCity" type="text" autocomplete="address-level2" autocapitalize="words" maxlength="60" enterkeyhint="next" /></div>
+    </section>
+
+    <div class="err" id="err" role="alert" hidden></div>
+    <button class="gbtn" id="save" type="submit">Save</button>
+    <button class="ghost" id="later" type="button">Later</button>
+    <p class="note">Only you and Fantasy Studio can see this. <a href="../privacy/">Privacy</a></p>
+  </form>
+
+  <p class="who" id="who" hidden></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../firebase-config.js"></script>
+<script type="module">
+const $ = s => document.querySelector(s);
+const qs = new URLSearchParams(location.search);
+const ROLES = ['crew', 'client', 'studio'];
+/* the same as fs-auth's PORTALS, here too because "Skip for now" must work
+   when fs-auth itself could not load */
+const PORTAL = { client: 'client/', crew: 'team/', studio: 'studio/' };
+/* fs-auth's test-hook locks, for the same reason */
+const LOCAL_DEMO = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && qs.has('demo');
+const KICKER = { client: 'My booking', crew: 'Crew', studio: 'Partner studio' };
+const SUB = {
+  crew:   'Add your photo and someone we can call in an emergency, so the team knows who is on every shoot.',
+  client: 'Add your photo and email, so the studio can reach you about your booking.',
+  studio: 'Add your logo and your studio’s details, so we know who we’re shooting for.',
+  none:   'Add your name and photo, so the studio knows who you are.',
+};
+/* profile key → input, per role (the contract's roles.<role> keys) */
+const FIELDS = {
+  crew:   { emergencyName: 'fEmName', emergencyPhone: 'fEmPhone' },
+  client: { email: 'fEmail' },
+  studio: { studioName: 'fStName', ownerName: 'fStOwner', city: 'fStCity' },
+};
+const qRole = ROLES.includes(qs.get('role')) ? qs.get('role') : '';
+
+/* ---------- small helpers ---------- */
+let toastT;
+function toast(m){ const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+function showErr(m, id){
+  const e = $('#err'); e.textContent = m; e.hidden = false;
+  if(id){ const f = document.getElementById(id); f.setAttribute('aria-invalid', 'true'); f.setAttribute('aria-describedby', 'err'); f.focus(); }
+}
+function hideErr(){
+  $('#err').hidden = true;
+  document.querySelectorAll('[aria-invalid]').forEach(f => { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); });
+}
+const val = id => document.getElementById(id).value.replace(/\s+/g, ' ').trim();
+function show(view){ ['vLoad', 'vErr', 'vForm'].forEach(v => { document.getElementById(v).hidden = v !== view; }); }
+
+/* Where to go afterwards. ?next arrives in a URL, so only a portal or
+   /start/ is accepted, resolved against the site root; anything else falls
+   back to the role's own portal. The local test hook carries ?demo along,
+   so the portal opens its sample too. */
+function nextHref(roles){
+  const raw = String(qs.get('next') || '').trim().replace(/^(\.\.\/|\/)+/, '').replace(/^(client|team|studio|start)(?=$|[?#])/, '$1/');
+  const one = qRole || (roles && roles.length === 1 ? roles[0] : '');
+  const path = /^(client|team|studio|start)\/([?#][^\s\\]*)?$/.test(raw) ? raw : (PORTAL[one] || 'start/');
+  const u = new URL(path, new URL('../', location.href));
+  if(LOCAL_DEMO && !u.searchParams.has('demo')) u.search = (u.search ? u.search + '&' : '?') + 'demo';
+  return u.href;
+}
+/* replace, not push: this page never sits in history behind the portal */
+function go(href, wait){ setTimeout(() => location.replace(href), wait || 0); }
+
+/* +919876543210 → +91 98765 43210, as the portals print it */
+const prettyPhone = p => String(p || '').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+function initials(name){
+  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if(!w.length) return '';
+  return ((w[0][0] || '') + (w.length > 1 ? (w[w.length - 1][0] || '') : '')).toUpperCase();
+}
+
+/* ---------- the photo, and whether this phone may offer one ---------- */
+function platform(){ try{ const C = window.Capacitor; return C && C.getPlatform ? String(C.getPlatform()) : ''; }catch(e){ return ''; } }
+function hasPlugin(name){
+  try{ const C = window.Capacitor; return !!(C && C.Plugins && C.Plugins[name] && (!C.isPluginAvailable || C.isPluginAvailable(name))); }
+  catch(e){ return false; }
+}
+/* iOS closes an app that opens the camera without saying why in its
+   Info.plist (NSCameraUsageDescription), and the photo menu of a web page
+   in the app always offers "Take Photo". The 1.0 binary has no such line;
+   the 1.1 binary must carry it, and 1.1 is also the first with the widget
+   plugin, so that plugin is the marker. Android and browsers use the
+   phone's own picker, which needs nothing from the app. */
+const PHOTO_OK = !(document.documentElement.classList.contains('fs-app') && platform() === 'ios') || hasPlugin('WidgetBridgePlugin');
+
+let photo = '', photoChanged = false;
+const SILHOUETTE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4.4 0-8 2.3-8 5.2V21h16v-1.8c0-2.9-3.6-5.2-8-5.2z"/></svg>';
+function drawAvatar(){
+  const img = $('#avImg'), ini = $('#avIni');
+  if(photo){ img.src = photo; img.hidden = false; }
+  else{ img.hidden = true; img.removeAttribute('src'); }
+  const i = initials(document.getElementById('fName').value);
+  if(i) ini.textContent = i; else ini.innerHTML = SILHOUETTE;
+  $('#rmBtn').hidden = !photo || !PHOTO_OK;
+}
+
+/* ---------- validation, in the site's words ---------- */
+const digits = v => String(v || '').replace(/\D/g, '');
+const phoneOk = v => /^\+?[\d\s()-]+$/.test(v) && digits(v).length >= 10 && digits(v).length <= 15;
+const emailOk = v => /^[^\s@]+@[^\s@]+\.[^\s@.]{2,}$/.test(v);
+
+async function main(){
+  let FS;
+  try{ FS = await import('../fs-auth.js'); }
+  catch(e){ console.error('[profile] the sign-in module did not load', e); showLoadError(); return; }
+
+  /* the test hook never signs in; everyone else must be, or it is /start/ */
+  let user = null;
+  try{ user = FS.DEMO_VIEW ? FS.DEMO_USER : await FS.ready(); }catch(e){ user = null; }
+  if(!user){ location.replace('../start/'); return; }
+  const uid = user.uid;
+  const sample = FS.isSample(user);
+
+  /* the roles to ask about: the one /start/ or Me passed, else what this
+     phone last found for this person, else detectRoles below */
+  let roles = qRole ? [qRole] : [];
+  if(!qRole){ const c = FS.cachedRoles(uid); if(c) roles = ROLES.filter(r => c[r]); }
+
+  /* An unreadable profile (offline with nothing cached, rules not yet
+     published) is "unknown", not "none": the form still opens with the
+     admin's records, and the portal is never held up by it. */
+  let profile = null;
+  try{
+    profile = await Promise.race([FS.getProfile(uid), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 6000))]);
+  }catch(e){ console.warn('[profile] could not read the profile', e && (e.code || e.message)); }
+  const editing = !!(profile && (String(profile.name || '').trim() || profile.photo));
+
+  /* ---- draw ---- */
+  function drawRoles(){
+    document.querySelectorAll('.grp[data-role]').forEach(g => { g.hidden = !roles.includes(g.dataset.role); });
+    const one = roles.length === 1 ? roles[0] : '';
+    $('#kicker').textContent = KICKER[one] || 'Fantasy Studio';
+    $('#sub').textContent = editing ? 'Keep your details up to date — the studio sees the latest.' : (SUB[one] || SUB.none);
+    $('#sub').hidden = false;
+    const studioOnly = one === 'studio';
+    $('#phLabel').textContent = studioOnly ? 'Studio logo' : 'Profile photo';
+    $('#phHint').textContent = !PHOTO_OK ? 'Update the Fantasy Studio app to add a photo.'
+      : studioOnly ? 'Your studio’s logo, or a photo of you.'
+      : 'A clear photo of your face, so the team knows you on the day.';
+    $('#nameLabel').textContent = studioOnly ? 'Your name' : 'Full name';
+  }
+  $('#title').textContent = editing ? 'Your profile' : 'Set up your profile';
+  $('#later').textContent = editing ? 'Cancel' : 'Later';
+  const setIf = (id, v) => { const f = document.getElementById(id); if(v && !f.value && !f.dataset.touched) f.value = String(v); };
+  if(profile){
+    setIf('fName', profile.name);
+    photo = String(profile.photo || '');
+    const pr = profile.roles || {};
+    Object.keys(FIELDS).forEach(r => Object.keys(FIELDS[r]).forEach(k => setIf(FIELDS[r][k], (pr[r] || {})[k])));
+  }
+  drawRoles();
+  $('#phBtns').hidden = !PHOTO_OK;
+  /* the camera button only where there is a camera to hand; on iOS the
+     chooser offers the camera as well */
+  $('#takeBtn').hidden = !(window.matchMedia && matchMedia('(pointer:coarse)').matches);
+  drawAvatar();
+  if(sample){
+    $('#who').textContent = FS.DEMO_VIEW ? 'Test view — nothing here is saved to the studio.'
+      : 'Sample account (' + prettyPhone(user.phoneNumber) + ') — changes stay on this phone.';
+  }else if(user.phoneNumber) $('#who').textContent = 'Signed in as ' + prettyPhone(user.phoneNumber);
+  $('#who').hidden = !$('#who').textContent;
+  show('vForm');
+
+  /* ---- the admin's records fill what is still empty ----
+     Only the queries fs-auth already runs (detectRoles): the team name, the
+     booking's clientName, the partner studio's name, owner and city. A field
+     the person has typed in is never overwritten. */
+  const empty = id => !document.getElementById(id).value;
+  const needAdmin = (!qRole && !roles.length) || empty('fName')
+    || (roles.includes('studio') && Object.values(FIELDS.studio).some(empty));
+  if(needAdmin) FS.detectRoles(user).then(r => {
+    if(!qRole){
+      const found = ROLES.filter(x => r[x]);
+      if(found.length) roles = [...new Set([...roles, ...found])];
+      drawRoles();
+    }
+    const info = r.info || {};
+    const mine = roles.length === 1 ? info[roles[0]] : null;
+    const own = mine && (mine.name || mine.ownerName);
+    setIf('fName', own || FS.prefillFrom(info).name);
+    if(roles.includes('studio') && info.studio){
+      setIf('fStName', info.studio.studioName); setIf('fStOwner', info.studio.ownerName); setIf('fStCity', info.studio.city);
+    }
+    drawAvatar();
+  }).catch(() => {});
+
+  /* ---- fields ---- */
+  const inputs = () => [...document.querySelectorAll('#vForm .fld input')].filter(f => !f.closest('[hidden]'));
+  document.querySelectorAll('#vForm .fld input').forEach(f => {
+    f.addEventListener('input', () => {
+      f.dataset.touched = '1';
+      if(f.getAttribute('aria-invalid')) hideErr();
+      if(f.id === 'fName') drawAvatar();
+    });
+    /* Enter / Next moves down the form; the last field saves */
+    f.addEventListener('keydown', e => {
+      if(e.key !== 'Enter' || e.isComposing) return;
+      const list = inputs(), i = list.indexOf(f);
+      if(i > -1 && i < list.length - 1){ e.preventDefault(); list[i + 1].focus(); }
+    });
+  });
+
+  /* ---- photo ---- */
+  async function usePhoto(input){
+    const file = input.files && input.files[0];
+    input.value = '';   /* the same photo chosen again must fire change again */
+    if(!file) return;   /* the picker was closed: nothing to say */
+    hideErr();
+    $('#avBusy').hidden = false;
+    try{
+      photo = await FS.resizePhoto(file);
+      photoChanged = true;
+      drawAvatar();
+    }catch(e){
+      const m = String((e && e.message) || '');
+      /* resizePhoto's own messages are written for people; anything else is not */
+      showErr(m && !/^fs-auth/.test(m) ? m : 'That photo could not be used — try another one.');
+    }finally{ $('#avBusy').hidden = true; }
+  }
+  $('#takeBtn').addEventListener('click', () => $('#takeIn').click());
+  $('#pickBtn').addEventListener('click', () => $('#pickIn').click());
+  $('#takeIn').addEventListener('change', e => usePhoto(e.target));
+  $('#pickIn').addEventListener('change', e => usePhoto(e.target));
+  $('#rmBtn').addEventListener('click', () => { photo = ''; photoChanged = true; hideErr(); drawAvatar(); $('#pickBtn').focus(); });
+
+  /* ---- save ---- */
+  let saving = false;
+  function busy(on, label){
+    saving = on;
+    const b = $('#save'); b.disabled = on; b.classList.toggle('busy', on);
+    b.textContent = on ? (label || 'Saving…') : 'Save';
+  }
+  function validate(){
+    const name = val('fName');
+    if(!name){ showErr(editing ? 'Add your name.' : 'Add your name — or tap Later to do this another time.', 'fName'); return false; }
+    if(name.length < 2){ showErr('That name looks too short.', 'fName'); return false; }
+    if(roles.includes('crew')){
+      const en = val('fEmName'), ep = val('fEmPhone');
+      if(ep && !phoneOk(ep)){ showErr('That phone number doesn’t look right — check it and try again.', 'fEmPhone'); return false; }
+      if(en && !ep){ showErr('Add a phone number for your emergency contact.', 'fEmPhone'); return false; }
+      if(ep && !en){ showErr('Add who that number belongs to.', 'fEmName'); return false; }
+      if(ep && digits(ep).slice(-10) === FS.phone10(user)){ showErr('That’s your own number — add someone we can call if we can’t reach you.', 'fEmPhone'); return false; }
+    }
+    if(roles.includes('client')){
+      const em = val('fEmail');
+      if(em && !emailOk(em)){ showErr('That email doesn’t look right — check it and try again.', 'fEmail'); return false; }
+    }
+    return true;
+  }
+  function saveMsg(err){
+    const c = String((err && err.code) || '');
+    if(c.includes('permission-denied'))
+      return editing ? 'We couldn’t save your changes just now. Please try again in a little while.'
+        : 'We couldn’t save your profile just now. Tap Later to carry on — you can add it any time.';
+    if(c.includes('unavailable') || !navigator.onLine) return 'No internet — check your connection and try again.';
+    const ref = String(c || (err && err.message) || '').replace(/^fs-auth:\s*/, '').slice(0, 40);
+    return 'Your profile didn’t save. Please try again.' + (ref ? ' (Ref: ' + ref + ')' : '');
+  }
+  $('#vForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if(saving) return;
+    hideErr();
+    /* a save mid-resize would quietly leave the new photo out */
+    if(!$('#avBusy').hidden){ showErr('One moment — your photo is still being prepared.'); return; }
+    if(!validate()) return;
+    const data = { name: val('fName') };
+    /* the photo only when it changed: one saved elsewhere is left as it is */
+    if(photoChanged) data.photo = photo;
+    const r = {};
+    roles.forEach(role => {
+      r[role] = {};
+      Object.keys(FIELDS[role]).forEach(k => { r[role][k] = val(FIELDS[role][k]); });
+    });
+    if(Object.keys(r).length) data.roles = r;
+    busy(true);
+    let res;
+    try{ res = await FS.saveProfile(uid, data); }
+    catch(err){ console.error('[profile] save', err && (err.code || err.message)); busy(false); showErr(saveMsg(err)); return; }
+    const next = nextHref(roles);
+    if(res.sample){
+      toast(FS.DEMO_VIEW ? 'Saved in this test view only' : 'Saved on this phone only — the sample account never changes the studio’s records');
+      busy(true, 'Saved');
+      go(next, 1800);
+      return;
+    }
+    if(res.pending){
+      /* In the app the write waits on disk and goes when the phone is back
+         online, even after this page has gone. A browser keeps it in memory
+         only, so it waits here until the server has it. */
+      if(FS.inApp){ toast('Saved — it’ll reach the studio once you’re back online'); busy(true, 'Saved'); go(next, 1800); return; }
+      busy(true, 'Waiting for internet…');
+      showErr('No internet — your profile saves as soon as you’re back online. Keep this page open.');
+      try{
+        const { waitForPendingWrites } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        await waitForPendingWrites(FS.db);
+      }catch(err){ busy(false); showErr(saveMsg(err)); return; }
+      hideErr();
+    }
+    toast('Profile saved ✓');
+    busy(true, 'Saved');
+    go(next, 800);
+  });
+
+  /* ---- Later / Cancel ----
+     First time: "Later" is remembered (this phone at once, and laterAt on
+     the profile) so /start/ does not ask again; Me keeps the reminder.
+     Editing: Cancel just goes back, nothing is written. */
+  $('#later').addEventListener('click', () => {
+    if(!editing) FS.markLater(uid);
+    location.replace(nextHref(roles));
+  });
+}
+
+function showLoadError(){
+  show('vErr');
+  $('#retry').onclick = () => location.reload();
+  $('#errSkip').onclick = () => location.replace(nextHref(qRole ? [qRole] : []));
+}
+
+main().catch(e => { console.error('[profile]', e); showLoadError(); });
+</script>
+</body>
+</html>

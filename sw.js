@@ -2,7 +2,9 @@
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets, and
    network-first-with-timeout for app code (see APP_CODE below). */
-const CACHE = 'fs-cache-v16';   // v16: the store app's entry page, start/, and the
+const CACHE = 'fs-cache-v17';   // v17: one sign-in — fs-auth.js is app code (network-
+                                //      first, below), start/ changed, profile/ is new
+                                // v16: the store app's entry page, start/, and the
                                 //      app shell (app-shell.css/js) every portal loads
                                 // v15: catalog.js gained MAX_QTY (10 per service),
                                 //      which the builder reads
@@ -16,6 +18,7 @@ const PREFIX = 'fs-cache-';
 const PRECACHE = [
   './',
   'start/',            // the store app's entry page: must open with no signal
+  'profile/',          // the app's profile step (after a first sign-in, and Me → Edit)
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -144,7 +147,10 @@ self.addEventListener('fetch', e => {
   // cache for next time.
   // app-shell.css/js belong here too: a portal page deployed with a new tab
   // bar against yesterday's cached shell is the same skew.
-  if (url.origin === location.origin && /\/(app|app-shell|tokens|ui|catalog)\.(js|css)$/.test(url.pathname)) {
+  // So does fs-auth.js, the one sign-in every portal, /start/ and /profile/
+  // import as a namespace: a new page against yesterday's module finds the
+  // functions it calls undefined, and sign-in or the portal fails that load.
+  if (url.origin === location.origin && /\/(app|app-shell|tokens|ui|catalog|fs-auth)\.(js|css)$/.test(url.pathname)) {
     e.respondWith(freshOrCached(req, 2500));
     return;
   }

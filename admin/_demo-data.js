@@ -567,6 +567,75 @@ export const editingJobs = [
     editors: ['9177007788'], comments: [], audit: [] },
 ];
 
+/* --------------------------------------------------------------- profiles
+   What people add in the app after the one sign-in: a photo and a few details
+   for the role the studio set their number up as, joined to the records above
+   by phone10. The photos are painted here at load time, so this file carries
+   no image data, and they are JPEG data URLs: the only kind the rules accept
+   and the only kind the panel draws. Deliberately included:
+     · a crew member whose profile name differs from the name on the card
+     · a crew member with a name only (no photo, no emergency contact)
+     · a "Later" document with nothing in it, which must draw nothing
+     · a photo that is NOT a JPEG data URL, which must be ignored
+     · a client with an email, and one whose "email" is not an address
+     · a partner studio with a logo and its own spelling of the name */
+const paint = draw => {
+  try{
+    const c = document.createElement('canvas'); c.width = c.height = 96;
+    draw(c.getContext('2d'));
+    return c.toDataURL('image/jpeg', 0.8);
+  }catch(e){ return ''; }
+};
+const face = hue => paint(g => {
+  g.fillStyle = `hsl(${hue} 40% 34%)`; g.fillRect(0, 0, 96, 96);
+  g.fillStyle = `hsl(${hue} 55% 82%)`;
+  g.beginPath(); g.arc(48, 38, 18, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(48, 96, 34, 28, 0, 0, Math.PI * 2); g.fill();
+});
+const logo = (text, hue) => paint(g => {
+  g.fillStyle = '#f6efe0'; g.fillRect(0, 0, 96, 96);
+  g.fillStyle = `hsl(${hue} 55% 38%)`;
+  g.font = 'bold 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 48, 52);
+});
+
+export const profiles = [
+  { id: 'uid-tm01', uid: 'uid-tm01', phone10: '9848001122', name: 'Vikas Sharma', photo: face(28),
+    roles: { crew: { emergencyName: 'Meena Sharma (wife)', emergencyPhone: '+91 98480 11223' } }, updatedAt: ts(3) },
+  /* goes by a shorter name than the card — the card shows both */
+  { id: 'uid-tm02', uid: 'uid-tm02', phone10: '9701002233', name: 'Imran Q.', photo: face(200),
+    roles: { crew: { emergencyName: 'Farooq Qureshi', emergencyPhone: '97010 44556' } }, updatedAt: ts(12) },
+  { id: 'uid-tm05', uid: 'uid-tm05', phone10: '9032005566', name: 'Bhavani', updatedAt: ts(30) },
+  /* tapped Later: no name, no photo, nothing to show */
+  { id: 'uid-tm03', uid: 'uid-tm03', phone10: '9885003344', laterAt: ts(5), updatedAt: ts(5) },
+  /* an SVG where a JPEG belongs: the photo is dropped, the rest still shows */
+  { id: 'uid-tm04', uid: 'uid-tm04', phone10: '9963004455', name: 'Naveen Kumar',
+    photo: 'data:image/svg+xml;base64,PHN2Zy8+',
+    roles: { crew: { emergencyName: 'Lakshmi Kumar', emergencyPhone: '99630 12345' } }, updatedAt: ts(8) },
+  { id: 'uid-pk01', uid: 'uid-pk01', phone10: '9876543210', name: 'Vikram Rao', photo: face(12),
+    roles: { client: { email: 'vikram.rao@example.com' } }, updatedAt: ts(20) },
+  /* shown as text, never as a mailto: link */
+  { id: 'uid-pk03', uid: 'uid-pk03', phone10: '9848012345', name: 'Aisha', photo: face(320),
+    roles: { client: { email: 'not an email' } }, updatedAt: ts(40) },
+  { id: 'uid-st01', uid: 'uid-st01', phone10: '9848111222', name: 'Rahul Menon', photo: logo('LW', 40),
+    roles: { studio: { studioName: 'Lumière Weddings', ownerName: 'Rahul Menon', city: 'Hyderabad' } },
+    updatedAt: ts(6) },
+];
+
+/* ------------------------------------------------------- deletionRequests
+   One note per "Delete my account", keyed by the login's uid. */
+export const deletionRequests = [
+  /* crew, still active on the roster — the row has to say they can come back */
+  { id: 'uid-gone-1', uid: 'uid-gone-1', phone10: '9440006677', at: ts(2) },
+  /* a client */
+  { id: 'uid-gone-2', uid: 'uid-gone-2', phone10: '9700099887', at: ts(9) },
+  /* on none of the studio's records */
+  { id: 'uid-gone-3', uid: 'uid-gone-3', phone10: '9123456789', at: ts(21) },
+  /* the page's fallback note (no `at`) whose deletion never finished: the
+     profile under the same uid is still there, so the row warns */
+  { id: 'uid-tm02', uid: 'uid-tm02', phone10: '9701002233' },
+];
+
 /* ----------------------------------------------------------------- config */
 export const config = {
   businessName: 'Fantasy Studio',

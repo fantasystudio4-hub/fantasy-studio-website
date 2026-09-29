@@ -4,8 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Sign in — Fantasy Studio</title>
-<!-- The store app's entry page (capacitor server.url). Not linked from the
-     site: a browser that lands here just gets the sign-in chooser.
+<!-- The one sign-in (Phase 3.5, owner 29 Sep 2026), for the store app
+     (capacitor server.url) AND the website: every Login link and every
+     portal opened signed out land here. One phone + OTP, then what the
+     studio set this number up as decides where it goes: one page → that
+     page (in the app, the optional profile step first, once), several →
+     "Continue as" rows, none → "not set up" (with Delete my account in the
+     app). ?pick always shows the rows.
      Never load app-shell.js here. A tap on the home-screen widget that
      cold-starts the app arrives as App appUrlOpen, which Capacitor keeps
      until the first listener takes it; that must be the portal this page
@@ -22,65 +27,81 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
   if(document.documentElement.classList.contains('fs-app')){ set(); document.addEventListener('DOMContentLoaded', set); } })();
 </script>
 <script>
-/* Already signed in on this phone? Go straight there, before anything paints.
-   1. fs_app_portal — the page the app was last signed in to (each portal
-      writes it on sign-in in the app and removes it on sign-out).
-   2. Failing that, Firebase's own saved sessions: the three portals are
-      separate Firebase apps named client, crew and studio, and the auth SDK
-      keeps each session in IndexedDB under firebase:authUser:<key>:<name>.
-      One session → that page. Several → "Continue as" rows (the script at
-      the end of the page draws them). None → the chooser below.
+/* Signed in and remembered? Go straight there, before anything paints.
+   fs_app_portal is the page the app last opened (written in the app only,
+   here and by the portals). It only counts while a session is saved:
+   Firebase keeps it in IndexedDB under firebase:authUser:<apiKey>:fs, or
+   under :client / :crew / :studio for an old per-portal session fs-auth.js
+   has not moved yet (fs_auth_migrated unset). Anything else waits for the
+   module at the end of the page, which sets data-view; until then this
+   picks the first screen (wait or sign-in).
    Only ever LOOK at the database: opening a name that does not exist would
    create it empty, and the auth SDK would then find no store inside it. */
 (function(){
-  var MAP = { client:'client/', crew:'team/', studio:'studio/' };
+  var ROLE = { 'client/':'client', 'team/':'crew', 'studio/':'studio' };
   var html = document.documentElement;
+  var get = function(s, k){ try{ return window[s].getItem(k); }catch(e){ return null; } };
+  var q = new URLSearchParams(location.search);
+  var p = get('localStorage', 'fs_app_portal') || '';
+  /* Back here within 20 s of being sent to that same page means the page
+     sent us back (signed out, no access): ask, never loop. */
+  var hop = null; try{ hop = JSON.parse(get('sessionStorage', 'fs_start_hop') || 'null'); }catch(e){}
+  window.FS_BOUNCED = hop && Date.now() - hop.t < 20000 ? String(hop.p || '') : '';
+  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  var fwd = !!ROLE[p] && !q.has('pick') && !(local && q.has('demo')) && window.FS_BOUNCED !== p;
+  var ready; window.FS_PEEK_DONE = new Promise(function(r){ ready = r; });
   html.classList.add('fs-checking');
-  function go(p){ location.replace('../' + p); }
-  try{
-    var p = localStorage.getItem('fs_app_portal');
-    if(p === 'client/' || p === 'team/' || p === 'studio/'){ go(p); return; }
-  }catch(e){}
   var done = false;
-  var timer = setTimeout(function(){ finish([]); }, 1500);   /* a missing DB must never hold the page */
-  function finish(found){
+  var timer = setTimeout(function(){ finish(null); }, 1500);   /* a missing DB must never hold the page */
+  function allowed(u){
+    /* the last clean role check for this person says that page is not theirs */
+    try{ var c = JSON.parse(get('localStorage', 'fs_roles') || 'null');
+      if(u && c && c.uid === u.uid && c.roles && c.roles[ROLE[p]] === false) return false; }catch(e){}
+    return true;
+  }
+  function finish(s){
     if(done) return; done = true; clearTimeout(timer);
-    if(found.length === 1){ go(found[0].portal); return; }
-    window.FS_SESSIONS = found;
-    if(window.FS_ON_SESSIONS) window.FS_ON_SESSIONS(found);   /* the tail script, if it got there first */
+    var session = !!(s && (s.fs || (s.legacy && !get('localStorage', 'fs_auth_migrated'))));
+    if(session && fwd && allowed(s.fs)){
+      window.FS_LEAVING = true;
+      try{ sessionStorage.setItem('fs_start_hop', JSON.stringify({ t: Date.now(), p: p })); }catch(e){}
+      location.replace('../' + p);
+      return;
+    }
+    if(!html.getAttribute('data-view')) html.setAttribute('data-view', session ? 'wait' : 'signin');
     html.classList.remove('fs-checking');
+    ready();
   }
   try{
-    if(!window.indexedDB){ finish([]); return; }
+    if(!window.indexedDB){ finish(null); return; }
     var look = function(){
       var req = indexedDB.open('firebaseLocalStorageDb');
       /* upgradeneeded means the DB was not there: abort so it is not created */
-      req.onupgradeneeded = function(){ try{ req.transaction.abort(); }catch(e){} finish([]); };
-      req.onerror = req.onblocked = function(){ finish([]); };
+      req.onupgradeneeded = function(){ try{ req.transaction.abort(); }catch(e){} finish(null); };
+      req.onerror = req.onblocked = function(){ finish(null); };
       req.onsuccess = function(){
-        var db = req.result, found = [];
+        var db = req.result, s = { fs: null, legacy: false };
         try{
-          if(!db.objectStoreNames.contains('firebaseLocalStorage')){ db.close(); finish([]); return; }
+          if(!db.objectStoreNames.contains('firebaseLocalStorage')){ db.close(); finish(null); return; }
           var all = db.transaction('firebaseLocalStorage','readonly').objectStore('firebaseLocalStorage').getAll();
           all.onsuccess = function(){
             (all.result || []).forEach(function(r){
-              var m = r && typeof r.fbase_key === 'string' && r.value && /^firebase:authUser:.*:(client|crew|studio)$/.exec(r.fbase_key);
-              if(m && !found.some(function(f){ return f.portal === MAP[m[1]]; }))
-                found.push({ role:m[1], portal:MAP[m[1]], phone:(r.value.phoneNumber || '') });
+              var m = r && typeof r.fbase_key === 'string' && r.value && /^firebase:authUser:.+:(fs|client|crew|studio)$/.exec(r.fbase_key);
+              if(m){ if(m[1] === 'fs') s.fs = r.value; else s.legacy = true; }
             });
             try{ db.close(); }catch(e){}
-            finish(found);
+            finish(s);
           };
-          all.onerror = function(){ try{ db.close(); }catch(e){} finish([]); };
-        }catch(e){ try{ db.close(); }catch(e2){} finish([]); }
+          all.onerror = function(){ try{ db.close(); }catch(e){} finish(null); };
+        }catch(e){ try{ db.close(); }catch(e2){} finish(null); }
       };
     };
     /* where the browser can list its databases, skip the open when ours is absent */
     if(indexedDB.databases) indexedDB.databases().then(function(dbs){
-      if(dbs.some(function(d){ return d && d.name === 'firebaseLocalStorageDb'; })) look(); else finish([]);
+      if(dbs.some(function(d){ return d && d.name === 'firebaseLocalStorageDb'; })) look(); else finish(null);
     }, function(){ look(); });
     else look();
-  }catch(e){ finish([]); }
+  }catch(e){ finish(null); }
 })();
 </script>
 <meta name="theme-color" content="#14110a" />
@@ -91,7 +112,7 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
 :root{
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
   --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.28);
-  --text:#f3ecdc; --mut:#b3a98f;
+  --text:#f3ecdc; --mut:#b3a98f; --err:#e07a6a;
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -110,11 +131,34 @@ body{
           max(1.2rem,env(safe-area-inset-left));
 }
 main{width:100%;max-width:420px;margin:auto 0;text-align:center}
+/* the website's way back to the brochure; the app has none (Guideline 4.2) */
+.home{align-self:flex-start;display:inline-flex;align-items:center;min-height:44px;margin:-.6rem 0 .4rem -.4rem;padding:0 .4rem;color:var(--mut);font-size:.8rem;letter-spacing:.06em;text-decoration:none}
+@media(hover:hover){ .home:hover{color:var(--gold-b)} }
+html.fs-app .home{display:none}
 .logo-mark{width:58px;height:58px;margin:0 auto 1rem;display:block}
 h1{font-family:var(--serif);font-weight:600;font-size:1.65rem;line-height:1.15;color:#fff;margin-bottom:.35rem}
 .sub{color:var(--mut);font-size:.92rem;margin-bottom:1.5rem}
-/* the rows come after the sessions check, never before */
-html.fs-checking .rows{visibility:hidden}
+.sub b{color:var(--text);font-weight:500;white-space:nowrap}
+#vNone h1{font-size:1.4rem}   /* a sentence, not a title */
+
+/* One screen at a time: html[data-view] is set by the head script (wait or
+   signin, once it has looked for a saved session) and then by the module.
+   Nothing but the logo shows while that first look runs. */
+.view{display:none}
+html[data-view="wait"] #vWait, html[data-view="signin"] #vSignIn, html[data-view="pick"] #vPick,
+html[data-view="none"] #vNone, html[data-view="fail"] #vFail, html[data-view="error"] #vError{display:block}
+html.fs-checking .view{display:none}
+
+.wait{padding:1.4rem 0 2rem;color:var(--mut);font-size:.92rem}
+.ring{width:34px;height:34px;margin:0 auto 1rem;border:3px solid rgba(226,194,117,.22);border-top-color:var(--gold-b);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* the sign-in box (fs-auth.js draws it and brings its own styles) */
+.box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.4rem 1.2rem 1.1rem;margin-bottom:.9rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+/* holds the box's height until the module has drawn it */
+.boxload{height:152px;border-radius:10px;background:linear-gradient(90deg,rgba(226,194,117,.05),rgba(226,194,117,.1),rgba(226,194,117,.05));background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite}
+@keyframes shimmer{to{background-position:-200% 0}}
+
 .opt{
   display:flex;align-items:center;gap:.9rem;width:100%;min-height:64px;text-align:left;
   background:var(--panel);border:1px solid var(--line);border-radius:16px;
@@ -123,24 +167,50 @@ html.fs-checking .rows{visibility:hidden}
 }
 .opt:active{border-color:var(--gold);background:rgba(184,144,43,.16)}
 @media(hover:hover){ .opt:hover{border-color:var(--gold)} }
+.opt:focus-visible,.btn:focus-visible,.mini:focus-visible,.pair a:focus-visible,.home:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .ic{flex:0 0 auto;width:1.6em;font-size:1.5rem;line-height:1;text-align:center}
 .t{flex:1;min-width:0}
 .t b{display:block;font-family:var(--serif);font-weight:600;font-size:1.08rem;color:#fff}
-.t em{display:block;font-style:normal;font-size:.8rem;color:var(--mut);margin-top:.1rem}
+.t em{display:block;font-style:normal;font-size:.8rem;color:var(--mut);margin-top:.1rem;overflow-wrap:anywhere}
 .go{flex:0 0 auto;color:var(--gold-b);font-size:1.1rem}
-/* saved sessions sit above the chooser, in gold */
-.cont .opt{border-color:rgba(226,194,117,.6);background:rgba(184,144,43,.12)}
-.cont .t b{color:var(--gold-b)}
-.or{color:var(--mut);font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;margin:.4rem 0 .9rem}
-/* the one signed-out path: a quote, for anyone */
-.plan{margin-top:.5rem;background:none;border-style:dashed}
+/* "Continue as" rows are the gold ones */
+#rows .opt{border-color:rgba(226,194,117,.6);background:rgba(184,144,43,.12)}
+#rows .t b{color:var(--gold-b)}
+.tag{display:inline-block;vertical-align:2px;margin-left:.45em;padding:.05em .55em;border:1px solid rgba(226,194,117,.5);border-radius:20px;font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-b)}
+/* the one signed-out path that needs no account: a quote, for anyone */
+.plan{display:none;margin-top:.5rem;background:none;border-style:dashed}
+html[data-view="signin"] .plan, html[data-view="none"] .plan, html[data-view="error"] .plan{display:flex}
+html.fs-checking .plan{display:none}
 .plan .t b{font-family:var(--sans);font-weight:500;font-size:1rem}
+
+.btn{display:block;width:100%;min-height:48px;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-family:inherit;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.btn{margin-bottom:.4rem}
+.btn:active{transform:scale(.98)}
+.pair{display:flex;gap:.5rem;margin-bottom:.4rem}
+.pair a{flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.5em .6em;font-size:.9rem}
+.mini{background:none;border:0;color:var(--mut);text-decoration:underline;text-underline-offset:3px;font-family:inherit;font-size:.85rem;cursor:pointer;margin-top:.4rem;min-height:44px;padding:.4em .9em}
+.mini:disabled{text-decoration:none;opacity:.7;cursor:default}
+.err{color:var(--err);font-size:.82rem;margin-top:.4rem}
+/* Delete my account on the not-set-up and could-not-check screens: the
+   store app only, and under those two views alone */
+.app-only{display:none}
+html.fs-app .app-only{display:block}
+html:not([data-view="none"]):not([data-view="fail"]) #delZone, html.fs-checking #delZone{display:none}
+.ask{background:var(--panel);border:1px solid rgba(224,122,106,.45);border-radius:14px;padding:.9rem 1rem;margin:.3rem 0 .4rem;text-align:left;font-size:.85rem;color:var(--mut)}
+.askrow{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
+.abtn{flex:1 1 8em;min-height:44px;border-radius:30px;padding:.5em .8em;font-family:inherit;font-size:.85rem;cursor:pointer;background:none;border:1px solid var(--line);color:var(--text)}
+.abtn.warn{border-color:var(--err);color:var(--err)}
+.abtn:disabled{opacity:.7;cursor:default}
+.abtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.done{color:var(--gold-b);font-size:.85rem;margin:-.3rem 0 .9rem}
+
 footer{margin-top:1.4rem;color:var(--mut);font-size:.72rem;letter-spacing:.06em}
 footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.9em .6em;margin:-.9em -.6em}   /* 44px target */
-@media (prefers-reduced-motion:reduce){ .opt{transition:none} }
+@media (prefers-reduced-motion:reduce){ .opt{transition:none} .ring,.boxload{animation:none} .btn:active{transform:none} }
 </style>
 </head>
 <body>
+<a class="home" href="../">← Fantasy Studio</a>
 <main>
   <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
     <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
@@ -149,66 +219,359 @@ footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.
     <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
     <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
   </svg>
-  <h1>Sign in to Fantasy Studio</h1>
-  <p class="sub" id="sub">Who are you signing in as?</p>
 
-  <div class="rows">
-    <!-- saved sessions on this phone, when there is more than one -->
-    <div class="cont" id="cont" hidden></div>
+  <!-- a saved session: working out where it goes -->
+  <section class="view" id="vWait">
+    <div class="wait" role="status" aria-live="polite"><div class="ring" aria-hidden="true"></div><span id="waitText">Signing you in…</span></div>
+  </section>
 
-    <a class="opt" href="../client/" data-role="client">
-      <span class="ic" aria-hidden="true">💍</span>
-      <span class="t"><b>My booking</b><em>I booked my event with Fantasy Studio</em></span>
-      <span class="go" aria-hidden="true">→</span>
-    </a>
-    <a class="opt" href="../team/" data-role="crew">
-      <span class="ic" aria-hidden="true">🎬</span>
-      <span class="t"><b>Crew</b><em>I shoot or edit for Fantasy Studio</em></span>
-      <span class="go" aria-hidden="true">→</span>
-    </a>
-    <a class="opt" href="../studio/" data-role="studio">
-      <span class="ic" aria-hidden="true">🏢</span>
-      <span class="t"><b>Partner studio</b><em>My studio books Fantasy Studio for events</em></span>
-      <span class="go" aria-hidden="true">→</span>
-    </a>
-    <a class="opt plan" href="../builder/">
-      <span class="ic" aria-hidden="true">✨</span>
-      <span class="t"><b>Plan a shoot — get a quote</b><em>Build a package and see the price live</em></span>
-      <span class="go" aria-hidden="true">→</span>
-    </a>
+  <section class="view" id="vSignIn">
+    <h1>Sign in to Fantasy Studio</h1>
+    <p class="sub">Your booking, crew page or partner studio: one sign-in with your mobile number.</p>
+    <div class="box" id="box"><div class="boxload" aria-hidden="true"></div></div>
+    <p class="done" id="delDone" role="status" hidden></p>
+  </section>
+
+  <!-- this number opens more than one page -->
+  <section class="view" id="vPick">
+    <h1>Continue as …</h1>
+    <p class="sub" id="pickSub"></p>
+    <div id="rows"></div>
+    <button class="mini" type="button" data-signout>Sign out</button>
+  </section>
+
+  <section class="view" id="vNone">
+    <h1>This number isn't set up with Fantasy Studio yet</h1>
+    <p class="sub">You're signed in as <b id="noneWho"></b>. If the studio has a different number for you, sign out and use that one, or reach us and we'll help you right away.</p>
+    <div class="pair"><a id="noneCall" href="tel:+918686868803">📞 Call</a><a id="noneWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a></div>
+    <button class="mini" type="button" data-signout>Sign out</button>
+  </section>
+
+  <!-- the role check itself failed: never call that "not set up" -->
+  <section class="view" id="vFail">
+    <h1>We couldn't check your number</h1>
+    <p class="sub">Check your internet connection and try again.</p>
+    <button class="btn" type="button" id="failRetry">Try again</button>
+    <button class="mini" type="button" data-signout>Sign out</button>
+  </section>
+
+  <!-- The OTP made a login even though no page opens for this number, so
+       the app must let it be deleted here (App Store 5.1.1(v)): under the
+       not-set-up screen, and under "We couldn't check your number" too, so
+       a login whose checks keep failing can still go. One block for both
+       (#delZone, shown by data-view). App only, like every portal's Me →
+       Delete; on the website the privacy page (footer) says how to ask. -->
+  <div class="app-only" id="delZone">
+    <button class="mini" type="button" id="delAsk" aria-expanded="false" aria-controls="delBox">Delete my account</button>
+    <div class="ask" id="delBox" hidden>
+      <p>This deletes your Fantasy Studio sign-in, and your profile if you made one, and signs you out on this phone.</p>
+      <div class="askrow">
+        <button class="abtn warn" type="button" id="delYes">Delete my account</button>
+        <button class="abtn" type="button" id="delNo">Cancel</button>
+      </div>
+      <p class="err" id="delErr" role="alert" hidden></p>
+    </div>
   </div>
+
+  <!-- the sign-in code itself did not load (offline, gstatic blocked) -->
+  <section class="view" id="vError">
+    <h1>Sign-in couldn't load</h1>
+    <p class="sub">Check your internet connection and try again.</p>
+    <button class="btn" type="button" id="errRetry">Try again</button>
+  </section>
+
+  <p class="err" id="outErr" role="alert" hidden></p>
+
+  <a class="opt plan" href="../builder/">
+    <span class="ic" aria-hidden="true">✨</span>
+    <span class="t"><b>Plan a shoot — get a quote</b><em>Build a package and see the price live</em></span>
+    <span class="go" aria-hidden="true">→</span>
+  </a>
 
   <footer>Hyderabad · since 2012 · <a href="../privacy/">Privacy</a></footer>
 </main>
 
-<script>
-/* "Continue as …" — drawn only when the head script found more than one
-   saved session; with exactly one it has already left this page */
-(function(){
-  var NAME = { client:'Continue to my booking', crew:'Continue as crew', studio:'Continue as partner studio' };
-  var ICON = { client:'💍', crew:'🎬', studio:'🏢' };
-  function draw(list){
-    if(!list || list.length < 2) return;
-    var box = document.getElementById('cont');
-    list.forEach(function(s){
-      var a = document.createElement('a');
-      a.className = 'opt'; a.href = '../' + s.portal;
-      a.innerHTML = '<span class="ic" aria-hidden="true"></span><span class="t"><b></b><em></em></span><span class="go" aria-hidden="true">→</span>';
-      a.firstChild.textContent = ICON[s.role] || '';
-      a.querySelector('b').textContent = NAME[s.role] || s.role;
-      /* +919000000001 → +91 90000 00001, as the portals print it */
-      var ph = String(s.phone || '').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
-      a.querySelector('em').textContent = ph ? 'Signed in as ' + ph : 'Signed in on this phone';
-      box.appendChild(a);
-    });
-    box.hidden = false;
-    document.getElementById('sub').textContent = 'This phone is signed in to more than one page.';
-    var or = document.createElement('p'); or.className = 'or'; or.textContent = 'or sign in as';
-    box.parentNode.insertBefore(or, box.nextSibling);
+<script src="../firebase-config.js"></script>
+<script type="module">
+/* ---------- after the first look: sign in, then send each number where
+   the studio set it up (fs-auth.js detectRoles) ---------- */
+const html = document.documentElement;
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
+const lsDel = k => { try{ localStorage.removeItem(k); }catch(e){} };
+const PARAMS = new URLSearchParams(location.search);
+const PICK = PARAMS.has('pick');
+const ORDER = ['client', 'crew', 'studio'];
+const ROLE_OF = { 'client/': 'client', 'team/': 'crew', 'studio/': 'studio' };
+const ROW = {
+  client: { ic: '💍', name: 'My booking',     em: () => 'Your package, payments and delivery' },
+  crew:   { ic: '🎬', name: 'Crew',           em: i => i && i.name ? i.name + ' · shoots, editing and pay' : 'Your shoots, editing and pay' },
+  studio: { ic: '🏢', name: 'Partner studio', em: i => (i && i.studioName) || 'Your studio’s jobs with Fantasy Studio' },
+};
+const OPENING = { client: 'Opening your booking…', crew: 'Opening your crew page…', studio: 'Opening your studio page…' };
+/* Crew numbers were never in the hashed phone index (the admin wrote it for
+   clients and partner studios only), so the pre-check would tell a crew
+   member "not set up" and never send the OTP. This release the admin panel
+   starts writing it for team members and backfills the existing ones the
+   first time it opens. Off until then; an unknown number meanwhile signs in
+   and gets the "not set up" screen below (which can delete that login).
+   Turning it on is its own one-line commit after the owner has opened the
+   admin once post-deploy: app/PLAN-APPSTORE-4.2.md, Phase 3.5 owner go-live
+   order, step 5. */
+const PRECHECK = false;
+
+let FS = null, box = null, me = null, routing = 0, deleting = false;
+const show = v => { html.setAttribute('data-view', v); html.classList.remove('fs-checking'); $('#outErr').hidden = true; $('#delDone').hidden = true; askDelete(false); };
+const wait = text => { $('#waitText').textContent = text; show('wait'); };
+/* +919000000001 → +91 90000 00001, as the portals print it */
+const pretty = ph => String(ph || '').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
+/* the local test hook keeps its ?demo on every page it opens */
+const withDemo = path => FS && FS.DEMO_VIEW ? path + (path.includes('?') ? '&' : '?') + 'demo' : path;
+
+/* Leave for another page of the site. Replace, never push: Back from a
+   portal must not land here to be sent on again. The hop note lets this
+   page tell a bounce back from that portal from a fresh visit (head script). */
+function go(path, portal){
+  if(window.FS_LEAVING) return;
+  window.FS_LEAVING = true;
+  try{ sessionStorage.setItem('fs_start_hop', JSON.stringify({ t: Date.now(), p: portal })); }catch(e){}
+  location.replace('../' + withDemo(path));
+}
+
+/* The profile step, once: no profile yet and "Later" never tapped. In the
+   app only: Edit profile lives on the app's Me tabs, so the website has no
+   way back to it for someone who taps Later. A read that fails or hangs
+   (offline, rules not yet published) is "unknown" and never holds anyone
+   out of their page. Samples always have one. */
+async function needsProfile(user){
+  if(!FS.inApp || FS.isSample(user) || FS.isLater(user.uid)) return false;
+  try{
+    const p = await Promise.race([FS.getProfile(user.uid), new Promise(r => setTimeout(() => r(undefined), 4000))]);
+    return p === null;
+  }catch(e){ return false; }
+}
+
+async function enter(role, user){
+  const portal = FS.PORTALS[role];
+  /* the app reopens here next launch (the head script, and / in the app);
+     browsers ask again each time */
+  if(FS.inApp && !FS.DEMO_VIEW) lsSet('fs_app_portal', portal);
+  wait(OPENING[role]);
+  if(await needsProfile(user)) go('profile/?role=' + role + '&next=' + encodeURIComponent(portal), portal);
+  else go(portal, portal);
+}
+
+/* fresh: the OTP was confirmed on this page just now */
+async function route(user, fresh){
+  const my = ++routing;
+  me = user;
+  /* a Google login from before phone sign-in: the client page links a number to it */
+  if(!user.phoneNumber){ go('client/', 'client/'); return; }
+  const hook = FS.DEMO_VIEW && PARAMS.has('roles');
+  const last = FS.DEMO_VIEW ? '' : ROLE_OF[lsGet('fs_app_portal')] || '';
+  /* one page, or several with one remembered (the app): straight there.
+     A bounce back from that very page asks instead of sending it again. */
+  const target = roles => roles.length === 1 ? roles[0] : (roles.includes(last) ? last : '');
+  const direct = t => !!t && !PICK && (fresh || FS.PORTALS[t] !== window.FS_BOUNCED);
+  /* a returning session goes on from the last clean answer at once; the
+     portal checks its own access again when it opens */
+  const cached = FS.cachedRoles(user.uid);
+  if(cached && !fresh && !hook){
+    const t = target(ORDER.filter(k => cached[k]));
+    if(direct(t)){ enter(t, user); return; }
   }
-  /* the check may still be running (its 1.5 s ceiling): it calls back */
-  if(window.FS_SESSIONS) draw(window.FS_SESSIONS);
-  else window.FS_ON_SESSIONS = draw;
+  wait('Checking your account…');
+  const r = await FS.detectRoles(user);
+  if(my !== routing || window.FS_LEAVING) return;
+  /* a role that could not be checked keeps its last clean answer (offline) */
+  let roles = ORDER.filter(k => r[k] || (cached && cached[k] && r.failed.includes(k)));
+  let failed = r.failed;
+  /* local test hook: ?demo&roles=crew,studio | none | fail draws each branch */
+  if(hook){
+    const want = String(PARAMS.get('roles')).split(',');
+    roles = ORDER.filter(k => want.includes(k));
+    failed = want.includes('fail') ? ['client'] : [];
+  }
+  if(!roles.length){ if(failed.length) show('fail'); else showNone(user); return; }
+  const t = target(roles);
+  if(direct(t)){ enter(t, user); return; }
+  drawPick(roles, r.info || {}, user, last);
+}
+
+function drawPick(roles, info, user, last){
+  const rows = $('#rows');
+  rows.textContent = '';
+  roles.forEach(role => {
+    const d = ROW[role];
+    const a = document.createElement('a');
+    a.className = 'opt';
+    a.href = '../' + withDemo(FS.PORTALS[role]);
+    a.innerHTML = '<span class="ic" aria-hidden="true"></span><span class="t"><b></b><em></em></span><span class="go" aria-hidden="true">→</span>';
+    a.firstChild.textContent = d.ic;
+    a.querySelector('b').textContent = d.name;
+    if(role === last && roles.length > 1){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'Last used'; a.querySelector('b').appendChild(t); }
+    a.querySelector('em').textContent = d.em(info[role]);
+    /* a modified click (new tab) keeps its ordinary meaning */
+    a.addEventListener('click', e => {
+      if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+      e.preventDefault(); enter(role, user);
+    });
+    rows.appendChild(a);
+  });
+  $('#pickSub').textContent = 'Signed in as ' + pretty(user.phoneNumber) + (roles.length > 1 ? '. This number opens more than one page.' : '.');
+  show('pick');
+}
+
+async function showNone(user){
+  const who = pretty(user.phoneNumber);
+  $('#noneWho').textContent = who;
+  show('none');
+  const c = await FS.getContact();   /* never rejects; the default number until it answers */
+  $('#noneCall').href = c.tel;
+  $('#noneWa').href = c.wa + '?text=' + encodeURIComponent('Salaam! I tried to sign in to Fantasy Studio but my number ' + who + ' is not set up. Can you help?');
+}
+
+/* An OTP was just confirmed on this phone: leave the note the portal's app
+   lock takes at its first gate (fs-auth writeFresh / takeFresh), so the
+   person who just proved who they are is not asked for Face ID as well.
+   The test hook never signed in, so it leaves none. */
+function signedIn(user){
+  if(!FS.DEMO_VIEW && user && user.uid) try{ FS.writeFresh(user.uid); }catch(e){ console.error('[start] fresh note', e); }
+  route(user, true);
+}
+
+function signedOut(){
+  me = null; routing++;
+  if(!box){
+    $('#box').textContent = '';   /* the placeholder */
+    box = FS.mountPhoneSignIn($('#box'), { precheck: PRECHECK, onSignedIn: signedIn });
+  }else box.reset();
+  show('signin');
+}
+
+/* Sign out (and Delete) from here. The portals take this phone's push token
+   and the widget's value away before they sign out; this page has no app
+   shell, so it does the same two, each with a ceiling, while the login the
+   token rule needs is still here. The review number never deletes. */
+async function leaveDevice(){
+  if(!FS.inApp) return;
+  const KEYS = ['fs_push_token', 'fs_push_token_team', 'fs_push_token_studio'];
+  const tokens = [...new Set(KEYS.map(lsGet).filter(Boolean))];
+  const soon = ms => new Promise(r => setTimeout(r, ms));
+  if(tokens.length && !FS.isSample()) try{
+    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    await Promise.race([soon(2000), Promise.all(tokens.map(t => deleteDoc(doc(FS.db, 'pushTokens', t))
+      .then(() => KEYS.forEach(k => { if(lsGet(k) === t) lsDel(k); }), () => {})))]);
+  }catch(e){}
+  try{
+    const C = window.Capacitor, W = C && C.Plugins && C.Plugins.WidgetBridgePlugin;
+    if(C && C.getPlatform && C.getPlatform() === 'ios' && W && W.removeItem && (!C.isPluginAvailable || C.isPluginAvailable('WidgetBridgePlugin')))
+      await Promise.race([soon(1500), Promise.resolve(W.removeItem({ key: 'next', group: 'group.in.fantasystudio.app' }))
+        .then(() => W.reloadAllTimelines && W.reloadAllTimelines()).catch(() => {})]);
+  }catch(e){}
+}
+$$('[data-signout]').forEach(b => b.addEventListener('click', async () => {
+  $$('[data-signout]').forEach(x => x.disabled = true);
+  try{
+    /* the ?demo view never signed in: nothing to sign out */
+    if(FS.auth.currentUser){ await leaveDevice(); await FS.signOutEverywhere(); }
+    try{ sessionStorage.removeItem('fs_start_hop'); }catch(e){}
+    signedOut();
+  }catch(e){
+    console.error('[start] sign out', e);
+    $('#outErr').textContent = 'Could not sign out. Please try again.';
+    $('#outErr').hidden = false;
+  }finally{ $$('[data-signout]').forEach(x => x.disabled = false); }
+}));
+
+/* Delete my account, on the not-set-up and could-not-check screens (app
+   only). Asked once more in place; then this phone lets go (push token,
+   widget) while the login is still here, and fs-auth's deleteMyAccount calls
+   the function that removes the login and any profile, clears this phone's
+   cache and notes and signs out. A failed call leaves the person signed in
+   on this screen to try again. The review number never shows these screens
+   (it has every page), and the test hook's "delete" only signs out.
+   A real delete then loads this page afresh: clearing the cache shut this
+   page's Firestore down (fs-auth wipeCache), it cannot start again in
+   place, and a sign-in with another number here would find every role
+   check failing. The session note fs_deleted carries "Your account has been
+   deleted." across the load (main, below). */
+const DELETED = 'fs_deleted';
+function askDelete(open){
+  if(deleting) return;
+  $('#delBox').hidden = !open;
+  $('#delAsk').setAttribute('aria-expanded', String(open));
+  $('#delErr').hidden = true;
+  if(open) setTimeout(() => $('#delNo').focus(), 30);
+}
+$('#delAsk').addEventListener('click', () => askDelete($('#delBox').hidden));
+$('#delNo').addEventListener('click', () => { askDelete(false); $('#delAsk').focus(); });
+$('#delYes').addEventListener('click', async () => {
+  if(deleting) return;
+  deleting = true;
+  const yes = $('#delYes'), no = $('#delNo'), er = $('#delErr');
+  const lock = on => [yes, no, $('#delAsk'), $('#failRetry'), ...$$('[data-signout]')].forEach(b => b.disabled = on);
+  lock(true); yes.textContent = 'Deleting…'; er.hidden = true;
+  let r;
+  try{
+    await leaveDevice();
+    r = await FS.deleteMyAccount();
+  }catch(err){
+    const code = String((err && (err.code || err.message)) || '');
+    console.error('[start] delete my account:', code);
+    deleting = false;
+    lock(false); yes.textContent = 'Delete my account';
+    /* the short Ref lets a screenshot of this tell the studio what went wrong */
+    const ref = code.replace(/^functions\//, '').slice(0, 40);
+    er.textContent = (navigator.onLine
+      ? 'Your account could not be deleted just now. You are still signed in — please try again.'
+      : 'You are offline. Your account was not deleted — try again when you have signal.') + (ref ? ' (Ref: ' + ref + ')' : '');
+    er.hidden = false;
+    return;
+  }
+  /* this phone forgets them, as the crew page's Delete does: its tab and
+     app-lock settings too */
+  try{
+    const drop = [];
+    for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i) || ''; if(/^fs_(tab|lock)_/.test(k)) drop.push(k); }
+    drop.forEach(lsDel);
+  }catch(e){}
+  try{ sessionStorage.removeItem('fs_start_hop'); }catch(e){}
+  if(!(r && r.sample)){
+    /* the buttons stay locked until the new page is up */
+    window.FS_LEAVING = true;
+    try{ sessionStorage.setItem(DELETED, '1'); }catch(e){}
+    location.replace(location.pathname);
+    return;
+  }
+  /* the sample never touched Firestore: signed out, right here */
+  deleting = false;
+  lock(false); yes.textContent = 'Delete my account';
+  signedOut();
+  $('#delDone').textContent = 'Test view: signed out, nothing was deleted.';
+  $('#delDone').hidden = false;
+});
+$('#failRetry').addEventListener('click', () => { if(me) route(me); else location.reload(); });
+$('#errRetry').addEventListener('click', () => location.reload());
+/* back from the page cache (browser Back after a new-tab visit): start over */
+addEventListener('pageshow', e => { if(e.persisted) location.reload(); });
+
+(async function main(){
+  await window.FS_PEEK_DONE;   /* the head script's look, and its hand-over if it made one */
+  if(window.FS_LEAVING) return;
+  try{ FS = await import('../fs-auth.js'); }
+  catch(e){ console.error('[start] sign-in did not load', e); show('error'); return; }
+  let user = null;
+  try{ user = await FS.ready(); }catch(e){}   /* moves an old per-portal session over, once */
+  if(window.FS_LEAVING) return;
+  /* back from a real Delete my account (above): said once, under the sign-in */
+  let deleted = null;
+  try{ deleted = sessionStorage.getItem(DELETED); sessionStorage.removeItem(DELETED); }catch(e){}
+  if(user){ route(user); return; }
+  signedOut();
+  if(deleted){ $('#delDone').textContent = 'Your account has been deleted.'; $('#delDone').hidden = false; }
 })();
 </script>
 </body>

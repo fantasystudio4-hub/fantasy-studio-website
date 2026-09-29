@@ -323,6 +323,125 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // the person's own profile (one sign-in, Sep 2026): name, photo, and a
+    // few details for the roles the admin set their number up as — crew: an
+    // emergency contact; client: an email; partner: studio name, owner name,
+    // city. The doc id IS the auth uid. Pages read it with a plain get of
+    // profiles/<their uid>, never a query, so the read rule needs nothing
+    // from a filter; the admin panel lists them all to join on phone10.
+    //
+    // This card grants NOTHING. What a person may see is still decided by the
+    // admin's own records (packages / team / studios, above), and no rule
+    // anywhere reads profiles — writing roles.crew here opens no crew page.
+    //
+    // phone10 is pinned to the OTP-verified number because the admin panel
+    // joins on it: a free phone10 would let a stranger hang their photo and
+    // name on someone else's team card or booking. Everything else is pinned
+    // and capped for the same reason as leads: the admin panel renders it.
+    //
+    // The profile step is optional ("Later"), so every field except uid and
+    // phone10 may be missing, and null counts as not given; when a field is
+    // there it must have its type and fit its cap. The photo is a JPEG data
+    // URL made on the phone (256 px, so far under the cap): only the base64
+    // alphabet may follow the prefix, so nothing in it can break out of the
+    // <img src> it lands in on the panel.
+    match /profiles/{uid} {
+      // the doc id is passed in rather than read from the enclosing match,
+      // so nothing here leans on how function scope sees path wildcards
+      function mine(id) {
+        return request.auth != null && request.auth.uid == id;
+      }
+      function pf(k) {
+        return request.resource.data.get(k, null);
+      }
+      function optStr(v, cap) {
+        return v == null || (v is string && v.size() <= cap);
+      }
+      function optTime(v) {
+        return v == null || v is timestamp;
+      }
+      // the panel picks the newest card per phone10 by updatedAt and prints
+      // "updated <date>", so every write stamps it with the server clock
+      // (serverTimestamp()) — a phone cannot back- or future-date it.
+      // laterAt ("Later" was tapped) is either stamped the same way or left
+      // exactly as it is: no write may set it to another time or clear it.
+      function stampsOk() {
+        return (pf('updatedAt') == null || pf('updatedAt') == request.time)
+          && (!('laterAt' in request.resource.data.diff(
+                 resource == null ? {} : resource.data).affectedKeys())
+              || pf('laterAt') == request.time);
+      }
+      function photoOk(p) {
+        return p == null || p == ''
+          || (p is string
+              && p.size() <= 160000
+              && p.matches('data:image/jpeg;base64,[A-Za-z0-9+/]+=*'));
+      }
+      function crewOk(m) {
+        return m is map
+          && m.keys().hasOnly(['emergencyName','emergencyPhone'])
+          && optStr(m.get('emergencyName', null), 80)
+          && optStr(m.get('emergencyPhone', null), 20);
+      }
+      function clientOk(m) {
+        return m is map
+          && m.keys().hasOnly(['email'])
+          && optStr(m.get('email', null), 120);
+      }
+      function studioOk(m) {
+        return m is map
+          && m.keys().hasOnly(['studioName','ownerName','city'])
+          && optStr(m.get('studioName', null), 80)
+          && optStr(m.get('ownerName', null), 80)
+          && optStr(m.get('city', null), 60);
+      }
+      function rolesOk(r) {
+        return r == null
+          || (r is map
+              && r.keys().hasOnly(['crew','client','studio'])
+              && (!('crew' in r) || crewOk(r.crew))
+              && (!('client' in r) || clientOk(r.client))
+              && (!('studio' in r) || studioOk(r.studio)));
+      }
+      function profileOk(id) {
+        return mine(id)
+          && clientPhone10() != '__none__'
+          && request.resource.data.keys().hasOnly(
+               ['uid','phone10','name','photo','roles','laterAt','updatedAt'])
+          && request.resource.data.uid == id
+          && request.resource.data.phone10 == clientPhone10()
+          && optStr(pf('name'), 80)
+          && photoOk(pf('photo'))
+          && rolesOk(pf('roles'))
+          && optTime(pf('laterAt'))
+          && optTime(pf('updatedAt'))
+          && stampsOk();
+      }
+      allow read: if isAdmin() || mine(uid);
+      allow create, update: if profileOk(uid);
+      allow delete: if mine(uid);
+    }
+
+    // "Delete my account" leaves one note here so the studio knows the person
+    // asked. The deleteMyAccount Cloud Function writes it with the admin SDK,
+    // which bypasses these rules; the create rule is the fallback that lets
+    // the page leave the note itself if the function cannot be reached. One
+    // per login (doc id is the uid), create-only so it can never be rewritten,
+    // the phone pinned to the verified number, and `at` (when sent) the
+    // server's own time, as stampsOk() pins the profile stamps: the admin
+    // panel sorts and dates the list by it. Only you read and clear them.
+    match /deletionRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(['uid','phone10','at'])
+        && request.resource.data.get('uid', uid) == uid
+        && request.resource.data.phone10 == clientPhone10()
+        && (!('at' in request.resource.data)
+            || request.resource.data.at == request.time);
+      allow read, delete: if isAdmin();
+    }
+
     // everything else (incl. legacy lenscal_* data): admin only — default deny
     match /{document=**} {
       allow read, write: if isAdmin();

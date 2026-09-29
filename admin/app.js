@@ -332,6 +332,153 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return { ok:true, msg: okMsg || 'Saved ✓' };
   }
 
+  /* ---------------------------------------------------------------- profiles
+     What people add about themselves after the one sign-in (Sep 2026):
+     profiles/{uid} = { uid, phone10, name, photo, roles: { crew:{emergencyName,
+     emergencyPhone}, client:{email}, studio:{studioName, ownerName, city} } }.
+     Optional ("Later"), so most numbers have none, and nothing in the panel
+     depends on it: it only adds a face and a few details to the team member,
+     booking and partner studio with the same number. The join is phone10,
+     which the rules pin to the OTP-verified number, so a profile can only
+     ever land on its owner's own card. Read-only here: people edit their own
+     in the app.
+     Declared up here, not beside the Team code, because package and studio
+     cards read it too, and a `let` further down is in its temporal dead zone
+     for anything that renders before the module body reaches it. */
+  let PROFILES = [], _profUnsub = null, _profErr = '';
+  let _profBy = new Map();        /* phone10 -> the profile shown for that number */
+  const _pfUrls = new Map();      /* profile id -> { src, url }: its photo as a blob: URL */
+  let DELREQS = [], _delUnsub = null, _delErr = '';
+  const PROFS_CAP = 1000, DELREQS_CAP = 200;
+  /* The rules let only base64 follow the prefix. Checked again here because
+     the photo is drawn into the page; anything else is simply not shown. */
+  const PF_PHOTO = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/;
+  const pfStr = (v, cap) => typeof v === 'string' ? v.trim().slice(0, cap) : '';
+  const pfMs = t => (t && t.toMillis) ? t.toMillis() : 0;
+  const pfDate = ms => {
+    if(!ms) return '';
+    const d = new Date(ms);
+    return d.toLocaleDateString('en-IN', d.getFullYear() === new Date().getFullYear()
+      ? { day:'numeric', month:'short' } : { day:'numeric', month:'short', year:'numeric' });
+  };
+  /* One decoded copy per photo. The cards are redrawn on every snapshot and
+     keystroke; a short blob: URL keeps 20-100 KB of base64 out of each
+     innerHTML, and the browser decodes the picture once. */
+  function pfPhotoUrl(id, data){
+    const had = _pfUrls.get(id);
+    if(had && had.src === data) return had.url;
+    if(had){ try{ URL.revokeObjectURL(had.url); }catch(e){} _pfUrls.delete(id); }
+    if(!data) return '';
+    try{
+      const bin = atob(data.slice(data.indexOf(',') + 1));
+      const u8 = new Uint8Array(bin.length);
+      for(let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([u8], { type:'image/jpeg' }));
+      _pfUrls.set(id, { src: data, url });
+      return url;
+    }catch(e){ return ''; }
+  }
+  /* Everything in a profile was typed by the person it describes, so every
+     field is typed, trimmed and capped here the way the rules cap it —
+     whatever the document says, the panel only ever draws these. */
+  function cleanProfile(d){
+    const r = (d.roles && typeof d.roles === 'object') ? d.roles : {};
+    const part = k => (r[k] && typeof r[k] === 'object') ? r[k] : {};
+    const cr = part('crew'), cl = part('client'), st = part('studio');
+    const raw = (typeof d.photo === 'string' && d.photo.length <= 160000 && PF_PHOTO.test(d.photo)) ? d.photo : '';
+    const email = pfStr(cl.email, 120);
+    const p = {
+      id: d.id, phone10: pfStr(d.phone10, 20).replace(/\D/g,'').slice(-10),
+      name: pfStr(d.name, 80), photo: pfPhotoUrl(d.id, raw), at: pfMs(d.updatedAt),
+      emName: pfStr(cr.emergencyName, 80), emPhone: pfStr(cr.emergencyPhone, 20),
+      /* only something shaped like an address becomes a mailto: link */
+      email, emailOk: /^[^\s@<>"'()]+@[^\s@<>"'()]+\.[^\s@<>"'()]+$/.test(email),
+      studioName: pfStr(st.studioName, 80), ownerName: pfStr(st.ownerName, 80), city: pfStr(st.city, 60),
+    };
+    p.has = !!(p.name || p.photo || p.emName || p.emPhone || p.email || p.studioName || p.ownerName || p.city);
+    return p;
+  }
+  function setProfiles(docs){
+    const seen = new Set(docs.map(d=>d.id));
+    /* a profile that went (Delete my account) takes its decoded photo with it */
+    [..._pfUrls.keys()].forEach(id=>{ if(!seen.has(id)) pfPhotoUrl(id, ''); });
+    PROFILES = docs.map(cleanProfile);
+    /* "Later" leaves a document with nothing in it, which is not a profile to
+       show. One number is one login, so two profiles on one phone10 only
+       happen after a delete and a fresh sign-in: the newest wins. */
+    _profBy = new Map();
+    PROFILES.filter(p=>p.has && p.phone10.length === 10).forEach(p=>{
+      const cur = _profBy.get(p.phone10);
+      if(!cur || p.at >= cur.at) _profBy.set(p.phone10, p);
+    });
+  }
+  /* the profile for anything phone-shaped, or null */
+  const profOf = v => {
+    const k = String(v||'').replace(/\D/g,'').slice(-10);
+    return k.length === 10 ? (_profBy.get(k) || null) : null;
+  };
+  /* the round photo, or '' so the caller keeps its own fallback. The size
+     attributes are for a stale cached index.html without the .pf-av rules:
+     a small square then, rather than the photo at full size in a card. */
+  const PF_PX = { 'pf-av--md': 32, 'pf-av--lg': 52 };
+  const pfImg = (pf, cls) => pf && pf.photo
+    ? `<img class="pf-av${cls ? ' ' + cls : ''}" src="${esc(pf.photo)}" alt="" decoding="async" width="${PF_PX[cls] || 24}" height="${PF_PX[cls] || 24}">` : '';
+  /* a number the person typed into their own profile, made safe for tel: */
+  const telOf = v => String(v||'').replace(/[^\d+]/g,'').replace(/(?!^)\+/g,'');
+  const pfEmail = pf => pf.emailOk
+    ? `<a href="mailto:${esc(pf.email)}" onclick="event.stopPropagation()">${esc(pf.email)}</a>` : esc(pf.email);
+
+  function loadProfiles(){
+    if(!_profUnsub){
+      _profErr = '';
+      try{
+        _profUnsub = onSnapshot(query(collection(db,'profiles'), limit(PROFS_CAP)), snap=>{
+          setProfiles(snap.docs.map(d=>({ id:d.id, ...d.data() })));
+          warnIfCapped('profiles', snap.size, PROFS_CAP);
+          _profErr = '';
+          renderProfViews();
+        }, err=>{
+          try{ if(_profUnsub) _profUnsub(); }catch(e){} _profUnsub = null;
+          /* the panel is whole without them, so this is one line in the
+             deletions box on Home rather than an error on four screens */
+          _profErr = 'Could not load profiles (' + (err.code||err.message) + ')';
+          renderDelReqs();
+        });
+      }catch(err){ _profErr = 'Could not load profiles (' + (err.code||err.message) + ')'; renderDelReqs(); }
+    }
+    if(!_delUnsub){
+      _delErr = '';
+      try{
+        /* no orderBy: the page's own fallback note may carry no `at`, and an
+           orderBy would drop exactly that one */
+        _delUnsub = onSnapshot(query(collection(db,'deletionRequests'), limit(DELREQS_CAP)), snap=>{
+          DELREQS = snap.docs.map(d=>({ id:d.id, ...d.data() }))
+            .sort((a,b)=>pfMs(b.at) - pfMs(a.at));
+          _delErr = '';
+          renderDelReqs();
+        }, err=>{
+          try{ if(_delUnsub) _delUnsub(); }catch(e){} _delUnsub = null;
+          _delErr = 'Could not load account deletions (' + (err.code||err.message) + ')';
+          renderDelReqs();
+        });
+      }catch(err){ _delErr = 'Could not load account deletions (' + (err.code||err.message) + ')'; renderDelReqs(); }
+    }
+  }
+  function stopProfiles(){
+    if(_profUnsub){ try{ _profUnsub(); }catch(e){} _profUnsub = null; }
+    if(_delUnsub){ try{ _delUnsub(); }catch(e){} _delUnsub = null; }
+    setProfiles([]); DELREQS = [];
+  }
+  /* every place a profile shows; each one is cheap and draws only its own box */
+  function renderProfViews(){
+    renderTeamMembers();
+    if(_tmEditId && $('#tmModal').classList.contains('open')) renderTmProf(memberById(_tmEditId));
+    renderPkgListOnly();
+    renderHomeBooked();
+    renderB2B();          /* returns at once unless the B2B page is on screen */
+    renderDelReqs();
+  }
+
   /* ---------- auth ---------- */
   on('#loginForm', 'submit', async e=>{
     e.preventDefault();
@@ -404,6 +551,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user && _asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
     if(!user && _reqsUnsub){ try{ _reqsUnsub(); }catch(e){} _reqsUnsub = null; }
     if(!user && _studiosUnsub){ try{ _studiosUnsub(); }catch(e){} _studiosUnsub = null; }
+    if(!user) stopProfiles();
 
     if(user && !(await isAdmin(user))){
       $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
@@ -427,6 +575,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
       }
       loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
+      loadProfiles();   /* photos + details people added in the app, and account deletions */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const rawHash = (location.hash||'').replace('#','').split('/')[0];
       const fromHash = TAB_OF_VIEW[rawHash] || 'tabHome';
@@ -2583,7 +2732,78 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderPkgStats();
     renderUpcoming();
     renderHomeBooked();
+    renderDelReqs();   /* its names come from the bookings, so it follows them */
   }
+
+  /* ---------- account deletions ----------
+     "Delete my account" in the app removes the person's profile and sign-in
+     (the deleteMyAccount function) and leaves one note, deletionRequests/
+     {uid}, so the studio knows who asked. Their bookings, crew history and
+     partner jobs are the studio's records and stay. The admin's own records
+     are what let a number in, so a number still on an active crew card or
+     partner studio can sign in again: the row says so, and the owner decides.
+     Done clears only the note. */
+  const p10Of = v => String(v||'').replace(/\D/g,'').slice(-10);
+  function delReqWho(p10){
+    const out = [];
+    let tel = '';
+    TEAM.filter(m=>(m.phone10 || p10Of(m.phone)) === p10).forEach(m=>{
+      tel = tel || m.phone || '';
+      out.push(`🎬 ${esc(m.name||'Crew member')} <span>${m.active === false ? 'crew · inactive' : 'crew · still active'}</span>`);
+    });
+    const pk = livePkgs().filter(x=>!isStudioJob(x) && normPhone(x.clientPhone) === p10);
+    if(pk.length){
+      tel = tel || (pk[0].clientPhoneFull ? '+' + String(pk[0].clientPhoneFull).replace(/\D/g,'') : '');
+      out.push(`💍 ${esc(pk[0].clientName||'Client')} <span>${esc(pk[0].quoteNo || 'client')}${pk.length > 1 ? ` +${pk.length-1} more` : ''}</span>`);
+    }
+    STUDIOS.filter(s=>(s.phone10 || p10Of(s.phone)) === p10).forEach(s=>{
+      tel = tel || s.phone || '';
+      out.push(`🏢 ${esc(s.name||'Partner studio')} <span>${s.active === false ? 'partner · inactive' : 'partner · still active'}</span>`);
+    });
+    return { out, tel: telOf(tel) || p10 };
+  }
+  function renderDelReqs(){
+    const sec = $('#delReqSec'), el = $('#delReqs'); if(!sec || !el) return;
+    const err = _delErr || _profErr;
+    sec.hidden = !DELREQS.length && !err;
+    if(sec.hidden){ el.innerHTML = ''; return; }
+    el.innerHTML = (err ? errBox(err, 'profiles') : '') + DELREQS.map(r=>{
+      const p10 = p10Of(r.phone10);
+      const who = p10.length === 10 ? delReqWho(p10) : { out: [], tel: '' };
+      const when = pfDate(pfMs(r.at));
+      /* the note's id is the login's uid, and so is the profile's: a profile
+         still under that uid means the app left the note but the deletion
+         itself did not finish (the page's fallback when the function could
+         not be reached) */
+      const stuck = PROFILES.some(p=>p.id === (r.uid || r.id));
+      return `
+      <div class="dr-row">
+        <span class="what">
+          <b>${who.out.length ? who.out.join('<br>') : 'Not on your records'}</b>
+          <span>${p10 ? '📱 ' + esc(p10.replace(/^(\d{5})(\d{5})$/, '$1 $2')) : 'no number'}${when ? ' · asked ' + esc(when) : ''}</span>
+          ${stuck ? '<span class="dr-warn">⚠ Their profile is still there — the deletion did not finish. Ask them to try again from the app.</span>' : ''}
+        </span>
+        ${who.tel ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(who.tel)}" title="Call" aria-label="Call this number">📞</a>` : ''}
+        <button type="button" class="btn btn--sm btn--ghost" data-delreqdone="${esc(r.id)}">Done</button>
+      </div>`;
+    }).join('');
+  }
+  on('#delReqs', 'click', async e=>{
+    const b = e.target.closest('[data-delreqdone]'); if(!b) return;
+    const r = DELREQS.find(v=>v.id === b.dataset.delreqdone); if(!r) return;
+    if(!await confirmDialog({
+      title:'Clear this note?',
+      body:'Only the note goes. Their bookings, crew history and partner jobs are not touched.',
+      confirmText:'Clear note', danger:false })) return;
+    if(DEMO){
+      DELREQS = DELREQS.filter(v=>v.id !== r.id);
+      renderDelReqs();
+      toast('Demo — cleared on this screen only, nothing is saved');
+      return;
+    }
+    try{ toast(settleMsg(await settle(deleteDoc(doc(db,'deletionRequests',r.id))), 'Note cleared').msg); }
+    catch(err){ toast('Could not clear the note'); }
+  });
 
   function leadsThisWeek(){
     const cut = Date.now() - 7*864e5;
@@ -2921,6 +3141,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? `<span class="idle ${at.counts ? idleSev(at.idle) : ''}" title="${st === 'sent' ? 'Sent' : 'Last updated'} ${at.idle} day${at.idle===1?'':'s'} ago${at.counts ? '' : ' — nothing outstanding on it'}">${st === 'sent' ? `📤 sent ${at.idle}d` : `⏱ idle ${at.idle}d`}</span>`
       : '';
     const track = (st === 'booked' || st === 'delivered');
+    /* the client's own profile, when they added one in the app: their photo
+       beside the name, and on the open card the name and email they gave */
+    const pfC = isStudioJob(x) ? null : profOf(x.clientPhone);
     let prog = '', nowLine = '';
     if(track){
       const di = deliveryInfo(x);
@@ -2954,6 +3177,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="card__head">
         <button type="button" class="card__toggle" data-expand aria-expanded="${open?'true':'false'}">
           <span class="l1">
+            ${pfImg(pfC)}
             <span class="card__title">${esc(x.clientName||'—')}</span>
             ${isStudioJob(x) ? `<span class="b2bpill">🏢 B2B${x.whiteLabel ? ' · WL' : ''}</span>` : ''}
           </span>
@@ -3015,6 +3239,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            It keeps the danger outline so it does not read as a fifth routine
            action, and confirmDialog still stands between the tap and the
            deletion, which is what actually makes it safe. */ ''}
+      ${open && pfC ? `<div class="pf-line">${pfImg(pfC, 'pf-av--md')}<span><em>Client profile</em> <b>${esc(pfC.name || x.clientName || '—')}</b>${
+          pfC.email ? ` · ✉ ${pfEmail(pfC)}` : ''}</span></div>` : ''}
       <div class="pkg-acts" ${open?'':'hidden'}>
         <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
@@ -3297,6 +3523,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     else if(what === 'studios'){ loadStudios(); }
     else if(what === 'leads'){ loadLeads(); }
     else if(what === 'ejobs'){ loadEJobs(); }
+    else if(what === 'profiles'){ loadProfiles(); }
     toast('Reconnecting…');
   });
 
@@ -4010,6 +4237,32 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const phone10Of = p => String(p||'').replace(/\D/g,'').slice(-10);
   const memberPhone10 = m => m ? (m.phone10 || phone10Of(m.phone)) : '';
 
+  /* Crew sign in through the one sign-in (/start/) since Sep 2026, and its
+     pre-check asks phoneIndex "is this number set up?" before sending an
+     OTP — so an active member's number needs a login key too, or someone on
+     the crew with no booking of their own would be turned away. Keys are
+     only ever added: the same number can be a booking's or a partner's, so
+     deactivating a member never removes one. */
+  function ensureTeamIndex(m){
+    if(!m || m.active === false) return;
+    const p10 = memberPhone10(m);
+    if(p10.length === 10) ensurePhoneIndex(p10);
+  }
+  /* One-time, per device: the members saved before crew keys existed. Called
+     from server snapshots only (a stale cache image could key a number that
+     has since left the team), never in demo, and the device counts as done
+     only once every write has landed — an offline or refused run tries again
+     on the next load. Idempotent, so a second device repeating it is free. */
+  let _teamIdxDone = false;
+  async function backfillTeamIndex(){
+    if(DEMO || _teamIdxDone) return;
+    try{ if(localStorage.getItem('fs_phoneidx_team_v1')){ _teamIdxDone = true; return; } }catch(e){}
+    _teamIdxDone = true;
+    const nums = [...new Set(activeTeam().map(memberPhone10).filter(p=>p.length === 10))];
+    const res = await Promise.all(nums.map(ensurePhoneIndex));
+    if(res.every(Boolean)){ try{ localStorage.setItem('fs_phoneidx_team_v1','1'); }catch(e){} }
+  }
+
   function loadTeam(){
     _teamErr = _teamUnsub ? _teamErr : '';
     _asgsErr = _asgsUnsub ? _asgsErr : '';
@@ -4019,14 +4272,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_teamUnsub && _asgsUnsub) renderTeam();
     if(!_teamUnsub){
       try{
-        _teamUnsub = onSnapshot(query(collection(db,'team'), orderBy('createdAt','desc'), limit(TEAM_CAP)), snap=>{
-          TEAM = snap.docs.map(d=>({ id:d.id, ...d.data() }))
-            .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
-          warnIfCapped('team members', snap.size, TEAM_CAP);
-          _teamLoaded = true;
-          syncCrewRanks();    /* the roster is what the places are written onto */
-          renderTeam();
-          renderEditTab();    /* editor names and the editor filter chips */
+        /* includeMetadataChanges: with the persistent cache on, an unchanged
+           roster raises ONLY the cached snapshot (see loadStudios), and the
+           login-key backfill waits for the server's word. A snapshot whose
+           documents did not change redraws nothing, as before. */
+        let first = true;
+        _teamUnsub = onSnapshot(query(collection(db,'team'), orderBy('createdAt','desc'), limit(TEAM_CAP)),
+          { includeMetadataChanges: true }, snap=>{
+          if(first || snap.docChanges().length){
+            first = false;
+            TEAM = snap.docs.map(d=>({ id:d.id, ...d.data() }))
+              .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+            warnIfCapped('team members', snap.size, TEAM_CAP);
+            _teamLoaded = true;
+            syncCrewRanks();    /* the roster is what the places are written onto */
+            renderTeam();
+            renderEditTab();    /* editor names and the editor filter chips */
+            renderDelReqs();    /* names a deleted account by its crew card */
+          }
+          if(!snap.metadata.fromCache) backfillTeamIndex();
         }, err=>{
           try{ if(_teamUnsub) _teamUnsub(); }catch(e){} _teamUnsub = null;
           _teamErr = 'Could not load the team (' + (err.code||err.message) + ')';
@@ -4789,6 +5053,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const C = 113.1;   /* 2πr for r=18 */
     const row = ({m, s}) => {
       const wa = m.phone ? String(normPhoneFull(m.phone)).replace(/\D/g,'') : '';
+      /* their profile from the app: the photo sits inside the level ring, and
+         a line across the card carries the name they go by (only when it is
+         not the one on this card) and who to call if something happens */
+      const pf = profOf(memberPhone10(m));
+      const pfLine = pf ? [
+        pf.name && pf.name.toLowerCase() !== String(m.name||'').trim().toLowerCase() ? `👤 ${esc(pf.name)}` : '',
+        (pf.emName || pf.emPhone) ? `🆘 ${esc([pf.emName, pf.emPhone].filter(Boolean).join(' · '))}` : ''
+      ].filter(Boolean).join(' · ') : '';
       return `
       <div class="sq ${m.active === false ? 'off' : ''}" data-tmedit="${m.id}" role="button" tabindex="0" aria-label="Edit ${esc(m.name||'member')}">
         <div class="sq-h">
@@ -4797,7 +5069,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <circle class="rbg" cx="20" cy="20" r="18"></circle>
               <circle class="rfg" cx="20" cy="20" r="18" style="stroke-dashoffset:${C - C*s.rank.pct/100}"></circle>
             </svg>
-            <i>${esc(initials(m.name))}</i>
+            ${pfImg(pf) || `<i>${esc(initials(m.name))}</i>`}
           </span>
           <span class="sq-t">
             <b>${esc(m.name||'—')}</b>
@@ -4808,6 +5080,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             ${wa ? `<a class="icon-btn icon-btn--ring" href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp" aria-label="WhatsApp ${esc(m.name||'')}">💬</a>` : ''}
           </span>
         </div>
+        ${/* the card's full width, not the name column: at 320px that column
+             is 90px and clipped the emergency number, the one part that matters */
+          pfLine ? `<div class="sq-pf">${pfLine}</div>` : ''}
         <div class="sq-m">
           <span class="lvchip">Lv ${s.rank.lvl} · ${esc(s.rank.title)}</span>
           <span>🎬 <b>${s.done.length}</b> done</span>
@@ -4859,6 +5134,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           toast(sm.msg);
           if(!sm.ok) return;
           existing.active = true;
+          ensureTeamIndex(existing);   /* their login key, for the sign-in's pre-check */
           await settle(deleteDoc(doc(db,'teamRequests',r.id)));
           renderTeam();
         }catch(err){ toast('Could not reactivate'); }
@@ -6411,6 +6687,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tmRole').value = m && TEAM_ROLES.includes(m.role) ? m.role : TEAM_ROLES[0];
     $('#tmPhone').value = m ? (m.phone||'') : '';
     $('#tmRate').value = m && m.defaultRate ? m.defaultRate : '';
+    renderTmProf(m);
     const tog = $('#tmToggle');
     tog.hidden = !m;
     if(m){
@@ -6421,6 +6698,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tmModal').classList.add('open'); $('#tmBackdrop').classList.add('open');
     setTimeout(()=>$('#tmName').focus(), 80);
     pushView('tmsheet', '#team/member');
+  }
+  /* What the member added about themselves in the app, read-only: the owner
+     edits the card, the member edits their profile. The emergency contact is
+     the reason this box exists, so it gets a Call link of its own. */
+  function renderTmProf(m){
+    const box = $('#tmProf'); if(!box) return;
+    const pf = m ? profOf(memberPhone10(m)) : null;
+    box.hidden = !pf;
+    if(!pf){ box.innerHTML = ''; return; }
+    const tel = telOf(pf.emPhone);
+    const em = [pf.emName, pf.emPhone].filter(Boolean).join(' · ');
+    box.innerHTML = `
+      ${pfImg(pf, 'pf-av--lg') || `<span class="pf-av pf-av--lg pf-ini" aria-hidden="true">${esc(initials(pf.name || m.name))}</span>`}
+      <span class="pf-t">
+        <em>Their profile${pf.at ? ' · updated ' + esc(pfDate(pf.at)) : ''}</em>
+        <b>${esc(pf.name || m.name || '—')}</b>
+        <span>${em ? `🆘 Emergency: ${esc(em)}` : 'No emergency contact added yet'}</span>
+      </span>
+      ${tel.replace(/\D/g,'').length >= 6 ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(tel)}" title="Call ${esc(pf.emName || 'their emergency contact')}" aria-label="Call emergency contact ${esc(pf.emName || '')}">📞</a>` : ''}`;
   }
   function closeTmUI(){ $('#tmModal').classList.remove('open'); $('#tmBackdrop').classList.remove('open'); _tmEditId = null; _tmFromReq = null; }
   function closeTm(){
@@ -6467,12 +6763,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           mine.forEach(a=>{ a.memberName = name; a.memberPhone10 = p10; });
         }
         Object.assign(old||{}, data, { updatedAt: null });
+        /* every save, like a package's: a new number gets its login key,
+           and a member from before crew keys existed heals on the way */
+        ensureTeamIndex(old || data);
       }else{
         const ref = doc(collection(db,'team'));
         const res = await settle(setDoc(ref, { ...data, active: true, createdAt: serverTimestamp() }));
         const sm = settleMsg(res, 'Member added ✓');
         toast(sm.msg);
         if(!sm.ok) return;
+        ensureTeamIndex({ ...data, active: true });   /* their login key, for the sign-in's pre-check */
         TEAM.push({ id: ref.id, ...data, active: true });
         TEAM.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
       }
@@ -6504,6 +6804,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       toast(sm.msg);
       if(!sm.ok) return;
       m.active = !next;
+      ensureTeamIndex(m);   /* reactivated: their login key (a no-op when deactivating) */
       renderTeam();
       closeTm();
     }catch(err){ toast('Update failed'); }
@@ -7774,6 +8075,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           });
         }
         renderB2B();
+        renderDelReqs();    /* names a deleted account by its partner studio */
       }, err=>{
         try{ if(_studiosUnsub) _studiosUnsub(); }catch(e){} _studiosUnsub = null;
         _studiosErr = 'Could not load studios (' + (err.code||err.message) + ')'
@@ -7837,6 +8139,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function stuCardHTML(s, met){
     const { open, due, life } = met || stuMetrics(s);
     const inactive = s.active === false;
+    const pfS = profOf(s.phone10 || s.phone);   /* the partner's logo, if they added one */
     /* The whole card opens the studio (the [data-stu] handler), so the head is
        a role=button region rather than a real <button> — a <button> here would
        wrap the Call link, and a control inside a button is invalid markup that
@@ -7846,6 +8149,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="card__head">
         <span class="card__toggle" role="button" tabindex="0" aria-label="Open ${esc(s.name||'this studio')}">
           <span class="l1">
+            ${pfImg(pfS)}
             <span class="card__title">${esc(s.name||'—')}</span>
             ${inactive ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}
           </span>
@@ -8213,6 +8517,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rateN = Object.keys(rates).length;
     const profOpen = !!_stuProfOpen;
     const loginBad = _loginKeyBad.get(s.id) === s.phone10;
+    /* the partner's own profile: their logo in the header, and in the open
+       box the studio, owner and city as THEY wrote them, beside the record */
+    const pfS = profOf(s.phone10 || s.phone);
+    const pfSt = pfS ? [pfS.studioName, pfS.ownerName, pfS.city].filter(Boolean).join(' · ') : '';
     el.innerHTML = `
       <div class="sec stu-profsec">
         <!-- Back and the partner's name share the line. They were two stacked
@@ -8225,8 +8533,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="stu-hd ${profOpen?'':'closed'}">
           <button class="icon-btn icon-btn--ring" id="stuBack" aria-label="All studios" title="All studios">←</button>
           <h3 class="rc-tog stu-prof ${profOpen?'':'closed'}" data-stuprof role="button" tabindex="0" aria-expanded="${profOpen}">
+          ${pfImg(pfS, 'pf-av--md')}
           <span class="sp-t">
-            <b>🏢 ${esc(s.name||'—')}</b>
+            <b>${pfS && pfS.photo ? '' : '🏢 '}${esc(s.name||'—')}</b>
             <em>
               <span>${esc(s.city || 'no area set')}</span>
               ${s.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : ''}
@@ -8237,12 +8546,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         ${profOpen ? `
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
+        ${pfS ? `<div class="pf-box">
+          ${pfImg(pfS, 'pf-av--lg') || `<span class="pf-av pf-av--lg pf-ini" aria-hidden="true">${esc(initials(pfS.studioName || pfS.name || s.name))}</span>`}
+          <span class="pf-t">
+            <em>Their profile${pfS.at ? ' · updated ' + esc(pfDate(pfS.at)) : ''}</em>
+            <b>${esc(pfS.name || pfS.ownerName || s.ownerName || '—')}</b>
+            <span>${pfSt ? '🏢 ' + esc(pfSt) : 'No studio details added yet'}</span>
+          </span>
+        </div>` : ''}
         ${s.paymentTerms ? `<div class="ln2"><span>Payment terms</span><span>${esc(s.paymentTerms)}</span></div>` : ''}
         ${s.notes ? `<div class="ln2"><span>Notes</span><span>${esc(s.notes)}</span></div>` : ''}
         <div class="ln2"><span>Partner portal</span><span id="stuPortalStat">${
           s.active === false ? 'off — studio is inactive'
           : !(s.phone10 && String(s.phone10).length === 10) ? 'no login yet — add a 10-digit mobile via Edit'
-          : _loginKeyOk.get(s.id) === s.phone10 ? `✓ signs in at /studio/ with …${esc(String(s.phone10).slice(-4))}`
+          : _loginKeyOk.get(s.id) === s.phone10 ? `✓ signs in with …${esc(String(s.phone10).slice(-4))}`
           /* Both verdicts are rendered from state, not painted once by the
              async check — that check now settles a number once, so a box
              expanded AFTER it finished would otherwise sit on "checking…"
@@ -8382,7 +8699,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const el = live();
       if(!el){ if(!ok) renderStudioDetail(); return; }
       el.innerHTML = ok
-        ? `✓ signs in at /studio/ with …${esc(p10.slice(-4))}`
+        ? `✓ signs in with …${esc(p10.slice(-4))}`
         : `⚠ login key missing — this partner cannot sign in <button class="btn btn--sm btn--ghost" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`;
     }catch(err){
       const el = live(); if(!el) return;
@@ -10873,6 +11190,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         EJOBS   = (d.editingJobs || []).slice();
         REQS    = [];
         CFG     = d.config;
+        setProfiles(d.profiles || []);
+        DELREQS = (d.deletionRequests || []).slice();
         /* every "have we heard from the server yet" flag, or the panel paints
            skeletons and "nothing yet" over perfectly good fixtures */
         _leadsLoaded = _pkgsLoaded = _teamLoaded = _asgsLoaded = true;
