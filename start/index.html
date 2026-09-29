@@ -438,6 +438,9 @@ async function showNone(user){
    The test hook never signed in, so it leaves none. */
 function signedIn(user){
   if(!FS.DEMO_VIEW && user && user.uid) try{ FS.writeFresh(user.uid); }catch(e){ console.error('[start] fresh note', e); }
+  /* a new login opens each page on its home tab (app-shell.js keeps the
+     open tab per run of the app, in sessionStorage) */
+  try{ ['client', 'crew', 'studio'].forEach(p => sessionStorage.removeItem('fs_tab_' + p)); }catch(e){}
   route(user, true);
 }
 

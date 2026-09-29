@@ -28,6 +28,11 @@
   var splashed = false;   /* the launch splash has been asked to go */
 
   function inApp(){ return html.classList.contains('fs-app'); }
+  /* The open tab is kept for this run of the app only (sessionStorage): a
+     page reload, Edit profile and back, or the Crew | Partner switch keep
+     it, but every launch and every new sign-in opens on the home tab —
+     Shoots, Booking, Jobs (owner, 29 Sep 2026). /start/ forgets it at an
+     OTP sign-in, for a new login within the same run. */
   function key(){ return 'fs_tab_' + st.portal; }
   function tab(id){ for(var i=0;i<st.tabs.length;i++) if(st.tabs[i].id === id) return st.tabs[i]; return null; }
   function usable(t){ return !!t && !t.hidden; }
@@ -72,7 +77,7 @@
     st.id = t.id;
     html.setAttribute('data-tab', t.id);
     st.tabs.forEach(function(x){ x.btn.setAttribute('aria-selected', x === t ? 'true' : 'false'); });
-    try{ localStorage.setItem(key(), t.id); }catch(e){}
+    try{ sessionStorage.setItem(key(), t.id); }catch(e){}
     try{
       var s = history.state && typeof history.state === 'object' ? history.state : {};
       var next = Object.assign({}, s, { fsTab: t.id });
@@ -127,7 +132,8 @@
 
     evalHidden();
     var saved = null;
-    try{ saved = localStorage.getItem(key()); }catch(e){}
+    try{ saved = sessionStorage.getItem(key()); }catch(e){}
+    try{ localStorage.removeItem(key()); }catch(e){}   /* where it was kept before */
     apply(usable(tab(saved)) ? saved : firstVisible().id, 'replace');
     evalVisible();
 
