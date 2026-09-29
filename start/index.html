@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Sign in — Fantasy Studio</title>
 <!-- The store app's entry page (capacitor server.url). Not linked from the
-     site: a browser that lands here just gets the sign-in chooser. -->
+     site: a browser that lands here just gets the sign-in chooser.
+     Never load app-shell.js here. A tap on the home-screen widget that
+     cold-starts the app arrives as App appUrlOpen, which Capacitor keeps
+     until the first listener takes it; that must be the portal this page
+     hands over to (FSApp.onWidgetTap), not this page on its way out. -->
 <meta name="robots" content="noindex, nofollow" />
 <script>
 /* app mode: the Capacitor webview carries this marker; browsers never do */

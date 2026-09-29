@@ -881,6 +881,8 @@ function payEvents(a){
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
 const slotName = s => SLOT_LABEL[String(s||'')] || '';
 const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slotName(s))}</span>` : '';
+/* a day's functions in the order they happen: morning, a full day (or no slot), evening */
+const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
@@ -934,8 +936,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      The lock screen's "Sign out instead" lands here too, so the push
      clean-up (see pushOff) can never hold the sign-out up. */
   $('#logoutBtn').addEventListener('click', async ()=>{
-    if(DEMO_VIEW){ location.replace(location.pathname); return; }
-    await pushOff(); signOut(auth);
+    if(DEMO_VIEW){ await widgetOff(); location.replace(location.pathname); return; }
+    await pushOff(); signOut(auth);   /* the widget goes with the session (onAuthStateChanged) */
   });
 
   /* ---------- install to the phone's app list ----------
@@ -1188,6 +1190,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _meUnsub = null, _asgsUnsub = null, _reqUnsub = null, _ejUnsub = null;
   let _meLoaded = false, _asgsLoaded = false, _reqLoaded = false;
   let _meErr = null, _reqErr = null;
+  /* the assignments listener failed: the empty list is not "nothing coming" (the widget) */
+  let _asgsFailed = false;
   /* a SERVER-confirmed team snapshot has arrived — see route() */
   let _meFresh = false, _meWatchdog = null;
   let _pastOpen = false, _phone10 = '', _pretty = '', _pushFor = '';
@@ -1199,7 +1203,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _meUnsub = _asgsUnsub = _reqUnsub = _ejUnsub = null;
     ME = null; ASGS = []; REQ = null; EJOBS = {};
     _meLoaded = _asgsLoaded = _reqLoaded = false;
-    _meErr = _reqErr = null;
+    _meErr = _reqErr = null; _asgsFailed = false;
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
     _pushFor = '';
     _demo = false;
@@ -1228,7 +1232,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(REQ){
       $('#pendingWho').textContent = `${REQ.name||''} · ${_pretty}`;
-      show('pendingView'); refreshInstall();
+      show('pendingView'); refreshInstall(); widgetOff();   /* not (or no longer) on the crew list */
       return;
     }
     /* "you are not on the team" is a hard thing to say to someone who is. Now
@@ -1247,7 +1251,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     $('#reqPhone').textContent = _pretty;
-    show('requestView'); refreshInstall();
+    show('requestView'); refreshInstall(); widgetOff();
   }
   $('#errRetry').addEventListener('click', ()=>location.reload());
 
@@ -1500,6 +1504,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
     on('notificationReceived', ()=>{});   /* a push while the page is open: the listeners already carry the change */
   }
+  /* back in front (app-shell.js 'fs:resume'): the countdown and the widget
+     are worked out again for the time it is now, so a shoot that is over
+     moves them on. Nothing while signed out or behind the lock, and with
+     the editing sheet open only the countdown, so a note being typed keeps
+     its focus. A tap on the widget opens Shoots, where its shoot is. */
+  if(inApp()){
+    window.addEventListener('fs:resume', ()=>{
+      if(!ME || !lockPassed()) return;
+      if(_edOpen) renderAnalytics(); else render();
+    });
+    if(window.FSApp && FSApp.onWidgetTap) FSApp.onWidgetTap(()=>openTab('shoots'));
+  }
 
   /* ---------- the App Review sample ----------
      Apple reviews this page signed in as DEMO_PHONE, which is on no crew list.
@@ -1639,6 +1655,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user){
       _sawSignedOut = true;
       rememberPortal(false);
+      widgetOff();   /* signed out, here or before this load: no crew shoot on the home screen */
       show('loginView');
       $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
       hideErr('#loginErr');
@@ -1669,10 +1686,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       route();
     }, err=>{ _reqLoaded = true; REQ = null; _reqErr = err; route(); });
     _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberPhone10','==',_phone10)), snap=>{
-      _asgsLoaded = true;
+      _asgsLoaded = true; _asgsFailed = false;
       ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       if(ME) render();
-    }, err=>{ _asgsLoaded = true; ASGS = []; if(ME) render(); });
+    }, err=>{ _asgsLoaded = true; _asgsFailed = true; ASGS = []; if(ME) render(); });
     /* The editing desk's own record: the drive the footage is on, what the
        client asked for, and the thread with the studio. The assignment says
        WHAT is due and WHEN; none of the rest of it was ever on this page, so
@@ -2194,14 +2211,53 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} ${unit} ${pick[1]}`;
   }
 
+  /* ---------- the home-screen widget (FSApp.widget, app only) ----------
+     The widget shows the shoot this countdown counts down to, and the three
+     after it, so it can move on by itself once one is over. In the app the
+     two read one list (nextShoots), so the page and the widget always
+     agree: shoots only (an editing job is not a shoot), in the order they
+     really start (the call time, or when the slot usually starts:
+     shootStart; at the same time, morning before full day before evening),
+     from the first one not over yet, three hours after its call time or at
+     the end of its day when it has none. A browser's card keeps its own
+     list, as before (renderAnalytics). Only a call time is a real time, so
+     only then does the widget get one (India time); otherwise the date alone.
+     The slot goes in the title as on this card, and no client name (owner,
+     29 Sep 2026). Confirm turns it from pending to confirmed. It is written
+     each time the countdown is worked out again (the shell writes only a
+     change), never before the assignments have arrived (an empty list then
+     means "not loaded yet") and never from a listener that failed. Signed
+     in with nothing ahead it says so; it goes on sign-out and off the crew
+     list. The sample writes its Haldi the same way, so App Review sees a
+     real widget. A browser and the 1.0 app have no widget. */
+  const SHOOT_OVER = 3 * 36e5;
+  const hasCall = a => /^\d{2}:\d{2}$/.test(a.callTime||'');
+  const shootTitle = a => (a.eventTitle || 'Event') + (slotName(a.slot) ? ' · ' + slotName(a.slot) : '');
+  function nextShoots(){
+    const today = todayISO(), now = Date.now();
+    const up = ASGS.filter(a=>a.kind !== 'edit' && /^\d{4}-\d{2}-\d{2}$/.test(a.date||'') && a.date >= today)
+      .map(a=>({ a, t: shootStart(a).getTime() })).sort((x,y)=>x.t - y.t || slotRank(x.a.slot) - slotRank(y.a.slot)).map(x=>x.a);
+    const i = up.findIndex(a=>!hasCall(a) || shootStart(a).getTime() + SHOOT_OVER > now);
+    return i > 0 ? up.slice(i) : up;
+  }
+  const widgetOff = () => (window.FSApp && FSApp.widget) ? FSApp.widget.clear('crew') : Promise.resolve();
+  const widgetItem = a => ({ title: shootTitle(a), who: '', start: hasCall(a) ? shootStart(a) : a.date,
+    venue: a.venue || '', status: a.status === 'acknowledged' ? 'confirmed' : 'pending' });
+  function widgetNext(list){
+    if(!inApp() || !_asgsLoaded || _asgsFailed || !window.FSApp || !FSApp.widget) return;
+    const [a, ...later] = list;
+    FSApp.widget.set(a ? { role:'crew', ...widgetItem(a), later: later.slice(0, 3).map(widgetItem) } : { role:'crew', title:'' });
+  }
+
   /* ---------- next shoot, counting down ---------- */
   let _cdAsg = null, _cdTimer = null;
-  function renderCountdown(up){
-    const a = up[0] || null;
+  function renderCountdown(list){
+    const a = list[0] || null;
     _cdAsg = a;
+    widgetNext(list);
     $('#cdCard').hidden = !a;
     if(!a) return;
-    $('#cdTitle').textContent = (a.eventTitle || 'Event') + (slotName(a.slot) ? ' · ' + slotName(a.slot) : '');
+    $('#cdTitle').textContent = shootTitle(a);
     $('#cdMeta').innerHTML = [
       esc(fmtDate(a.date)),
       a.callTime ? '⏰ ' + esc(fmtTime(a.callTime)) : '',
@@ -2337,8 +2393,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const today = todayISO();
     const done = ASGS.filter(a=>(a.date||'') && a.date < today);
     const up = ASGS.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
-    /* the countdown is the one card that matters before there is any history */
-    renderCountdown(up);
+    /* the countdown is the one card that matters before there is any history;
+       the app's is the widget's list, a browser's the same card as ever */
+    renderCountdown(inApp() ? nextShoots() : up);
     if(!has){
       $('#hqCard').hidden = true; $('#bdgWrap').hidden = true;
       clearInterval(_cdTimer);
@@ -2503,6 +2560,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{ await signOut(auth); }catch(e){}
       rememberPortal(false);
     }
+    await widgetOff();   /* gone before /start/ loads, the sample's too */
     if(window.FSApp) FSApp.exitToStart();
   });
 

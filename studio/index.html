@@ -577,6 +577,8 @@ const shMoney = n => { n = Math.round(Number(n)||0);
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
 /* when a slot's day starts: the countdown and the calendar event both read it */
 const SLOT_HOUR = { morning: 8, evening: 17, full: 8 };
+/* a day's functions in the order they happen: morning, a full day (or no slot), evening */
+const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 const slotTag = s => SLOT_LABEL[String(s||'')] ? `<span class="slotpill ${esc(s)}">${esc(SLOT_LABEL[s])}</span>` : '';
 const STATUS_LABEL = s => s === 'unconfirmed' ? 'not confirmed' : s;
 
@@ -827,8 +829,8 @@ $('#verifyOtp').addEventListener('click', async ()=>{
 $('#otpBack').addEventListener('click', ()=>{ sendSeq++; sendIdle(); $('#otpStep').hidden = true; $('#phoneStep').hidden = false; hideErr('#loginErr'); });
 $('#logoutBtn').addEventListener('click', async ()=>{
   /* the ?demo view never signed in: leave it for the plain login screen */
-  if(DEMO_VIEW){ location.replace(location.pathname); return; }
-  await pushOff(); signOut(auth);
+  if(DEMO_VIEW){ await widgetOff(); location.replace(location.pathname); return; }
+  await pushOff(); signOut(auth);   /* the widget goes with the session (onAuthStateChanged) */
 });
 $('#naLogout').addEventListener('click', async ()=>{ await pushOff(); signOut(auth); });
 $('#errRetry').addEventListener('click', ()=>location.reload());
@@ -839,6 +841,7 @@ $('#errRetry').addEventListener('click', ()=>location.reload());
 async function switchAccount(){
   if(!DEMO_VIEW){ await pushOff(); await signOut(auth); }
   rememberPortal(false);
+  await widgetOff();   /* gone before /start/ loads, the sample's too */
   if(window.FSApp) FSApp.exitToStart(); else location.replace('../start/');
 }
 $('#meLogout').addEventListener('click', ()=>$('#logoutBtn').click());
@@ -1051,6 +1054,7 @@ onAuthStateChanged(auth, user=>{
   _sawOut = !user;
   if(!user){
     rememberPortal(false);
+    widgetOff();   /* signed out, here or before this load: no event on the home screen */
     show('loginView');
     $('#phoneStep').hidden = false; $('#otpStep').hidden = true;
     hideErr('#loginErr');
@@ -1130,7 +1134,7 @@ function route(){
       }, 9000);
       return;
     }
-    show('noAccessView');
+    show('noAccessView'); widgetOff();   /* not (or no longer) a partner */
     return;
   }
   clearTimeout(_noAccessT); _noAccessT = null;
@@ -1198,15 +1202,37 @@ function renderHello(){
     ${one && one.paymentTerms ? `<div class="sub">Terms: ${esc(one.paymentTerms)}</div>` : ''}`;
 }
 
+/* ---------- store app: the home-screen widget (FSApp.widget) ----------
+   The widget shows the event the Next event card counts down to, across
+   every job, and the three after it, so it can move on by itself once a
+   day is over. The date alone: the slot's hour is only the calendar's
+   guess, not a time anyone set. The slot goes in the title as the Schedule
+   tab prints it ('Manje · Morning'), Confirmed for a booked (or delivered)
+   job, and no client names (owner, 29 Sep 2026). Written each time the
+   card is worked out again (the shell writes only a change); signed in
+   with nothing ahead it says so, and it goes on sign-out and without
+   partner access. Never while a studio's jobs listener has failed: its
+   jobs are missing from the list, so the widget keeps the last good value
+   until a pull or the listener brings them back. The sample account writes
+   its next event the same way. A browser and the 1.0 app have no widget. */
+const widgetOff = () => (window.FSApp && FSApp.widget) ? FSApp.widget.clear('studio') : Promise.resolve();
+const widgetItem = e => ({ title: (e.title || 'Event') + (SLOT_LABEL[String(e.slot||'')] ? ' · ' + SLOT_LABEL[e.slot] : ''), who: '',
+  start: e.date, venue: e.venue || '', status: CONFIRMED_ST.includes(e.job.status || 'draft') ? 'confirmed' : '' });
+function widgetNext(list){
+  if(_pkgErrs.size || !window.FSApp || !FSApp.widget) return;
+  const [e, ...later] = list;
+  FSApp.widget.set(e ? { role:'studio', ...widgetItem(e), later: later.slice(0, 3).map(widgetItem) } : { role:'studio', title:'' });
+}
 function renderNextUp(jobs){
   clearInterval(_cdT);
   const t = todayISO();
   const upcoming = jobs.flatMap(x =>
     (x.events||[]).filter(e=>isDate(e.date) && e.date >= t)
       .map(e=>({ ...e, job: x }))
-  ).sort((a,b)=>a.date.localeCompare(b.date));
+  ).sort((a,b)=>a.date.localeCompare(b.date) || slotRank(a.slot) - slotRank(b.slot));   /* one date: the morning first */
   if(FS_APP) renderSched(upcoming);
   const nu = upcoming[0];
+  widgetNext(upcoming);
   if(!nu){ $('#nextupBox').innerHTML = ''; return; }
   $('#nextupBox').innerHTML = `
     <div class="nextup">
@@ -1877,6 +1903,20 @@ async function refreshData(){
 }
 if(FS_APP && window.FSApp && FSApp.pullToRefresh)
   FSApp.pullToRefresh(refreshData, { enabledWhen: ()=>!$('#appView').hidden });
+
+/* ---------- back in front, and the widget's tap (store app) ----------
+   Back in front (app-shell.js 'fs:resume'), the jobs are drawn again for
+   today, so the Next event card, the Schedule tab and the widget move on
+   once a day is over (unchanged jobs are not redrawn, and the widget is
+   written only on a change); not behind the lock. A tap on the widget
+   opens Schedule, where its event is. */
+if(FS_APP && window.FSApp && FSApp.onWidgetTap){
+  window.addEventListener('fs:resume', ()=>{
+    if($('#appView').hidden || (canLock() && !_unlocked)) return;
+    render();
+  });
+  FSApp.onWidgetTap(()=>{ if(FSApp.current() !== 'schedule') FSApp.setTab('schedule'); });
+}
 
 /* Last in the module on purpose: render() reads lets declared all through
    it, so starting the ?demo view any earlier meets them uninitialised. */

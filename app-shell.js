@@ -16,6 +16,9 @@
    FSApp.native.has(name) / .plugin(name)      FSApp.haptic('light'|'medium'|'success')
    FSApp.lock.{ key, enabled, setEnabled, available, gate, screen, hide, shown, armBackground }
    FSApp.calendar.{ available, add }   FSApp.pullToRefresh(fn, {enabledWhen})   FSApp.splashHide()
+   The home-screen widget (Phase 3, iOS), the same way:
+   FSApp.widget.{ available, set({role,title,who,start,venue,status,later}), clear(role?) }
+   FSApp.onWidgetTap(fn)   window 'fs:resume' (the app is back in front)
                                                                   (classic script) */
 (function(){
   'use strict';
@@ -541,6 +544,214 @@
     } };
     return (ptr = me);
   };
+
+  /* ---- the home-screen widget (Phase 3, iOS) ----
+     The app's WidgetKit extension draws the next shoot or event from ONE
+     shared value, the only thing the two sides agree on:
+     UserDefaults(suiteName: 'group.in.fantasystudio.app'), key 'next', a
+     JSON string
+       {v:1, role:'crew'|'client'|'studio', title, who, start, venue,
+        status:'confirmed'|'pending'|'', later:[up to 3 {title, who, start, venue, status}]}
+     - start is a bare date 'YYYY-MM-DD' (all day: no time shown, counted
+       in days, 'Today' on the day), or, only where a real time exists (a
+       crew call time), India's wall clock with its offset,
+       'YYYY-MM-DDTHH:MM:SS+05:30'. A bare date string is kept as it is; a
+       Date, ms or any other string is written in India time.
+     - The portals put the slot into the title ('Mehendi · Evening') and
+       send who '' (owner, 29 Sep 2026: no client names on the home screen).
+     - later[] is what follows, in order, so the widget can move on by
+       itself once this one is over (start + 3 h, or the end of a bare
+       date's day) before the app is opened again.
+     - A role with title '' means signed in, nothing coming up; the key is
+       absent only when signed out (or without access to that portal).
+     set() writes it; an item without a title or a usable start is left out,
+     and with none left it is the nothing-coming-up value, which never goes
+     over another role's value that has a title: a client with nothing
+     booked must not blank a crew member's next shoot on the same phone.
+     clear(role) removes the value only when it is that role's (or nobody's);
+     clear() removes whatever is there.
+     Only a request that differs from this page's last one reaches the
+     plugin, so a snapshot that changes nothing (a metadata flip, the cache
+     and then the server saying the same, a resume) costs no write and no
+     widget reload; a call that fails, is refused or never answers forgets
+     it, so the same request tries again. Calls run one at a time, in order,
+     each given 1.5 s at most; both return a promise that always resolves,
+     so a sign-out can wait for it and never hangs on it. iOS only: Android
+     has no widget, so nothing is written to its SharedPreferences. The app
+     build without the plugin, and every browser, get nothing at all. */
+  var WG = 'group.in.fantasystudio.app', WKEY = 'next', WMAX = 1500, WLATER = 3;
+  /* what this page knows is stored: undefined not known (nothing read or
+     written here yet, or a call that went wrong), '' absent, else that
+     exact JSON. One web view, one page at a time and a widget that only
+     reads: nothing else changes it while this page is alive. */
+  var wHave;
+  var wAsk;                      /* the last request, so the same again is free */
+  var wQ = Promise.resolve();
+  function wForget(ask){ wHave = undefined; if(ask === undefined || wAsk === ask) wAsk = undefined; }
+  /* op resolves to what is stored once it has run */
+  function wRun(ask, op){
+    var run = wQ.then(function(){
+      var over = false, dog = null;
+      return Promise.race([
+        Promise.resolve().then(op).then(function(have){
+          if(over){ wForget(); return; }   /* answered after it was given up on: nothing is sure now */
+          if(have !== undefined) wHave = have;
+        }, function(){ wForget(over ? undefined : ask); }),
+        new Promise(function(y){ dog = setTimeout(function(){ over = true; wForget(ask); y(); }, WMAX); })
+      ]).then(function(){ clearTimeout(dog); });
+    }).catch(function(){});
+    return (wQ = run);
+  }
+  function wPlugin(){
+    if(platform() !== 'ios') return null;
+    var W = FSApp.native.plugin('WidgetBridgePlugin');
+    return W && W.setItem && W.removeItem ? W : null;
+  }
+  function wDone(W, have){
+    return function(r){
+      if(!r || r.results !== true) throw new Error('not written');
+      /* the widget redraws from the new value; a reload that fails loses nothing, the widget reloads hourly */
+      return Promise.resolve().then(function(){ return W.reloadAllTimelines && W.reloadAllTimelines(); })
+        .then(function(){ return have; }, function(){ return have; });
+    };
+  }
+  function wWrite(W, json){ return Promise.resolve(W.setItem({ key: WKEY, group: WG, value: json })).then(wDone(W, json)); }
+  function wDrop(W){ return Promise.resolve(W.removeItem({ key: WKEY, group: WG })).then(wDone(W, '')); }
+  /* the stored JSON, '' when there is none */
+  function wRead(W){
+    if(wHave !== undefined) return Promise.resolve(wHave);
+    if(!W.getItem) return Promise.reject(new Error('no getItem'));
+    return Promise.resolve(W.getItem({ key: WKEY, group: WG })).then(function(r){
+      var v = r && r.results;
+      return typeof v === 'string' ? v : '';
+    });
+  }
+  function wParse(s){ try{ var o = JSON.parse(s); return o && typeof o === 'object' ? o : null; }catch(e){ return null; } }
+  function pad2(n){ return (n < 10 ? '0' : '') + n; }
+  function isoIST(ms){
+    var d = new Date(ms + 19800000);   /* read back with the UTC getters: the wall clock in India */
+    return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()) +
+      'T' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds()) + '+05:30';
+  }
+  function wStart(v){
+    if(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)){
+      var d = new Date(v + 'T00:00:00Z');
+      return !isNaN(d) && d.toISOString().slice(0, 10) === v ? v : '';   /* a real day, or nothing */
+    }
+    var ms = toMs(v);
+    return ms ? isoIST(ms) : '';
+  }
+  /* one item, in the contract's key order; null when it has nothing to show */
+  function wItem(o){
+    if(!o || typeof o !== 'object') return null;
+    var title = String(o.title == null ? '' : o.title), start = wStart(o.start);
+    if(!title || !start) return null;
+    return { title: title, who: String(o.who == null ? '' : o.who), start: start, venue: String(o.venue == null ? '' : o.venue),
+             status: o.status === 'confirmed' || o.status === 'pending' ? o.status : '' };
+  }
+  FSApp.widget = {
+    available: function(){ return !!wPlugin(); },
+    set: function(o){
+      var W = wPlugin();
+      if(!W) return Promise.resolve();
+      o = o || {};
+      var role = String(o.role || '');
+      if(!role) return Promise.resolve();
+      var items = [o].concat(Array.isArray(o.later) ? o.later : []).map(wItem).filter(Boolean);
+      var head = items[0], json;
+      try{
+        json = JSON.stringify(head
+          ? { v:1, role: role, title: head.title, who: head.who, start: head.start, venue: head.venue,
+              status: head.status, later: items.slice(1, 1 + WLATER) }
+          : { v:1, role: role, title:'', who:'', start:'', venue:'', status:'', later: [] });
+      }catch(e){ return Promise.resolve(); }
+      if(json === wAsk) return wQ;
+      wAsk = json;
+      return wRun(json, function(){
+        if(head) return wHave === json ? json : wWrite(W, json);
+        /* nothing coming up: never over another role's shoot or event */
+        return wRead(W).then(function(cur){
+          if(cur === json) return cur;
+          var had = cur ? wParse(cur) : null;
+          if(had && had.role && had.role !== role && had.title) return cur;
+          return wWrite(W, json);
+        });
+      });
+    },
+    clear: function(role){
+      var W = wPlugin();
+      if(!W) return Promise.resolve();
+      role = role ? String(role) : '';
+      var ask = '-' + role;
+      if(ask === wAsk) return wQ;
+      wAsk = ask;
+      return wRun(ask, function(){
+        if(!role) return wHave === '' ? '' : wDrop(W);
+        return wRead(W).then(function(cur){
+          if(!cur) return '';
+          var had = wParse(cur);
+          if(had && had.role && had.role !== role) return cur;   /* another portal's: not this one's to take away */
+          return wDrop(W);
+        });
+      });
+    }
+  };
+
+  /* ---- back in front, and a tap on the widget (app only) ----
+     'fs:resume' on window when the app comes back to the front (App
+     appStateChange isActive) or the page is visible again, once for the
+     pair (they arrive together): each portal works its next item out again
+     for the time it is now, so a day that has turned over, or a shoot that
+     is over, moves the page and the widget on. The widget write's dedupe
+     keeps that free when nothing changed.
+     The widget opens the app on /start/?from=widget (App appUrlOpen, which
+     Capacitor keeps until a page listens): FSApp.onWidgetTap(fn) runs fn,
+     where the portal opens the tab the widget is about, and a resume
+     follows. A tap that cold-starts the app arrives before the portal has
+     loaded, so it waits for the first fn. That is why /start/, which only
+     passes through, never loads this file: it would take the tap and lose
+     it. A browser gets neither. */
+  var resumeAt = -1e9, tapFns = [], tapKept = false;
+  function resume(){
+    /* the page's own steady clock: the phone's can be set back */
+    var now = window.performance && performance.now ? performance.now() : Date.now();
+    if(now - resumeAt < 1000) return;
+    resumeAt = now;
+    try{ window.dispatchEvent(new CustomEvent('fs:resume')); }catch(e){}
+  }
+  /* gone to the back: the next return is a new one. That clock can stand
+     still while the phone sleeps, so without this a return the next morning
+     could land inside the last one's second and be dropped. */
+  function paused(){ resumeAt = -1e9; }
+  function fromWidget(url){
+    try{ return new URL(String(url || ''), location.href).searchParams.get('from') === 'widget'; }catch(e){ return false; }
+  }
+  function widgetTap(){
+    if(!tapFns.length){ tapKept = true; return; }
+    tapFns.forEach(function(fn){ try{ fn(); }catch(e){} });
+    resume();
+  }
+  FSApp.onWidgetTap = function(fn){
+    if(typeof fn !== 'function' || !inApp()) return;
+    tapFns.push(fn);
+    if(tapKept){ tapKept = false; setTimeout(widgetTap, 0); }
+  };
+  if(inApp()){
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') resume(); else if(document.visibilityState === 'hidden') paused();
+    });
+    var AppP = FSApp.native.plugin('App');
+    if(AppP && AppP.addListener){
+      try{
+        var p1 = AppP.addListener('appStateChange', function(s){ if(s && s.isActive) resume(); else if(s && s.isActive === false) paused(); });
+        if(p1 && p1.catch) p1.catch(function(){});
+      }catch(e){}
+      try{
+        var p2 = AppP.addListener('appUrlOpen', function(e){ if(e && fromWidget(e.url)) widgetTap(); });
+        if(p2 && p2.catch) p2.catch(function(){});
+      }catch(e){}
+    }
+  }
 })();
 
 /* Status-bar text colour. The app sets light text (StatusBar style DARK) for
