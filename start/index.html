@@ -311,16 +311,12 @@ const ROW = {
   studio: { ic: '🏢', name: 'Partner studio', em: i => (i && i.studioName) || 'Your studio’s jobs with Fantasy Studio' },
 };
 const OPENING = { client: 'Opening your booking…', crew: 'Opening your crew page…', studio: 'Opening your studio page…' };
-/* Crew numbers were never in the hashed phone index (the admin wrote it for
-   clients and partner studios only), so the pre-check would tell a crew
-   member "not set up" and never send the OTP. This release the admin panel
-   starts writing it for team members and backfills the existing ones the
-   first time it opens. Off until then; an unknown number meanwhile signs in
-   and gets the "not set up" screen below (which can delete that login).
-   Turning it on is its own one-line commit after the owner has opened the
-   admin once post-deploy: app/PLAN-APPSTORE-4.2.md, Phase 3.5 owner go-live
-   order, step 5. */
-const PRECHECK = false;
+/* Only numbers the studio has set up get an OTP: the pre-check reads the
+   hashed phone index before any SMS is sent. Crew numbers were once missing
+   from it; the admin panel now writes them, and its first open after the
+   Phase 3.5 deploy backfilled every active member (49 of 49, checked
+   29 Sep 2026). A check that fails or hangs still fails open (fs-auth.js). */
+const PRECHECK = true;
 
 let FS = null, box = null, me = null, routing = 0, deleting = false;
 const show = v => { html.setAttribute('data-view', v); html.classList.remove('fs-checking'); $('#outErr').hidden = true; $('#delDone').hidden = true; askDelete(false); };
