@@ -474,10 +474,11 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
          ignores it (see the tab rules at the end of the stylesheet) -->
     <h1 class="hello" id="hello" data-tab="booking">Hi!</h1>
     <p id="helloSub" data-tab="booking"></p>
-    <div class="nextup" id="nextUp" data-tab="schedule" hidden></div>
     <!-- the studio's availability, month by month: colours only, never who
-         or what (availSync mounts ../avail.js here once the booking is in) -->
+         or what (availSync mounts ../avail.js here once the booking is in);
+         first on the Schedule tab (owner, 1 Oct 2026) -->
     <div id="availBox" data-tab="schedule"></div>
+    <div class="nextup" id="nextUp" data-tab="schedule" hidden></div>
     <!-- store app only: the Me tab. Who is signed in sits above the bookings'
          own Questions? blocks, the account rows below them. Both are
          fs-app-only, so a browser never shows them. -->

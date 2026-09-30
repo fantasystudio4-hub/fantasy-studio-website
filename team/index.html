@@ -699,6 +699,10 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     </div>
 
     <!-- rank card: level, title, XP to the next rank, streak -->
+    <!-- the studio's busy days, month by month: colours only, with this
+         member's own shoots ringed (availSync mounts ../avail.js here); first on
+         the Shoots tab, under the greeting (owner, 1 Oct 2026) -->
+    <div id="availBox"></div>
     <div class="hq" id="hqCard" hidden>
       <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
         <linearGradient id="hqGrad" x1="0" y1="0" x2="1" y2="1">
@@ -740,9 +744,6 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
-    <!-- the studio's busy days, month by month: colours only, with this
-         member's own shoots ringed (availSync mounts ../avail.js here) -->
-    <div id="availBox"></div>
     <div id="editWrap" hidden>
       <div class="grp">✂️ Editing<b id="editCount"></b></div>
       <div id="editList"></div>
