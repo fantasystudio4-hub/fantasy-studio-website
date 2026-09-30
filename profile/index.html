@@ -231,8 +231,6 @@ h1{font-family:var(--serif);font-weight:600;font-size:1.5rem;line-height:1.15;co
       <p class="hint">How your studio shows up for Fantasy Studio.</p>
       <div class="fld"><label for="fStName">Studio name</label>
         <input id="fStName" type="text" autocomplete="organization" autocapitalize="words" maxlength="80" enterkeyhint="next" /></div>
-      <div class="fld"><label for="fStOwner">Owner's name</label>
-        <input id="fStOwner" type="text" autocomplete="off" autocapitalize="words" maxlength="80" enterkeyhint="next" /></div>
       <div class="fld"><label for="fStCity">City</label>
         <input id="fStCity" type="text" autocomplete="address-level2" autocapitalize="words" maxlength="60" enterkeyhint="next" /></div>
     </section>
@@ -268,7 +266,7 @@ const SUB = {
 const FIELDS = {
   crew:   { emergencyName: 'fEmName', emergencyPhone: 'fEmPhone' },
   client: { email: 'fEmail' },
-  studio: { studioName: 'fStName', ownerName: 'fStOwner', city: 'fStCity' },
+  studio: { studioName: 'fStName', city: 'fStCity' },   /* ownerName is the one name above (owner, 30 Sep 2026) */
 };
 const qRole = ROLES.includes(qs.get('role')) ? qs.get('role') : '';
 
@@ -377,13 +375,14 @@ async function main(){
     $('#phHint').textContent = !PHOTO_OK ? 'Update the Fantasy Studio app to add a photo.'
       : studioOnly ? 'Your studio’s logo, or a photo of you.'
       : 'A clear photo of your face, so the team knows you on the day.';
-    $('#nameLabel').textContent = studioOnly ? 'Your name' : 'Full name';
+    $('#nameLabel').textContent = studioOnly ? 'Owner’s name' : 'Full name';
   }
   $('#title').textContent = editing ? 'Your profile' : 'Set up your profile';
   $('#later').textContent = editing ? 'Cancel' : 'Later';
   const setIf = (id, v) => { const f = document.getElementById(id); if(v && !f.value && !f.dataset.touched) f.value = String(v); };
   if(profile){
     setIf('fName', profile.name);
+    setIf('fName', ((profile.roles || {}).studio || {}).ownerName);
     photo = String(profile.photo || '');
     const pr = profile.roles || {};
     Object.keys(FIELDS).forEach(r => Object.keys(FIELDS[r]).forEach(k => setIf(FIELDS[r][k], (pr[r] || {})[k])));
@@ -419,7 +418,7 @@ async function main(){
     const own = mine && (mine.name || mine.ownerName);
     setIf('fName', own || FS.prefillFrom(info).name);
     if(roles.includes('studio') && info.studio){
-      setIf('fStName', info.studio.studioName); setIf('fStOwner', info.studio.ownerName); setIf('fStCity', info.studio.city);
+      setIf('fStName', info.studio.studioName); setIf('fName', info.studio.ownerName); setIf('fStCity', info.studio.city);
     }
     drawAvatar();
   }).catch(() => {});
@@ -511,6 +510,8 @@ async function main(){
       r[role] = {};
       Object.keys(FIELDS[role]).forEach(k => { r[role][k] = val(FIELDS[role][k]); });
     });
+    /* a partner has one name on this form: it is the owner's name too */
+    if(r.studio) r.studio.ownerName = data.name;
     if(Object.keys(r).length) data.roles = r;
     busy(true);
     let res;
