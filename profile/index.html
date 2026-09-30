@@ -6,6 +6,9 @@
 <script>
 /* app mode: the Capacitor webview carries this marker; browsers never do */
 if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
+/* no page zoom in the app, as app-shell.js does on the portals (this page never loads it) */
+(function(){ var v = document.querySelector('meta[name=viewport]');
+  if(v && document.documentElement.classList.contains('fs-app') && !/user-scalable/.test(v.content)) v.content += ', maximum-scale=1, user-scalable=no'; })();
 </script>
 <title>Your profile — Fantasy Studio</title>
 <!-- The optional profile step (one sign-in, Phase 3.5). /start/ sends a

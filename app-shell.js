@@ -28,6 +28,16 @@
   var splashed = false;   /* the launch splash has been asked to go */
 
   function inApp(){ return html.classList.contains('fs-app'); }
+
+  /* No page zoom in the app (owner, 30 Sep 2026): on iPhone a double tap or
+     a pinch zoomed the whole page in and out, and a tap into a small text
+     box zoomed it in; the Android app never zooms. An app's WKWebView honours
+     user-scalable=no (Safari ignores it), and the shell CSS adds
+     touch-action:manipulation against the double tap. Browsers keep zoom. */
+  if(inApp()){
+    var vp = document.querySelector('meta[name=viewport]');
+    if(vp && !/user-scalable/.test(vp.content)) vp.content += ', maximum-scale=1, user-scalable=no';
+  }
   /* The open tab is kept for this run of the app only (sessionStorage): a
      page reload, Edit profile and back, or the Crew | Partner switch keep
      it, but every launch and every new sign-in opens on the home tab —

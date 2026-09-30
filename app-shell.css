@@ -25,6 +25,7 @@ html.fs-app{
   --fs-tabs-mut:#b3a98f;
   --fs-tabs-gold:#E2C275;
   --fs-tabs-safe:max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px));
+  touch-action:manipulation;              /* no double-tap zoom (app-shell.js sets user-scalable=no) */
 }
 
 /* keep the page's last rows above the bar; the pages' own bottom padding
