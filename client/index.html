@@ -399,6 +399,8 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 <!-- the store app's shell: the fs-app-only / fs-web-only helpers and the tab
      bar. A browser matches nothing in it but the one rule that hides app-only bits. -->
 <link rel="stylesheet" href="../app-shell.css" />
+<!-- the studio's availability calendar (../avail.js draws it into #availBox) -->
+<link rel="stylesheet" href="../avail.css" />
 </head>
 <body>
 <noscript>
@@ -473,6 +475,9 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     <h1 class="hello" id="hello" data-tab="booking">Hi!</h1>
     <p id="helloSub" data-tab="booking"></p>
     <div class="nextup" id="nextUp" data-tab="schedule" hidden></div>
+    <!-- the studio's availability, month by month: colours only, never who
+         or what (availSync mounts ../avail.js here once the booking is in) -->
+    <div id="availBox" data-tab="schedule"></div>
     <!-- store app only: the Me tab. Who is signed in sits above the bookings'
          own Questions? blocks, the account rows below them. Both are
          fs-app-only, so a browser never shows them. -->
@@ -1277,6 +1282,7 @@ function route(user){
      phone signing out must not leave a live listener on the previous person's
      booking, and re-routing while one is open would otherwise stack a second. */
   stopPackages();
+  availOff();   /* the calendar's month listener goes with the booking's */
   lockReset();
   if(!user){ if(!_leaving) signedOut(); return; }
   if(!user.phoneNumber){ linkAuth = auth; _otpFresh = true; show('linkView'); return; }
@@ -1466,7 +1472,7 @@ function renderPackages(snap, user){
   const said = syncOpenPaySheet(pkgs);
   /* signed in, no booking: this number is not set up as a client, so the
      widget goes (the contract's "no access"), as for crew not yet added */
-  if(!pkgs.length){ widgetOff(); reveal('emptyView'); fillEmpty(user); return; }
+  if(!pkgs.length){ widgetOff(); availOff(); reveal('emptyView'); fillEmpty(user); return; }
   if(auth.currentUser) rememberPortal(true);   /* a booking that arrived after the not-found screen */
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
@@ -1512,8 +1518,68 @@ function renderPackages(snap, user){
     }
   }
   reveal('dashView');
+  availSync(user, pkgs);   /* the studio's calendar, with these bookings' days ringed */
   /* the Me tab's Notifications row reads the token registerPush leaves */
   if(_pkgFirst){ _pkgFirst = false; if(!DEMO_VIEW) registerPush(user).then(()=>fillMe(user, pkgs)); }
+}
+
+/* ---------- the studio's availability calendar (../avail.js) ----------
+   #availBox on the Schedule tab: a month grid, each day a morning and an
+   evening half, coloured plain / filling up / full — never who or what.
+   The shared component draws it (avail.css); this page only hands it the
+   database, whether to paint the built-in sample instead (the ?demo view
+   and the review number read nothing), the client's own event dates to
+   ring (mine, read again on refresh) and what a tap on a free half does:
+   ask the studio about that date on WhatsApp, the same number the
+   Questions? block uses. Loaded lazily once the booking is on screen, so
+   a module that fails to load costs the page nothing but the calendar;
+   one failed load is not retried until the page loads again. */
+let _avail = null, _availGen = 0, _availBusy = false, _availSig = '', _availPkgs = [], _availWa = '';
+const availDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'');
+const availMine = () => _availPkgs.flatMap(p=>(p.events||[]).map(e=>e.date)).filter(availDate);
+/* 'Sat 12 Oct 2026' */
+const availWhen = iso => new Date(iso + 'T00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' }).replace(/,/g, '');
+function availAsk(iso, slot){
+  if(!availDate(iso)) return;
+  const text = 'Hi Fantasy Studio, is ' + availWhen(iso) + ' (' + (slot === 'm' ? 'morning' : 'evening') + ') available for our wedding function?';
+  /* a new tab, as every WhatsApp link on this page opens (target=_blank),
+     opened in the tap itself: mobile Safari blocks a window.open from a
+     promise callback. The number is warmed at mount; until it lands the
+     brochure's number stands in, the same one the Questions? block prints. */
+  const go = wa => { window.open(wa + '?text=' + encodeURIComponent(text), '_blank', 'noopener'); };
+  go(_availWa || 'https://wa.me/918686868803');
+}
+function availSync(user, pkgs){
+  _availPkgs = pkgs;
+  const host = $('#availBox'); if(!host) return;
+  if(_avail){
+    /* a snapshot that moved no date leaves the grid alone */
+    const sig = availMine().join(',');
+    if(sig !== _availSig){ _availSig = sig; try{ _avail.refresh(); }catch(e){} }
+    return;
+  }
+  if(_availBusy) return;
+  _availBusy = true;
+  const gen = _availGen;
+  FS.getContact().then(c=>{ _availWa = c.wa; }, ()=>{});
+  import('../avail.js').then(m=>{
+    if(gen !== _availGen || _avail) return;   /* signed out, or routed again, meanwhile */
+    _availSig = availMine().join(',');
+    _avail = m.mountAvailability(host, {
+      db,
+      sample: DEMO_VIEW || FS.isSample(user),
+      mine: availMine,
+      onAsk: availAsk,
+      monthsAhead: 12,
+      heading: 'Studio availability',
+    });
+  }).catch(e=>{ console.warn('[availability] the calendar did not load', e); });
+}
+/* signed out, routed again, or no booking any more: the month listener
+   goes; the next booking mounts afresh */
+function availOff(){
+  _availGen++; _availBusy = false; _availSig = ''; _availPkgs = [];
+  if(_avail){ try{ _avail.destroy(); }catch(e){} _avail = null; }
 }
 /* The pay sheet lives outside #pkgList, so a re-render leaves it untouched —
    including its prefilled amount. If the studio records a payment while the

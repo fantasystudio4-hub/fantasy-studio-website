@@ -511,6 +511,18 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div id="festWarn" hidden></div>
       <div class="fld"><label>Festival dates</label><textarea id="cfgFestivals" rows="10" spellcheck="false" placeholder="2026-08-28|Raksha Bandhan"></textarea></div>
     </div>
+    <!-- config/availability, saved on its own — Save All below never touches it -->
+    <div class="sec" id="availSec">
+      <h3>Availability</h3>
+      <p class="sub">Signed-in clients, crew and partner studios see a month calendar with every day split into a morning and an evening: plain when free, <b style="color:var(--state-pending)">yellow</b> once something is booked, <b style="color:var(--state-overdue)">red</b> when full or blocked. Colours only — it never shows names, counts or what the events are. To block or open one particular morning or evening, use the day box under the calendar on Home.</p>
+      <p class="cfgnote" id="availState">Loading…</p>
+      <div class="av-cfg">
+        <div class="fld"><label>Full at … events per morning / evening</label>
+          <input type="number" id="cfgAvailFull" min="1" max="99" inputmode="numeric" placeholder="5" /></div>
+        <button class="btn btn--primary" id="saveAvail" type="button" disabled>Save</button>
+      </div>
+      <p class="av-cfg-note">Fewer than this and the half-day shows yellow; this many or more, red. Saved by the button here, not by Save All.</p>
+    </div>
     <div class="sec">
       <h3>Quotation Terms</h3>
       <div id="termList"></div>

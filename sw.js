@@ -2,7 +2,9 @@
    Strategy: network-first for the page (deploys always show instantly;
    cache is the offline fallback), stale-while-revalidate for assets, and
    network-first-with-timeout for app code (see APP_CODE below). */
-const CACHE = 'fs-cache-v17';   // v17: one sign-in — fs-auth.js is app code (network-
+const CACHE = 'fs-cache-v18';   // v18: the availability calendar — avail.js/css is
+                                //      app code (network-first, below)
+                                // v17: one sign-in — fs-auth.js is app code (network-
                                 //      first, below), start/ changed, profile/ is new
                                 // v16: the store app's entry page, start/, and the
                                 //      app shell (app-shell.css/js) every portal loads
@@ -150,7 +152,9 @@ self.addEventListener('fetch', e => {
   // So does fs-auth.js, the one sign-in every portal, /start/ and /profile/
   // import as a namespace: a new page against yesterday's module finds the
   // functions it calls undefined, and sign-in or the portal fails that load.
-  if (url.origin === location.origin && /\/(app|app-shell|tokens|ui|catalog|fs-auth)\.(js|css)$/.test(url.pathname)) {
+  // And avail.js/css, the availability calendar the three portals import
+  // lazily: the same page-against-yesterday's-module skew.
+  if (url.origin === location.origin && /\/(app|app-shell|tokens|ui|catalog|fs-auth|avail)\.(js|css)$/.test(url.pathname)) {
     e.respondWith(freshOrCached(req, 2500));
     return;
   }

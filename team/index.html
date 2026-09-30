@@ -500,6 +500,7 @@ html.fs-app[data-tab]:not([data-tab="shoots"]) #roleSw,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #cdCard,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upHead,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upList,
+html.fs-app[data-tab]:not([data-tab="shoots"]) #availBox,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #pastWrap,
 html.fs-app[data-tab]:not([data-tab="editing"]) #editWrap,
 html.fs-app[data-tab]:not([data-tab="pay"]) #crewStats,
@@ -578,6 +579,8 @@ html.fs-app .md-no{display:block;width:100%;min-height:48px;margin-top:.45rem;bo
 html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 </style>
 <link rel="stylesheet" href="../app-shell.css" />
+<!-- the studio's availability calendar (../avail.js draws it into #availBox) -->
+<link rel="stylesheet" href="../avail.css" />
 </head>
 <body>
 <noscript>
@@ -737,6 +740,9 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
+    <!-- the studio's busy days, month by month: colours only, with this
+         member's own shoots ringed (availSync mounts ../avail.js here) -->
+    <div id="availBox"></div>
     <div id="editWrap" hidden>
       <div class="grp">✂️ Editing<b id="editCount"></b></div>
       <div id="editList"></div>
@@ -1098,6 +1104,7 @@ if(!CONFIGURED){
     _pushFor = '';
     _demo = false;
     PROFILE = undefined; _profFor = ''; _profGen++; _rolesAsked = false;
+    availOff();    /* the calendar's month listener goes with the shoots' */
     lockReset();   /* the next sign-in meets the store app's lock again */
   }
 
@@ -2434,6 +2441,7 @@ if(!CONFIGURED){
     $('#pastList').hidden = !_pastOpen;
     $('#pastTog').classList.toggle('closed', !_pastOpen);
     if(past.length && _pastOpen) $('#pastList').innerHTML = past.map(a=>asgCard(a, true)).join('');
+    availSync(shoots);   /* the studio's calendar, with this member's shoot days ringed */
     /* a row keeps its place here once money is against it, even if the fee was
        later cleared — otherwise the tile counts it and this list denies it */
     const withPay = ASGS.filter(a=>payFee(a) > 0 || payGot(a) > 0).sort((a,b)=>a.date<b.date?1:-1);
@@ -2466,6 +2474,52 @@ if(!CONFIGURED){
     renderMe();
     renderRoleSwitch();
     runPendingAck();   /* a Confirm from the push, once the assignments are here */
+  }
+
+  /* ---------- the studio's calendar (../avail.js) ----------
+     #availBox, under the upcoming list (the Shoots tab in the app): the
+     studio's busy days month by month, each day a morning and an evening
+     half, coloured plain / filling up / full — the whole studio's, not
+     just this member's, so a crew member can see when the studio is
+     stretched; their own shoot days are ringed. Never who or what. The
+     shared component draws it (avail.css); this page hands it the
+     database, whether to paint the built-in sample instead (the ?demo
+     view and the review number read nothing) and the member's shoot
+     dates (mine, read again on refresh). No ask button here: crew do not
+     book dates. Loaded lazily once the dashboard is on screen, so a
+     module that fails to load costs the page nothing but the calendar;
+     one failed load is not retried until the page loads again. */
+  let _avail = null, _availGen = 0, _availBusy = false, _availSig = '', _availShoots = [];
+  const availMine = () => _availShoots.map(a=>a.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||''));
+  function availSync(shoots){
+    _availShoots = shoots;
+    const host = $('#availBox'); if(!host) return;
+    if(_avail){
+      /* a redraw that moved no date leaves the grid alone */
+      const sig = availMine().join(',');
+      if(sig !== _availSig){ _availSig = sig; try{ _avail.refresh(); }catch(e){} }
+      return;
+    }
+    if(_availBusy) return;
+    _availBusy = true;
+    const gen = _availGen;
+    import('../avail.js').then(m=>{
+      if(gen !== _availGen || _avail) return;   /* signed out meanwhile */
+      _availSig = availMine().join(',');
+      _avail = m.mountAvailability(host, {
+        db,
+        sample: DEMO_VIEW || FS.isSample(auth.currentUser),
+        mine: availMine,
+        onAsk: null,
+        monthsAhead: 12,
+        heading: 'Studio calendar',
+      });
+    }).catch(e=>{ console.warn('[availability] the calendar did not load', e); });
+  }
+  /* signed out (stopData): the month listener goes; the next sign-in mounts afresh */
+  function availOff(){
+    _availGen++; _availBusy = false; _availSig = ''; _availShoots = [];
+    if(_avail){ try{ _avail.destroy(); }catch(e){} _avail = null; }
   }
 
   $('#pastTog').addEventListener('click', ()=>{ _pastOpen = !_pastOpen; render(); });

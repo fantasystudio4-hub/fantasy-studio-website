@@ -552,6 +552,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user && _reqsUnsub){ try{ _reqsUnsub(); }catch(e){} _reqsUnsub = null; }
     if(!user && _studiosUnsub){ try{ _studiosUnsub(); }catch(e){} _studiosUnsub = null; }
     if(!user) stopProfiles();
+    if(!user) stopAvailability();
 
     if(user && !(await isAdmin(user))){
       $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
@@ -576,6 +577,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
       loadProfiles();   /* photos + details people added in the app, and account deletions */
+      loadAvailability();   /* config/availability (created if missing) + the month the calendar shows */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const rawHash = (location.hash||'').replace('#','').split('/')[0];
       const fromHash = TAB_OF_VIEW[rawHash] || 'tabHome';
@@ -1723,6 +1725,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     refreshAllPresetChips();
     $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
     $('#faqList').innerHTML = (CFG.faqs||[]).map(faqRow).join('');
+    renderAvailConfig();   /* its own document, its own Save — but the same tab */
   }
   /* ---------- ready-made packages ----------
      These were edited as raw JSON: the one place in the panel where a missing
@@ -2021,11 +2024,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      refresh, a closed tab or an Android back-out took a half-written quotation,
      unsaved Config edits or a half-typed add-event form with it, silently. */
   let _cfgTouched = false;
-  on('#configView', 'input', ()=>{ _cfgTouched = true; });
+  /* the Availability card saves with its own button, so a change there must
+     not arm Save All's guard — it has one of its own (_availDirty) */
+  on('#configView', 'input', e=>{ if(!e.target.closest('#availSec')) _cfgTouched = true; });
   function unsavedWork(){
     try{
       if(typeof pkgDirty === 'function' && pkgDirty()) return true;
       if(_cfgTouched) return true;
+      if(_availDirty) return true;   /* the Availability card's own threshold field */
       /* banked multi-date events are typed work too — a reload used to throw
          away a whole wedding's queued dates without a word */
       if(typeof _qeQueue !== 'undefined' && _qeQueue.length) return true;
@@ -3524,6 +3530,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     else if(what === 'leads'){ loadLeads(); }
     else if(what === 'ejobs'){ loadEJobs(); }
     else if(what === 'profiles'){ loadProfiles(); }
+    else if(what === 'avail'){ loadAvailability(); }
     toast('Reconnecting…');
   });
 
@@ -3606,6 +3613,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* set after the loop — the day cells are what the month's total counts */
     $('#calTitle').innerHTML = `<b>${esc(first.toLocaleDateString('en-IN', { month:'long', year:'numeric' }))}</b>`
       + `<span class="calcount">${monthN ? monthN + ' event' + (monthN===1?'':'s') : 'no events'}</span>`;
+    syncAvailMonth();   /* the public availability doc follows the month on screen */
     renderCalDetail();
   }
   function renderCalDetail(){
@@ -3632,7 +3640,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="btn btn--sm btn--ghost" data-openev>Open</button>
       </div>`;
-    }).join('') : '<div class="empty">No events on this date.</div>') + `</div>`;
+    }).join('') : '<div class="empty">No events on this date.</div>')
+      + availDetailHtml(calSel)   /* what the public calendar shows for this date, and the override */
+      + `</div>`;
     syncQeDate();   /* the open quick-add form follows the selected date */
   }
   /* quick month/year jump — tap the calendar title */
@@ -3669,6 +3679,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#calDetail', 'click', e=>{
     if(e.target.closest('[data-addev]')){ openCalAdd(); return; }
+    const ov = e.target.closest('button[data-avov]');
+    if(ov){ if(!ov.disabled) setAvailOverride(calSel, ov.dataset.avhalf, ov.dataset.avov); return; }
     const row = e.target.closest('.cal-ev'); if(!row || !e.target.closest('[data-openev]')) return;
     if(row.dataset.kind === 'pkg'){
       const pk = PKGS.find(x=>x.id===row.dataset.id);
@@ -3680,6 +3692,308 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       renderLeads();
     }
   });
+
+  /* ---------- availability: what the public calendar shows ----------
+     Signed-in clients, crew and partner studios see a month grid with every
+     day split into a morning and an evening half — plain (free), yellow
+     (filling up) or red (full, or blocked). Colours only: never a name, a
+     count or what the events are.
+
+     A Cloud Function does the counting. It reads the booked/delivered
+     packages and booked leads, counts events per half-day, applies the
+     owner's overrides and writes availability/{YYYY-MM} = { days:{ DD:{ m, e }
+     } } — one document per month, 'y' | 'r' per half, a free half simply
+     absent. This panel never computes that document itself; it only READS it
+     (as admin) so the day box can show each half exactly the way the public
+     sees it. Two things are the owner's to set, both in config/availability:
+       full      — events per half-day that turn it red (default 5)
+       override  — { 'YYYY-MM-DD': { m:'r'|'o', e:'r'|'o' } }: 'r' forces red
+                   (blocked), 'o' forces open; absent = automatic
+     The function listens to that document too, so a change here is on the
+     public calendar a few seconds later. Nothing computes until it exists,
+     which is why it is created with the defaults at sign-in. */
+  const AVAIL_FULL_DEFAULT = 5, AVAIL_FULL_MAX = 99;
+  let AVAIL_CFG = null;                              /* config/availability, or null while missing / unread */
+  let _availCfgUnsub = null, _availCfgErr = '', _availCfgReady = false;
+  let AVAIL_MONTH = { month:'', days:{}, ready:false };   /* availability/{month} for the month on screen */
+  let _availMonthUnsub = null, _availMonthErr = '';
+  let _availDirty = false;                           /* the threshold field has been edited and not saved */
+  const availRef = () => doc(db,'config','availability');
+  const calMonthKey = () => `${calY}-${String(calM+1).padStart(2,'0')}`;
+  const availFull = () => {
+    const n = Number(AVAIL_CFG && AVAIL_CFG.full);
+    return n >= 1 ? Math.min(AVAIL_FULL_MAX, Math.round(n)) : AVAIL_FULL_DEFAULT;
+  };
+  /* 'r' | 'y' | '' — the half as the public doc has it */
+  const availHalf = (iso, half) => {
+    const day = AVAIL_MONTH.days[iso.slice(8,10)];
+    const v = day && day[half];
+    return v === 'r' || v === 'y' ? v : '';
+  };
+  /* 'r' | 'o' | '' — the owner's override for that half */
+  const availOverride = (iso, half) => {
+    const o = AVAIL_CFG && AVAIL_CFG.override && AVAIL_CFG.override[iso];
+    const v = o && o[half];
+    return v === 'r' || v === 'o' ? v : '';
+  };
+
+  /* A plain get, then a set only when there is nothing there — never a merge
+     over what another device may have saved a moment ago. Fire-and-forget:
+     offline it simply does not happen, and the next sign-in tries again. */
+  async function ensureAvailabilityConfig(){
+    if(DEMO || !db) return;
+    try{
+      const snap = await getDoc(availRef());
+      if(snap.exists()) return;
+      /* offline, getDoc answers from the cache — and a cache that has never
+         seen the document is not proof it is missing. Creating on that
+         verdict would land the defaults over the live config once the
+         write syncs. Only the server gets to say "not there". */
+      if(snap.metadata.fromCache) return;
+      await setDoc(availRef(), { full: AVAIL_FULL_DEFAULT, override: {}, updatedAt: serverTimestamp() });
+      console.info('[availability] config/availability created with the defaults');
+    }catch(e){
+      console.warn('[availability] could not check config/availability', e);
+    }
+  }
+  function loadAvailability(){
+    if(DEMO || !db) return;
+    ensureAvailabilityConfig();
+    if(!_availCfgUnsub){
+      _availCfgErr = '';
+      try{
+        /* includeMetadataChanges — see the packages listener: without it an
+           unchanged document never raises a server snapshot */
+        _availCfgUnsub = onSnapshot(availRef(), { includeMetadataChanges: true }, snap=>{
+          AVAIL_CFG = snap.exists() ? (snap.data() || {}) : null;
+          /* a cache miss is not "missing" — that verdict waits for the server */
+          _availCfgReady = snap.exists() || !snap.metadata.fromCache;
+          _availCfgErr = '';
+          renderAvailConfig();
+          if(!$('#homeView').hidden) renderCalDetail();   /* the day box shows the override */
+        }, err=>{
+          try{ if(_availCfgUnsub) _availCfgUnsub(); }catch(e){} _availCfgUnsub = null;
+          _availCfgErr = 'Could not read config/availability (' + (err.code||err.message) + ')';
+          renderAvailConfig();
+          if(!$('#homeView').hidden) renderCalDetail();
+        });
+      }catch(err){ _availCfgErr = 'Could not read config/availability (' + (err.code||err.message) + ')'; renderAvailConfig(); }
+    }
+    syncAvailMonth();
+  }
+  function stopAvailMonth(){
+    if(_availMonthUnsub){ try{ _availMonthUnsub(); }catch(e){} _availMonthUnsub = null; }
+    _availMonthErr = '';
+    AVAIL_MONTH = { month:'', days:{}, ready:false };
+  }
+  function stopAvailability(){
+    if(_availCfgUnsub){ try{ _availCfgUnsub(); }catch(e){} _availCfgUnsub = null; }
+    AVAIL_CFG = null; _availCfgErr = ''; _availCfgReady = false; _availDirty = false;
+    stopAvailMonth();
+  }
+  /* Save stays locked until the listener has answered once — same reason
+     Save All is (setCfgBlocked): before that the field shows the built-in
+     default, and one tap would publish it over the live threshold. Locked
+     again while the listener is down; Retry in the note brings it back. */
+  function setAvailBlocked(blocked){
+    const btn = $('#saveAvail');
+    if(btn) btn.disabled = !!blocked;
+  }
+  /* One listener, on the month the calendar shows: swapped when the month
+     changes, dropped at sign-out. A missing document is a free month. */
+  function syncAvailMonth(){
+    const key = calMonthKey();
+    if(DEMO){
+      if(AVAIL_MONTH.month !== key) AVAIL_MONTH = demoAvailMonth(key);
+      return;
+    }
+    if(!db || !auth.currentUser) return;
+    if(_availMonthUnsub && AVAIL_MONTH.month === key) return;
+    stopAvailMonth();
+    AVAIL_MONTH = { month: key, days:{}, ready:false };
+    try{
+      _availMonthUnsub = onSnapshot(doc(db,'availability',key), { includeMetadataChanges: true }, snap=>{
+        if(AVAIL_MONTH.month !== key) return;   /* a late snapshot for a month already left */
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        /* a cache miss is not "free": the month stays "…" until the server answers */
+        AVAIL_MONTH = { month: key, days: (d.days && typeof d.days === 'object') ? d.days : {},
+                        ready: snap.exists() || !snap.metadata.fromCache };
+        _availMonthErr = '';
+        if(!$('#homeView').hidden) renderCalDetail();
+      }, err=>{
+        try{ if(_availMonthUnsub) _availMonthUnsub(); }catch(e){} _availMonthUnsub = null;
+        _availMonthErr = 'Could not read availability/' + key + ' (' + (err.code||err.message) + ')';
+        if(AVAIL_MONTH.month === key) AVAIL_MONTH = { month: key, days:{}, ready:false };
+        if(!$('#homeView').hidden) renderCalDetail();
+      });
+    }catch(err){ _availMonthErr = 'Could not read availability/' + key + ' (' + (err.code||err.message) + ')'; }
+  }
+  /* ?demo only: the fixtures have no Cloud Function behind them, so the
+     month document is derived here by the same rule the function uses —
+     booked or delivered packages and booked leads, per half-day, a 'full' or
+     unset slot counting toward both halves, then the overrides on top. */
+  function demoAvailMonth(key){
+    const full = availFull(), count = {};
+    calEvents().forEach(e=>{
+      if(!e.date.startsWith(key + '-')) return;
+      if(e.kind === 'pkg' ? !(e.status === 'booked' || e.status === 'delivered') : e.status !== 'lead') return;
+      const c = count[e.date.slice(8,10)] || (count[e.date.slice(8,10)] = { m:0, e:0 });
+      if(e.slot !== 'evening') c.m++;
+      if(e.slot !== 'morning') c.e++;
+    });
+    const ov = (AVAIL_CFG && AVAIL_CFG.override) || {};
+    const dds = new Set(Object.keys(count));
+    Object.keys(ov).forEach(iso=>{ if(iso.startsWith(key + '-')) dds.add(iso.slice(8,10)); });
+    const days = {};
+    dds.forEach(dd=>{
+      const d = {}, c = count[dd] || { m:0, e:0 }, o = ov[key + '-' + dd] || {};
+      ['m','e'].forEach(h=>{
+        const v = o[h] === 'r' ? 'r' : o[h] === 'o' ? '' : c[h] >= full ? 'r' : c[h] >= 1 ? 'y' : '';
+        if(v) d[h] = v;
+      });
+      if(Object.keys(d).length) days[dd] = d;
+    });
+    return { month: key, days, ready: true };
+  }
+
+  /* the day box's "Public calendar" block: one row per half-day */
+  const AVAIL_STATE = { r:{ cls:'r', text:'Fully booked' }, y:{ cls:'y', text:'Filling up' }, '':{ cls:'free', text:'Available' } };
+  function availDetailHtml(iso){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||'')) return '';
+    const past = iso < todayISO();
+    const loaded = AVAIL_MONTH.month === iso.slice(0,7) && AVAIL_MONTH.ready;
+    const err = _availMonthErr || _availCfgErr;
+    const row = (half, label) => {
+      const st = availHalf(iso, half), ov = availOverride(iso, half), s = AVAIL_STATE[st];
+      /* the override lands here at once; the public colour follows once the
+         function has recomputed the month — a few seconds, normally */
+      const lag = !past && loaded && ((ov === 'r' && st !== 'r') || (ov === 'o' && st !== ''));
+      const state = past ? '<span class="av-state past"><i></i>Past</span>'
+        : !loaded ? '<span class="av-state past"><i></i>…</span>'
+        : `<span class="av-state ${s.cls}"><i></i>${s.text}${lag ? ' <small>· updating</small>' : ''}</span>`;
+      /* a past date takes no new override — but one already on it can still
+         be cleared, so Auto stays live while Blocked or Open is set */
+      const off = v => past && (v !== '' || !ov);
+      return `<div class="av-row">
+        <span class="av-lab">${label}</span>
+        ${state}
+        <div class="avseg" role="group" aria-label="${esc(label.replace(/^\S+\s/, ''))} on ${esc(dmy(iso))}">${
+          [['','Auto'],['r','Blocked'],['o','Open']].map(([v,t])=>
+            `<button type="button" data-avov="${v}" data-avhalf="${half}" class="${ov===v?'on':''}" aria-pressed="${ov===v}"${off(v)?' disabled':''}>${t}</button>`).join('')
+        }</div>
+      </div>`;
+    };
+    return `<div class="av-box">
+      <div class="av-hd"><b>Public calendar</b><span>What clients, crew and partner studios see for this date — colours only, never names. Red from ${availFull()} event${availFull()===1?'':'s'} in a half; Blocked and Open override that.</span></div>
+      ${err ? `<div class="av-err">${esc(err)}</div>` : ''}
+      ${row('m','🌅 Morning')}${row('e','🌆 Evening')}
+    </div>`;
+  }
+  /* Auto | Blocked | Open for one half of one date. Dot-path updates so the
+     rest of the override map is never rewritten; back to Auto deletes the
+     half, or the whole date once both halves are automatic. */
+  async function setAvailOverride(iso, half, val){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||'') || (half !== 'm' && half !== 'e')) return;
+    val = (val === 'r' || val === 'o') ? val : '';
+    if(availOverride(iso, half) === val) return;
+    const other = half === 'm' ? 'e' : 'm';
+    const said = (half === 'm' ? 'Morning' : 'Evening') + ' of ' + dmy(iso)
+      + (val === 'r' ? ' blocked' : val === 'o' ? ' forced open' : ' back to automatic');
+    if(DEMO){
+      const o = Object.assign({}, (AVAIL_CFG && AVAIL_CFG.override) || {});
+      const d = Object.assign({}, o[iso] || {});
+      if(val) d[half] = val; else delete d[half];
+      if(Object.keys(d).length) o[iso] = d; else delete o[iso];
+      AVAIL_CFG = Object.assign({ full: AVAIL_FULL_DEFAULT }, AVAIL_CFG || {}, { override: o });
+      AVAIL_MONTH = { month:'', days:{}, ready:false };   /* re-derived on the next paint */
+      renderCalendar(); renderAvailConfig();
+      toast(said + ' (demo — not saved)');
+      return;
+    }
+    if(!db) return;
+    let p;
+    if(val){
+      /* merge, so this works whether or not the document exists yet, and
+         touches nothing but this one half */
+      p = setDoc(availRef(), { override: { [iso]: { [half]: val } }, updatedAt: serverTimestamp() }, { merge: true });
+    }else{
+      const path = availOverride(iso, other) ? 'override.' + iso + '.' + half : 'override.' + iso;
+      p = updateDoc(availRef(), { [path]: deleteField(), updatedAt: serverTimestamp() });
+    }
+    const res = await settle(p);
+    toast(settleMsg(res, said + ' ✓', said + ' — saved offline, will sync').msg);
+  }
+
+  /* Config tab card: the threshold, saved on its own */
+  function renderAvailConfig(){
+    const inp = $('#cfgAvailFull'), note = $('#availState'); if(!inp) return;
+    const full = availFull();
+    if(!_availDirty) inp.value = full;   /* never over a number the owner is mid-typing */
+    /* demo has nothing to wait for; live, Save waits for the first snapshot
+       and is taken away again while the listener is down */
+    setAvailBlocked(!DEMO && (!!_availCfgErr || !_availCfgReady));
+    if(!note) return;
+    if(_availCfgErr){
+      note.className = 'cfgnote out';
+      note.innerHTML = `<b>Not reachable.</b> ${esc(_availCfgErr)} — the field below shows the default until it can be read.`
+        + ' <button type="button" class="btn btn--sm btn--ghost" data-retry="avail">↻ Retry</button>';
+      return;
+    }
+    if(!AVAIL_CFG){
+      if(!DEMO && !_availCfgReady){ note.className = 'cfgnote'; note.textContent = 'Loading…'; return; }
+      note.className = 'cfgnote soon';
+      note.innerHTML = DEMO
+        ? '<b>Demo.</b> Nothing here is saved.'
+        : '<b>Not set up yet.</b> It is created with the defaults the moment the panel opens signed-in; if this line stays, that write was refused.';
+      return;
+    }
+    const ov = AVAIL_CFG.override || {};
+    let blocked = 0, open = 0;
+    Object.keys(ov).forEach(iso=>{ ['m','e'].forEach(h=>{
+      const v = ov[iso] && ov[iso][h];
+      if(v === 'r') blocked++; else if(v === 'o') open++;
+    }); });
+    note.className = 'cfgnote';
+    note.innerHTML = `<b>On.</b> A morning or evening turns yellow with its first event and red at ${full}. `
+      + (blocked ? `${blocked} half-day${blocked===1?'':'s'} blocked` : 'Nothing blocked')
+      + (open ? `, ${open} forced open` : '') + ' — set from the day box under the calendar on Home.';
+  }
+  on('#cfgAvailFull', 'input', ()=>{ _availDirty = true; });
+  on('#saveAvail', 'click', async ()=>{
+    const inp = $('#cfgAvailFull'); if(!inp) return;
+    /* validated, not clamped — a typo must not quietly become 1 or 99. Empty
+       means the default; anything else has to be a whole number 1–99.
+       badInput: a number field that could not parse what was typed ("1e")
+       reports an empty value, and that is not an empty field. */
+    const raw = inp.value.trim();
+    const n = Math.round(Number(raw));
+    if((raw !== '' || (inp.validity && inp.validity.badInput)) && !(n >= 1 && n <= AVAIL_FULL_MAX)){
+      toast('Enter a whole number from 1 to ' + AVAIL_FULL_MAX);
+      return;
+    }
+    const full = raw === '' ? AVAIL_FULL_DEFAULT : n;
+    inp.value = full;
+    if(DEMO){
+      AVAIL_CFG = Object.assign({ override: {} }, AVAIL_CFG || {}, { full });
+      _availDirty = false;
+      AVAIL_MONTH = { month:'', days:{}, ready:false };
+      renderAvailConfig(); renderCalendar();
+      toast('Full at ' + full + ' per half-day (demo — not saved)');
+      return;
+    }
+    if(!db) return;
+    /* the threshold and nothing else. Never an override map, not even an
+       empty one: under merge the SDK takes `override: {}` as "replace the
+       map with {}", and every blocked and opened half-day would be gone.
+       ensureAvailabilityConfig() creates the document when it is missing, so
+       a merge of { full } alone is right whether or not it exists yet. */
+    const body = { full, updatedAt: serverTimestamp() };
+    const res = await settle(setDoc(availRef(), body, { merge: true }));
+    const m = settleMsg(res, 'Saved — full at ' + full + ' event' + (full===1?'':'s') + ' per half-day ✓');
+    if(m.ok) _availDirty = false;
+    toast(m.msg);
+  });
+
   /* ---------- quick "add event" straight from the calendar day box ----------
      Three ways in, all writing the same shape the builder writes:
        client   — a brand-new direct booking with one dated event
@@ -11190,6 +11504,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         EJOBS   = (d.editingJobs || []).slice();
         REQS    = [];
         CFG     = d.config;
+        /* no fixture file for the availability config: the default threshold
+           and one blocked evening ten days out, so the day box and the
+           Config card have something to show */
+        const ovDay = new Date(); ovDay.setDate(ovDay.getDate() + 10);
+        AVAIL_CFG = { full: AVAIL_FULL_DEFAULT, override: { [ovDay.toLocaleDateString('en-CA')]: { e: 'r' } } };
         setProfiles(d.profiles || []);
         DELREQS = (d.deletionRequests || []).slice();
         /* every "have we heard from the server yet" flag, or the panel paints

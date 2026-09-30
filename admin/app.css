@@ -1580,6 +1580,56 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .festwarn.soon b,.cfgnote.soon b{color:var(--state-pending)}
 .festwarn.out,.cfgnote.out{border-left-color:var(--state-overdue);background:var(--state-overdue-bg)}
 .festwarn.out b,.cfgnote.out b{color:var(--state-overdue)}
+/* a retry inside the strip (the availability card's "Not reachable") sits on
+   its own line under the text, not stretched into the sentence */
+.cfgnote .btn{display:flex;width:max-content;margin-top:.45rem}
+
+/* ---------- availability: what the public calendar shows ----------
+   Config card: the threshold field and its own Save, side by side. */
+.av-cfg{display:flex;gap:.6rem;align-items:flex-end;max-width:320px}
+.av-cfg .fld{flex:1;min-width:0;margin-bottom:0}
+.av-cfg .btn{margin-top:0;flex:0 0 auto}
+.av-cfg-note{font-size:var(--fs-sm);color:var(--mut);margin:.55rem 0 0;line-height:1.45}
+/* Calendar day box: one row per half-day. The state swatch is the very
+   colour the client sees (plain / yellow / red); the segmented Auto |
+   Blocked | Open beside it writes the override. Three columns where they
+   fit, and on a narrow phone the control drops to its own full-width line
+   rather than squeezing three 10px labels. */
+.av-box{margin-top:.85rem;padding-top:.8rem;border-top:1px dashed var(--line)}
+/* an event row above it already draws its dashed rule (it is no longer
+   :last-child, so it keeps its border) — one line between them, not two */
+.cal-ev + .av-box{border-top:0;margin-top:.2rem}
+.av-hd{margin-bottom:.35rem}
+.av-hd b{display:block;color:var(--gold-b);font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.av-hd span{display:block;font-size:var(--fs-xs);color:var(--mut);line-height:1.45;margin-top:.15rem}
+.av-err{font-size:var(--fs-sm);color:var(--state-overdue);margin:.3rem 0 .4rem;line-height:1.4}
+.av-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.4rem .7rem;padding:.5rem 0}
+.av-row + .av-row{border-top:1px solid var(--line)}
+.av-lab{font-size:var(--fs-md);color:var(--text);white-space:nowrap}
+.av-state{display:inline-flex;align-items:center;gap:.4em;min-width:0;font-size:var(--fs-sm);color:var(--mut);white-space:nowrap}
+.av-state i{width:11px;height:11px;border-radius:3px;background:var(--field);border:1px solid var(--line-2);flex:0 0 auto}
+.av-state.free{color:var(--text)}
+.av-state.y{color:var(--state-pending)}
+.av-state.y i{background:var(--state-pending);border-color:transparent}
+.av-state.r{color:var(--state-overdue)}
+.av-state.r i{background:var(--state-overdue);border-color:transparent}
+.av-state.past{color:var(--mut);opacity:.7}
+.av-state.past i{opacity:.4}
+.av-state small{font-size:var(--fs-xs);color:var(--mut);font-weight:400}
+.avseg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden;background:var(--field)}
+.avseg button{background:none;border:0;color:var(--mut);padding:.45em .75em;font-size:var(--fs-sm);letter-spacing:.03em;cursor:pointer;min-height:40px;font-family:var(--sans);white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.avseg button + button{border-left:1px solid var(--line)}
+.avseg button.on{background:var(--grad-gold);color:var(--ink-0);font-weight:600}
+.avseg button[data-avov="r"].on{background:var(--state-overdue);color:var(--white)}
+.avseg button[data-avov="o"].on{background:var(--state-confirmed);color:var(--ink-0)}
+.avseg button[disabled]{opacity:.4;cursor:default}
+.avseg button:active:not([disabled]){transform:scale(.97)}
+@media(hover:hover){ .avseg button:not(.on):not([disabled]):hover{color:var(--gold-b)} }
+@media(max-width:399px){
+  .av-row{grid-template-columns:auto 1fr}
+  .av-row .avseg{grid-column:1 / -1;display:flex}
+  .av-row .avseg button{flex:1}
+}
 
 /* the "where did this come from" note on a payment row — secondary to the date
    and mode it sits under, and it wraps rather than pushing the amount out */

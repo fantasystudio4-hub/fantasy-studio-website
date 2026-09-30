@@ -295,12 +295,12 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
    (#helloBox) stays on every tab. A browser matches none of this. */
 /* Crew | Partner: on the home tab (Jobs) only */
 html.fs-app[data-tab]:not([data-tab="jobs"]) #roleSw{display:none}
-html.fs-app[data-tab] #nextupBox,html.fs-app[data-tab] #schedBox,
+html.fs-app[data-tab] #nextupBox,html.fs-app[data-tab] #schedBox,html.fs-app[data-tab] #availBox,
 html.fs-app[data-tab] #tilesBox,html.fs-app[data-tab] #jobsBox,
 html.fs-app[data-tab] #ledgerBox,html.fs-app[data-tab] #ratesBox,
 html.fs-app[data-tab] #meWho,html.fs-app[data-tab] #helpBox,html.fs-app[data-tab] #meBox{display:none}
 html.fs-app[data-tab="jobs"] #tilesBox,html.fs-app[data-tab="jobs"] #jobsBox,
-html.fs-app[data-tab="schedule"] #nextupBox,html.fs-app[data-tab="schedule"] #schedBox,
+html.fs-app[data-tab="schedule"] #nextupBox,html.fs-app[data-tab="schedule"] #schedBox,html.fs-app[data-tab="schedule"] #availBox,
 html.fs-app[data-tab="account"] #ledgerBox,html.fs-app[data-tab="account"] #ratesBox,
 html.fs-app[data-tab="me"] #meWho,html.fs-app[data-tab="me"] #helpBox,html.fs-app[data-tab="me"] #meBox{display:block}
 /* the toast rises above the bar instead of hiding behind it */
@@ -358,6 +358,8 @@ html.fs-app .me-sw:checked::after{transform:translateX(18px)}
 html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
 </style>
 <link rel="stylesheet" href="../app-shell.css" />
+<!-- the studio's availability calendar (../avail.js draws it into #availBox) -->
+<link rel="stylesheet" href="../avail.css" />
 </head>
 <body>
 <noscript>
@@ -451,6 +453,9 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <div class="hello" id="helloBox"></div>
     <div id="nextupBox"></div>
     <div id="schedBox" class="fs-app-only"></div>
+    <!-- Fantasy Studio's availability, month by month: colours only, never
+         whose job (availSync mounts ../avail.js here with the jobs) -->
+    <div id="availBox"></div>
     <div id="tilesBox"></div>
     <div id="jobsBox"></div>
     <div id="ledgerBox"></div>
@@ -784,6 +789,7 @@ function stopData(){
   _pushFor = ''; _prof = undefined; _profFor = ''; _otherFor = ''; _rolesFor = ''; _rolesAns = null;
   clearTimeout(_noAccessT); _noAccessT = null;
   clearInterval(_cdT);
+  availOff();   /* the calendar's month listener goes with the jobs' */
   /* the next session unlocks afresh, and a prompt still up for this one
      can no longer open (or cover) it */
   _unlocked = false; _locking = null; _lockSess++;
@@ -1135,6 +1141,7 @@ function render(){
   renderRates();
   if(FS_APP) renderMe();
   renderRoleSwitch();
+  availSync(jobs);   /* Fantasy Studio's calendar, with these jobs' days ringed */
 }
 
 /* the greeting reads the partner's own clock — a studio opening this at
@@ -1246,6 +1253,64 @@ function renderSched(upcoming){
   }).join('');
   box.innerHTML = `<h2 class="secl">Coming up <small>${upcoming.length} event${upcoming.length === 1 ? '' : 's'}</small></h2>
     <div class="ledger">${rows}</div>`;
+}
+
+/* ---------- Fantasy Studio's availability calendar (../avail.js) ----------
+   #availBox, on the Schedule tab in the app and under the schedule on the
+   website: a month grid, each day a morning and an evening half, coloured
+   plain / filling up / full — never whose job. The shared component draws
+   it (avail.css); this page hands it the database, whether to paint the
+   built-in sample instead (the ?demo view and the review number read
+   nothing), this partner's own event dates to ring (mine, read again on
+   refresh) and what a tap on a free half does: ask Fantasy Studio about
+   that date on WhatsApp, the number the help block uses. Loaded lazily
+   once the jobs are on screen, so a module that fails to load costs the
+   page nothing but the calendar; one failed load is not retried until the
+   page loads again. */
+let _avail = null, _availGen = 0, _availBusy = false, _availSig = '', _availJobs = [], _availWa = '';
+const availMine = () => _availJobs.flatMap(x=>(x.events||[]).map(e=>e.date)).filter(isDate);
+/* 'Sat 12 Oct 2026' */
+const availWhen = iso => new Date(iso + 'T00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' }).replace(/,/g, '');
+function availAsk(iso, slot){
+  if(!isDate(iso)) return;
+  const text = 'Hi Fantasy Studio, is ' + availWhen(iso) + ' (' + (slot === 'm' ? 'morning' : 'evening') + ') available for a studio job?';
+  /* a new tab, as every WhatsApp link on this page opens (target=_blank),
+     opened in the tap itself: mobile Safari blocks a window.open from a
+     promise callback. The number is warmed at mount; until it lands the
+     brochure's number stands in, the same one the help block prints. */
+  const go = wa => { window.open(wa + '?text=' + encodeURIComponent(text), '_blank', 'noopener'); };
+  go(_availWa || 'https://wa.me/918686868803');
+}
+function availSync(jobs){
+  _availJobs = jobs;
+  const host = $('#availBox'); if(!host) return;
+  if(_avail){
+    /* a redraw that moved no date leaves the grid alone */
+    const sig = availMine().join(',');
+    if(sig !== _availSig){ _availSig = sig; try{ _avail.refresh(); }catch(e){} }
+    return;
+  }
+  if(_availBusy) return;
+  _availBusy = true;
+  const gen = _availGen;
+  FS.getContact().then(c=>{ _availWa = c.wa; }, ()=>{});
+  import('../avail.js').then(m=>{
+    if(gen !== _availGen || _avail) return;   /* signed out meanwhile */
+    _availSig = availMine().join(',');
+    _avail = m.mountAvailability(host, {
+      db,
+      sample: DEMO_VIEW || FS.isSample(auth.currentUser),
+      mine: availMine,
+      onAsk: availAsk,
+      monthsAhead: 12,
+      heading: 'Fantasy Studio availability',
+    });
+  }).catch(e=>{ console.warn('[availability] the calendar did not load', e); });
+}
+/* signed out (stopData): the month listener goes; the next sign-in mounts afresh */
+function availOff(){
+  _availGen++; _availBusy = false; _availSig = ''; _availJobs = [];
+  if(_avail){ try{ _avail.destroy(); }catch(e){} _avail = null; }
 }
 
 /* Me tab (store app). +919000000001 → +91 90000 00001, as /start/ prints it;

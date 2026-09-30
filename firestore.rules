@@ -112,6 +112,40 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // the availability calendar's knobs: `full` (events per morning/evening
+    // that make it red, default 5) and `override` (per date: m/e forced 'r'
+    // blocked or 'o' open). Admin only — the Cloud Function that reads it
+    // uses the admin SDK, which bypasses these rules. The default-deny match
+    // at the bottom already covers this document; written out so the pair
+    // sits next to what it configures.
+    match /config/availability {
+      allow read, write: if isAdmin();
+    }
+
+    // the availability calendar itself, one document per month
+    // (availability/2026-10). Colours only — { days: { '12': { m:'y', e:'r' } } }
+    // — never a count, never a name, which is why anyone who signed in with
+    // an OTP may read it: the client, crew and partner pages all show the
+    // same grid. Not public: the builder and the home page never load it.
+    //
+    // `get`, not `read`: the pages listen to ONE doc by month id
+    // (onSnapshot(doc('availability', 'YYYY-MM'))), never a query, so a list
+    // is nothing they need and nobody but the admin may enumerate the
+    // months. And a verified phone, not merely `request.auth != null`: a
+    // login with no phone_number claim is not one of our people (the OTP
+    // sign-in is the only way in for clients, crew and partners), so it gets
+    // nothing — a stranger holding the web API key cannot read this by
+    // signing in some other way. isAdmin() stays in the OR because the
+    // admin's email login carries no phone claim at all.
+    //
+    // Written only by the Cloud Function (admin SDK, which bypasses these
+    // rules); the admin login may also write it for a repair, nobody else.
+    match /availability/{month} {
+      allow get:   if isAdmin() || clientPhone10() != '__none__';
+      allow list:  if isAdmin();
+      allow write: if isAdmin();
+    }
+
     // packages: you get full access; a signed-in client may READ only the
     // packages saved under their own verified mobile number (any country code).
     //
