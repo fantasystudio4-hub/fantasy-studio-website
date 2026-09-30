@@ -524,10 +524,11 @@ async function main(){
       return;
     }
     if(res.pending){
-      /* In the app the write waits on disk and goes when the phone is back
-         online, even after this page has gone. A browser keeps it in memory
-         only, so it waits here until the server has it. */
-      if(FS.inApp){ toast('Saved — it’ll reach the studio once you’re back online'); busy(true, 'Saved'); go(next, 1800); return; }
+      /* With the cache on disk (the Android app) the write waits there and
+         goes when the phone is back online, even after this page has gone.
+         A browser and the iPhone app keep it in memory only, so it waits
+         here until the server has it. */
+      if(FS.diskCache){ toast('Saved — it’ll reach the studio once you’re back online'); busy(true, 'Saved'); go(next, 1800); return; }
       busy(true, 'Waiting for internet…');
       showErr('No internet — your profile saves as soon as you’re back online. Keep this page open.');
       try{

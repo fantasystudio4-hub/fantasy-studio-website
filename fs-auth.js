@@ -52,8 +52,19 @@ export const auth = getAuth(app);
    seconds of a kill finds the old process still holding the cache, and
    single-tab would quietly fall back to memory. The crew page kept its cache
    on disk in browsers too (a venue with one bar): it opts in with
-   <html data-fs-cache="disk">. Everyone else keeps the in-memory default. */
-const DISK = inApp || document.documentElement.getAttribute('data-fs-cache') === 'disk';
+   <html data-fs-cache="disk">. Everyone else keeps the in-memory default.
+   NOT in the iPhone app (30 Sep 2026): there the disk cache works on the
+   first page only. After any in-app page change (Edit profile, Save, the
+   Crew | Partner switch) the next page's Firestore never answers — no server
+   data, not even the cached copy — so saves never leave the phone and the
+   portal sits on its loading skeleton until the app is killed. Reproduced in
+   the real app shell on the simulator (multi-tab and forceOwnership both
+   hang; memory answers in ~0.2 s on every page) while Safari and the Android
+   app are fine. So the iPhone app keeps its cache in memory, like a browser. */
+const IOS_APP = inApp && !/Android/i.test(navigator.userAgent);
+const DISK = !IOS_APP && (inApp || document.documentElement.getAttribute('data-fs-cache') === 'disk');
+/* whether a queued write survives leaving the page (the profile's Save) */
+export const diskCache = DISK;
 let _db;
 try{ _db = DISK ? initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }) : getFirestore(app); }
 catch(e){ _db = getFirestore(app); }
