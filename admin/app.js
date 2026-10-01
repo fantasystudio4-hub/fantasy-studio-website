@@ -2572,17 +2572,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#leadSearch', 'input', debounce(()=>{ viewSet('leadQ', $('#leadSearch').value||''); renderLeads(); }));
 
   let pkgFilterVal = viewGet('pkgF');
+  /* A booked package with every step ticked is CLOSED: finished work, and
+     the owner does not want it in the Packages lists any more (1 Oct 2026).
+     It is left out of All, Booked and 🏢 Studio; a search still finds it, and
+     ₹ Due still lists it while money is owed. The same test the tracker uses
+     for "all steps done" (deliveryInfo), so a studio job also needs its
+     payment. A package already marked Delivered keeps its own group. */
+  function pkgClosed(x){
+    if((x.status||'draft') !== 'booked') return false;
+    const di = deliveryInfo(x);
+    return di.total > 0 && di.doneCount >= di.total;
+  }
+  /* Booked order (owner, 1 Oct 2026): the work just finished first — the
+     event done yesterday, then the one before it, back in time — because
+     that is what needs editing and delivery now; after those, what is still
+     to be shot, soonest first; undated packages last. A package with any
+     event today or later counts as still to be shot. */
+  function bookedOrder(a, b){
+    const today = todayISO();
+    const key = x => {
+      const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+      if(!ds.length) return [2, ''];
+      const next = ds.find(d=>d >= today);
+      return next ? [1, next] : [0, ds[ds.length-1]];
+    };
+    const ka = key(a), kb = key(b);
+    if(ka[0] !== kb[0]) return ka[0] - kb[0];
+    if(ka[1] === kb[1]) return 0;
+    if(ka[0] === 0) return ka[1] > kb[1] ? -1 : 1;   /* done: latest first */
+    return ka[1] < kb[1] ? -1 : 1;                   /* to come: soonest first */
+  }
   /* 'unconfirmed' = quote sent but the event is NOT confirmed / on hold — it
      leaves the follow-up nag list (which only chases 'sent' quotes) without
      pretending the enquiry is booked or dead */
   const PKG_STATES = ['draft','sent','unconfirmed','booked','delivered'];
   const STATUS_LABEL = s => s === 'unconfirmed' ? 'not confirmed' : s;
   function renderPkgChips(){
-    const live = livePkgs();
+    const all = livePkgs();
+    const live = all.filter(x=>!pkgClosed(x));   /* closed packages are off the lists */
     const counts = {draft:0,sent:0,unconfirmed:0,booked:0,delivered:0};
     live.forEach(x=>{ const s=x.status||'draft'; counts[s]=(counts[s]||0)+1; });
     const b2bN = live.filter(isStudioJob).length;
-    const dueN = live.filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0).length;
+    const dueN = all.filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0).length;
     $('#pkgChips').innerHTML = [['','All',live.length],
         ...(dueN ? [['due','₹ Due',dueN]] : []),
         ...(b2bN ? [['b2b','🏢 Studio',b2bN]] : []),
@@ -2626,7 +2657,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderPkgStats(){
     const el = $('#pkgStats'); if(!el) return;
     const confirmed = livePkgs().filter(x=>['booked','delivered'].includes(x.status||'draft'));
-    const booked = livePkgs().filter(x=>(x.status||'draft')==='booked');
+    /* the tile opens the Booked list, so it counts what that list shows: closed packages are off it */
+    const booked = livePkgs().filter(x=>(x.status||'draft')==='booked' && !pkgClosed(x));
     const outstanding = confirmed.reduce((s,x)=>s+Math.max(0,(x.totals||{}).balance||0),0);
     const bookedVal = confirmed.reduce((s,x)=>s+((x.totals||{}).finalPrice||0),0);
     const mStart = new Date(); mStart.setDate(1); mStart.setHours(0,0,0,0);
@@ -3310,8 +3342,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : f === 'due' ? ((x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0)
         : (x.status||'draft')===f))
       && (!q || String(x.clientName||'').toLowerCase().includes(q) || String(x.clientPhone||'').includes(q)
-          || String(x.quoteNo||'').toLowerCase().includes(q) || String(x.endClientName||'').toLowerCase().includes(q)));
-    if(f === 'booked' || f === 'due') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+          || String(x.quoteNo||'').toLowerCase().includes(q) || String(x.endClientName||'').toLowerCase().includes(q)))
+      /* closed packages: only a search, or money still owed, brings one back */
+      .filter(x=>q || f === 'due' || !pkgClosed(x));
+    if(f === 'booked') list = [...list].sort(bookedOrder);
+    else if(f === 'due') list = [...list].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
     if(!list.length){
       /* never say "no packages yet" for data that simply has not arrived (or
          failed to) — that reads as "everything is gone" */
@@ -3333,36 +3368,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     /* "All" view: group by status so the list reads like a pipeline —
-       booked (next shoot first), quotes awaiting a reply, drafts, delivered.
+       booked (bookedOrder: just finished first), quotes awaiting a reply, drafts, delivered.
        Each group collapses (tap the header); only Booked starts open so the
        list stays short. The choice is remembered on this device. */
     if(!f && !q){
       const GRPS = [['booked','Booked'], ['sent','Sent — awaiting reply'], ['unconfirmed','Not confirmed — on hold'], ['draft','Drafts'], ['delivered','Delivered']];
       const open = pkgGrpsOpen();
-      /* Anything scoring past the threshold is LIFTED OUT of its status group
-         rather than copied above it: the same package in two places is the
-         one thing guaranteed to make a list untrustworthy. Each card still
-         carries its own status pill, so nothing about where it sits in the
-         pipeline is lost, and the group counts below stay honest about what
-         is actually left under them. Capped, because a worklist of thirty is
-         not a worklist. */
-      const scored = new Map(list.map(x=>[x.id, pkgAttention(x)]));
-      const needs = list.filter(x=>scored.get(x.id).score >= PKG_ATTN_MIN)
-        .sort((a,b)=>scored.get(b.id).score - scored.get(a.id).score)
-        .slice(0, 8);
-      const lifted = new Set(needs.map(x=>x.id));
-      const nOpen = open.needs !== false;   /* the worklist defaults to open */
-      const head = (key, lab, n, isOpen, cls='') =>
-        `<div class="grp tog ${cls} ${isOpen?'':'closed'}" data-grp="${key}" role="button" tabindex="0" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${n}</b></div>`;
-      $('#pkgList').innerHTML =
-        (needs.length
-          ? head('needs', '⚠️ Work on these first', needs.length, nOpen, 'needs')
-            + (nOpen ? needs.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '')
-          : '')
-        + GRPS.map(([s, lab])=>{
-            let grp = list.filter(x=>(x.status||'draft')===s && !lifted.has(x.id));
+      /* No "Work on these first" group any more (owner, 1 Oct 2026): every
+         package sits in its own status group, once. A card that needs
+         attention still says why on the card itself. */
+      const head = (key, lab, n, isOpen) =>
+        `<div class="grp tog ${isOpen?'':'closed'}" data-grp="${key}" role="button" tabindex="0" aria-expanded="${isOpen}"><span class="car">▾</span>${lab}<b>${n}</b></div>`;
+      $('#pkgList').innerHTML = GRPS.map(([s, lab])=>{
+            let grp = list.filter(x=>(x.status||'draft')===s);
             if(!grp.length) return '';
-            if(s === 'booked') grp = [...grp].sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+            if(s === 'booked') grp = [...grp].sort(bookedOrder);
             const isOpen = !!open[s];
             return head(s, lab, grp.length, isOpen)
               + (isOpen ? grp.map(x=>pkgCardHTML(x, expandedPkg === x.id)).join('') : '');
