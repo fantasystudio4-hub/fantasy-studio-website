@@ -302,7 +302,7 @@ html.fs-app .ejt-new textarea{font-size:16px}
 .payrow:last-of-type{border-bottom:0}
 /* Two lines, not one clipped one: the client's name was the part that got cut
    to "P…" at phone width, and it is the part that says which job this was. */
-.payrow .ev2{flex:1;min-width:0;color:var(--text);display:flex;flex-direction:column;line-height:1.3}
+.payrow .ev2{flex:1 1 6.5rem;min-width:0;color:var(--text);display:flex;flex-direction:column;line-height:1.3}
 .payrow .ev2 .ev-l{font-weight:500;color:var(--text)}
 .payrow .ev2 .who{font-style:normal;font-size:.74rem;color:var(--mut);overflow-wrap:anywhere}
 .payrow .ev2 .who:empty{display:none}
@@ -344,6 +344,18 @@ html.fs-app .ejt-new textarea{font-size:16px}
 .stat b{font-family:var(--serif);font-size:1.15rem;color:var(--gold-b);display:block;line-height:1.25}
 .stat span{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
 .paytotal + .paytotal{border-top:0;margin-top:0;padding-top:.15rem}
+/* A shoot that has not happened yet (owner, 1 Oct 2026): its fee is agreed,
+   not owed, until the day after the event. Those rows, their pill and their
+   total are the quiet ones; what is owed today keeps the gold. */
+.paytotal.soon{font-size:.85rem;color:var(--mut)}
+.paytotal.soon b{color:var(--mut)}
+.paypill.soon{color:var(--mut);background:none;box-shadow:inset 0 0 0 1px var(--line)}
+.payrow.upc .amt{color:var(--mut)}
+.payrow.upc .ev2 .ev-l{font-weight:400}
+/* one line under the four tiles, the full width of the grid, so the amount
+   prints whole and wraps rather than clips at phone width */
+.stats2 .statnote{grid-column:1 / -1;margin:0;font-size:.74rem;line-height:1.4;color:var(--mut);text-align:center;overflow-wrap:anywhere}
+.stats2 .statnote b{font-family:var(--serif);font-weight:500;color:var(--gold-b);white-space:nowrap}
 .bars{display:flex;align-items:stretch;gap:8px;height:118px;margin:.5rem 0 .1rem}
 .bcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
 .bcol b{font-size:.6rem;color:var(--text);font-weight:500;white-space:nowrap}
@@ -766,7 +778,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       </h3>
       <div class="bars" id="anaBars"></div>
       <p class="charthint" id="chHint" hidden>
-        <span><i class="got"></i>received</span><span><i class="owed"></i>still to come</span></p>
+        <span><i class="got"></i>received</span><span><i class="owed"></i>to receive</span></p>
       <div class="rolechips" id="anaRoles"></div>
       <div class="rolechips yrs" id="anaYears" title="Year-wise earnings"></div>
     </div>
@@ -776,6 +788,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       <div id="payRows"></div>
       <div class="paytotal"><span>Received so far</span><b id="payGot"></b></div>
       <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
+      <div class="paytotal soon" id="payUpRow" hidden><span>After upcoming shoots</span><b id="payUp"></b></div>
       <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
     </div>
     <!-- the store app's Me tab titles the contact block (app-shell.css keeps
@@ -901,6 +914,18 @@ function payState(a){
   if(fee > 0 && got >= fee) return 'paid';
   return got > 0 ? 'part' : 'due';
 }
+/* When the unpaid part of a fee starts to count as owed (owner, 1 Oct 2026):
+   a SHOOT from the day after its event date — the same test this page uses
+   for "done" — and not from the moment the member is assigned to it. Until
+   then it is "upcoming" and is shown apart from what is owed. An EDITING job
+   is owed as soon as it is assigned, as before, and so is a row with no
+   usable date. Nothing stored changes, only how the totals are added up.
+   Money the studio has recorded (payGot) counts as received whatever the
+   date. For every row: payOwed + payUpcoming === payDue. Same helpers, same
+   names, as the admin panel. */
+const payEarned = a => !a || a.kind === 'edit' || !/^\d{4}-\d{2}-\d{2}$/.test(a.date||'') || a.date < todayISO();
+const payOwed = a => payEarned(a) ? payDue(a) : 0;        /* owed now */
+const payUpcoming = a => payEarned(a) ? 0 : payDue(a);    /* agreed for a shoot that has not happened yet */
 /* every instalment as {amount, date, mode}, newest last */
 function payEvents(a){
   const p = (a||{}).pay || {};
@@ -1531,7 +1556,8 @@ if(!CONFIGURED){
     const edit = { kind: 'edit', role: 'editor', eventTitle: 'All functions', scope: 'package',
                    slot: '', callTime: '', venue: '', dueDate: '', notes: '' };
     const asgs = [
-      /* coming up: the Haldi is the countdown and still wants a Confirm */
+      /* coming up: the Haldi is the countdown and still wants a Confirm.
+         Their fees are "after your upcoming shoots", not owed (payUpcoming) */
       { id: 'smp-a1', ...SI, kind: '', role: 'photography', eventTitle: 'Haldi', date: iso(5), slot: 'morning',
         callTime: '06:30', venue: 'Golkonda Resorts, Gandipet', status: 'assigned',
         notes: 'The bride gets ready from 6. Be at her suite by 6:30 for the getting-ready photos.', pay: pay(4500) },
@@ -1541,7 +1567,9 @@ if(!CONFIGURED){
       { id: 'smp-a3', ...NS, kind: '', role: 'cinematography', eventTitle: 'Wedding', date: iso(34), slot: 'full',
         callTime: '08:30', venue: 'Taj Falaknuma Palace', status: 'assigned',
         notes: 'Full day, from the baraat to the send-off.', pay: pay(8000) },
-      /* done: the latest one still waits for "Mark this event completed" */
+      /* done: the latest one still waits for "Mark this event completed".
+         Every pay state is here: unpaid and owed (a4), part-paid (a5), paid
+         in one go and paid in two instalments (a10) */
       { id: 'smp-a4', ...PK, kind: '', role: 'photography', eventTitle: 'Wedding', date: iso(-9), slot: 'full',
         callTime: '08:00', venue: 'Park Hyatt, Banjara Hills', ...ok(-14), notes: '', pay: pay(6000) },
       { id: 'smp-a5', ...PK, kind: '', role: 'candid photography', eventTitle: 'Sangeet', date: iso(-10), slot: 'evening',
@@ -2301,30 +2329,34 @@ if(!CONFIGURED){
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push({ key: d.toLocaleDateString('en-CA').slice(0,7),
                     lab: d.toLocaleDateString('en-IN', { month:'short' }),
-                    yr: String(d.getFullYear()).slice(2), fee: 0, got: 0, n: 0 });
+                    yr: String(d.getFullYear()).slice(2), got: 0, owed: 0, n: 0 });
     }
-    /* The two money tiles above this chart use payGot/payDue — what has
+    /* The two money tiles above this chart use payGot/payOwed — what has
        actually been received. This read a.pay.amount, the agreed FEE, so
        switching the toggle to Earnings gave a crew member a second, larger
        answer to "what have I earned" six centimetres below the first one.
        Both numbers are worth seeing, so the bar now carries both: its height
        is the fee, and the solid part is the money that has arrived. The solid
-       parts sum to exactly the "received" tile. */
+       parts sum to exactly the "received" tile.
+       The fee is the EARNED fee: a shoot adds its unpaid part from the day
+       after the event (payOwed), so this month's bar does not grow because a
+       shoot was assigned for the 28th. The pale parts sum to the "to receive"
+       tile for these months; money received always counts. */
     ASGS.forEach(a=>{
       const m = months.find(x=>x.key === (a.date||'').slice(0,7));
-      if(m){ m.fee += payFee(a); m.got += payGot(a); m.n++; }
+      if(m){ m.got += payGot(a); m.owed += payOwed(a); m.soon = (m.soon||0) + payUpcoming(a); m.n++; }
     });
     const money = _series === 'amt';
     /* paid against no agreed fee counts as fully settled, not as 120% of a bar */
-    const total  = m => money ? Math.max(m.fee, m.got) : m.n;
-    const filled = m => money ? Math.min(m.got, total(m)) : m.n;
+    const total  = m => money ? m.got + m.owed : m.n;
+    const filled = m => money ? m.got : m.n;
     const max = Math.max(...months.map(total), 1);
     const hint = $('#chHint'); if(hint) hint.hidden = !money;
     $('#anaBars').innerHTML = months.map(m=>{
       const t = total(m), f = filled(m);
-      const owed = Math.max(0, m.fee - m.got);
+      const owed = m.owed;
       const label = money
-        ? `${m.lab}: ${inr(m.got)} received${owed ? ' of ' + inr(m.fee) + ', ' + inr(owed) + ' still to come' : m.fee ? ' — all of it' : ''}`
+        ? `${m.lab}: ${inr(m.got)} received${owed ? ' of ' + inr(m.got + owed) + ', ' + inr(owed) + ' to receive' : m.got && !m.soon ? ' — all of it' : ''}`
         : `${m.lab}: ${m.n} event${m.n===1?'':'s'}, ${inr(m.got)} received`;
       return `<div class="bcol ${t ? '' : 'zero'}" role="img" aria-label="${esc(label)}">
         <b>${t ? (money ? shMoney(m.got) : m.n) : ''}</b>
@@ -2364,12 +2396,17 @@ if(!CONFIGURED){
     renderRank(done, up);
     renderBadges(done);
     const received = ASGS.reduce((s,a)=>s + payGot(a), 0);
-    const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
+    /* "to receive" is what is owed today. A shoot joins it the day after the
+       event; until then its fee is the one line under the tiles, in full. */
+    const due = ASGS.reduce((s,a)=>s + payOwed(a), 0);
+    const soon = ASGS.reduce((s,a)=>s + payUpcoming(a), 0);
     $('#crewStats').innerHTML = `
       <div class="stat"><b>${done.length}</b><span>events done</span></div>
       <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
       <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(received))} received — tap for the detail">${fullMoney(received)}<span>received</span></div>
-      <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(due))} still to come — tap for the detail">${fullMoney(due)}<span>to receive</span></div>`;
+      <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(due))} to receive now — tap for the detail">${fullMoney(due)}<span>to receive</span></div>${
+      soon > 0 ? `
+      <p class="statnote" id="statSoon"><b>${esc(inr(soon))}</b> after your upcoming shoots</p>` : ''}`;
     renderBars();
     const roles = {};
     ASGS.forEach(a=>{ const r = String(a.role||'').trim(); if(r) roles[r] = (roles[r]||0) + 1; });
@@ -2379,25 +2416,33 @@ if(!CONFIGURED){
           .map(([r,n])=>`<b>${esc(r.replace(/\b\w/g,c=>c.toUpperCase()))} × ${n}</b>`).join('');
     /* year-wise earnings — every year the member has worked, newest first.
        Received, like the tiles and the chart; anything still owed is named
-       separately rather than folded into the same figure. */
+       separately rather than folded into the same figure. Owed as the tiles
+       mean it (payOwed): a shoot that has not happened yet adds nothing. */
     const byYr = {};
     ASGS.forEach(a=>{
       const y = (a.date||'').slice(0,4);
       if(/^\d{4}$/.test(y)){
         byYr[y] = byYr[y] || { got:0, due:0, n:0 };
-        byYr[y].got += payGot(a); byYr[y].due += payDue(a); byYr[y].n++;
+        byYr[y].got += payGot(a); byYr[y].due += payOwed(a); byYr[y].n++;
       }
     });
     const yrs = Object.keys(byYr).sort().reverse();
     $('#anaYears').hidden = yrs.length < 1;
     $('#anaYears').innerHTML = yrs
       .map(y=>`<b>📆 ${y} · ${inr(byYr[y].got)} · ${byYr[y].n} event${byYr[y].n===1?'':'s'}${
-        byYr[y].due ? ` · <em style="font-style:normal;opacity:.75">${inr(byYr[y].due)} to come</em>` : ''}</b>`).join('');
+        byYr[y].due ? ` · <em style="font-style:normal;opacity:.75">${inr(byYr[y].due)} to receive</em>` : ''}</b>`).join('');
   }
 
+  /* a shoot's fee falls due the day after the event, so a page left open
+     over midnight must add itself up again when it is next looked at */
+  let _renderDay = '';
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden && _renderDay && _renderDay !== todayISO()) render();
+  });
   function render(){
     /* nothing is painted behind the store app's lock; route() paints once it passes */
     if(!ME || !lockPassed()) return;
+    _renderDay = todayISO();
     $('#hello').textContent = `Hi ${(ME.name||'').split(' ')[0] || 'there'} 👋`;
     renderAnalytics();
     const today = todayISO();
@@ -2457,20 +2502,27 @@ if(!CONFIGURED){
           ? `<div class="payhist">${evs.map(x=>
               `<span>${inr(x.amount)} on ${esc(fmtShort(x.date))}${x.mode ? ' · ' + esc(x.mode) : ''}</span>`).join('')}</div>`
           : '';
+        /* a shoot that has not happened yet is not "due": the studio pays
+           after the event, so the row says so and steps back */
+        const upc = payUpcoming(a) > 0;
         const pill = st === 'paid' ? `paid${p.paidDate ? ' ' + fmtShort(p.paidDate) : ''}`
+                   : upc ? (st === 'part' ? `${inr(payDue(a))} after the shoot` : 'After the shoot')
                    : st === 'part' ? `${inr(payDue(a))} left`
                    : 'due';
-        return `<div class="payrow">
+        return `<div class="payrow${upc ? ' upc' : ''}">
           <span class="ev2"><b class="ev-l">${esc(fmtShortY(a.date))} · ${esc(a.eventTitle||'Event')}</b><em class="who">${esc(a.clientName||'')}${slotTag(a.slot)}</em></span>
           <span class="amt">${inr(payFee(a))}</span>
-          <span class="paypill ${st === 'paid' ? 'yes' : st === 'part' ? 'part' : 'no'}">${esc(pill)}</span>
+          <span class="paypill ${st === 'paid' ? 'yes' : upc ? 'soon' : st === 'part' ? 'part' : 'no'}">${esc(pill)}</span>
           ${hist}
         </div>`;
       }).join('');
-      const due = withPay.reduce((s,a)=>s + payDue(a), 0);
+      const due = withPay.reduce((s,a)=>s + payOwed(a), 0);
+      const soon = withPay.reduce((s,a)=>s + payUpcoming(a), 0);
       const got = withPay.reduce((s,a)=>s + payGot(a), 0);
       $('#payGot').textContent = inr(got);
       $('#payDue').textContent = inr(due);
+      $('#payUpRow').hidden = !(soon > 0);
+      $('#payUp').textContent = inr(soon);
     }
     renderMe();
     renderRoleSwitch();

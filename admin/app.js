@@ -2634,14 +2634,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the two money tiles share one line — tapping either opens the money analytics sheet */
     /* what the crew are owed — the money that leaves. Same basis as the Team
        tab's "crew pay due" tile, so the two screens can never disagree. */
-    const crewDue = ASGS.reduce((s,a)=>s + payDue(a), 0);
+    const crewDue = ASGS.reduce((s,a)=>s + payOwed(a), 0);
+    /* fees agreed for shoots that have not happened yet — not owed until the
+       day after the event, so they sit under the figure, never inside it.
+       Printed in full: the line is small type that wraps, so unlike the big
+       figure it has no need to round ₹1,98,500 up to "₹2L". */
+    const crewUp = ASGS.reduce((s,a)=>s + payUpcoming(a), 0);
     /* Compact on these tiles by necessity: they are a quarter of a phone wide
        and the full figure was being cut off mid-number. The exact rupees stay
        one long-press away in the title. */
     el.innerHTML = `
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(outstanding)} — open money analytics"><b>${inrShort(outstanding)}</b><span>left to collect</span></div>
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(bookedVal)} — open money analytics"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
-      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + ' — open the Team tab' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span></div>
+      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') + ' — open the Team tab' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>
       <div class="stat wide" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
       <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>
       <button class="upall insbtn" data-ins type="button">📊 Insights — what sells, what converts, when the season is</button>
@@ -4507,6 +4512,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return p.paid ? Math.max(0, Number(p.amount)||0) : 0;   /* legacy: paid meant paid in full */
   }
   const payDue = a => Math.max(0, payFee(a) - payGot(a));
+  /* ---------- WHEN a fee becomes owed (owner, 1 Oct 2026) ----------
+     Assigning someone to a shoot is an agreement, not a debt: the fee is owed
+     from the DAY AFTER the event (a.date < today — the same test this panel
+     uses for "done"). Until then the unpaid part is "upcoming" and is shown
+     apart from what is due. Editing jobs are owed as soon as they are
+     assigned, exactly as before, and so is a row with no usable date — a
+     shoot that can never become "past" must not hide its fee for ever.
+     Money actually recorded (payGot) is never affected: the studio pays no
+     advances, but an early payment on an old row still counts as paid.
+     Nothing stored changes — only how totals are added up — and the crew page
+     (team/index.html) carries the same three helpers under the same names.
+     Always true: payOwed(a) + payUpcoming(a) === payDue(a). */
+  /* asked once per row per total — over 2,000 assignments a date-formatter
+     call each time is felt on a phone, so today's date is held for a second */
+  let _payDay = '', _payDayAt = 0;
+  const payToday = () => {
+    const t = Date.now();
+    if(!_payDay || t - _payDayAt > 1000 || t < _payDayAt){ _payDay = todayISO(); _payDayAt = t; }
+    return _payDay;
+  };
+  const payEarned = a => !a || a.kind === 'edit' || !/^\d{4}-\d{2}-\d{2}$/.test(a.date||'') || a.date < payToday();
+  const payOwed = a => payEarned(a) ? payDue(a) : 0;        /* what is owed NOW */
+  const payUpcoming = a => payEarned(a) ? 0 : payDue(a);    /* agreed, for a shoot that has not happened yet */
   /* 'paid' only when a real fee has been fully settled; 'part' once money has
      moved but not all of it; 'due' otherwise */
   function payState(a){
@@ -4876,7 +4904,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              event is sign-off and money, so say that instead. */
           ? (()=>{
               const signed = crew.filter(a=>a.workDone).length;
-              const owed = crew.reduce((n,a)=>n + payDue(a), 0);
+              const owed = crew.reduce((n,a)=>n + payOwed(a), 0);
               /* A shoot that already happened with NOBODY on it is the worst
                  case on this tab, and it was the one saying nothing: somebody
                  covered it and no assignment was ever recorded, so no one is
@@ -4932,9 +4960,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const up   = list.filter(a=>(a.date||'') >= today);
     const acks = list.filter(a=>a.status === 'acknowledged').length;
     const edits = list.filter(a=>a.workDone).length;
-    const due = list.reduce((s,a)=>s + payDue(a), 0);
+    /* due = owed today; upc = agreed for shoots still to come (see payEarned) */
+    const due = list.reduce((s,a)=>s + payOwed(a), 0);
+    const upc = list.reduce((s,a)=>s + payUpcoming(a), 0);
     const xp = done.length*XP_EVENT + acks*XP_ACK + edits*XP_EDIT;
-    return { list, done, up, acks, edits, due, xp, rank: tmRank(xp),
+    return { list, done, up, acks, edits, due, upc, xp, rank: tmRank(xp),
              month: done.filter(a=>(a.date||'').slice(0,7) === mon).length,
              pending: up.filter(a=>a.status !== 'acknowledged').length,
              next: up.map(a=>a.date).filter(Boolean).sort()[0] || '',
@@ -5403,6 +5433,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span>⏭ <b>${s.up.length}</b> ahead</span>
           ${s.pending ? `<span class="due">⏳ <b>${s.pending}</b> unconfirmed</span>` : ''}
           ${s.due ? `<span class="due">💰 <b>${inr(s.due)}</b> due</span>` : ''}
+          ${s.upc ? `<span>🗓 <b>${inr(s.upc)}</b> upcoming</span>` : ''}
           ${s.next ? `<span>next <b>${esc(stepDate(s.next))}</b></span>` : '<span>free</span>'}
         </div>
       </div>`;
@@ -5495,28 +5526,38 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ASGS.forEach(a=>{ (byMember[a.memberId] = byMember[a.memberId]||[]).push(a); });
     const g = { outdoor:[], office:[], settled:[] };
     Object.entries(byMember).forEach(([mid, list])=>{
-      const due = list.reduce((n,a)=>n + payDue(a), 0);
+      /* anything not yet paid keeps a member in their tab — owed today OR
+         agreed for a shoot still to come. Someone with only upcoming shoots
+         is not "settled"; they are listed as upcoming, below everyone owed. */
+      const open = list.reduce((n,a)=>n + payDue(a), 0);
       const m = memberById(mid);
       /* a member deleted from the roster still has pay history — treat them as
          outdoor rather than dropping them off the page entirely */
-      g[due > 0 ? (m ? catOf(m) : 'outdoor') : 'settled'].push([mid, list]);
+      g[open > 0 ? (m ? catOf(m) : 'outdoor') : 'settled'].push([mid, list]);
     });
-    /* biggest debt first inside each tab; settled alphabetically */
-    const dueOf = e => e[1].reduce((n,a)=>n + payDue(a), 0);
-    g.outdoor.sort((a,b)=>dueOf(b)-dueOf(a));
-    g.office.sort((a,b)=>dueOf(b)-dueOf(a));
+    /* biggest debt first inside each tab — what is OWED, so a member with a
+       full diary ahead never outranks one waiting to be paid; upcoming only
+       breaks a tie. Settled alphabetically. */
+    const dueOf = e => e[1].reduce((n,a)=>n + payOwed(a), 0);
+    const upOf  = e => e[1].reduce((n,a)=>n + payUpcoming(a), 0);
+    const byDebt = (a,b)=>(dueOf(b)-dueOf(a)) || (upOf(b)-upOf(a));
+    g.outdoor.sort(byDebt);
+    g.office.sort(byDebt);
     g.settled.sort((a,b)=>String((memberById(a[0])||{}).name||'').localeCompare(String((memberById(b[0])||{}).name||'')));
     return g;
   }
   function renderPayTabs(){
     const el = $('#payTabs'); if(!el) return;
     const g = payGroups();
-    const dueOf = k => g[k].reduce((n,e)=>n + e[1].reduce((m,a)=>m + payDue(a), 0), 0);
+    /* owed today only — upcoming shoots are named inside the tab, not here */
+    const dueOf = k => g[k].reduce((n,e)=>n + e[1].reduce((m,a)=>m + payOwed(a), 0), 0);
+    const upOf  = k => g[k].reduce((n,e)=>n + e[1].reduce((m,a)=>m + payUpcoming(a), 0), 0);
     el.innerHTML = PAY_TABS.map(([k,l])=>{
       /* the badge is the MONEY for the two owing tabs and a headcount for
          settled — "3" tells you nothing useful when the question is how much */
       const badge = k === 'settled' ? String(g.settled.length) : (dueOf(k) ? inrShort(dueOf(k)) : '0');
-      return `<button type="button" data-ptab="${k}" class="${_payTab===k?'on':''}">${l}<b class="${
+      const tip = k !== 'settled' && upOf(k) > 0 ? ` title="${inr(dueOf(k))} due now · ${inr(upOf(k))} upcoming"` : '';
+      return `<button type="button" data-ptab="${k}"${tip} class="${_payTab===k?'on':''}">${l}<b class="${
         k!=='settled' && dueOf(k) ? 'late' : ''}">${badge}</b></button>`;
     }).join('');
   }
@@ -5548,22 +5589,40 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const byMember = Object.fromEntries(picked);
     /* the ✓/○ prefixes only explained themselves in title tooltips, which a
        touch screen never shows — one visible line instead */
+    /* the tab's two figures, side by side, whenever there is anything still
+       to come: what is owed today, and what has only been agreed */
+    const tabDue = picked.reduce((n,e)=>n + e[1].reduce((m,a)=>m + payOwed(a), 0), 0);
+    const tabUp  = picked.reduce((n,e)=>n + e[1].reduce((m,a)=>m + payUpcoming(a), 0), 0);
     el.innerHTML = '<p class="sub" style="margin:0 0 .5rem">✓ marked completed by the member · ○ shot done, not marked yet</p>'
+      + (tabUp > 0 ? `<p class="sub pm-sum">Due now <b>${inr(tabDue)}</b> · Upcoming <b>${inr(tabUp)}</b> — a shoot's fee falls due the day after the event.</p>` : '')
       + Object.entries(byMember).map(([mid, list])=>{
       const m = memberById(mid);
       const name = (m && m.name) || list[0].memberName || '—';
-      const due = list.reduce((s,a)=>s + payDue(a), 0);
+      const due = list.reduce((s,a)=>s + payOwed(a), 0);
+      const upc = list.reduce((s,a)=>s + payUpcoming(a), 0);
       const got = list.reduce((s,a)=>s + payGot(a), 0);
       const open = _payOpen.has(mid);
       /* one handover, one entry point — the shoots it covers are worked out
-         for you rather than opened one at a time */
-      const nDue = list.filter(a=>payDue(a) > 0).length;
-      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b>${due > 0 ? inr(due) + ' due' : (got > 0 ? 'all paid ✓' : 'nothing due')}</b>${
+         for you rather than opened one at a time. Only what is owed today:
+         Settle all never reaches a shoot that has not happened. */
+      const nDue = list.filter(a=>payOwed(a) > 0).length;
+      /* by the date, not the amount: a future shoot with no fee set yet belongs here too */
+      const isLater = a => !payEarned(a) && payState(a) !== 'paid';
+      const later = list.filter(isLater)
+        .sort((a,b)=>String(a.date||'') < String(b.date||'') ? -1 : 1);   /* soonest first */
+      const head = `<div class="grp tog ${open?'':'closed'}" data-pmgrp="${esc(mid)}" role="button" tabindex="0" aria-expanded="${open}"><span class="car">▾</span>${esc(name)}<b${due > 0 || !(upc > 0) ? '' : ' class="upc"'}>${
+        due > 0 ? inr(due) + ' due' : upc > 0 ? inr(upc) + ' upcoming' : (got > 0 ? 'all paid ✓' : 'nothing due')}</b>${
         due > 0 ? `<button class="btn btn--sm btn--ghost pmall" type="button" data-pmall="${esc(mid)}" title="Settle ${inr(due)} across ${nDue} shoot${nDue===1?'':'s'}">Settle all</button>` : ''}</div>`;
-      if(!open) return head;
-      const rows = [...list].sort((a,b)=>a.date<b.date?1:-1).map(a=>{
+      /* closed, a member owed money AND booked ahead still says both — its own
+         line, because the header row has no room to spare at phone width */
+      if(!open) return head + (due > 0 && upc > 0
+        ? `<p class="pm-up">＋ ${inr(upc)} upcoming · ${later.length} shoot${later.length===1?'':'s'} not due yet</p>` : '');
+      const rowHTML = a=>{
         const p = a.pay||{};
         const st = payState(a);
+        /* a shoot still to come: the button keeps working — the owner may pay
+           early if they ever choose to — it just stops reading as a debt */
+        const early = payUpcoming(a) > 0;
         const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
         /* members sign their own work off from the crew page */
         const scissors = a.workDone
@@ -5576,11 +5635,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button type="button" class="amt2" data-feeedit="${esc(a.id)}" title="Tap to change this event's fee">${inr(payFee(a))}${st === 'part' ? `<i class="got2">${inr(payGot(a))} paid</i>` : ''}</button>
           ${st === 'paid'
             ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to see or correct this payment">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
+            : early
+              ? `<button class="btn btn--sm btn--ghost early2" data-cpay="${a.id}" title="Not due yet — this shoot has not happened. Tap to pay early anyway.">Pay early</button>`
             : st === 'part'
               ? `<button class="btn btn--sm btn--ghost part2" data-cpay="${a.id}">${inr(payDue(a))} left</button>`
               : `<button class="btn btn--sm btn--ghost" data-cpay="${a.id}">Pay</button>`}
         </div>`;
-      }).join('');
+      };
+      /* owed and paid rows first, newest on top as before; the shoots still to
+         come sit under their own heading with their own total, so nothing in
+         the list above it is anything but money that has fallen due or left */
+      const rows = list.filter(a=>!isLater(a)).sort((a,b)=>a.date<b.date?1:-1).map(rowHTML).join('')
+        + (later.length
+            ? `<div class="pm-uph"><span>Upcoming — not due yet</span><b>${inr(upc)}</b></div>` + later.map(rowHTML).join('')
+            : '');
       return head + rows;
     }).join('');
   }
@@ -5701,9 +5769,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rq = reqCount();
     $('#segCrewB').hidden = !rq;
     $('#segCrewB').textContent = rq || '';
-    const due = ASGS.reduce((s,a)=>s + payDue(a), 0);
+    /* owed today — a shoot that has not happened yet is not a debt to chase */
+    const due = ASGS.reduce((s,a)=>s + payOwed(a), 0);
+    const dueUp = ASGS.reduce((s,a)=>s + payUpcoming(a), 0);
     $('#segPayB').hidden = !(due > 0);
     $('#segPayB').textContent = due > 0 ? inrShort(due) : '';
+    $('#segPayB').title = due > 0 ? inr(due) + ' crew pay due' + (dueUp > 0 ? ' · ' + inr(dueUp) + ' upcoming' : '') : '';
     /* the editing badge is written by renderEditTab, which knows what is
        waiting on the owner — call it so the segment carries its count even
        while another section is on screen */
@@ -7637,8 +7708,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* set instead of _cpId when the sheet is settling a member's whole ledger */
   let _cpAllMember = null;
   /* everything still owed to one member, oldest shoot first — the order money
-     is actually handed over in, and the order Settle all allocates it */
-  const dueRowsFor = mid => ASGS.filter(a=>a.memberId === mid && payDue(a) > 0)
+     is actually handed over in, and the order Settle all allocates it.
+     OWED, not merely unpaid: a shoot that has not happened yet is never in
+     this list, so a bulk settle cannot pay for an event still to come (that
+     stays possible one shoot at a time, from its own "Pay early" button). */
+  const dueRowsFor = mid => ASGS.filter(a=>a.memberId === mid && payOwed(a) > 0)
     .sort((a,b)=>String(a.date||'') < String(b.date||'') ? -1 : 1);
 
   /* Settling a season meant opening one sheet per shoot: six sheets, six
@@ -7662,7 +7736,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cpQuick').innerHTML = quick.map(([l,v])=>`<button type="button" data-cqa="${v}">${l} · ${inr(v)}</button>`).join('');
     $('#cpDate').value = todayISO();
     $('#cpHist').innerHTML = '<b style="color:var(--gold-b)">Outstanding — paid off in this order</b>'
-      + rows.map(a=>`<div><span>${esc(stepDate(a.date)||a.date||'no date')} · ${esc(a.eventTitle||'Event')}</span><span>${inr(payDue(a))}</span></div>`).join('');
+      + rows.map(a=>`<div><span>${esc(stepDate(a.date)||a.date||'no date')} · ${esc(a.eventTitle||'Event')}</span><span>${inr(payDue(a))}</span></div>`).join('')
+      /* say what was left out, or a member with a full diary looks short-changed */
+      + (()=>{
+          const up = ASGS.filter(a=>a.memberId === mid && payUpcoming(a) > 0);
+          const upSum = up.reduce((s,a)=>s + payUpcoming(a), 0);
+          return upSum > 0
+            ? `<p class="cp-upnote">Not included: ${inr(upSum)} for ${up.length} upcoming shoot${up.length===1?'':'s'} — due the day after each event.</p>`
+            : '';
+        })();
     const wasOpen = $('#cpModal').classList.contains('open');
     $('#cpModal').classList.add('open'); $('#cpBackdrop').classList.add('open');
     setTimeout(()=>$('#cpAmt').focus(), 80);
@@ -9994,7 +10076,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* crew pay is settled in instalments, so the money that left is summed
        from the instalments themselves — each carries its own date, which is
        the only thing a financial year can be cut on */
-    const crewDue     = ASGS.reduce((s,a)=>s + payDue(a), 0);
+    const crewDue     = ASGS.reduce((s,a)=>s + payOwed(a), 0);
+    /* agreed for shoots still to come — not owed until the day after each */
+    const crewUp      = ASGS.reduce((s,a)=>s + payUpcoming(a), 0);
     const crewPaidAll = ASGS.reduce((s,a)=>s + payGot(a), 0);
     const crewPaidFy  = ASGS.reduce((s,a)=>s + payEvents(a).reduce((n,p)=>
       n + ((/^\d{4}-\d{2}-\d{2}$/.test(p.date) && fyStartOf(p.date) === y) ? p.amount : 0), 0), 0);
@@ -10058,7 +10142,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="stat" title="${inr(outstanding)}"><b>${inrShort(outstanding)}</b><span>to collect</span></div>
         <div class="stat" title="${inr(bookedVal)}"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
         <div class="stat" title="${inr(allGot)}"><b>${inrShort(allGot)}</b><span>received · all time</span></div>
-        <div class="stat money out" title="${_asgsLoaded ? inr(crewDue) : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span></div>
+        <div class="stat money out" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>
       </div>
       <div class="finyr">
         <button data-fy="-1" type="button" aria-label="Previous financial year">‹</button>
@@ -10068,7 +10152,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="finsplit"><span>💳 Online ${money(online)}</span><span>💵 Cash ${money(cash)}</span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'} this FY</span></div>
       <div class="finsplit out"><span>🎬 Crew paid ${money(crewPaidFy)}</span><span>💸 Expenses ${money(expFy)}</span><span>🔻 Total out ${money(outFy)}</span><span>💼 In hand ${money(got - outFy)}</span></div>
       ${catRow ? `<div class="finsplit out cats">${catRow}</div>` : ''}
-      <div class="finsplit"><span>⏳ Crew still owed ${money(crewDue)}</span>${expAll !== expFy ? `<span>🧾 ${inrShort(expAll)} spent all time</span>` : ''}</div>
+      <div class="finsplit"><span>⏳ Crew still owed ${money(crewDue)}</span>${crewUp > 0 ? `<span>🗓 Crew upcoming ${inr(crewUp)}</span>` : ''}${expAll !== expFy ? `<span>🧾 ${inrShort(expAll)} spent all time</span>` : ''}</div>
       ${overpaid > 0 ? `<div class="finsplit out"><span>↩️ To refund clients ${money(overpaid)}</span><span>${overpaidJobs.length} booking${overpaidJobs.length===1?'':'s'} paid above the billed figure</span></div>
       <div class="finnote">Money you are holding rather than money you have earned — a package reduced after the client had paid. "Left to collect" stops at zero, so it cannot show this.</div>` : ''}
       ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — the expense figures above are incomplete. Close and reopen this sheet to retry.</div>` : ''}
