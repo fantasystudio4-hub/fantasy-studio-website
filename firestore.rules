@@ -257,16 +257,18 @@ service cloud.firestore {
       function reqField(k) {
         return request.resource.data.get(k, '');
       }
-      // one items entry: exactly { service, qty }, both typed and capped
+      // one items entry: exactly { service, qty }, both typed and capped.
+      // Read with get(): `service` is a keyword in the rules language, so
+      // i.service does not compile.
       function reqItemOk(i) {
         return i is map
           && i.keys().hasOnly(['service','qty'])
-          && i.service is string
-          && i.service.size() > 0
-          && i.service.size() <= 80
-          && i.qty is int
-          && i.qty >= 1
-          && i.qty <= 10;
+          && i.get('service', null) is string
+          && i.get('service', '').size() > 0
+          && i.get('service', '').size() <= 80
+          && i.get('qty', null) is int
+          && i.get('qty', 0) >= 1
+          && i.get('qty', 0) <= 10;
       }
       // entry n of list l, if there is one — a shorter list passes
       function reqItemAt(l, n) {
