@@ -77,7 +77,9 @@ document.addEventListener('keydown', e=>{
   /* the dialog is the only thing on screen while it is open — keep Tab inside
      it so the next Enter cannot land on a button behind the scrim */
   if(e.key === 'Tab'){
-    const f = [$('#confirmNo'), $('#confirmYes')];
+    /* a body may carry a field of its own (the note on Decline a request) —
+       it joins the loop ahead of the two buttons */
+    const f = [...$('#confirmText').querySelectorAll('textarea,input,select'), $('#confirmNo'), $('#confirmYes')];
     const i = f.indexOf(document.activeElement);
     e.preventDefault();
     f[(i + (e.shiftKey ? f.length-1 : 1)) % f.length].focus();
@@ -291,7 +293,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
           collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField,
-          query, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, arrayUnion, increment, getDocsFromServer } =
+          query, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, writeBatch, arrayUnion, increment, getDocsFromServer } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
@@ -551,6 +553,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user && _asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
     if(!user && _reqsUnsub){ try{ _reqsUnsub(); }catch(e){} _reqsUnsub = null; }
     if(!user && _studiosUnsub){ try{ _studiosUnsub(); }catch(e){} _studiosUnsub = null; }
+    if(!user) stopStudioReqs();
     if(!user) stopProfiles();
     if(!user) stopAvailability();
 
@@ -576,6 +579,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('Admin lock is not configured — any signed-in account can open this panel. See ADMIN_EMAILS in admin/index.html.');
       }
       loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
+      loadStudioReqs();   /* booking requests from the partner page — the B2B tab's badge and inbox */
       loadProfiles();   /* photos + details people added in the app, and account deletions */
       loadAvailability();   /* config/availability (created if missing) + the month the calendar shows */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
@@ -3552,6 +3556,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(what === 'pkgs'){ loadPkgs(); }
     else if(what === 'team'){ loadTeam(); }
     else if(what === 'studios'){ loadStudios(); }
+    else if(what === 'sreqs'){ loadStudioReqs(); }
     else if(what === 'leads'){ loadLeads(); }
     else if(what === 'ejobs'){ loadEJobs(); }
     else if(what === 'profiles'){ loadProfiles(); }
@@ -8501,8 +8506,445 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ _studiosErr = 'Could not load studios (' + (err.code||err.message) + ')'; renderStudioList(); }
   }
 
+  /* ============================================================
+     B2B — booking requests from the partner page (1 Oct 2026).
+     A partner studio asks for a date on /studio/; the request lands
+     here as studioRequests/{id} = { studioId, phone10, studioName,
+     date, slot, title, venue, endClientName, items:[{service, qty}],
+     notes, status:'new', createdAt }. The owner answers it:
+       Accept  → a DRAFT studio job is created, prefilled at that
+                 studio's rate card, for the owner to price and mark
+                 Booked; the request becomes { status:'accepted',
+                 pkgId, answeredAt }
+       Decline → { status:'declined', adminNote, answeredAt }
+     and a Cloud Function pushes the answer to the partner.
+     Every field on a request was typed by the partner: nothing from
+     it reaches the page unescaped, and nothing is trusted for money —
+     rates come from the studio's own card in this panel, never from
+     the request. (Named SREQS: REQS is the crew join requests.)
+     ============================================================ */
+  let SREQS = [];
+  let _sreqsUnsub = null, _sreqsLoaded = false, _sreqsErr = '';
+  /* the request being answered right now — its buttons (and every other
+     request's) stand down until the write settles, so a double tap cannot
+     open two draft jobs for one request */
+  let _sreqBusy = '';
+  let _sreqAnsOpen = false;   /* the Answered list starts collapsed */
+  const SREQS_CAP = 300, SREQ_ANS_SHOWN = 20;
+  const sreqStatus = r => (r && (r.status === 'accepted' || r.status === 'declined')) ? r.status : 'new';
+  const sreqText = (v, cap) => typeof v === 'string' ? v.trim().slice(0, cap) : '';
+  const sreqById = id => SREQS.find(v=>v.id === id) || null;
+  /* one of the three, or '' — never a lookup on whatever string arrived */
+  const sreqSlot = r => ['morning','evening','full'].includes(r && r.slot) ? r.slot : '';
+  /* stands in for a Firestore Timestamp on a local copy until the snapshot
+     brings the real one — the panel only ever calls these two on it */
+  const sreqNow = () => { const d = new Date(); return { toDate: () => d, toMillis: () => d.getTime() }; };
+  /* A 'YYYY-MM-DD' that is a real calendar day. The shape alone lets
+     "2026-02-31" through, and Date quietly rolls it to 3 March — so it has to
+     come back unchanged from Date. The rules only check the shape; a forged
+     day must not price, place or accept as the day after it. */
+  const sreqISO = d => {
+    if(!ISO_RE.test(d||'')) return false;
+    const t = new Date(d + 'T00:00:00Z');
+    return !isNaN(t) && t.toISOString().slice(0, 10) === d;
+  };
+  /* "Wed 14 Oct 2026" — the panel's written date with its weekday in front
+     (en-IN on its own prints "Wed, 14 Oct, 2026") */
+  const sreqDay = d => sreqISO(d)
+    ? new Date(d + 'T00:00').toLocaleDateString('en-IN', { weekday:'short' }) + ' ' + dmy(d)
+    : 'No date';
+
+  function loadStudioReqs(){
+    if(DEMO) return;   /* the fixtures own the list; a listener would overwrite them */
+    if(_sreqsUnsub){ renderStuReqs(); return; }
+    _sreqsErr = '';
+    try{
+      /* includeMetadataChanges — see the studios listener: without it an
+         unchanged collection never raises a server snapshot. A snapshot whose
+         documents did not change redraws nothing. */
+      let first = true;
+      _sreqsUnsub = onSnapshot(query(collection(db,'studioRequests'), orderBy('createdAt','desc'), limit(SREQS_CAP)),
+        { includeMetadataChanges: true }, snap=>{
+        if(!first && !snap.docChanges().length) return;
+        first = false;
+        /* 'estimate': a request answered a moment ago has answeredAt still
+           pending — as null it would sort to the bottom of Answered */
+        SREQS = snap.docs.map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
+        warnIfCapped('booking requests', snap.size, SREQS_CAP);
+        _sreqsLoaded = true; _sreqsErr = '';
+        renderStuReqs();
+      }, err=>{
+        try{ if(_sreqsUnsub) _sreqsUnsub(); }catch(e){} _sreqsUnsub = null;
+        _sreqsErr = 'Could not load booking requests (' + (err.code||err.message) + ')'
+          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : '');
+        renderStuReqs();
+      });
+    }catch(err){ _sreqsErr = 'Could not load booking requests (' + (err.code||err.message) + ')'; renderStuReqs(); }
+  }
+  function stopStudioReqs(){
+    if(_sreqsUnsub){ try{ _sreqsUnsub(); }catch(e){} _sreqsUnsub = null; }
+    SREQS = []; _sreqsLoaded = false; _sreqsErr = ''; _sreqBusy = '';
+    renderStuReqs();   /* clears the badge with the list */
+  }
+
+  /* The request's services, priced at that studio's rate card: the lines the
+     row shows as an estimate and exactly the items the draft job is created
+     with. Clamped the way the rules clamp them (12 lines, qty 1-10, 80
+     characters) — the rules are the gate, this is the belt. An own-property
+     test, so a service called "constructor" reads as no rate rather than as
+     whatever Object.prototype holds. */
+  function sreqLines(r, stu){
+    const card = (stu && stu.rateCard && typeof stu.rateCard === 'object') ? stu.rateCard : {};
+    return (Array.isArray(r.items) ? r.items : []).slice(0, 12).map(it=>{
+      const service = sreqText(it && it.service, 80);
+      const qty = Math.min(10, Math.max(1, Math.round(Number(it && it.qty)) || 1));
+      const has = service && Object.prototype.hasOwnProperty.call(card, service);
+      return { service, qty, rate: has ? Math.max(0, Number(card[service]) || 0) : 0 };
+    /* '__albumPerSheet' is the rate card's album price, not a service — the
+       partner page never offers it, and a forged line must not become one */
+    }).filter(it=>it.service && it.service !== '__albumPerSheet');
+  }
+  /* How full that half of the date already is, from the calendar's own
+     events and counted the way the public availability is: booked or
+     delivered packages and booked leads, a full-day or untimed event
+     counting toward both halves. `quoted` is what is out but not confirmed. */
+  function sreqLoad(r){
+    const out = { valid: sreqISO(r.date), n:0, quoted:0, full:false, blocked:false, blockedWhat:'', past:false };
+    if(!out.valid) return out;
+    const want = r.slot === 'morning' ? ['m'] : r.slot === 'evening' ? ['e'] : ['m','e'];
+    const c = { m:0, e:0 };
+    calEvents().forEach(e=>{
+      if(e.date !== r.date) return;
+      const m = e.slot !== 'evening', ev = e.slot !== 'morning';
+      if(!((m && want.includes('m')) || (ev && want.includes('e')))) return;
+      const firm = e.kind === 'pkg' ? (e.status === 'booked' || e.status === 'delivered') : e.status === 'lead';
+      if(!firm){ if(e.kind === 'pkg' && (e.status === 'sent' || e.status === 'unconfirmed')) out.quoted++; return; }
+      out.n++;
+      if(m) c.m++;
+      if(ev) c.e++;
+    });
+    out.full = want.some(h=>c[h] >= availFull());
+    const shut = want.filter(h=>availOverride(r.date, h) === 'r');
+    out.blocked = shut.length > 0;
+    /* a full-day request with one half blocked names the half */
+    out.blockedWhat = want.length === 1 || shut.length === 2 ? 'it' : shut[0] === 'm' ? 'the morning' : 'the evening';
+    out.past = r.date < todayISO();
+    return out;
+  }
+  const sreqHalf = r => r.slot === 'morning' ? 'that morning' : r.slot === 'evening' ? 'that evening' : 'that day';
+  function sreqLoadLine(r, load){
+    if(!load.valid || !sreqISO(r.date)) return { st:'r', text:'This request has no valid date' };
+    const half = sreqHalf(r);
+    const bits = [];
+    if(load.past) bits.push('This date has passed');
+    bits.push(load.n ? `${load.n} event${load.n===1?'':'s'} already ${half}${load.full ? ' — full' : ''}`
+                     : `Nothing booked ${half} yet`);
+    if(load.blocked) bits.push(`you blocked ${load.blockedWhat} on the calendar`);
+    if(load.quoted) bits.push(`${load.quoted} more quoted`);
+    return { st: (load.past || load.full || load.blocked) ? 'r' : load.n ? 'y' : 'free', text: bits.join(' · ') };
+  }
+
+  function sreqCardHTML(r){
+    const stu = studioById(r.studioId);
+    const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'Unknown studio';
+    const items = sreqLines(r, stu);
+    const gross = itemsGross(items);
+    const unpriced = items.filter(it=>!it.rate).length;
+    const line = sreqLoadLine(r, sreqLoad(r));
+    const asked = pfDate(pfMs(r.createdAt));
+    const flag = !stu ? '<span class="chip-status no-dot" data-state="overdue">not in your list</span>'
+      : stu.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : '';
+    const fact = (k, v) => v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '';
+    const facts = fact('Venue', sreqText(r.venue, 160)) + fact('End client', sreqText(r.endClientName, 120))
+                + fact('Notes', sreqText(r.notes, 1000));
+    const dis = _sreqBusy ? ' disabled' : '';
+    const tel = stu && stu.phone ? telOf(stu.phone) : '';
+    return `
+    <article class="rq" data-rq="${esc(r.id)}">
+      <div class="rq-top">
+        <b class="rq-stu">${esc(name)}</b>${flag}
+        ${asked ? `<span class="rq-age">asked ${esc(asked)}</span>` : ''}
+      </div>
+      <div class="rq-what"><b>${esc(sreqDay(r.date))}</b>${slotTag(sreqSlot(r))}<span class="rq-fn">${esc(sreqText(r.title, 80) || 'Event')}</span></div>
+      ${facts ? `<dl class="rq-facts">${facts}</dl>` : ''}
+      <div class="rq-items">${items.length
+        ? items.map(it=>`<div><span>${esc(it.service)} <em>×${it.qty}</em></span><b${it.rate ? '' : ' class="none"'}>${it.rate ? esc(inr(it.qty * it.rate)) : 'no rate'}</b></div>`).join('')
+          + `<div class="tot"><span>Estimate at their rate card${unpriced ? ` <em>· ${unpriced} without a rate</em>` : ''}</span><b>${esc(inr(gross))}</b></div>`
+        : '<div class="nil">No coverage listed — price it in the draft job.</div>'}</div>
+      <div class="rq-busy" data-st="${line.st}"><i></i><span>${esc(line.text)}</span></div>
+      <div class="rq-acts">
+        <button type="button" class="btn btn--sm btn--primary" data-rqok="${esc(r.id)}"${dis}>${_sreqBusy === r.id ? 'Working…' : 'Accept → draft job'}</button>
+        <button type="button" class="btn btn--sm btn--danger" data-rqno="${esc(r.id)}"${dis}>Decline</button>
+        ${tel ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(tel)}" aria-label="Call ${esc(name)}" title="Call ${esc(name)}">📞</a>` : ''}
+      </div>
+    </article>`;
+  }
+  function sreqAnsHTML(r){
+    const st = sreqStatus(r);
+    const stu = studioById(r.studioId);
+    const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'Unknown studio';
+    const when = pfDate(pfMs(r.answeredAt));
+    const note = sreqText(r.adminNote, 300);
+    /* what the studio asked for stays readable once it is answered: their
+       notes (same cap as the waiting card) and the coverage they listed —
+       an accepted request's notes exist nowhere else, the draft job does not
+       carry them */
+    const asked = sreqText(r.notes, 1000);
+    const cover = sreqLines(r, stu).map(it=>`${it.service} ×${it.qty}`).join(' · ');
+    const pk = st === 'accepted' && r.pkgId ? PKGS.find(p=>p.id === r.pkgId && !p.deleted) : null;
+    const what = [sreqText(r.title, 80) || 'Event', sreqISO(r.date) ? dmy(r.date) : '', slotName(sreqSlot(r))].filter(Boolean).join(' · ');
+    const dis = _sreqBusy ? ' disabled' : '';
+    return `
+    <div class="rq-ans">
+      <span class="what"><b>${esc(name)}</b><span>${esc(what)}</span>${cover ? `<span class="rq-cov">${esc(cover)}</span>` : ''}${asked ? `<span class="rq-asked"><em>Notes</em> ${esc(asked)}</span>` : ''}${note ? `<span class="rq-said">“${esc(note)}”</span>` : ''}</span>
+      <span class="rq-ansbar">
+        <span class="chip-status" data-state="${st === 'accepted' ? 'confirmed' : 'overdue'}">${st}</span>
+        ${when ? `<span class="rq-when">${esc(when)}</span>` : ''}
+        ${pk ? `<button type="button" class="btn btn--sm btn--ghost" data-rqopen="${esc(pk.id)}">${esc(pk.quoteNo || 'Open job')}</button>` : ''}
+        <button type="button" class="btn btn--sm btn--danger" data-rqdel="${esc(r.id)}"${dis}>Delete</button>
+      </span>
+    </div>`;
+  }
+  /* The tab badge is set on every call — it has to be right from any tab.
+     The rows are drawn only while the B2B page is on screen (showTab redraws
+     on arrival): each one walks the calendar for its date. */
+  function renderStuReqs(){
+    const fresh = SREQS.filter(r=>sreqStatus(r) === 'new');
+    const badge = $('#b2bBadge');
+    if(badge){ badge.hidden = !fresh.length; badge.textContent = fresh.length || ''; }
+    const sec = $('#stuReqSec'), el = $('#stuReqs'); if(!sec || !el) return;
+    /* an error has to show too, or the one thing that explains an empty
+       inbox is hidden by the same rule that hides an empty inbox */
+    sec.hidden = !SREQS.length && !_sreqsErr;
+    /* nothing waiting: the box shrinks to its title and the Answered line */
+    sec.classList.toggle('rq-quiet', !fresh.length && !_sreqsErr);
+    const cnt = $('#stuReqCount');
+    if(cnt){ cnt.hidden = !fresh.length; cnt.textContent = fresh.length || ''; }
+    if(sec.hidden){ el.innerHTML = ''; return; }
+    if($('#calView').hidden) return;
+    const done = SREQS.filter(r=>sreqStatus(r) !== 'new').sort((a,b)=>pfMs(b.answeredAt) - pfMs(a.answeredAt));
+    const shown = done.slice(0, SREQ_ANS_SHOWN);
+    el.innerHTML = (_sreqsErr ? errBox(_sreqsErr, 'sreqs') : '')
+      + fresh.map(sreqCardHTML).join('')
+      + (done.length
+          ? `<div class="grp tog ${_sreqAnsOpen ? '' : 'closed'}" data-rqans role="button" tabindex="0" aria-expanded="${_sreqAnsOpen}"><span class="car">▾</span>Answered<b>${done.length}</b></div>`
+            + (_sreqAnsOpen
+                ? shown.map(sreqAnsHTML).join('')
+                  + (done.length > shown.length ? `<p class="rq-more">The latest ${shown.length} of ${done.length}.</p>` : '')
+                : '')
+          : '');
+  }
+
+  /* the editor, on the job a request became. Same steps every other "open
+     this package" link takes; the tab switch can be refused (dates banked on
+     the add-event form), and then the editor must not open on a hidden tab. */
+  function openSreqJob(pkgId){
+    const pk = PKGS.find(p=>p.id === pkgId && !p.deleted);
+    if(!pk){ toast('That job is not here any more — it may have been deleted'); return; }
+    if(!canLeaveEditor()) return;
+    $('#tabPkgs').click();
+    if($('#pkgView').hidden) return;
+    openPkgEdit(pk);
+  }
+
+  async function acceptStuReq(id){
+    const r = sreqById(id);
+    if(!r || sreqStatus(r) !== 'new' || _sreqBusy) return;
+    const stu = studioById(r.studioId);
+    if(!stu){ toast('Cannot accept — this studio is not in your Partner studios list. Add the studio first, or decline the request.'); return; }
+    if(stu.active === false){ toast(`Cannot accept — ${stu.name || 'this studio'} is marked inactive. Reactivate the studio first, or decline the request.`); return; }
+    if(!sreqISO(r.date)){ toast('Cannot accept — this request has no valid date. Decline it and ask them to send it again.'); return; }
+    _sreqBusy = id; renderStuReqs();
+    try{
+      /* A red half may still be asked for — the partner was warned, and the
+         owner decides. Say what is already there before the studio is told
+         "accepted", the same check Booked runs for a heavy day. */
+      const load = sreqLoad(r);
+      if((load.past || load.full || load.blocked) && !await confirmDialog({
+        title: load.past ? 'This date has passed' : load.blocked ? 'You blocked this date' : 'Heavy day',
+        body: `<p>${esc(sreqLoadLine(r, load).text)}.</p><p>Accepting tells <b>${esc(stu.name || 'the studio')}</b> the request went through.</p>`,
+        confirmText:'Accept anyway', danger:false })) return;
+      /* the draft opens in the editor — whatever is in there now goes first */
+      if(!canLeaveEditor()) return;
+      /* the confirm above was open for a while: the studio may have withdrawn
+         the request, or another device answered it */
+      const live = sreqById(id);
+      if(!live || sreqStatus(live) !== 'new'){ toast('That request is no longer waiting — it was answered or withdrawn'); return; }
+      const items = sreqLines(r, stu);
+      const gross = itemsGross(items);
+      const d = {
+        clientName: stu.name || 'Studio',
+        careOf: '',
+        clientPhone: '',
+        clientPhoneFull: '',
+        quoteDate: todayISO(),
+        events: [{ title: sreqText(r.title, 80) || 'Event', date: r.date, slot: sreqSlot(r),
+                   venue: sreqText(r.venue, 160), items }],
+        album: { sheets:0, perSheet:0, price:0 },
+        addons: [],
+        pdfTerms: [],
+        totals: { gross, discount:0, finalPrice:gross, advance:0, balance:gross },
+        clientType:'studio', studioId: stu.id, studioName: stu.name || 'Studio',
+        whiteLabel: false, endClientName: sreqText(r.endClientName, 120),
+        requestId: r.id
+      };
+      if(DEMO){
+        const pk = { id: 'rq_' + r.id, ...d, quoteNo: nextQuoteNo(), status:'draft',
+                     createdAt: sreqNow(), updatedAt: sreqNow() };
+        PKGS.unshift(pk);
+        Object.assign(live, { status:'accepted', pkgId: pk.id, answeredAt: sreqNow() });
+        toast('Draft job created — check the price, then mark it Booked (demo — not saved)');
+        renderPkgList(); renderCalendar(); renderStuReqs();
+        openSreqJob(pk.id);
+        return;
+      }
+      /* A job already made from this request (another device got there
+         first, or an older accept only half landed) is adopted, never made
+         twice. Otherwise the job and the answer go in ONE batch: both land or
+         neither does, so a request can never sit at 'new' beside its job.
+         The job's id comes from the request ('rq_' + its id): two devices
+         accepting at once write the SAME document, never two drafts — and
+         the rules let a request change only while it is 'new', so the later
+         batch is refused whole, its job write with it. */
+      const jobId = 'rq_' + r.id;
+      let pk = livePkgs().find(p=>p.id === jobId || p.requestId === r.id) || null;
+      const adopted = !!pk;
+      let res;
+      if(pk){
+        res = await settle(updateDoc(doc(db,'studioRequests',r.id),
+          { status:'accepted', pkgId: pk.id, answeredAt: serverTimestamp() }));
+      }else{
+        const quoteNo = await allocQuoteNo();
+        /* the quote number is a server round trip — another device may have
+           answered the request (or the studio withdrawn it) meanwhile */
+        const still = sreqById(id);
+        if(!still || sreqStatus(still) !== 'new'){
+          toast(still ? 'Already answered on another device — nothing was created here'
+                      : 'That request was withdrawn — nothing was created');
+          return;
+        }
+        const ref = doc(db,'packages',jobId);
+        const batch = writeBatch(db);
+        batch.set(ref, { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        batch.update(doc(db,'studioRequests',r.id), { status:'accepted', pkgId: ref.id, answeredAt: serverTimestamp() });
+        res = await settle(batch.commit());
+        if(res !== 'denied'){
+          /* the packages listener has usually delivered it already; this is
+             for the moment it has not, so the editor has something to open */
+          pk = PKGS.find(p=>p.id === ref.id);
+          if(!pk){ pk = { id: ref.id, ...d, quoteNo, status:'draft', createdAt: sreqNow(), updatedAt: sreqNow() }; PKGS.unshift(pk); }
+        }
+      }
+      if(res === 'denied'){
+        /* the usual cause now: another device answered it first, so the
+           rules refused this update (and the batch with it). Ask the server
+           which — and redraw from what it says, not from the stale copy. */
+        let now = null;
+        try{
+          const snap = await getDoc(doc(db,'studioRequests',r.id));
+          now = snap.exists() ? { id: snap.id, ...snap.data({ serverTimestamps:'estimate' }) } : false;
+        }catch(e){ now = null; }
+        if(now === false || (now && sreqStatus(now) !== 'new')){
+          if(now) SREQS = SREQS.map(v=>v.id === now.id ? now : v);
+          else SREQS = SREQS.filter(v=>v.id !== r.id);
+          toast(now ? 'Already answered on another device — nothing was created here'
+                    : 'That request was withdrawn — nothing was created');
+          loadPkgs();
+          return;
+        }
+        toast('NOT accepted — the server refused the write. '
+          + (adopted ? 'The request is still waiting' : 'Nothing was created')
+          + '; check your connection and sign-in, then try again.');
+        return;
+      }
+      const cur = sreqById(id);   /* a snapshot may have swapped the object while we waited */
+      if(cur) Object.assign(cur, { status:'accepted', pkgId: pk.id, answeredAt: cur.answeredAt || sreqNow() });
+      toast(res === 'queued'
+        ? 'Draft job saved offline — it will sync. Check the price, then mark it Booked'
+        : 'Draft job created — check the price, then mark it Booked');
+      loadPkgs();          /* the lists and the calendar pick the draft up */
+      renderStuReqs();
+      openSreqJob(pk.id);
+    }catch(err){ toast('Could not accept: ' + (err.code||err.message)); }
+    finally{ _sreqBusy = ''; renderStuReqs(); }
+  }
+
+  async function declineStuReq(id){
+    const r = sreqById(id);
+    if(!r || sreqStatus(r) !== 'new' || _sreqBusy) return;
+    const stu = studioById(r.studioId);
+    const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'This studio';
+    /* the note rides in the confirm sheet itself: one sheet, one decision.
+       Optional — the studio is told "declined" with or without it. */
+    const ok = await confirmDialog({
+      title:'Decline this request?',
+      body:`<b>${esc(name)}</b> asked for ${esc(sreqText(r.title, 80) || 'an event')} on ${esc(sreqDay(r.date))}${esc(slotSuffix(sreqSlot(r)))}. They are told it was declined.`
+         + `<label class="rq-note" for="rqDeclineNote">Note to the studio <em>(optional)</em></label>`
+         + `<textarea class="input" id="rqDeclineNote" rows="2" maxlength="300" placeholder="e.g. Fully booked that evening — the 15th is open"></textarea>`,
+      confirmText:'Decline' });
+    const box = $('#rqDeclineNote');
+    const adminNote = sreqText(box ? box.value : '', 300);
+    if(!ok || _sreqBusy) return;
+    /* a snapshot may have swapped the object, or answered it, while the sheet was up */
+    const cur = sreqById(id);
+    if(!cur || sreqStatus(cur) !== 'new'){ toast('That request is no longer waiting — it was answered or withdrawn'); return; }
+    _sreqBusy = id; renderStuReqs();
+    try{
+      if(DEMO){
+        Object.assign(cur, { status:'declined', adminNote, answeredAt: sreqNow() });
+        toast('Request declined (demo — not saved)');
+        return;
+      }
+      const res = await settle(updateDoc(doc(db,'studioRequests',id),
+        { status:'declined', adminNote, answeredAt: serverTimestamp() }));
+      const sm = settleMsg(res, 'Request declined — the studio is told', 'Declined offline — will sync');
+      toast(sm.msg);
+      if(sm.ok) Object.assign(cur, { status:'declined', adminNote, answeredAt: cur.answeredAt || sreqNow() });
+    }catch(err){ toast('Could not decline: ' + (err.code||err.message)); }
+    finally{ _sreqBusy = ''; renderStuReqs(); }
+  }
+
+  async function deleteStuReq(id){
+    const r = sreqById(id);
+    if(!r || _sreqBusy) return;
+    const stu = studioById(r.studioId);
+    const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'This studio';
+    if(!await confirmDialog({
+      title:'Delete this request?',
+      body:`<b>${esc(name)}</b> · ${esc(sreqText(r.title, 80) || 'Event')} — it leaves your list and the studio's page.`
+         + (sreqStatus(r) === 'accepted' ? ' The job made from it stays in Packages.' : ''),
+      confirmText:'Delete' })) return;
+    if(_sreqBusy) return;
+    _sreqBusy = id; renderStuReqs();
+    try{
+      if(DEMO){
+        SREQS = SREQS.filter(v=>v.id !== id);
+        toast('Request deleted (demo — not saved)');
+        return;
+      }
+      const sm = settleMsg(await settle(deleteDoc(doc(db,'studioRequests',id))), 'Request deleted', 'Deleted offline — will sync');
+      toast(sm.msg);
+      if(sm.ok) SREQS = SREQS.filter(v=>v.id !== id);
+    }catch(err){ toast('Could not delete: ' + (err.code||err.message)); }
+    finally{ _sreqBusy = ''; renderStuReqs(); }
+  }
+
+  on('#stuReqs', 'click', e=>{
+    if(e.target.closest('[data-retry]')) return;   /* the document-level retry handler takes it */
+    if(e.target.closest('[data-rqans]')){ _sreqAnsOpen = !_sreqAnsOpen; renderStuReqs(); return; }
+    const ok = e.target.closest('[data-rqok]');
+    if(ok){ acceptStuReq(ok.dataset.rqok); return; }
+    const no = e.target.closest('[data-rqno]');
+    if(no){ declineStuReq(no.dataset.rqno); return; }
+    const op = e.target.closest('[data-rqopen]');
+    if(op){ openSreqJob(op.dataset.rqopen); return; }
+    const del = e.target.closest('[data-rqdel]');
+    if(del){ deleteStuReq(del.dataset.rqdel); }
+  });
+
   function renderB2B(){
     if($('#calView').hidden) return;
+    renderStuReqs();
     renderB2BStats();
     renderStudioList();
     if(!$('#studioDetailView').hidden) renderStudioDetail();
@@ -11604,6 +12046,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         TEAM    = d.team.slice();
         ASGS    = d.assignments.slice();
         STUDIOS = d.studios.slice();
+        /* copies, not the module's own objects: Accept and Decline rewrite them in memory */
+        SREQS   = (d.studioRequests || []).map(r=>({ ...r }));
         EXPS    = d.expenses.slice();
         EJOBS   = (d.editingJobs || []).slice();
         REQS    = [];
@@ -11618,7 +12062,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* every "have we heard from the server yet" flag, or the panel paints
            skeletons and "nothing yet" over perfectly good fixtures */
         _leadsLoaded = _pkgsLoaded = _teamLoaded = _asgsLoaded = true;
-        _studiosLoaded = _expsLoaded = _ejLoaded = true;
+        _studiosLoaded = _expsLoaded = _ejLoaded = _sreqsLoaded = true;
         _leadsFresh = _pkgsFresh = _asgsFresh = true;
 
         $('#loginView').hidden = true;
@@ -11639,6 +12083,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */
+        renderStuReqs();            /* the B2B badge has to be right from any tab */
         renderCalendar();
         renderEditTab();
         /* Config is filled from CFG on load in the real app; the demo sets CFG

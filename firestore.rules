@@ -198,6 +198,128 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // booking requests from a partner studio (Oct 2026). The /studio/ portal
+    // adds one doc per request; it lands in the admin panel's B2B tab, where
+    // you Accept it (the panel then creates a DRAFT studio job and writes its
+    // id here as pkgId) or Decline it. A request is only ever a question: it
+    // books nothing and carries no price, and no other rule reads this
+    // collection, so nothing a partner writes here can open or change a job.
+    //
+    // create — the admin panel renders these docs and a Cloud Function
+    // pushes the answer to the phone10 on them, so each condition closes
+    // one way of abusing that:
+    //   · a verified phone, with phone10 pinned to it. phone10 is who the
+    //     answer is pushed to and what the read rule below matches on; left
+    //     free, one partner could file requests in another's name.
+    //   · the studio named must be the caller's own and still active —
+    //     proven by looking that studio doc up, the same check the packages
+    //     rule makes (both get() calls hit one doc, so Firestore dedupes
+    //     them to one read). Deactivating a partner in the admin panel
+    //     therefore stops its requests too.
+    //   · keys pinned to the twelve the form sends, status 'new', createdAt
+    //     the server's own time. So a partner cannot file a request that is
+    //     already 'accepted', attach a pkgId or an adminNote, or back-date
+    //     it (the panel sorts and dates the list by createdAt).
+    //   · every field typed and capped, for the same reason as leads: the
+    //     panel renders them. date is pinned to a real-looking YYYY-MM-DD
+    //     (20xx, month 01–12, day 01–31 — the panel still checks it is a
+    //     day that exists) and slot to the three values the calendar knows.
+    //     venue, endClientName and notes are '' when blank; a missing one
+    //     counts as blank.
+    //   · items: at most 12, and EACH one a { service, qty } map — service
+    //     a non-empty string of ≤ 80, qty a whole number 1–10 (the
+    //     builder's MAX_QTY). Rules have no loops, but they can index, so
+    //     reqItemAt(items, n) checks entry n when the list is long enough
+    //     and passes when it is not; calling it for 0…11 covers every
+    //     entry the 12-cap allows. Without this an entry could be any type
+    //     and size (a 1 MB string, a nested map) and the panel renders
+    //     them. The panel still treats each entry as untrusted when it
+    //     builds the draft job — and the price always comes from the rate
+    //     card held in the panel, never from anything written here.
+    //
+    // read — the portal queries  where('phone10','==', <verified last-10>)
+    // with no orderBy and sorts on the phone, so the == below is proven
+    // straight from that filter (a rule on a LIST must be provable from the
+    // query's own filters). Signed out, clientPhone10() is '__none__', which
+    // no request can carry.
+    //
+    // delete — a partner may cancel a request you have not answered yet
+    // (status still 'new'); once answered it is your record to keep or
+    // clear. update — only you: the answer (status, answeredAt, adminNote,
+    // pkgId) is yours alone, so a partner can never mark its own request
+    // accepted. And only while the request is still 'new': an answer is
+    // given once. If two of your devices answer the same request, the
+    // second one's write (a late Accept after a Decline, say) is refused
+    // whole instead of overwriting the first answer the partner was
+    // already pushed. Nothing else updates an answered request — the
+    // Answered list's Delete is a delete, still yours under isAdmin().
+    match /studioRequests/{reqId} {
+      function reqField(k) {
+        return request.resource.data.get(k, '');
+      }
+      // one items entry: exactly { service, qty }, both typed and capped
+      function reqItemOk(i) {
+        return i is map
+          && i.keys().hasOnly(['service','qty'])
+          && i.service is string
+          && i.service.size() > 0
+          && i.service.size() <= 80
+          && i.qty is int
+          && i.qty >= 1
+          && i.qty <= 10;
+      }
+      // entry n of list l, if there is one — a shorter list passes
+      function reqItemAt(l, n) {
+        return l.size() <= n || reqItemOk(l[n]);
+      }
+      allow create: if request.auth != null
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(
+             ['studioId','phone10','studioName','date','slot','title','venue',
+              'endClientName','items','notes','status','createdAt'])
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.studioId is string
+        && get(/databases/$(database)/documents/studios/$(request.resource.data.studioId))
+             .data.phone10 == clientPhone10()
+        && get(/databases/$(database)/documents/studios/$(request.resource.data.studioId))
+             .data.active == true
+        && request.resource.data.studioName is string
+        && request.resource.data.studioName.size() <= 120
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+        && request.resource.data.slot in ['morning', 'evening', 'full']
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 80
+        && reqField('venue') is string
+        && reqField('venue').size() <= 160
+        && reqField('endClientName') is string
+        && reqField('endClientName').size() <= 120
+        && reqField('notes') is string
+        && reqField('notes').size() <= 1000
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 12
+        && reqItemAt(request.resource.data.items, 0)
+        && reqItemAt(request.resource.data.items, 1)
+        && reqItemAt(request.resource.data.items, 2)
+        && reqItemAt(request.resource.data.items, 3)
+        && reqItemAt(request.resource.data.items, 4)
+        && reqItemAt(request.resource.data.items, 5)
+        && reqItemAt(request.resource.data.items, 6)
+        && reqItemAt(request.resource.data.items, 7)
+        && reqItemAt(request.resource.data.items, 8)
+        && reqItemAt(request.resource.data.items, 9)
+        && reqItemAt(request.resource.data.items, 10)
+        && reqItemAt(request.resource.data.items, 11);
+      allow read: if isAdmin() || resource.data.phone10 == clientPhone10();
+      allow delete: if isAdmin()
+        || (resource.data.phone10 == clientPhone10()
+            && resource.data.status == 'new');
+      allow update: if isAdmin() && resource.data.status == 'new';
+    }
+
     // studio spending — rent, gear, travel, crew salaries. Admin-only, like
     // every other money record. The default-deny match at the bottom already
     // covers this collection, so the panel works whether or not this block is

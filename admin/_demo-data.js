@@ -26,6 +26,8 @@
      · an inactive crew member and an inactive studio
      · two leads sharing one phone number (the duplicate-lead pill)
      · a quote sent 11 days ago (the follow-up list wants >= 3)
+     · two booking requests from a partner studio still waiting — one on an
+       evening that is already busy, one on a blocked date — and one declined
    ========================================================================== */
 
 const DAY = 864e5;
@@ -476,6 +478,40 @@ export const studios = [
   { id: 'st03', name: 'Frame & Co', ownerName: 'Sanjay Pillai', city: 'Bengaluru',
     phone: '+919885555666', phone10: '9885555666', active: false,
     gst: '', terms: '', notes: 'Stopped sending work after Mar 2026.', rateCard: {} },
+];
+
+/* -------------------------------------------------------- studioRequests
+   What a partner studio sends from "Request a booking" on the partner page;
+   the B2B tab's inbox. Two waiting, one already declined:
+     · rq01 lands on an evening that already holds two booked functions and
+       a booked lead, so the row's "how busy is it" line has a number to show
+     · rq02 asks for a FULL day whose evening the demo has blocked on the
+       calendar (the override ten days out — see the loader in app.js), with a
+       service that is not on the studio's rate card ("no rate"), a long
+       venue and long notes, and no end client
+     · rq03 was declined with a note, so the Answered list is not empty */
+export const studioRequests = [
+  { id: 'rq01', studioId: 'st01', phone10: '9848111222', studioName: 'Lumiere Weddings',
+    date: iso(13), slot: 'evening', title: 'Reception', venue: 'N Convention, Madhapur',
+    endClientName: 'Karthik & Meghana',
+    items: [{ service: 'Photography', qty: 2 }, { service: 'Cinematography', qty: 1 }],
+    notes: 'Couple entry at 7 pm sharp. One shooter on the stage side throughout.',
+    status: 'new', createdAt: ts(0) },
+  { id: 'rq02', studioId: 'st01', phone10: '9848111222', studioName: 'Lumiere Weddings',
+    date: iso(10), slot: 'full', title: 'Wedding — muhurtham and lunch reception',
+    venue: 'Sri Venkateswara Kalyana Mandapam, opposite the bus depot, Kukatpally Housing Board Colony',
+    endClientName: '',
+    items: [{ service: 'Cinematography', qty: 2 }, { service: 'Drone', qty: 1 }, { service: 'LED Wall', qty: 1 }],
+    notes: 'Muhurtham is at 5:42 am, so the crew has to be at the venue by 4:30. The family wants the '
+         + 'drone only for the baraat and the venue exteriors — no flying indoors. Raw footage on a hard '
+         + 'disk the same night if at all possible; our editor starts the next morning.',
+    status: 'new', createdAt: ts(1) },
+  { id: 'rq03', studioId: 'st02', phone10: '9701333444', studioName: 'Aperture Films',
+    date: iso(5), slot: 'morning', title: 'Nikah', venue: 'Falaknuma Palace',
+    endClientName: 'Zoya & Faraz',
+    items: [{ service: 'Photography', qty: 1 }], notes: '',
+    status: 'declined', adminNote: 'Both crews are out that morning — the evening is open if that helps.',
+    answeredAt: ts(2), createdAt: ts(4) },
 ];
 
 /* --------------------------------------------------------------- expenses */

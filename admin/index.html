@@ -115,7 +115,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="wrap" id="appView" hidden>
   <div class="tabs">
     <button id="tabHome" class="on"><i>🏠</i><span>Home</span></button>
-    <button id="tabCal"><i>🤝</i><span>B2B</span></button>
+    <button id="tabCal"><i>🤝</i><span>B2B</span><b class="badge" id="b2bBadge" hidden></b></button>
     <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
@@ -319,6 +319,15 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
        this is readable by clients, crew or the public site (see firestore.rules). -->
   <div id="calView" hidden>
     <div id="studioListView">
+      <!-- Booking requests a partner studio sent from the partner page
+           (studioRequests). First on the tab because it is the one thing here
+           that is waiting on the owner; the whole box stays hidden until there
+           is a request, an answered one, or a load error to report. -->
+      <div class="sec" id="stuReqSec" hidden>
+        <h3>📥 Booking requests<b class="rq-count" id="stuReqCount" hidden></b></h3>
+        <p class="sub">Sent from the partner page. Accept opens a draft job for you to price; the studio is told either way.</p>
+        <div id="stuReqs"></div>
+      </div>
       <!-- always on screen, the way every other list in the panel does it —
            it used to be revealed by a floating button that is now gone -->
       <div class="bar" id="stuSearchBar">

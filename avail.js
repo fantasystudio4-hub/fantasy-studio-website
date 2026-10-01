@@ -22,6 +22,8 @@
        sample: FS.isSample(user),       // true → built-in pattern, no reads
        mine: () => ['2026-10-12'],      // own event dates → gold ring
        onAsk: (iso, slot) => { … },     // 'm' | 'e'; null → no Ask button
+       askLabels: { m: '…', e: '…' },   // optional: the two buttons' wording
+                                        // (default 'Ask about the morning / evening')
        monthsAhead: 12,                 // this month .. +12
        heading: 'Studio availability'
      });
@@ -71,7 +73,8 @@ const SAMPLE = [
   [33, '', 'y'], [37, 'r', 'r'], [41, 'y', ''], [45, 'y', 'y'], [52, 'r', 'y'],
   [60, 'r', 'r'], [66, 'y', 'y'], [75, 'y', 'y'], [88, 'r', 'r'], [100, 'y', 'y'], [130, 'r', 'r'],
 ];
-function sampleDays(month){
+/* exported so a portal's own form can read the same sample its calendar paints */
+export function sampleDays(month){
   const t = new Date(); t.setHours(0, 0, 0, 0);
   const days = {};
   SAMPLE.forEach(([off, m, e]) => {
@@ -95,6 +98,11 @@ export function mountAvailability(host, opts = {}){
     sample: !!opts.sample,
     mine: typeof opts.mine === 'function' ? opts.mine : () => [],
     onAsk: typeof opts.onAsk === 'function' ? opts.onAsk : null,
+    /* the partner page asks with a request form, not WhatsApp, and says so */
+    askLabels: {
+      m: String((opts.askLabels && opts.askLabels.m) || 'Ask about the morning'),
+      e: String((opts.askLabels && opts.askLabels.e) || 'Ask about the evening'),
+    },
     monthsAhead: Number.isFinite(opts.monthsAhead) ? Math.max(0, Math.floor(opts.monthsAhead)) : 12,
     heading: opts.heading == null ? 'Studio availability' : String(opts.heading),
   };
@@ -204,8 +212,8 @@ export function mountAvailability(host, opts = {}){
        day the other half, a red day none */
     if(o.onAsk && (ms !== 'r' || es !== 'r')){
       h += '<span class="av-asks">';
-      if(ms !== 'r') h += `<button type="button" class="av-ask" data-ask="m">Ask about the morning</button>`;
-      if(es !== 'r') h += `<button type="button" class="av-ask" data-ask="e">Ask about the evening</button>`;
+      if(ms !== 'r') h += `<button type="button" class="av-ask" data-ask="m">${esc(o.askLabels.m)}</button>`;
+      if(es !== 'r') h += `<button type="button" class="av-ask" data-ask="e">${esc(o.askLabels.e)}</button>`;
       h += '</span>';
     }
     detail.innerHTML = h;

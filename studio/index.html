@@ -284,6 +284,102 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .payapp .go{color:var(--mut);font-size:.75rem}
 .vpa{display:flex;align-items:center;justify-content:space-between;gap:.6rem;color:var(--mut);font-size:.78rem;margin-top:.8rem}
 .vpa code{color:var(--text);font-family:ui-monospace,monospace;font-size:.8rem;overflow-wrap:anywhere}
+/* ---- request a booking (owner, 1 Oct 2026) ----------------------------
+   The button under the availability calendar (#reqCta), the form (a bottom
+   sheet on the Pay sheet's rules, .req-sheet) and the partner's own requests
+   above the jobs (#requestsBox). Fields are 16px so an iPhone never zooms
+   into one; every control keeps the 44px floor. */
+#reqCta{margin-top:1.1rem}
+#availBox:not(:empty) + #reqCta{margin-top:-.35rem}   /* directly under the calendar, inside its bottom margin */
+.reqbtn{display:block;width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#191307;font-weight:600;
+  border-radius:12px;padding:.75rem 1rem;cursor:pointer;min-height:48px}
+.reqbtn:active{filter:brightness(.92)}
+.reqbtn:disabled{opacity:.6;cursor:default}
+.reqcta-n{color:var(--mut);font-size:.78rem;margin-top:.45rem;text-align:center}
+/* closed, the sheet is out of the tab order as well as off the screen */
+.req-sheet{overscroll-behavior:contain;visibility:hidden;transition:transform .28s,visibility 0s linear .28s}
+.req-sheet.open{visibility:visible;transition:transform .28s,visibility 0s}
+.req-sheet:focus{outline:none}
+/* a keyboard is up (reqFit pins the sheet to what is left of the screen) */
+.req-sheet.kb{border-radius:0;transition:none;
+  padding-top:calc(.6rem + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))}
+.req-sheet.kb::before{display:none}
+.rq-top{display:flex;align-items:center;gap:.6rem;margin-bottom:.2rem}
+.rq-top h3{flex:1;min-width:0;margin:0}
+.rq-x{flex:none;width:44px;height:44px;border:0;background:none;color:var(--mut);font-size:1.05rem;cursor:pointer;border-radius:50%}
+.rq-x:active{background:rgba(255,255,255,.08);color:var(--gold-b)}
+.rq-f{margin-top:.85rem}
+.rq-l{display:block;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.3rem}
+.rq-l small{letter-spacing:.02em;text-transform:none;color:var(--mut);font-size:.72rem;margin-left:.3rem}
+.rq-in{display:block;width:100%;max-width:100%;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;
+  color:var(--text);padding:.55rem .7rem;font-family:var(--sans);font-size:16px;line-height:1.4;color-scheme:dark}
+.rq-in::placeholder{color:var(--mut);opacity:.7}
+.rq-in:focus{border-color:var(--gold-b)}
+.rq-in[aria-invalid="true"]{border-color:rgba(224,122,106,.75)}
+input.rq-in[type=date]{-webkit-appearance:none;appearance:none;text-align:left}
+input.rq-in[type=date]::-webkit-date-and-time-value{text-align:left}
+/* the empty date: a calendar glyph and "Choose a date" over the box (an
+   iPhone draws nothing there), gone once a date is set or while a browser
+   shows its own dd/mm/yyyy for typing. The min-height keeps an empty iPhone
+   date input as tall as the text fields. */
+.rq-date{position:relative}
+.rq-date input.rq-in{min-height:calc(1.4em + 1.1rem + 2px)}
+.rq-ph{display:none;position:absolute;top:0;bottom:0;left:calc(.7rem + 1px);right:2.6rem;align-items:center;gap:.5rem;
+  pointer-events:none;color:var(--mut);font-size:16px;white-space:nowrap;overflow:hidden}
+.rq-ph svg{flex:none;width:18px;height:18px;fill:var(--gold-b)}
+.rq-date input.rq-nodate:not(:focus) + .rq-ph{display:flex}
+.rq-date input.rq-nodate:not(:focus)::-webkit-datetime-edit{color:transparent}
+textarea.rq-in{resize:vertical;min-height:84px}
+.rq-seg{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.rq-seg label{flex:1;min-width:0;position:relative}
+.rq-seg input{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.rq-seg span{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 .3rem;border-radius:9px;
+  font-size:.9rem;font-weight:600;color:var(--mut);text-align:center}
+.rq-seg input:checked + span{background:linear-gradient(135deg,var(--gold),var(--gold-b));color:var(--ink)}
+.rq-seg input:focus-visible + span{outline:2px solid var(--gold-b);outline-offset:2px}
+.rq-av{font-size:.8rem;margin-top:.45rem;color:var(--mut)}
+.rq-av:empty{display:none}
+.rq-av.r{color:#ec8f82}
+.rq-av.y{color:#E6BE5C}
+.rq-av.ok{color:var(--ok)}
+.rq-err{color:#f0b3a8;font-size:.8rem;margin-top:.3rem}
+.rq-cov{border:1px solid var(--line);border-radius:12px;background:var(--ink);overflow:hidden}
+.rq-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .45rem .3rem .8rem;border-bottom:1px dashed var(--line)}
+.rq-row:last-child{border-bottom:0}
+.rq-svc{flex:1;min-width:0;font-size:.9rem;line-height:1.3;overflow-wrap:anywhere}
+.rq-svc small{display:block;color:var(--mut);font-size:.72rem;font-variant-numeric:tabular-nums}
+.rq-row.on .rq-svc{color:var(--gold-b)}
+.rq-step{flex:none;display:flex;align-items:center}
+.rq-step button{width:44px;height:44px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--gold-b);
+  font-size:1.25rem;line-height:1;cursor:pointer}
+.rq-step button:active:not(:disabled){background:rgba(184,144,43,.16)}
+.rq-step button:disabled{opacity:.3;cursor:default}
+.rq-step b{min-width:2.1em;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.rq-none{padding:.8rem;color:var(--mut);font-size:.84rem}
+.rq-est{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-top:.65rem;font-size:.9rem}
+.rq-est b{color:var(--gold-b);font-size:1.05rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rq-est-n{color:var(--mut);font-size:.74rem;margin-top:.1rem}
+.rq-send{margin-top:1rem}
+.rq-wa{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:.35rem;font-size:.84rem;text-align:center}
+/* the partner's own requests, above the jobs */
+.rqr{padding:.75rem 1rem;border-bottom:1px dashed var(--line)}
+.rqr:last-child{border-bottom:0}
+.rqr-h{display:flex;align-items:flex-start;gap:.6rem}
+.rqr-t{flex:1;min-width:0}
+.rqr-t b{font-weight:500;overflow-wrap:anywhere}
+.rqr-t .evm{overflow-wrap:anywhere}
+.chip.pending{color:#e5b57f;border-color:rgba(229,181,127,.45)}
+.chip.accepted{color:var(--ok);border-color:rgba(76,175,125,.45)}
+.chip.declined{color:#cf8d85;border-color:rgba(207,141,133,.45)}
+.rqr-n{font-size:.84rem;margin-top:.4rem;overflow-wrap:anywhere}
+.rqr-n.ok{color:var(--ok)}
+.rqr-n.no{color:#e0b9b3}
+.rqr-acts{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.35rem}
+.rqr-acts .evm{flex:1;min-width:0;margin:0}
+.rqr-acts .mini{flex:none}
+.rqr-ask{margin-top:.5rem;font-size:.84rem;color:var(--mut)}
+.rqr-ask .rowbtns{margin-top:.45rem}
+.rqr-ask .rowbtns .mini:first-child{color:#f0b3a8;border-color:rgba(224,122,106,.55)}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
@@ -295,12 +391,12 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
    (#helloBox) stays on every tab. A browser matches none of this. */
 /* Crew | Partner: on the home tab (Jobs) only */
 html.fs-app[data-tab]:not([data-tab="jobs"]) #roleSw{display:none}
-html.fs-app[data-tab] #nextupBox,html.fs-app[data-tab] #schedBox,html.fs-app[data-tab] #availBox,
-html.fs-app[data-tab] #tilesBox,html.fs-app[data-tab] #jobsBox,
+html.fs-app[data-tab] #nextupBox,html.fs-app[data-tab] #schedBox,html.fs-app[data-tab] #availBox,html.fs-app[data-tab] #reqCta,
+html.fs-app[data-tab] #tilesBox,html.fs-app[data-tab] #requestsBox,html.fs-app[data-tab] #jobsBox,
 html.fs-app[data-tab] #ledgerBox,html.fs-app[data-tab] #ratesBox,
 html.fs-app[data-tab] #meWho,html.fs-app[data-tab] #helpBox,html.fs-app[data-tab] #meBox{display:none}
-html.fs-app[data-tab="jobs"] #tilesBox,html.fs-app[data-tab="jobs"] #jobsBox,
-html.fs-app[data-tab="schedule"] #nextupBox,html.fs-app[data-tab="schedule"] #schedBox,html.fs-app[data-tab="schedule"] #availBox,
+html.fs-app[data-tab="jobs"] #tilesBox,html.fs-app[data-tab="jobs"] #requestsBox,html.fs-app[data-tab="jobs"] #jobsBox,
+html.fs-app[data-tab="schedule"] #nextupBox,html.fs-app[data-tab="schedule"] #schedBox,html.fs-app[data-tab="schedule"] #availBox,html.fs-app[data-tab="schedule"] #reqCta,
 html.fs-app[data-tab="account"] #ledgerBox,html.fs-app[data-tab="account"] #ratesBox,
 html.fs-app[data-tab="me"] #meWho,html.fs-app[data-tab="me"] #helpBox,html.fs-app[data-tab="me"] #meBox{display:block}
 /* the toast rises above the bar instead of hiding behind it */
@@ -455,9 +551,18 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
          whose job (availSync mounts ../avail.js here with the jobs); first on
          the Schedule tab (owner, 1 Oct 2026) -->
     <div id="availBox"></div>
+    <!-- Request a booking (owner, 1 Oct 2026): directly under the calendar,
+         on the website too; opens #reqSheet (openReq) -->
+    <div id="reqCta">
+      <button class="reqbtn" type="button" id="reqOpen">Request a booking</button>
+      <p class="reqcta-n">Tell us the date and the coverage you need. A fully booked date can still be asked for.</p>
+    </div>
     <div id="nextupBox"></div>
     <div id="schedBox" class="fs-app-only"></div>
     <div id="tilesBox"></div>
+    <!-- this partner's booking requests and where each stands (renderRequests);
+         empty, and so not there at all, when there is nothing to show -->
+    <div id="requestsBox"></div>
     <div id="jobsBox"></div>
     <div id="ledgerBox"></div>
     <div id="ratesBox"></div>
@@ -510,6 +615,79 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
   <button class="mini" id="payClose" style="width:100%;margin-top:.8rem">Close</button>
 </div>
 
+<!-- Request a booking (owner, 1 Oct 2026): a bottom sheet on the Pay sheet's
+     pattern (backdrop, a history entry so Back closes it). openReq() fills
+     the coverage rows from the studio's own rate card; the request is one
+     studioRequests doc, answered in the admin panel's B2B tab. -->
+<div class="pay-back" id="reqBack"></div>
+<div class="pay-sheet req-sheet" id="reqSheet" role="dialog" aria-modal="true" aria-labelledby="reqTitle" tabindex="-1">
+  <div class="rq-top">
+    <h3 id="reqTitle">Request a booking</h3>
+    <button class="rq-x" type="button" id="reqClose" aria-label="Close">✕</button>
+  </div>
+  <form id="reqForm" novalidate autocomplete="off">
+    <div class="rq-f" id="reqStuF" hidden>
+      <label class="rq-l" for="reqStu">Studio</label>
+      <select class="rq-in" id="reqStu"></select>
+    </div>
+    <div class="rq-f">
+      <label class="rq-l" for="reqDate">Date</label>
+      <!-- an empty date input is a blank box on an iPhone: .rq-ph says what
+           goes in it until a date is set (reqDateCue) -->
+      <div class="rq-date">
+        <input class="rq-in rq-nodate" id="reqDate" type="date" aria-describedby="reqDateErr" />
+        <span class="rq-ph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2zM5 10v10h14V10H5z"/></svg>Choose a date</span>
+      </div>
+      <div class="rq-err" id="reqDateErr" role="alert" hidden></div>
+    </div>
+    <div class="rq-f">
+      <span class="rq-l" id="reqSlotL">Slot</span>
+      <div class="rq-seg" role="radiogroup" aria-labelledby="reqSlotL" aria-describedby="reqSlotErr">
+        <label><input type="radio" name="reqSlot" value="morning" /><span>Morning</span></label>
+        <label><input type="radio" name="reqSlot" value="evening" /><span>Evening</span></label>
+        <label><input type="radio" name="reqSlot" value="full" /><span>Full day</span></label>
+      </div>
+      <div class="rq-err" id="reqSlotErr" role="alert" hidden></div>
+      <!-- what Fantasy Studio's calendar says about that date and slot -->
+      <div class="rq-av" id="reqAvailNote" aria-live="polite"></div>
+    </div>
+    <div class="rq-f">
+      <label class="rq-l" for="reqFn">Function</label>
+      <input class="rq-in" id="reqFn" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Nikah" autocapitalize="words" enterkeyhint="next" aria-describedby="reqFnErr" />
+      <datalist id="reqFnList">
+        <option value="Manje"></option><option value="Sanchak"></option><option value="Mehndi"></option>
+        <option value="Haldi"></option><option value="Sangeet"></option><option value="Nikah"></option>
+        <option value="Wedding"></option><option value="Ruksati"></option><option value="Valima / Reception"></option>
+        <option value="Engagement"></option><option value="Birthday"></option>
+      </datalist>
+      <div class="rq-err" id="reqFnErr" role="alert" hidden></div>
+    </div>
+    <div class="rq-f">
+      <label class="rq-l" for="reqVenue">Venue</label>
+      <input class="rq-in" id="reqVenue" type="text" maxlength="160" placeholder="Hall or address" autocapitalize="words" enterkeyhint="next" />
+    </div>
+    <div class="rq-f">
+      <label class="rq-l" for="reqEnd">Your client's name <small>(optional)</small></label>
+      <input class="rq-in" id="reqEnd" type="text" maxlength="120" autocapitalize="words" enterkeyhint="done" />
+    </div>
+    <div class="rq-f">
+      <span class="rq-l" id="reqCovL">Coverage <small>at your agreed rates</small></span>
+      <div class="rq-cov" id="reqCov" role="group" aria-labelledby="reqCovL"></div>
+      <div class="rq-err" id="reqCovErr" role="alert" hidden></div>
+      <div class="rq-est"><span>Estimate</span><b id="reqEst" aria-live="polite">—</b></div>
+      <p class="rq-est-n">An estimate only, at your agreed rates. Fantasy Studio confirms the final price.</p>
+    </div>
+    <div class="rq-f">
+      <label class="rq-l" for="reqNotes">Notes <small>(optional)</small></label>
+      <textarea class="rq-in" id="reqNotes" rows="3" maxlength="1000" placeholder="Timings, special shots, anything we should know"></textarea>
+    </div>
+    <div class="err" id="reqErr" role="alert" hidden></div>
+    <button class="reqbtn rq-send" type="submit" id="reqSend">Send request</button>
+    <p class="note" id="reqSlow" style="margin-top:.5rem" hidden>Taking longer than usual. Your request sends as soon as the connection is back — you can close this.</p>
+    <a class="rq-wa" id="reqWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">or message us on WhatsApp</a>
+  </form>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="../firebase-config.js"></script>
@@ -539,11 +717,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
    fs-auth.js is the one session every page shares; the SDK functions come
    from the SAME URLs it imports, so they work with its auth and db. */
 let FS, onAuthStateChanged;
-let collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot;
+let collection, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, query, where, onSnapshot;
 try{
   FS = await import('../fs-auth.js');
   ({ onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ collection, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } =
+  ({ collection, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   $('#errMsg').textContent = 'Could not reach the sign-in service — check your connection and try again.';
@@ -791,6 +969,7 @@ function stopData(){
   clearTimeout(_noAccessT); _noAccessT = null;
   clearInterval(_cdT);
   availOff();   /* the calendar's month listener goes with the jobs' */
+  reqOff();     /* and the booking requests: their listener, the list, the form */
   /* the next session unlocks afresh, and a prompt still up for this one
      can no longer open (or cover) it */
   _unlocked = false; _locking = null; _lockSess++;
@@ -955,6 +1134,7 @@ function startDemo(){
   STUS = [d.studio];
   PKGMAP.set(d.studio.id, d.jobs); _pkgSeen.add(d.studio.id);
   _stuLoaded = true; _stuFresh = true;
+  _reqs = [demoRequest(d.studio)];   /* one pending booking request, in memory only */
   route();
   /* with no server round trip of its own, this draws before config/site has
      brought the UPI IDs, and renderJobs skips a redraw of unchanged jobs, so
@@ -1097,6 +1277,7 @@ function route(){
   render();
   /* only a number the server has confirmed as an active partner */
   registerPush();
+  reqSync();   /* its booking requests, live (never the sample account) */
 }
 
 /* Not a partner, but perhaps a client or crew on the same number: fs-auth's
@@ -1137,6 +1318,7 @@ function render(){
   renderHello();
   renderNextUp(jobs);
   renderTiles(jobs);
+  renderRequests();   /* booking requests, above the jobs */
   renderJobs(jobs);
   renderLedger(jobs);
   renderRates();
@@ -1263,25 +1445,15 @@ function renderSched(upcoming){
    it (avail.css); this page hands it the database, whether to paint the
    built-in sample instead (the ?demo view and the review number read
    nothing), this partner's own event dates to ring (mine, read again on
-   refresh) and what a tap on a free half does: ask Fantasy Studio about
-   that date on WhatsApp, the number the help block uses. Loaded lazily
-   once the jobs are on screen, so a module that fails to load costs the
-   page nothing but the calendar; one failed load is not retried until the
-   page loads again. */
-let _avail = null, _availGen = 0, _availBusy = false, _availSig = '', _availJobs = [], _availWa = '';
+   refresh) and what a tap on a free half does: open the booking request
+   form on that date and slot (reqFromCal; the buttons read "Request the
+   morning / evening" here, askLabels). Loaded lazily once the jobs are on
+   screen, so a module that fails to load costs the page nothing but the
+   calendar; one failed load is not retried until the page loads again. */
+let _avail = null, _availGen = 0, _availBusy = false, _availSig = '', _availJobs = [];
 const availMine = () => _availJobs.flatMap(x=>(x.events||[]).map(e=>e.date)).filter(isDate);
 /* 'Sat 12 Oct 2026' */
 const availWhen = iso => new Date(iso + 'T00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' }).replace(/,/g, '');
-function availAsk(iso, slot){
-  if(!isDate(iso)) return;
-  const text = 'Hi Fantasy Studio, is ' + availWhen(iso) + ' (' + (slot === 'm' ? 'morning' : 'evening') + ') available for a studio job?';
-  /* a new tab, as every WhatsApp link on this page opens (target=_blank),
-     opened in the tap itself: mobile Safari blocks a window.open from a
-     promise callback. The number is warmed at mount; until it lands the
-     brochure's number stands in, the same one the help block prints. */
-  const go = wa => { window.open(wa + '?text=' + encodeURIComponent(text), '_blank', 'noopener'); };
-  go(_availWa || 'https://wa.me/918686868803');
-}
 function availSync(jobs){
   _availJobs = jobs;
   const host = $('#availBox'); if(!host) return;
@@ -1294,7 +1466,6 @@ function availSync(jobs){
   if(_availBusy) return;
   _availBusy = true;
   const gen = _availGen;
-  FS.getContact().then(c=>{ _availWa = c.wa; }, ()=>{});
   import('../avail.js').then(m=>{
     if(gen !== _availGen || _avail) return;   /* signed out meanwhile */
     _availSig = availMine().join(',');
@@ -1302,7 +1473,8 @@ function availSync(jobs){
       db,
       sample: DEMO_VIEW || FS.isSample(auth.currentUser),
       mine: availMine,
-      onAsk: availAsk,
+      onAsk: reqFromCal,
+      askLabels: { m:'Request the morning', e:'Request the evening' },
       monthsAhead: 12,
       heading: 'Fantasy Studio availability',
     });
@@ -1876,6 +2048,563 @@ $('#vpaCopy').addEventListener('click', async ()=>{
   catch(e){ toast('Could not copy — long-press the ID instead'); }
 });
 
+/* ---------- request a booking (owner, 1 Oct 2026) ----------
+   A partner asks Fantasy Studio for a date from here: the button under the
+   availability calendar, or a day's "Request the morning / evening" on it.
+   The form is a bottom sheet like Pay (backdrop, a history entry, Back
+   closes it). Coverage is one stepper per service on the studio's own rate
+   card, and the estimate is those rates times the quantities, said to be an
+   estimate: the owner checks the price on the draft job an Accept makes.
+   A slot the calendar paints red can still be asked for; the form says so.
+
+   One doc per request, studioRequests/{id}, with exactly the twelve keys
+   the rules allow (hasOnly) and phone10 pinned to the verified number:
+     { studioId, phone10, studioName, date, slot, title, venue,
+       endClientName, items:[{ service, qty }], notes, status:'new', createdAt }
+   The admin panel answers it (status 'accepted' | 'declined', answeredAt,
+   adminNote, pkgId) and a push tells the partner. #requestsBox, above the
+   jobs, is this number's own requests, live: pending ones always (with
+   Cancel, a delete the rules allow only while it is still 'new'), answered
+   ones for 14 days. The query's one filter, phone10 ==, is the rule's own
+   condition; there is no orderBy, the list is sorted here.
+
+   The sample account (?demo, the review number) never reads or writes
+   Firestore: one pending request is seeded in memory (startDemo), a submit
+   joins it and a cancel removes it. */
+const REQ_MAX_QTY = 10, REQ_MAX_ITEMS = 12, REQ_KEEP_MS = 14 * 864e5;
+const reqSample = () => FS.isSample(auth.currentUser);
+let _reqs = [];                       // this number's requests (the listener's, or the sample's)
+let _reqUnsub = null, _reqErr = false;
+let _reqGen = 0;                      // bumped on sign-out: an answer for a session that has gone is dropped
+let _reqN = 1;                        // sample ids
+let _reqAsk = '';                     // the request whose Cancel is asking "sure?"
+let _reqSig = '';                     // last drawn list, so a no-op snapshot leaves the DOM alone
+let _reqRows = [];                    // [service, rate] for the studio in the form
+let _reqQty = new Map();              // service -> quantity picked
+let _reqStuId = '';                   // the studio the form is for
+let _reqBusy = false, _reqSlowT = null;
+let _reqOpener = null;                // what had the focus when the sheet opened
+let _reqAvSeq = 0;                    // the newest availability lookup wins
+const _reqAvail = new Map();          // 'YYYY-MM' -> Promise of that month's days (per sheet opening)
+
+const reqMs = t => typeof t === 'number' ? t
+  : (t && typeof t.toMillis === 'function') ? t.toMillis()
+  : (t && typeof t.seconds === 'number') ? t.seconds * 1000 : 0;
+const rateRows = s => Object.entries((s && s.rateCard && typeof s.rateCard === 'object') ? s.rateCard : {})
+  .filter(([k]) => k !== '__albumPerSheet' && k.length <= 80)
+  .sort((a,b)=>a[0].localeCompare(b[0]));
+const reqStu = () => STUS.find(s=>s.id === _reqStuId) || STUS[0] || null;
+const reqSlot = () => { const r = document.querySelector('#reqForm input[name="reqSlot"]:checked'); return r && SLOT_LABEL[r.value] ? r.value : ''; };
+const reqItems = () => _reqRows.map(([service]) => ({ service, qty: _reqQty.get(service) || 0 })).filter(it=>it.qty > 0);
+const reqOpen = () => $('#reqSheet').classList.contains('open');
+
+/* the sample account's one pending request (startDemo); every word invented */
+function demoRequest(studio){
+  const d = new Date(); d.setDate(d.getDate() + 27);
+  return { id:'sample-0', studioId: studio.id, phone10: studio.phone10, studioName: studio.name,
+    date: d.toLocaleDateString('en-CA'), slot:'evening', title:'Sangeet', venue:'Banquet Hall, Jubilee Hills',
+    endClientName:'Ayesha & Farhan',
+    items:[{ service:'Candid Photography', qty:1 }, { service:'Cinematography', qty:1 }],
+    notes:'', status:'new', createdAt: Date.now() - 2 * 3600000 };
+}
+
+/* ----- the list above the jobs ----- */
+function reqSync(retry){
+  if(reqSample() || !_phone10) return;
+  if(_reqUnsub && !(retry && _reqErr)) return;
+  if(_reqUnsub){ try{ _reqUnsub(); }catch(e){} _reqUnsub = null; }
+  _reqErr = false;
+  const gen = _reqGen;
+  try{
+    _reqUnsub = onSnapshot(query(collection(db,'studioRequests'), where('phone10','==',_phone10)),
+        { includeMetadataChanges: true }, snap=>{
+      if(gen !== _reqGen) return;
+      /* a request still on its way up has no server time yet: the estimate
+         keeps it at the top, and the pill says Sending */
+      _reqs = snap.docs.map(d=>({ ...d.data({ serverTimestamps:'estimate' }), id:d.id, _pending:d.metadata.hasPendingWrites }));
+      renderRequests();
+    }, ()=>{
+      /* the rules may not be published yet, or the line is down: no list,
+         and nothing said. A pull-to-refresh or the next request tries again. */
+      if(gen !== _reqGen) return;
+      _reqErr = true; _reqs = []; renderRequests();
+    });
+  }catch(e){ _reqErr = true; }
+}
+function reqVisible(){
+  const now = Date.now();
+  return _reqs.filter(r=>{
+    if(!r) return false;
+    if(r.status === 'new') return true;
+    if(r.status !== 'accepted' && r.status !== 'declined') return false;
+    const at = reqMs(r.answeredAt) || reqMs(r.createdAt);
+    return !at || now - at < REQ_KEEP_MS;
+  }).sort((a,b)=>reqMs(b.createdAt) - reqMs(a.createdAt));
+}
+function reqRowHTML(r, jobIds){
+  const id = esc(r.id);
+  const items = (Array.isArray(r.items) ? r.items : []).filter(it=>it && it.service);
+  const cov = items.map(it=>esc(it.service) + (Number(it.qty) > 1 ? ' × ' + Number(it.qty) : '')).join(', ');
+  const head = [isDate(r.date) ? availWhen(r.date) : '', SLOT_LABEL[String(r.slot||'')] || '', String(r.title||'') || 'Event']
+    .filter(Boolean).map(esc).join(' · ');
+  const pill = r.status === 'new' ? ['pending', r._pending ? 'Sending…' : 'Pending']
+    : r.status === 'accepted' ? ['accepted','Accepted'] : ['declined','Declined'];
+  let foot;
+  if(r.status === 'new'){
+    foot = _reqAsk === r.id
+      ? `<div class="rqr-ask">Cancel this request? Fantasy Studio will no longer see it.
+          <div class="rowbtns">
+            <button class="mini" type="button" data-rq="yes" data-id="${id}">Yes, cancel it</button>
+            <button class="mini" type="button" data-rq="keep" data-id="${id}">Keep it</button>
+          </div></div>`
+      : `<div class="rqr-acts"><span class="evm">Waiting for Fantasy Studio to confirm</span>
+          <button class="mini" type="button" data-rq="ask" data-id="${id}" aria-label="Cancel this request">Cancel</button></div>`;
+  }else if(r.status === 'accepted'){
+    /* the job an Accept makes is a draft until the owner sends it; once it
+       is among this partner's jobs below, the row says so */
+    foot = `<div class="rqr-n ok">${r.pkgId && jobIds && jobIds.has(r.pkgId) ? 'Now in your jobs' : 'We are preparing your job'}</div>`;
+  }else{
+    const note = String(r.adminNote||'').trim();
+    foot = `<div class="rqr-n no">${note ? 'Fantasy Studio: ' + esc(note) : 'Sorry, we could not take this one.'}</div>`;
+  }
+  return `<div class="rqr">
+    <div class="rqr-h">
+      <div class="rqr-t"><b>${head}</b>
+        <div class="evm">${cov || 'Coverage to be discussed'}</div>
+      </div>
+      <span class="chip ${pill[0]}">${pill[1]}</span>
+    </div>
+    ${foot}
+  </div>`;
+}
+function renderRequests(){
+  const box = $('#requestsBox'); if(!box) return;
+  const list = reqVisible();
+  if(_reqAsk && !list.some(r=>r.id === _reqAsk && r.status === 'new')) _reqAsk = '';
+  const jobIds = new Set(allJobs().map(x=>x.id));   /* render() calls this, so a job going live redraws the row */
+  const sig = JSON.stringify(list.map(r=>[r.id, r.status, !!r._pending, r.date, r.slot, r.title, r.items, r.adminNote,
+    r.status === 'accepted' && !!r.pkgId && jobIds.has(r.pkgId)])) + '|' + _reqAsk;
+  if(sig === _reqSig) return;
+  _reqSig = sig;
+  /* nothing to show: no heading either, the box is simply not there */
+  box.innerHTML = list.length
+    ? `<h2 class="secl">Your requests <small>${list.length}</small></h2><div class="ledger">${list.map(r=>reqRowHTML(r, jobIds)).join('')}</div>`
+    : '';
+}
+function cancelReq(id){
+  const r = _reqs.find(x=>x.id === id);
+  if(!r || r.status !== 'new') return;
+  _reqAsk = '';
+  if(reqSample()){
+    _reqs = _reqs.filter(x=>x.id !== id);
+    renderRequests(); toast('Request cancelled');
+    return;
+  }
+  renderRequests();
+  /* the row goes at once (the listener hears the local delete); the server's
+     answer only decides what the toast says. Refused means the studio
+     answered it first, and the row comes back with that answer. */
+  const gen = _reqGen;
+  deleteDoc(doc(db,'studioRequests', id)).then(
+    ()=>{ if(gen === _reqGen) toast('Request cancelled'); },
+    ()=>{ if(gen === _reqGen) toast('Could not cancel that request — it may already have been answered'); });
+}
+$('#requestsBox').addEventListener('click', e=>{
+  const b = e.target.closest('[data-rq]'); if(!b) return;
+  const id = b.dataset.id, act = b.dataset.rq;
+  if(act === 'yes'){ cancelReq(id); return; }
+  _reqAsk = act === 'ask' ? id : '';
+  renderRequests();
+  /* the redraw replaced the button that had the focus: Keep it (never the
+     destructive one) after Cancel, Cancel again after Keep it */
+  const to = [...$('#requestsBox').querySelectorAll(`[data-rq="${act === 'ask' ? 'keep' : 'ask'}"]`)].find(x=>x.dataset.id === id);
+  if(to) to.focus();
+});
+
+/* ----- the form ----- */
+function reqFieldErr(name, msg){
+  const el = $('#req' + name + 'Err'); if(!el) return;
+  el.textContent = msg || ''; el.hidden = !msg;
+  const inp = name === 'Date' ? $('#reqDate') : name === 'Fn' ? $('#reqFn') : null;
+  if(inp){ if(msg) inp.setAttribute('aria-invalid','true'); else inp.removeAttribute('aria-invalid'); }
+}
+function reqClearErrs(){
+  ['Date','Slot','Fn','Cov'].forEach(n=>reqFieldErr(n, ''));
+  $('#reqErr').hidden = true;
+}
+function reqBusyPaint(){
+  $('#reqSend').disabled = _reqBusy;
+  $('#reqSend').textContent = _reqBusy ? 'Sending…' : 'Send request';
+  if(!_reqBusy){ clearTimeout(_reqSlowT); $('#reqSlow').hidden = true; }
+}
+/* the empty date's cue (.rq-ph), shown while no date is set. A half-typed
+   date in a desktop browser has no value yet but is not empty (badInput),
+   so its digits are never hidden under the cue. */
+function reqDateCue(){
+  const d = $('#reqDate');
+  d.classList.toggle('rq-nodate', !d.value && !(d.validity && d.validity.badInput));   /* not .empty: that is the page's empty-state panel */
+}
+/* an emptied form: after a request has gone, and on sign-out. Closing the
+   sheet keeps what was typed, so a stray Back loses nothing. */
+function reqReset(){
+  $('#reqForm').reset();
+  reqDateCue();
+  _reqQty = new Map(); _reqStuId = '';
+  _reqBusy = false; reqBusyPaint();
+  reqClearErrs();
+  $('#reqAvailNote').textContent = ''; $('#reqAvailNote').className = 'rq-av';
+  reqPaintCov();   /* the steppers and the estimate back to nothing */
+}
+function reqPaintStu(){
+  if(!STUS.some(s=>s.id === _reqStuId)){ _reqStuId = STUS[0] ? STUS[0].id : ''; _reqQty = new Map(); }
+  const multi = STUS.length > 1;
+  $('#reqStuF').hidden = !multi;
+  const sel = $('#reqStu');
+  sel.innerHTML = multi ? STUS.map(s=>`<option value="${esc(s.id)}">${esc(s.name||'Your studio')}</option>`).join('') : '';
+  if(multi) sel.value = _reqStuId;
+}
+function reqPaintEst(){
+  const est = _reqRows.reduce((s, [svc, rate])=>s + (_reqQty.get(svc) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
+  $('#reqEst').textContent = reqItems().length ? inr(est) : '—';
+}
+function reqPaintCov(){
+  _reqRows = rateRows(reqStu());
+  /* a service that has left the rate card takes its quantity with it */
+  [..._reqQty.keys()].forEach(k=>{ if(!_reqRows.some(r=>r[0] === k)) _reqQty.delete(k); });
+  $('#reqCov').innerHTML = _reqRows.length ? _reqRows.map(([svc, rate], i)=>{
+    const q = _reqQty.get(svc) || 0;
+    return `<div class="rq-row${q ? ' on' : ''}" data-i="${i}">
+      <span class="rq-svc">${esc(svc)}<small>${Number(rate) > 0 ? inr(rate) + ' each' : 'Rate to be agreed'}</small></span>
+      <span class="rq-step">
+        <button type="button" data-step="-1" aria-label="One less: ${esc(svc)}"${q <= 0 ? ' disabled' : ''}>−</button>
+        <b aria-live="polite" aria-atomic="true">${q}</b>
+        <button type="button" data-step="1" aria-label="One more: ${esc(svc)}"${q >= REQ_MAX_QTY ? ' disabled' : ''}>+</button>
+      </span>
+    </div>`;
+  }).join('') : '<div class="rq-none">Tell us the coverage you need in the notes below and we will quote it.</div>';
+  reqPaintEst();
+}
+$('#reqCov').addEventListener('click', e=>{
+  const b = e.target.closest('[data-step]'); if(!b) return;
+  const row = b.closest('.rq-row'), r = _reqRows[Number(row.dataset.i)]; if(!r) return;
+  const q = Math.max(0, Math.min(REQ_MAX_QTY, (_reqQty.get(r[0]) || 0) + (b.dataset.step === '1' ? 1 : -1)));
+  if(q) _reqQty.set(r[0], q); else _reqQty.delete(r[0]);
+  row.classList.toggle('on', q > 0);
+  row.querySelector('.rq-step b').textContent = q;
+  const [less, more] = row.querySelectorAll('[data-step]');
+  less.disabled = q <= 0; more.disabled = q >= REQ_MAX_QTY;
+  if(b.disabled) (b === less ? more : less).focus();   /* the focus never falls off a button that just greyed out */
+  reqFieldErr('Cov', '');
+  reqPaintEst(); reqWaHref();
+});
+
+/* What Fantasy Studio's calendar says about the chosen date and slot: the
+   month's availability doc, read once per sheet opening (a read that fails
+   says nothing and is asked again next time). The sample account reads the
+   pattern its calendar paints instead, own dates amber as there. */
+function reqAvailDays(month){
+  if(_reqAvail.has(month)) return _reqAvail.get(month);
+  const p = reqSample()
+    ? import('../avail.js').then(m=>{
+        if(typeof m.sampleDays !== 'function') return null;
+        const days = m.sampleDays(month);
+        availMine().forEach(iso=>{
+          if(iso.slice(0, 7) !== month) return;
+          const rec = days[iso.slice(8)] || (days[iso.slice(8)] = {});
+          if(rec.m !== 'r') rec.m = 'y';
+          if(rec.e !== 'r') rec.e = 'y';
+        });
+        return days;
+      })
+    : getDoc(doc(db,'availability', month)).then(s=>{
+        const d = (s.exists() && s.data()) || {};
+        return (d.days && typeof d.days === 'object') ? d.days : {};
+      });
+  const safe = p.catch(()=>{ _reqAvail.delete(month); return null; });
+  _reqAvail.set(month, safe);
+  return safe;
+}
+async function reqPaintAvail(){
+  const el = $('#reqAvailNote');
+  const say = (cls, text)=>{ el.className = 'rq-av' + (cls ? ' ' + cls : ''); el.textContent = text; };
+  const date = $('#reqDate').value, slot = reqSlot();
+  const seq = ++_reqAvSeq;
+  if(!isDate(date) || date < todayISO() || !slot){ say('', ''); return; }
+  const days = await reqAvailDays(date.slice(0, 7));
+  if(seq !== _reqAvSeq) return;
+  if(!days){ say('', ''); return; }
+  const rec = days[date.slice(8)], f = v => (v === 'r' || v === 'y') ? v : '';
+  const m = f(rec && rec.m), ev = f(rec && rec.e);
+  if(slot === 'full'){
+    if(m === 'r' && ev === 'r') say('r', 'This day looks fully booked — you can still ask');
+    else if(m === 'r' || ev === 'r') say('r', 'The ' + (m === 'r' ? 'morning' : 'evening') + ' looks fully booked — you can still ask');
+    else if(m || ev) say('y', 'Filling up');
+    else say('ok', 'Looks free on our calendar');
+    return;
+  }
+  const v = slot === 'morning' ? m : ev;
+  if(v === 'r') say('r', 'This slot looks fully booked — you can still ask');
+  else if(v === 'y') say('y', 'Filling up');
+  else say('ok', 'Looks free on our calendar');
+}
+
+/* "or message us on WhatsApp": the same ask in words, to the number the
+   help block uses, with whatever the form holds so far */
+function reqWaHref(){
+  const stu = reqStu(), date = $('#reqDate').value, slot = reqSlot();
+  const title = $('#reqFn').value.trim(), venue = $('#reqVenue').value.trim();
+  const cov = reqItems().map(it=>it.service + (it.qty > 1 ? ' × ' + it.qty : '')).join(', ');
+  let t = 'Hi Fantasy Studio, ' + (stu && stu.name ? stu.name + ' would' : 'we would') + ' like to request a booking';
+  if(title) t += ' for ' + title;
+  if(isDate(date)) t += ' on ' + availWhen(date) + (slot ? ' (' + SLOT_LABEL[slot].toLowerCase() + ')' : '');
+  t += '.';
+  if(venue) t += ' Venue: ' + venue + '.';
+  if(cov) t += ' Coverage: ' + cov + '.';
+  $('#reqWa').href = 'https://wa.me/' + contactDigits() + '?text=' + encodeURIComponent(t);
+}
+
+/* pre: { date:'YYYY-MM-DD', slot:'morning'|'evening'|'full' } from a calendar day */
+function openReq(pre){
+  if($('#appView').hidden || !STUS.length) return;
+  pre = pre || {};
+  const sheet = $('#reqSheet'), was = reqOpen();
+  if(!was){ _reqOpener = document.activeElement; _reqAvail.clear(); }
+  reqPaintStu();
+  const t = todayISO();
+  $('#reqDate').min = t;
+  if(isDate(pre.date) && pre.date >= t) $('#reqDate').value = pre.date;
+  reqDateCue();
+  if(SLOT_LABEL[pre.slot]) document.querySelectorAll('#reqForm input[name="reqSlot"]').forEach(r=>{ r.checked = r.value === pre.slot; });
+  reqClearErrs();
+  reqBusyPaint();
+  reqPaintCov(); reqPaintAvail(); reqWaHref();
+  $('#reqBack').classList.add('open'); sheet.classList.add('open');
+  sheet.scrollTop = 0;
+  if(window.FSApp) FSApp.hide();   /* the app's tab bar, under the sheet otherwise */
+  if(!was) ovOpen('req');
+  /* the dialog itself, not its first field: a phone would open the date
+     picker or the keyboard over a form nobody has read yet */
+  setTimeout(()=>{ if(reqOpen()) try{ sheet.focus({ preventScroll:true }); }catch(e){} }, 60);
+}
+function closeReq(fromPop){
+  if(!reqOpen()) return;
+  const sheet = $('#reqSheet');
+  /* the keyboard goes first, so the tab bar is measured once it is back */
+  if(sheet.contains(document.activeElement)) try{ document.activeElement.blur(); }catch(e){}
+  $('#reqBack').classList.remove('open'); sheet.classList.remove('open');
+  reqFit();
+  if(window.FSApp) FSApp.show();
+  ovClosed('req', fromPop === true);
+  const o = _reqOpener; _reqOpener = null;
+  if(o && o !== document.body && document.contains(o)) try{ o.focus({ preventScroll:true }); }catch(e){}
+}
+/* a calendar day's "Request the morning / evening" (availSync hands this to ../avail.js) */
+function reqFromCal(iso, half){ openReq({ date: iso, slot: half === 'e' ? 'evening' : 'morning' }); }
+/* the button under the calendar: the day picked on the calendar, when there
+   is one (a red day has no button of its own there, and can still be asked) */
+$('#reqOpen').addEventListener('click', ()=>{
+  const c = $('#availBox .av-cell.sel');
+  openReq({ date: c ? c.dataset.date : '' });
+});
+$('#reqBack').addEventListener('click', closeReq);
+$('#reqClose').addEventListener('click', closeReq);
+window.addEventListener('popstate', ()=>{ closeReq(true); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closeReq(); });
+/* Tab stays inside the open sheet */
+$('#reqSheet').addEventListener('keydown', e=>{
+  if(e.key !== 'Tab' || !reqOpen()) return;
+  const sheet = $('#reqSheet');
+  const f = [...sheet.querySelectorAll('button,input,select,textarea,a[href]')].filter(el=>!el.disabled && el.offsetParent !== null);
+  if(!f.length) return;
+  const first = f[0], last = f[f.length - 1], at = document.activeElement;
+  if(e.shiftKey && (at === first || at === sheet)){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && at === last){ e.preventDefault(); first.focus(); }
+});
+
+/* With a keyboard up, a sheet fixed to the bottom of the page sits under it
+   (an iPhone pans the visible part instead of resizing the page): pin the
+   sheet to what is left of the screen while one of its fields has the
+   focus, and let it go after. Android resizes the page itself and a
+   keyboard-less browser never shrinks, so neither is touched. */
+function reqFit(){
+  const vv = window.visualViewport, sheet = $('#reqSheet'), el = document.activeElement;
+  const typing = !!el && sheet.contains(el) && /^(INPUT|TEXTAREA)$/.test(el.tagName) && el.type !== 'radio';
+  const on = !!vv && reqOpen() && typing && Math.abs(vv.scale - 1) < .01 && vv.height < window.innerHeight - 120;
+  sheet.classList.toggle('kb', on);
+  sheet.style.top = on ? vv.offsetTop + 'px' : '';
+  sheet.style.height = on ? vv.height + 'px' : '';
+  sheet.style.maxHeight = on ? 'none' : '';
+  if(on) try{ el.scrollIntoView({ block:'nearest' }); }catch(e){}
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', reqFit);
+  window.visualViewport.addEventListener('scroll', reqFit);
+  $('#reqSheet').addEventListener('focusin', ()=>setTimeout(reqFit, 0));
+  $('#reqSheet').addEventListener('focusout', ()=>setTimeout(reqFit, 0));
+}
+
+/* live: the date and slot repaint the calendar's word, a fixed field drops
+   its error, and the WhatsApp link follows the form */
+$('#reqForm').addEventListener('input', e=>{
+  const id = e.target.id;
+  if(id === 'reqDate'){
+    const v = e.target.value;
+    reqDateCue();
+    reqFieldErr('Date', v && isDate(v) && v < todayISO() ? 'That date has passed — choose today or a later date.' : '');
+    reqPaintAvail();
+  }
+  if(e.target.name === 'reqSlot'){ reqFieldErr('Slot', ''); reqPaintAvail(); }
+  if(id === 'reqFn' && e.target.value.trim()) reqFieldErr('Fn', '');
+  reqWaHref();
+});
+$('#reqDate').addEventListener('blur', reqDateCue);
+/* The keyboard's action key never sends the request: in a one-line field it
+   moves on (Function → Venue → your client's name, which puts the keyboard
+   away), and on the date or a slot it does nothing. Only Send sends. */
+const REQ_NEXT = { reqFn:'reqVenue', reqVenue:'reqEnd' };
+$('#reqForm').addEventListener('keydown', e=>{
+  if(e.key !== 'Enter' || e.isComposing) return;
+  const el = e.target;
+  if(!el || el.tagName !== 'INPUT') return;
+  e.preventDefault();
+  const next = REQ_NEXT[el.id] ? $('#' + REQ_NEXT[el.id]) : null;
+  if(next) next.focus();
+  else if(el.id === 'reqEnd'){
+    /* the keyboard goes; the focus stays in the dialog, not on the page under it */
+    el.blur();
+    try{ $('#reqSheet').focus({ preventScroll:true }); }catch(err){}
+  }
+});
+$('#reqStu').addEventListener('change', e=>{
+  /* another studio, another rate card */
+  _reqStuId = e.target.value; _reqQty = new Map();
+  reqFieldErr('Cov', '');
+  reqPaintCov(); reqWaHref();
+});
+
+/* show: the sheet was still open, so the partner is waiting on it: take
+   them to the request. Not when they closed it and moved on meanwhile. */
+function reqDone(msg, show){
+  /* closeReq steps Back off the sheet's history entry, and a Back on the
+     same page puts that entry's scroll back: the tab or the scroll waits
+     for it, or the Back would undo the scroll and pop the new tab */
+  const popping = show && reqOpen() && !!history.state && history.state.ov === 'req';
+  reqReset();
+  closeReq();
+  renderRequests();
+  if(!msg) return;   /* cancelled while it was sending: nothing to celebrate */
+  toast(msg);
+  if(window.FSApp && typeof FSApp.haptic === 'function') FSApp.haptic('success');
+  if(show) reqShowList(popping);
+}
+/* the app: the Jobs tab, where #requestsBox sits under the tiles; a
+   browser: a scroll to it, clear of the sticky header */
+function reqShowList(afterPop){
+  let done = false;
+  const go = ()=>{
+    if(done) return;
+    done = true; window.removeEventListener('popstate', go);
+    setTimeout(()=>{
+      if($('#appView').hidden) return;
+      const tab = window.FSApp && typeof FSApp.current === 'function' ? FSApp.current() : null;
+      if(tab && tab !== 'jobs'){ FSApp.setTab('jobs'); return; }
+      const box = $('#requestsBox'); if(!box || !box.firstChild) return;
+      const head = document.querySelector('header');
+      const y = box.getBoundingClientRect().top + window.scrollY - (head ? head.offsetHeight : 0) - 12;
+      const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      try{ window.scrollTo({ top: Math.max(0, y), behavior: calm ? 'auto' : 'smooth' }); }catch(e){ window.scrollTo(0, Math.max(0, y)); }
+    }, 0);
+  };
+  if(!afterPop){ go(); return; }
+  window.addEventListener('popstate', go);
+  setTimeout(go, 500);   /* a Back that never came */
+}
+$('#reqForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  if(_reqBusy) return;
+  const line = (v, n) => String(v||'').replace(/\s+/g, ' ').trim().slice(0, n);
+  const date = $('#reqDate').value, slot = reqSlot();
+  const title = line($('#reqFn').value, 80);
+  const items = reqItems();
+  reqClearErrs();
+  const showErr = msg=>{ const er = $('#reqErr'); er.textContent = msg; er.hidden = false; er.scrollIntoView({ block:'nearest' }); };
+  /* the studio picked here, exactly: one that has left this number since
+     the form opened is never swapped for another without a word */
+  const stu = STUS.find(s=>s.id === _reqStuId);
+  if(!stu){
+    reqPaintStu(); reqPaintCov(); reqWaHref();
+    showErr(STUS.length > 1 ? 'That studio is no longer on your account — choose the studio again and check the coverage.'
+      : STUS.length ? 'That studio is no longer on your account. This request is now for ' + (STUS[0].name || 'your studio') + ' — check the coverage and send again.'
+      : 'That studio is no longer on your account — message us on WhatsApp below.');
+    return;
+  }
+  let bad = null;
+  const fail = (name, msg, el)=>{ reqFieldErr(name, msg); if(!bad) bad = el; };
+  if(!date) fail('Date', 'Choose the date of the function.', $('#reqDate'));
+  else if(!isDate(date)) fail('Date', 'That does not look like a date — choose it again.', $('#reqDate'));
+  else if(date < todayISO()) fail('Date', 'That date has passed — choose today or a later date.', $('#reqDate'));
+  if(!slot) fail('Slot', 'Choose morning, evening or full day.', document.querySelector('#reqForm input[name="reqSlot"]'));
+  if(!title) fail('Fn', 'Tell us the function, for example Nikah or Reception.', $('#reqFn'));
+  if(items.length > REQ_MAX_ITEMS) fail('Cov', 'A request takes up to ' + REQ_MAX_ITEMS + ' services — put the rest in the notes.', $('#reqCov button'));
+  if(bad){
+    try{ bad.focus({ preventScroll:true }); (bad.closest('.rq-f') || bad).scrollIntoView({ block:'nearest' }); }catch(err){}
+    return;
+  }
+  /* exactly the contract's fields: the rules refuse an extra or a missing key */
+  const data = {
+    studioId: stu.id, phone10: _phone10 || String(stu.phone10||''), studioName: String(stu.name||'').slice(0, 120),
+    date, slot, title, venue: line($('#reqVenue').value, 160), endClientName: line($('#reqEnd').value, 120),
+    items, notes: String($('#reqNotes').value||'').trim().slice(0, 1000), status:'new',
+  };
+  /* the sample account: into memory, and not one write */
+  if(reqSample()){
+    _reqs = [{ ...data, id:'sample-' + (_reqN++), createdAt: Date.now() }, ..._reqs];
+    reqDone('Sample account — nothing was sent', true);
+    return;
+  }
+  if(!navigator.onLine){ showErr('You are offline — reconnect and send it again.'); return; }
+  const gen = _reqGen;
+  _reqBusy = true; reqBusyPaint();
+  _reqSlowT = setTimeout(()=>{ if(_reqBusy && gen === _reqGen) $('#reqSlow').hidden = false; }, 9000);
+  let err = null;
+  /* the id is known before the write, so a Cancel tapped while it is on
+     its way up can be told apart from a request that arrived */
+  const ref = doc(collection(db,'studioRequests'));
+  try{ await setDoc(ref, { ...data, createdAt: serverTimestamp() }); }
+  catch(e2){ err = e2; }
+  if(gen !== _reqGen) return;   /* signed out meanwhile: stopData emptied the form */
+  _reqBusy = false; reqBusyPaint();
+  if(err){
+    const code = String((err && (err.code || err.message)) || '').replace(/^firestore\//, '').slice(0, 40);
+    console.warn('[request]', code);
+    /* what was typed stays, to send again; the short Ref lets a screenshot
+       of this tell the studio what went wrong */
+    if(reqOpen()) showErr((navigator.onLine
+      ? 'We could not send your request just now. Please try again, or message us on WhatsApp below.'
+      : 'You are offline — reconnect and send it again.') + (code ? ' (Ref: ' + code + ')' : ''));
+    else toast('Your request could not be sent — open Request a booking to try again');
+    return;
+  }
+  /* cancelled from the list while sending (the slow note says the sheet can
+     be closed): the delete has its own toast, and this one would contradict
+     it. Read before reqSync, which starts a list that has not loaded yet. */
+  const listed = !_reqUnsub || _reqErr || _reqs.some(r=>r.id === ref.id);
+  reqSync(true);   /* a list that could not load before gets another go */
+  reqDone(listed ? 'Request sent — see it under Your requests' : '', listed && reqOpen());
+});
+
+/* signed out (stopData): the listener, the list and anything typed all go */
+function reqOff(){
+  _reqGen++;
+  if(_reqUnsub){ try{ _reqUnsub(); }catch(e){} }
+  _reqUnsub = null; _reqErr = false;
+  _reqs = []; _reqAsk = ''; _reqSig = '';
+  _reqAvail.clear();
+  closeReq();
+  reqReset();
+  const box = $('#requestsBox'); if(box) box.innerHTML = '';
+}
+
 /* The store app's bottom tab bar. mount() returns null in a browser (no
    html.fs-app), so nothing here touches the website. Which sections each
    tab shows is the CSS block at the end of <style>; the bar itself only
@@ -1986,6 +2715,7 @@ async function refreshData(){
   if(!DEMO_VIEW){
     [..._pkgErrs.keys()].forEach(id=>{ try{ _pkgUnsubs.get(id)(); }catch(e){} _pkgUnsubs.delete(id); });
     syncPkgListeners();
+    reqSync(true);   /* a requests listener that failed gets another go */
     await Promise.race([loadSite(), new Promise(r=>setTimeout(r, 4000))]);
   }
   if($('#appView').hidden) return;   /* signed out mid-pull */

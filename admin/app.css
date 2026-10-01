@@ -2021,3 +2021,68 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   #trashList .up-ev .what{flex:1 0 100%;white-space:normal}
   #trashList .up-ev .chip-status{margin-right:auto}
 }
+
+/* ==========================================================================
+   B2B — booking requests from the partner page (studioRequests)
+   One box at the top of the B2B tab: a card per request still waiting, then
+   a collapsed Answered list. Every string in a card was typed by the partner,
+   so every line wraps (overflow-wrap:anywhere) — a venue pasted as one long
+   word must not push Accept off a 360px screen.
+   ========================================================================== */
+.sec h3 .rq-count{display:inline-block;margin-left:.5em;vertical-align:2px;background:var(--err);color:var(--ink-0);font-family:var(--sans);font-size:var(--fs-xs);font-weight:600;line-height:1.5;border-radius:var(--r-md);padding:.05em .55em}
+/* nothing waiting: the title and the Answered line, without the explainer */
+#stuReqSec.rq-quiet h3{margin-bottom:0}
+#stuReqSec.rq-quiet .sub{display:none}
+#stuReqSec.rq-quiet .grp{margin-top:.45rem}
+#stuReqs > .grp:last-child{margin-bottom:0}
+#stuReqs .empty-state{margin-bottom:.8rem}
+.rq{border:1px solid var(--line);border-radius:var(--r-md);background:var(--white-t1);padding:.8rem .85rem;margin-bottom:.7rem}
+.rq:last-child{margin-bottom:0}
+.rq-top{display:flex;align-items:center;gap:.35rem .5rem;flex-wrap:wrap}
+.rq-stu{flex:0 1 auto;min-width:0;font-family:var(--serif);font-size:var(--fs-lg);color:var(--white);overflow-wrap:anywhere}
+.rq-age{margin-left:auto;font-size:var(--fs-xs);color:var(--mut);white-space:nowrap}
+.rq-what{margin-top:.35rem;font-size:var(--fs-base);line-height:1.5;color:var(--text);overflow-wrap:anywhere}
+.rq-what b{color:var(--gold-b);font-weight:600}
+.rq-what .rq-fn{display:block}
+.rq-facts{display:grid;gap:.3rem;margin:.5rem 0 0}
+.rq-facts > div{display:grid;grid-template-columns:5.4rem minmax(0,1fr);gap:.5rem;align-items:baseline}
+.rq-facts dt{font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.rq-facts dd{margin:0;font-size:var(--fs-md);line-height:1.45;color:var(--text);overflow-wrap:anywhere}
+.rq-items{margin-top:.6rem;padding-top:.45rem;border-top:1px dashed var(--line);font-size:var(--fs-md)}
+.rq-items > div{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;padding:.16rem 0}
+.rq-items span{min-width:0;color:var(--text);overflow-wrap:anywhere}
+.rq-items em{font-style:normal;color:var(--mut)}
+.rq-items b{flex:0 0 auto;font-weight:500;color:var(--text);white-space:nowrap}
+.rq-items b.none{color:var(--warn);font-size:var(--fs-sm)}
+.rq-items .tot{margin-top:.25rem;padding-top:.4rem;border-top:1px solid var(--line)}
+.rq-items .tot span{color:var(--mut)}
+.rq-items .tot b{font-family:var(--serif);font-weight:700;font-size:var(--fs-lg);color:var(--gold-b)}
+.rq-items .nil{color:var(--mut)}
+/* how full that half already is — the same three colours as the public
+   calendar: free, filling up, full or blocked */
+.rq-busy{display:flex;align-items:flex-start;gap:.5rem;margin-top:.55rem;font-size:var(--fs-md);line-height:1.45;color:var(--text);overflow-wrap:anywhere}
+.rq-busy i{flex:0 0 auto;width:10px;height:10px;border-radius:3px;margin-top:.3em;background:var(--state-confirmed)}
+.rq-busy span{min-width:0}
+.rq-busy[data-st="y"]{color:var(--state-pending)}
+.rq-busy[data-st="y"] i{background:var(--state-pending)}
+.rq-busy[data-st="r"]{color:var(--state-overdue)}
+.rq-busy[data-st="r"] i{background:var(--state-overdue)}
+.rq-acts{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.7rem}
+.rq-acts .btn--primary{flex:1 1 auto;max-width:22rem}
+/* answered: who and what on the first line, the verdict and its buttons under it */
+.rq-ans{padding:.55rem 0;border-bottom:1px dashed var(--line)}
+.rq-ans:last-child{border-bottom:0;padding-bottom:0}
+.rq-ans .what{display:block;font-size:var(--fs-base);color:var(--text);overflow-wrap:anywhere}
+.rq-ans .what b{display:block;font-weight:600;color:var(--white)}
+.rq-ans .what span{display:block;font-size:var(--fs-md);color:var(--mut);line-height:1.45}
+.rq-ans .what .rq-said{color:var(--text);font-style:italic}
+.rq-ans .what .rq-asked{color:var(--text)}
+.rq-ans .what .rq-asked em{font-style:normal;font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-right:.35em}
+.rq-ansbar{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin-top:.4rem}
+.rq-ansbar .rq-when{font-size:var(--fs-sm);color:var(--mut);white-space:nowrap}
+.rq-ansbar .btn--danger{margin-left:auto}
+.rq-more{font-size:var(--fs-sm);color:var(--mut);margin:.5rem 0 0}
+/* the optional note inside the Decline confirm sheet */
+.modal__text .rq-note{display:block;margin:.9rem 0 .3rem;font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b)}
+.modal__text .rq-note em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut)}
+.modal__text textarea.input{display:block;white-space:pre-wrap}
