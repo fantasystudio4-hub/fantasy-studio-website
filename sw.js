@@ -1,8 +1,13 @@
 /* Fantasy Studio service worker
    Strategy: network-first for the page (deploys always show instantly;
-   cache is the offline fallback), stale-while-revalidate for assets, and
-   network-first-with-timeout for app code (see APP_CODE below). */
-const CACHE = 'fs-cache-v18';   // v18: the availability calendar — avail.js/css is
+   cache is the offline fallback), network-first-with-timeout for ALL
+   executable code (see isCode below), and stale-while-revalidate for the
+   remaining assets (images, fonts, manifest). */
+const CACHE = 'fs-cache-v19';   // v19: executable code is never cache-first — firebase-config.js,
+                                //      pdf-template.js, the Firebase SDK modules and jsPDF
+                                //      joined the app code below; opaque responses are kept
+                                //      for the font hosts only
+                                // v18: the availability calendar — avail.js/css is
                                 //      app code (network-first, below)
                                 // v17: one sign-in — fs-auth.js is app code (network-
                                 //      first, below), start/ changed, profile/ is new
@@ -14,6 +19,12 @@ const CACHE = 'fs-cache-v18';   // v18: the availability calendar — avail.js/c
                                 //      v13 catalog.js priced st.albumSheets (now absent)
                                 //      as undefined × 400 and rendered a NaN total
 const PREFIX = 'fs-cache-';
+// The site's own executable files, matched on the pathname so a ?v= query
+// never hides one. A named list rather than "any .js" on purpose: a file added
+// later has to be chosen for the network-first branch, not swept into it by
+// accident. (admin/_demo-data.js is the one script left out: it is imported
+// with a Date.now() query, so no two loads share a cache key.)
+const APP_CODE = /\/(app|app-shell|tokens|ui|catalog|fs-auth|avail|firebase-config|pdf-template)\.(js|css)$/;
 // Only the public shell. The admin and client apps used to be precached here,
 // which cost every first-time visitor ~133 KB for two pages they will never
 // open; both are cached on their own first visit by the asset path below.
@@ -68,6 +79,12 @@ function freshOrCached(req, ms) {
           const copy = res.clone();
           caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
         }
+        // A server error is not an answer worth showing over a good copy: the
+        // Firebase SDK and jsPDF used to be cache-first, so a CDN outage never
+        // reached the admin; now that they are network-first, a 5xx has to fall
+        // back to the cache too. A 404 stays the network's word (a file that
+        // was removed on purpose must not be kept alive by an old copy).
+        if (res && res.status >= 500) { caches.match(req).then(m => done(m || res)); return; }
         done(res);
       })
       .catch(() => {
@@ -131,7 +148,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // App code: index.html + app.css + app.js, plus tokens.css, ui.css and
+  // Executable code: index.html + app.css + app.js, plus tokens.css, ui.css and
   // catalog.js (the public site's prices, packages and lead writer).
   // The two new ones MUST be in this branch, not the cache-first one below.
   // app.css now declares no colours of its own — every value it uses is a
@@ -154,25 +171,40 @@ self.addEventListener('fetch', e => {
   // functions it calls undefined, and sign-in or the portal fails that load.
   // And avail.js/css, the availability calendar the three portals import
   // lazily: the same page-against-yesterday's-module skew.
-  if (url.origin === location.origin && /\/(app|app-shell|tokens|ui|catalog|fs-auth|avail)\.(js|css)$/.test(url.pathname)) {
+  //
+  // Security, not only skew: the Cache API is writable from any page script,
+  // so a cache-FIRST entry for code is a place to plant a script that outlives
+  // the bug that planted it — through the fix, a sign-out and every deploy.
+  // Network-first makes the cache an offline fallback only, and the next
+  // online load overwrites whatever was there. That is why firebase-config.js
+  // (it names the project every page talks to), admin/pdf-template.js (it
+  // runs inside the admin), the Firebase SDK modules and jsPDF are here too.
+  // The two CDNs are matched on host AND path: only those libraries, never
+  // everything else the host serves (www.gstatic.com also serves reCAPTCHA).
+  const isCode =
+       (url.origin === location.origin && APP_CODE.test(url.pathname))
+    || (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/'))
+    || (url.hostname === 'cdnjs.cloudflare.com' && url.pathname.startsWith('/ajax/libs/jspdf/'));
+  if (isCode) {
     e.respondWith(freshOrCached(req, 2500));
     return;
   }
 
-  // assets (same-origin, fonts, Firebase SDK, jsPDF CDN): serve cache fast, refresh in background.
-  // www.gstatic.com matters: without it the admin cannot boot offline at all.
-  const cacheable = url.origin === location.origin
-    || url.hostname === 'fonts.googleapis.com'
-    || url.hostname === 'fonts.gstatic.com'
-    || url.hostname === 'www.gstatic.com'
-    || url.hostname === 'cdnjs.cloudflare.com';
-  if (!cacheable) return;
+  // assets (same-origin, fonts): serve cache fast, refresh in background.
+  // Code from the CDNs is handled above and every other third-party host is
+  // left to the browser. Opaque (no-cors) responses are stored for the font
+  // hosts only — the Google Fonts stylesheet is a plain <link>, so it is
+  // always opaque — and never for anything that could be a script, since an
+  // opaque entry cannot be inspected before it is served back.
+  const fontHost = url.hostname === 'fonts.googleapis.com'
+    || url.hostname === 'fonts.gstatic.com';
+  if (url.origin !== location.origin && !fontHost) return;
 
   e.respondWith(
     caches.match(req).then(cached => {
       const refresh = fetch(req)
         .then(res => {
-          if (res && (res.ok || res.type === 'opaque')) {
+          if (res && (res.ok || (fontHost && res.type === 'opaque'))) {
             const copy = res.clone();
             caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
           }
