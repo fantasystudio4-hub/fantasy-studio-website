@@ -170,6 +170,16 @@ function viewSet(k, v){
     try{ localStorage.setItem(VIEW_KEY, JSON.stringify(_view)); }catch(e){}
   }, 250);
 }
+/* What the owner typed into the lead, package and editing search boxes is a
+   client's name or phone number. Log out drops exactly those; the filters and
+   sort orders beside them are only preferences and stay. Writes at once and
+   cancels the debounce above, or a pending flush would put the text back. */
+const VIEW_SEARCH_KEYS = ['leadQ', 'pkgQ', 'ejQ'];
+function viewScrubSearches(){
+  clearTimeout(_viewFlush);
+  VIEW_SEARCH_KEYS.forEach(k=>{ delete _view[k]; });
+  try{ localStorage.setItem(VIEW_KEY, JSON.stringify(_view)); }catch(e){}
+}
 
 const SERVICE_LABELS = {
   cinematography:'Cinematography', candidPhotography:'Candid Photography',
@@ -315,15 +325,54 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
           collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField,
-          query, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, writeBatch, arrayUnion, increment, getDocsFromServer } =
+          query, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, writeBatch, arrayUnion, increment, getDocsFromServer,
+          terminate, clearIndexedDbPersistence, waitForPendingWrites } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
   const app  = initializeApp(window.FIREBASE_CONFIG);
   const auth = getAuth(app);
+
+  /* A Log out that could not finish wiping the cache finishes here. Log out
+     (below) terminates Firestore and deletes its IndexedDB cache, but another
+     tab of the panel can hold that database open and block the delete; it
+     leaves WIPE_KEY behind, and the next boot deletes the database BEFORE
+     initializeFirestore opens it again. Waits at most 3s: a delete that is
+     still blocked would also queue an open of the same database behind it, so
+     in that case this session runs on the in-memory cache instead of hanging. */
+  const WIPE_KEY = 'fs_wipe_cache';
+  const CACHE_IDB = 'firestore/' + app.name + '/' + window.FIREBASE_CONFIG.projectId + '/main';
+  let cacheStuck = false;
+  try{
+    if(window.indexedDB && localStorage.getItem(WIPE_KEY)){
+      cacheStuck = !(await new Promise(res=>{
+        const t = setTimeout(()=>res(false), 3000);
+        const fin = ok => { clearTimeout(t); res(ok); };
+        let rq;
+        try{ rq = indexedDB.deleteDatabase(CACHE_IDB); }catch(e){ fin(false); return; }
+        /* cleared here, not after the wait: a delete that finishes late (the
+           other tab let go) still counts */
+        rq.onsuccess = ()=>{ try{ localStorage.removeItem(WIPE_KEY); }catch(e){} fin(true); };
+        rq.onerror = ()=>fin(false);
+        /* onblocked is not a verdict: the delete carries on once the other tab
+           closes its connection, so keep waiting, up to the ceiling above */
+      }));
+    }
+  }catch(e){}
+
   /* offline-first: writes queue locally and sync when signal returns */
   let db;
-  try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+  try{
+    if(cacheStuck) throw new Error('cache delete still pending');
+    db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  }
   catch(e){ db = initializeFirestore(app, {}); }
+  /* A second tab of the panel still has this database open, and once Log out
+     in the first deletes it from under that tab its Firestore never answers
+     again — the next sign-in there would sit on empty lists. WIPE_KEY is set
+     by the tab that logs out, and `storage` only ever reaches the OTHER tabs,
+     so they reload and start clean. Only on the flag being set: removing it
+     afterwards is not a reason to reload twice. */
+  window.addEventListener('storage', e=>{ if(e.key === WIPE_KEY && e.newValue) location.reload(); });
 
   /* ---------------------------------------------------------------- demo mode
      Fills the panel with invented records so its screens can be worked on
@@ -415,8 +464,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       id: d.id, phone10: pfStr(d.phone10, 20).replace(/\D/g,'').slice(-10),
       name: pfStr(d.name, 80), photo: pfPhotoUrl(d.id, raw), at: pfMs(d.updatedAt),
       emName: pfStr(cr.emergencyName, 80), emPhone: pfStr(cr.emergencyPhone, 20),
-      /* only something shaped like an address becomes a mailto: link */
-      email, emailOk: /^[^\s@<>"'()]+@[^\s@<>"'()]+\.[^\s@<>"'()]+$/.test(email),
+      /* only a plain address becomes a mailto: link. ? and & start the header
+         parameters (a@b.co?cc=…&body=…), , and ; add recipients, and % / = \
+         have no business in a profile email, so none of them may appear */
+      email, emailOk: /^[^\s@<>"'()?&=%/\\,;]+@[^\s@<>"'()?&=%/\\,;]+\.[^\s@<>"'()?&=%/\\,;]+$/.test(email),
       studioName: pfStr(st.studioName, 80), ownerName: pfStr(st.ownerName, 80), city: pfStr(st.city, 60),
     };
     p.has = !!(p.name || p.photo || p.emName || p.emPhone || p.email || p.studioName || p.ownerName || p.city);
@@ -449,6 +500,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ? `<img class="pf-av${cls ? ' ' + cls : ''}" src="${esc(pf.photo)}" alt="" decoding="async" width="${PF_PX[cls] || 24}" height="${PF_PX[cls] || 24}">` : '';
   /* a number the person typed into their own profile, made safe for tel: */
   const telOf = v => String(v||'').replace(/[^\d+]/g,'').replace(/(?!^)\+/g,'');
+  /* The number on a crew join request. phone10 is pinned by the rules to the
+     number the person verified by OTP; phoneFull is any 20 characters they
+     like, and a string such as '*21*+91…%23' in a tel: link or in the Add
+     member box is a call-forwarding code. So phoneFull is used only when its
+     digits are a 1-3 digit country code followed by the verified phone10 (that
+     keeps an NRI's country code), as '+' and digits and nothing else;
+     otherwise the verified number alone. */
+  const reqDial = r => {
+    const txt = v => typeof v === 'string' ? v.replace(/\D/g,'') : '';
+    const p10 = txt(r && r.phone10).slice(-10);
+    const d = txt(r && r.phoneFull), cc = d.slice(0, -10);
+    return (p10.length === 10 && d.endsWith(p10) && /^[1-9]\d{0,2}$/.test(cc)) ? '+' + d : p10;
+  };
   const pfEmail = pf => pf.emailOk
     ? `<a href="mailto:${esc(pf.email)}" onclick="event.stopPropagation()">${esc(pf.email)}</a>` : esc(pf.email);
 
@@ -507,8 +571,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#loginForm', 'submit', async e=>{
     e.preventDefault();
     $('#loginErr').hidden = true;
-    try{ await signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#pass').value); }
+    let signedIn = false;
+    try{ await signInWithEmailAndPassword(auth, $('#email').value.trim(), $('#pass').value); signedIn = true; }
     catch(err){ $('#loginErr').textContent = 'Sign-in failed: ' + (err.code||'').replace('auth/','').replace(/-/g,' '); $('#loginErr').hidden = false; }
+    /* The login form stays in the page behind the panel, so a password left in
+       it (or shown as text, if the eye was open) sits in the DOM for the whole
+       session. Cleared only once the sign-in has resolved, so the password
+       manager has already had its chance to offer to save it; after a failed
+       attempt the value stays, for a retry. */
+    if(signedIn){
+      const p = $('#pass');
+      p.value = ''; p.type = 'password';
+      $('#passEye').innerHTML = EYE_ON;
+      $('#passEye').setAttribute('aria-label', 'Show password');
+    }
   });
   const EYE_ON  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -530,11 +606,55 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   window.addEventListener('online',  ()=>{ updNet(); toast('Back online — syncing'); });
   window.addEventListener('offline', ()=>{ updNet(); toast('Offline — changes will sync when signal returns'); });
   updNet();
+  /* true if the promise fn() returns fulfils within `ms`; false if it rejects,
+     throws or runs out of time — so a step that hangs (no signal, another tab
+     holding the database) can never leave the owner on a dead button */
+  const finishesIn = (fn, ms) => new Promise(res=>{
+    const t = setTimeout(()=>res(false), ms);
+    Promise.resolve().then(fn).then(()=>{ clearTimeout(t); res(true); }, ()=>{ clearTimeout(t); res(false); });
+  });
+  let _loggingOut = false;
   /* a 40px button 8px from the Config toggle, in the corner the thumb crosses
      to reach it — one mis-tap signed the owner out mid-task */
   on('#logoutBtn', 'click', async ()=>{
-    if(await confirmDialog({ title:'Log out?', body:'You will need your email and password to get back in.',
-                             confirmText:'Log out', danger:false })) signOut(auth);
+    if(_loggingOut) return;
+    if(!await confirmDialog({ title:'Log out?', body:'You will need your email and password to get back in.',
+                              confirmText:'Log out', danger:false })) return;
+    if(DEMO){ signOut(auth); return; }   /* fixtures only: nothing was cached, nothing to wipe */
+
+    /* signOut() alone leaves the Firestore cache in IndexedDB on the device:
+       every lead, package, payment and crew record the panel listened to,
+       readable by whoever holds the phone next. So the explicit Log out also
+       empties it. ONLY this button does: a token that will not refresh, being
+       offline, or the not-authorised sign-out in onAuthStateChanged must never
+       clear a cache that may hold writes which have not been sent yet. */
+    _loggingOut = true;
+    let leaving = false;
+    try{
+      /* writes still queued would die with the cache, so look first — a short
+         ceiling, because offline this promise never settles */
+      if(!await finishesIn(()=>waitForPendingWrites(db), 4000)
+         && !await confirmDialog({ title:'Unsynced changes',
+              body:'<p>Some of your changes are still waiting to reach the server, and they will be <b>lost</b> if you log out now.</p>',
+              confirmText:'Log out anyway', danger:true })) return;
+
+      try{ await signOut(auth); }
+      catch(err){ toast('Could not log out — try again'); return; }
+
+      /* The flag outlives a wipe that does not finish (another tab holds the
+         database): the next boot deletes it before Firestore opens it. */
+      try{ localStorage.setItem(WIPE_KEY, '1'); }catch(e){}
+      viewScrubSearches();
+      /* clearIndexedDbPersistence refuses a Firestore that is still running,
+         so terminate first — and skip it if that never finished */
+      const stopped = await finishesIn(()=>terminate(db), 3000);
+      const wiped = stopped && await finishesIn(()=>clearIndexedDbPersistence(db), 3000);
+      if(wiped){ try{ localStorage.removeItem(WIPE_KEY); }catch(e){} }
+      /* the terminated Firestore cannot be started again: a fresh load is the
+         only way back to a working login */
+      leaving = true;
+      location.replace('./');
+    }finally{ _loggingOut = leaving; }   /* stays locked once the reload is under way */
   });
 
   /* ============================================================
@@ -606,7 +726,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       loadAvailability();   /* config/availability (created if missing) + the month the calendar shows */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
       const rawHash = (location.hash||'').replace('#','').split('/')[0];
-      const fromHash = TAB_OF_VIEW[rawHash] || 'tabHome';
+      const fromHash = tabOfView(rawHash);
       showTab(fromHash);
       if(rawHash === 'editing') setTeamSeg('edit');   /* same on a cold open */
       /* keep #editing in the bar rather than flattening it to #team, so a
@@ -675,6 +795,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* #editing still resolves — an old link or a back-press lands on Team, and
      setTeamSeg picks the section up from there */
   const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig' };
+  /* The view name comes out of the address bar (/admin/#constructor), and a
+     plain-object lookup answers for inherited keys too: TAB_OF_VIEW['constructor']
+     is Object, not a tab id, and showTab(Object) blanked the whole panel. Own
+     keys only; anything else is Home. */
+  const tabOfView = v => Object.prototype.hasOwnProperty.call(TAB_OF_VIEW, v) ? TAB_OF_VIEW[v] : 'tabHome';
   let _navFromPop = false;
   /* Sheet/modal history states. Pushing a new state while one of these is
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
@@ -929,7 +1054,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(typeof setTeamSeg === 'function') setTeamSeg('edit');
         if(_ejOpenId){ $('#ejListView').hidden = true; $('#ejDetailView').hidden = false; }
       }else{
-        const tab = TAB_OF_VIEW[v] || 'tabHome';
+        const tab = tabOfView(v);
         showTab(tab);
         /* #editing is a Team section now, so landing on the tab is only half
            of it — an old link or a back-press has to arrive at the section
@@ -1182,7 +1307,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           </span>
         </div>
         <div class="card__actions">
-          <a class="btn btn--sm btn--ghost" href="tel:+91${esc(l.phone||'')}" aria-label="Call ${esc(l.name||'this lead')}">📞 Call</a>
+          <a class="btn btn--sm btn--ghost" href="tel:+91${esc(String(l.phone||'').replace(/\D/g,'').slice(-10))}" aria-label="Call ${esc(l.name||'this lead')}">📞 Call</a>
           <a class="btn btn--sm btn--ghost" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬 WhatsApp</a>
           <button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button>
         </div>
@@ -1316,7 +1441,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(l.eventType) h += `<div class="ln"><span>Events</span><span>${esc(l.eventType)}</span></div>`;
     if(l.phone) h += `<div class="ln"><span>Phone</span><span class="telrow">
-      <a href="tel:+91${esc(l.phone)}" aria-label="Call ${esc(l.name||'this lead')}">${esc(l.phone)}</a>
+      <a href="tel:+91${esc(String(l.phone||'').replace(/\D/g,'').slice(-10))}" aria-label="Call ${esc(l.name||'this lead')}">${esc(l.phone)}</a>
       <a class="icon-btn icon-btn--ring" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬</a>
     </span></div>`;
     if(l.message) h += `<h4>Message</h4><div>${esc(l.message)}</div>`;
@@ -5494,7 +5619,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             <span>${esc(CAT_LABEL[catOf(m)])} · ${esc(roleLabel(m.role))}${m.defaultRate ? ' · ' + inr(m.defaultRate) + '/event' : ''}${memberPhone10(m) ? '' : ' · ⚠ no phone'}</span>
           </span>
           <span class="sq-acts">
-            ${m.phone ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(m.phone)}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
+            ${telOf(m.phone).replace(/\D/g,'').length >= 6 ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(telOf(m.phone))}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
             ${wa ? `<a class="icon-btn icon-btn--ring" href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp" aria-label="WhatsApp ${esc(m.name||'')}">💬</a>` : ''}
           </span>
         </div>
@@ -5529,7 +5654,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = pending.map(r=>`
       <div class="up-ev" style="cursor:default">
         <span class="what"><b>${esc(r.name||'—')}</b> <span>${r.note ? '· “' + esc(r.note) + '”' : ''}</span></span>
-        ${(r.phoneFull||r.phone10) ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(String(r.phoneFull||r.phone10).replace(/[^\d+]/g,''))}" title="${esc(r.phoneFull||r.phone10)}" aria-label="Call ${esc(r.name||'this person')}">📞</a>` : ''}
+        ${reqDial(r) ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(reqDial(r))}" title="${esc(reqDial(r))}" aria-label="Call ${esc(r.name||'this person')}">📞</a>` : ''}
         <button class="btn btn--sm btn--ghost" data-reqok="${esc(r.id)}">Approve</button>
         <button class="icon-btn icon-btn--danger" data-reqno="${esc(r.id)}" title="Dismiss">✕</button>
       </div>`).join('');
@@ -5573,7 +5698,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _tmFromReq = r.id;
       $('#tmTitle').textContent = 'Approve — Add Team Member';
       $('#tmName').value = r.name||'';
-      $('#tmPhone').value = r.phoneFull||r.phone10||'';
+      $('#tmPhone').value = reqDial(r);
       return;
     }
     if(no){
@@ -6491,7 +6616,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const who = [...new Set(lost.flatMap(j=>j.names))];
         const w = who.length === 1;
         el.innerHTML = `
-          <b>${w ? who[0] + ' has' : who.length + ' editors have'} no phone number on file.</b>
+          <b>${w ? esc(who[0]) + ' has' : who.length + ' editors have'} no phone number on file.</b>
           <span>${w ? 'They are' : 'They are each'} assigned to editing work${
             lost.length > 1 ? ` on ${lost.length} bookings` : ''}, and the crew page finds an editor by
             phone — so ${w ? 'that job cannot reach them' : 'those jobs cannot reach them'} until
@@ -6723,10 +6848,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
     }).join('') : `<div class="empty" style="padding:.5rem 0">Nobody is on this edit yet.</div>`;
 
-    const thread = (Array.isArray(job.comments) ? job.comments : [])
-      .slice().sort((a,b)=>String(a.at||'') < String(b.at||'') ? 1 : -1);
-    const audit = (Array.isArray(job.audit) ? job.audit : [])
-      .slice().sort((a,b)=>String(a.at||'') < String(b.at||'') ? 1 : -1);
+    /* An editor may append a note to this array and the rules cannot see
+       inside it, so an entry can be null, a bare string, or carry a field that
+       is not text. One such entry used to throw in the sort below and leave the
+       whole job unopenable. Only map entries are kept, and each of the three
+       fields drawn is reduced to a string here, so nothing after this can throw
+       on what a note contains. */
+    const ejEntries = arr => (Array.isArray(arr) ? arr : [])
+      .filter(c=>c && typeof c === 'object' && !Array.isArray(c))
+      .map(c=>({ at: typeof c.at === 'string' ? c.at : '', by: typeof c.by === 'string' ? c.by : '',
+                 text: typeof c.text === 'string' ? c.text : '', what: typeof c.what === 'string' ? c.what : '' }))
+      .sort((a,b)=>a.at < b.at ? 1 : -1);
+    const thread = ejEntries(job.comments);
+    const audit = ejEntries(job.audit);
 
     /* the one place this page reaches outside the video service: signing the
        edit off can tick the package's own delivery step, so the owner does
@@ -7037,7 +7171,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const who = (memberById(a.memberId)||{}).name || a.memberName || 'the editor';
       if(agree){
         if(!await confirmDialog({
-          title:`Pay ${esc(who)} ${inr(ask)}?`,
+          title:`Pay ${who} ${inr(ask)}?`,   /* confirmDialog sets the title as text: esc() here showed &amp; and &#39; literally */
           body:`<p>This becomes the agreed fee for their part of this edit${
             payFee(a) > 0 ? `, replacing ${inr(payFee(a))}` : ''}.</p>`,
           confirmText:`Agree ${inr(ask)}`, danger:false })) return;
@@ -9075,7 +9209,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="l2"><span class="card__meta">${esc([s.city, s.ownerName].filter(Boolean).join(' · ')) || '—'}</span></span>
           <span class="chev" aria-hidden="true">›</span>
         </span>
-        ${s.phone ? `<span class="card__side"><a class="icon-btn" href="tel:${esc(s.phone)}" aria-label="Call ${esc(s.name||'this studio')}" onclick="event.stopPropagation()">📞</a></span>` : ''}
+        ${telOf(s.phone).replace(/\D/g,'').length >= 6 ? `<span class="card__side"><a class="icon-btn" href="tel:${esc(telOf(s.phone))}" aria-label="Call ${esc(s.name||'this studio')}" onclick="event.stopPropagation()">📞</a></span>` : ''}
       </div>
       <div class="stu-chips">
         <b class="c1">${open} open job${open===1?'':'s'}</b>
@@ -9486,7 +9620,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           : loginBad ? `⚠ login key missing — this partner cannot sign in <button class="btn btn--sm btn--ghost" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`
           : 'checking the login key…'}</span></div>
         <div class="ev-acts">
-          ${s.phone ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(s.phone)}">📞 Call</a>
+          ${s.phone ? `${telOf(s.phone) ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(telOf(s.phone))}">📞 Call</a>` : ''}
           <a class="btn btn--sm btn--ghost stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
           <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
@@ -10270,7 +10404,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        Leads and packages are two different records of the same journey, and
        the honest funnel needs both: the website counts enquiries, the builder
        counts quotes. A lead that was quoted carries pkgId. */
-    const byStatus = {};
+    /* The three tallies below are keyed by text other people write (a lead's
+       status and source, a line item's service name). On a plain {} a key of
+       '__proto__' or 'constructor' reads Object.prototype back, and the
+       counting then throws or writes into it for the whole page. A null
+       prototype has no inherited keys; Object.entries and plain reads work. */
+    const byStatus = Object.create(null);
     leads.forEach(l=>{ const s = l.status||'new'; byStatus[s] = (byStatus[s]||0)+1; });
     const quotedLeads = leads.filter(l=>l.pkgId || l.quote).length;
     const wonLeads    = leads.filter(l=>['booked','converted'].includes(l.status||'new')).length;
@@ -10285,7 +10424,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     /* ---- where the work comes from ---- */
     const SRC = { contact_form:'Contact form', package_builder:'Package builder', manual:'Added by hand' };
-    const src = {};
+    const src = Object.create(null);
     leads.forEach(l=>{
       const k = String(l.source||'manual');
       const o = src[k] = src[k] || { n:0, won:0, val:0 };
@@ -10295,13 +10434,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         o.val += Number(l.grandTotal)||0;
       }
     });
-    const sources = Object.entries(src).map(([k,o])=>({ label: SRC[k] || k, ...o }))
+    const sources = Object.entries(src).map(([k,o])=>({ label: Object.prototype.hasOwnProperty.call(SRC, k) ? SRC[k] : k, ...o }))
       .sort((a,b)=>b.n - a.n);
 
     /* ---- what actually sells ----
        qty × rate, straight off the line items of every won job. This is the
        studio's own price list, scored by what clients actually bought. */
-    const svc = {};
+    const svc = Object.create(null);
     won.forEach(x=>(x.events||[]).forEach(ev=>(ev.items||[]).forEach(it=>{
       const name = String(it.service||'').trim(); if(!name) return;
       const q = Number(it.qty)||0, r = Number(it.rate)||0;
@@ -10361,7 +10500,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     /* ---- direct vs partner, and which partners ---- */
     let direct = 0, partner = 0;
-    const byStudio = {};
+    const byStudio = Object.create(null);   /* keyed by studioId: same reason */
     won.forEach(x=>{
       const v = val(x);
       if(isStudioJob(x)){
@@ -12133,13 +12272,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* honour the hash the way the signed-in boot does, so a deep link like
            #editing is testable here instead of always landing on Home */
         const demoView = (location.hash||'').replace('#','').split('/')[0];
-        showTab(TAB_OF_VIEW[demoView] || 'tabHome');
+        showTab(tabOfView(demoView));
         if(demoView === 'editing') setTeamSeg('edit');
         /* and record it, as the signed-in boot does: without a state on this
            first entry, Back from anything opened on top of it read the
            popstate fallback, 'home', and dropped the demo onto Home */
         const demoState = demoView === 'editing' ? 'editing'
-          : VIEW_OF_TAB[TAB_OF_VIEW[demoView] || 'tabHome'];
+          : VIEW_OF_TAB[tabOfView(demoView)];
         try{ history.replaceState({view: demoState}, '', '#' + demoState); }catch(e){}
 
         renderStats(); renderLeads();

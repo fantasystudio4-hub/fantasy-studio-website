@@ -646,7 +646,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <!-- what the member added in the app (photo, name, emergency contact):
        read-only, filled by renderTmProf, hidden when there is none -->
   <div class="pf-box" id="tmProf" hidden></div>
-  <div class="fld"><label>Name</label><input id="tmName" autocomplete="off" /></div>
+  <div class="fld"><label>Name</label><input id="tmName" autocomplete="off" maxlength="80" /></div>
   <div class="fld"><label>Type</label>
     <div class="mode-pills">
       <button type="button" id="tmCatOut" class="on">🎥 Outdoor</button>
