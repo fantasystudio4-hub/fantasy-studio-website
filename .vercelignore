@@ -37,7 +37,7 @@
 # Firebase, no config, no real data — but it was still fetchable at
 # /_cptest.html with no <title> and no noindex, so nothing stopped a crawler
 # indexing an untitled prototype under the business's own domain. It is not in
-# the sitemap and robots.txt only disallows /admin/ /client/ /team/ /studio/.
+# the sitemap and robots.txt only disallows /client/ /team/ /studio/ (/admin/ is deliberately not named there: a Disallow line advertises the address; its noindex header is what keeps it out of search).
 _cptest.html
 **/_cptest.html
 *.test.html
