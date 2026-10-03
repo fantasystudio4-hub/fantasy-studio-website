@@ -9,6 +9,28 @@ const inrShort = n => {
   return v >= 1e7 ? cut(1e7,'Cr') : v >= 1e5 ? cut(1e5,'L') : v >= 1e4 ? cut(1e3,'K') : inr(v);
 };
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* A Firestore document id is chosen by whoever creates the document, and
+   Firestore accepts quotes, angle brackets and spaces in one. Leads are created
+   by anyone holding the public web API key, and a partner picks the id of a
+   booking request, which becomes the package id 'rq_' + id when it is accepted.
+   An id printed raw into data-id="…" therefore ran script in the signed-in
+   owner's session. Two layers: every id that reaches markup goes through esc(),
+   and a snapshot drops any document whose id is not what this app and the site
+   mint (Firestore auto-ids, 'rq_' + auto-id). Dropped ids are named once, so a
+   hidden record is never silent — delete it from the Firebase console. */
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const _unsafeSeen = new Set();
+function keepSafeIds(docs, what){
+  const bad = [];
+  const ok = docs.filter(d=>{ if(SAFE_ID.test(d.id)) return true; bad.push(d.id); return false; });
+  const fresh = bad.filter(id=>!_unsafeSeen.has(id));
+  if(fresh.length){
+    fresh.forEach(id=>_unsafeSeen.add(id));
+    console.warn('[security] ' + what + ': ' + fresh.length + ' document(s) with an unexpected id were hidden:', fresh);
+    toast('⚠ ' + fresh.length + ' ' + what + ' record' + (fresh.length === 1 ? ' has' : 's have') + ' an unusual ID and ' + (fresh.length === 1 ? 'is' : 'are') + ' hidden. Check the Firebase console and delete ' + (fresh.length === 1 ? 'it' : 'them') + '.');
+  }
+  return ok;
+}
 let toastT;
 /* Duration follows length: 2.6s fit "Saved ✓" but "NOT saved — the server
    refused this write…" is 20+ words, gone before a phone user has read half.
@@ -942,13 +964,30 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _capWarned[kind] = true;
     toast(`Showing the ${cap} most recent ${kind}. Older ones exist — use Backup & Export to see them all.`);
   }
+  /* A lead is written by anyone holding the public web API key, and the rule
+     only pins WHICH keys exist: createdAt and the entries of quote.events are
+     not typed. A createdAt that is a map with a toDate key, or an events entry
+     that is null, used to make renderStats and the card builder throw on every
+     snapshot and blank Leads, Home, Calendar and Trash together — and the
+     poisoned lead could not be seen to be deleted. Read each lead into the
+     shape the renderers expect ONCE, here, so nothing downstream has to
+     re-check it. */
+  function cleanLead(d){
+    const x = { id: d.id, ...d.data() };
+    const t = x.createdAt;
+    if(!t || typeof t.toDate !== 'function' || typeof t.toMillis !== 'function') x.createdAt = null;
+    if(x.quote && typeof x.quote === 'object' && Array.isArray(x.quote.events)){
+      x.quote = { ...x.quote, events: x.quote.events.filter(ev=>ev && typeof ev === 'object' && !Array.isArray(ev)) };
+    }
+    return x;
+  }
   function loadLeads(){
     if(_leadsUnsub){ renderLeads(); return; }
     try{ _seenBefore = Number(localStorage.getItem('fs_leads_seen'))||0; localStorage.setItem('fs_leads_seen', String(Date.now())); }catch(e){}
     try{
       _leadsUnsub = onSnapshot(query(collection(db,'leads'), orderBy('createdAt','desc'), limit(LEADS_CAP)), snap=>{
         const prevIds = new Set(LEADS.map(l=>l.id));
-        LEADS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        LEADS = keepSafeIds(snap.docs, 'lead').map(cleanLead);
         warnIfCapped('leads', snap.size, LEADS_CAP);
         _leadsLoaded = true;
         if(!snap.metadata.fromCache) _leadsFresh = true;
@@ -957,7 +996,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           if(fresh.length) toast(`🔔 New lead: ${fresh[0].name||'someone'}${fresh.length>1 ? ' +' + (fresh.length-1) + ' more' : ''}`);
         }
         _leadsInit = true;
-        renderStats(); renderLeads(); renderCalendar(); renderHome(); renderTrash();
+        /* one throwing renderer must not stop the rest: a single odd lead used to
+           blank Leads, Calendar, Home and Trash together */
+        [renderStats, renderLeads, renderCalendar, renderHome, renderTrash].forEach(fn=>{
+          try{ fn(); }catch(err){ console.error('[leads] ' + fn.name + ' failed', err); }
+        });
       }, err=>{
         try{ if(_leadsUnsub) _leadsUnsub(); }catch(e){}
         _leadsUnsub = null; _leadsInit = false;   /* let ↻ Refresh resubscribe */
@@ -1032,7 +1075,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }
       });
       if(_focusId){
-        const t = document.querySelector(`#leadList .lead[data-id="${_focusId}"] [data-notes]`);
+        const t = document.querySelector(`#leadList .lead[data-id="${CSS.escape(_focusId)}"] [data-notes]`);
         if(t){ t.focus(); try{ t.setSelectionRange(_caret, _caret); }catch(e){} }
       }
     };
@@ -1088,6 +1131,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       [..._bulkSel].forEach(id=>{ if(!alive.has(id)) _bulkSel.delete(id); });
     }
     $('#leadList').innerHTML = list.map(l=>{
+     try{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
       const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
       const sib = leadSiblings(l);
@@ -1112,10 +1156,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          The status <select> is a SIBLING of the toggle button, never a child:
          a control inside a button is invalid, and the button swallows its taps. */
       return `
-      <article class="card lead${_bulkOn && _bulkSel.has(l.id) ? ' picked' : ''}" data-id="${l.id}" data-state="${state}">
+      <article class="card lead${_bulkOn && _bulkSel.has(l.id) ? ' picked' : ''}" data-id="${esc(l.id)}" data-state="${state}">
         <div class="card__head">
           ${_bulkOn ? `<span class="pickbox"><input type="checkbox" data-pick aria-label="Select ${esc(l.name||'this lead')}"${_bulkSel.has(l.id)?' checked':''} /></span>` : ''}
-          <button type="button" class="card__toggle" data-toggle aria-expanded="false" aria-controls="ld-${l.id}">
+          <button type="button" class="card__toggle" data-toggle aria-expanded="false" aria-controls="ld-${esc(l.id)}">
             <span class="l1">
               <span class="card__title">${esc(l.name||'—')}</span>
               ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
@@ -1142,8 +1186,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <a class="btn btn--sm btn--ghost" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬 WhatsApp</a>
           <button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button>
         </div>
-        <div class="card__body lead-det" id="ld-${l.id}" hidden>${leadDetailHTML(l)}</div>
+        <div class="card__body lead-det" id="ld-${esc(l.id)}" hidden>${leadDetailHTML(l)}</div>
       </article>`;
+     }catch(err){
+      /* one lead that cannot be drawn must not take the whole list with it */
+      console.error('[leads] could not draw a lead', err);
+      return `<article class="card lead" data-id="${esc(l.id)}" data-state="overdue"><div class="card__head"><span class="card__title">⚠ This lead could not be shown</span><button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button></div></article>`;
+     }
     }).join('');
     _restore();
     if(_bulkOn) renderBulkBar();
@@ -2531,7 +2580,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          stays false and the crew mirror the partner portal reads never syncs */
       _pkgsUnsub = onSnapshot(query(collection(db,'packages'), orderBy('createdAt','desc'), limit(PKGS_CAP)),
         { includeMetadataChanges: true }, async snap=>{
-        PKGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        PKGS = keepSafeIds(snap.docs, 'package').map(d=>({ id:d.id, ...d.data() }));
         warnIfCapped('packages', snap.size, PKGS_CAP);
         _pkgsLoaded = true;
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
@@ -3220,7 +3269,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        copy of the same pill sitting in the head doing nothing. One control,
        always reachable, same StatusChip vocabulary as every other tab. */
     return `
-    <article class="card ${open?'is-open':''}" data-id="${x.id}" data-state="${stateOf(st)}">
+    <article class="card ${open?'is-open':''}" data-id="${esc(x.id)}" data-state="${stateOf(st)}">
       <div class="card__head">
         <button type="button" class="card__toggle" data-expand aria-expanded="${open?'true':'false'}">
           <span class="l1">
@@ -3665,7 +3714,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
       return `
-      <div class="cal-ev" data-kind="${e.kind}" data-id="${e.id}">
+      <div class="cal-ev" data-kind="${esc(e.kind)}" data-id="${esc(e.id)}">
         <i class="dot ${e.status}"></i>
         <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="btn btn--sm btn--ghost" data-openev>Open</button>
@@ -4837,7 +4886,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : `<span class="ackpill ${seen?'seen':'wait'}">${seen?'✓ seen':'⏳ not seen'}</span>`;
     const wa = a.kind === 'edit' ? '' : crewWaNumber(a);
     return `
-      <div class="tm-crew" data-asedit="${a.id}">
+      <div class="tm-crew" data-asedit="${esc(a.id)}">
         <span class="nm2">${esc(a.memberName||'—')}</span>
         <span class="rl">${esc(roleLabel(a.role))}${a.callTime ? ' · call ' + esc(a.callTime) : ''}${(a.pay||{}).amount ? ' · ' + inr(a.pay.amount) : ''}</span>
         ${extra || pill}
@@ -4912,7 +4961,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             </div>
             <span class="cl">${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}${ev.venue ? ' · 📍 ' + esc(ev.venue) : ''}</span>
           </div>
-          <button class="btn btn--sm btn--ghost" data-asadd data-aspk="${pk.id}" data-asev="${idx}">＋ Assign</button>
+          <button class="btn btn--sm btn--ghost" data-asadd data-aspk="${esc(pk.id)}" data-asev="${idx}">＋ Assign</button>
         </div>
         <div class="tm-fill">
           <span class="fbar"><i style="width:${fill}%"></i></span>
@@ -4944,7 +4993,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             : `<div class="tm-need" title="This event needs ${esc(needTxt)}">Fully crewed <b class="ok2">✓</b></div>`)
           : ''}
         ${crew.map(a=>crewRowHTML(a)).join('')}
-        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="btn btn--sm btn--ghost" data-assync="${a.id}" data-aspk="${pk.id}" data-asev="${idx}">Sync</button>`)).join('')}
+        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="btn btn--sm btn--ghost" data-assync="${esc(a.id)}" data-aspk="${esc(pk.id)}" data-asev="${idx}">Sync</button>`)).join('')}
       </div>`;
     }).join('')
     + (all.length > TEAM_EV_N
@@ -5064,14 +5113,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const stepDone = step && (Array.isArray(pk.delivery) ? pk.delivery : []).some(d=>d && d.step === step);
       return `
       <div class="ed-row ${a.workDone ? 'ok' : ''}">
-        <span class="w" data-asedit="${a.id}" role="button" tabindex="0">${esc(stepDate(asgDue(a)) || '—')}</span>
-        <span class="t" data-asedit="${a.id}" role="button" tabindex="0">
+        <span class="w" data-asedit="${esc(a.id)}" role="button" tabindex="0">${esc(stepDate(asgDue(a)) || '—')}</span>
+        <span class="t" data-asedit="${esc(a.id)}" role="button" tabindex="0">
           <b>${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : ''}</b>
           ${qnoTag(a.quoteNo)}
           <span>${esc(a.deliver || a.eventTitle || 'Editing')} · ${esc(a.memberName||'—')}</span>
         </span>
-        ${late && wa ? `<button class="edact" data-nudge="${a.id}" title="Remind the editor">💬</button>` : ''}
-        ${step && !stepDone ? `<button class="edact tick" data-tick="${a.id}" title="Tick “${esc(step)}” on the package">✓ step</button>` : ''}
+        ${late && wa ? `<button class="edact" data-nudge="${esc(a.id)}" title="Remind the editor">💬</button>` : ''}
+        ${step && !stepDone ? `<button class="edact tick" data-tick="${esc(a.id)}" title="Tick “${esc(step)}” on the package">✓ step</button>` : ''}
         ${a.workDone ? '<span class="duetag ok">✓ done</span>' : dueChip(a)}
       </div>`;
     };
@@ -5431,7 +5480,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         (pf.emName || pf.emPhone) ? `🆘 ${esc([pf.emName, pf.emPhone].filter(Boolean).join(' · '))}` : ''
       ].filter(Boolean).join(' · ') : '';
       return `
-      <div class="sq ${m.active === false ? 'off' : ''}" data-tmedit="${m.id}" role="button" tabindex="0" aria-label="Edit ${esc(m.name||'member')}">
+      <div class="sq ${m.active === false ? 'off' : ''}" data-tmedit="${esc(m.id)}" role="button" tabindex="0" aria-label="Edit ${esc(m.name||'member')}">
         <div class="sq-h">
           <span class="sq-av">
             <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -5659,12 +5708,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="ev2">${scissors}${gone ? '<span title="Package deleted">⚠ </span>' : ''}${esc(stepDate(a.date)||a.date||'—')} · ${esc(a.eventTitle||'Event')}${slotTag(a.slot)} <span>· ${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'')}</span></span>
           <button type="button" class="amt2" data-feeedit="${esc(a.id)}" title="Tap to change this event's fee">${inr(payFee(a))}${st === 'part' ? `<i class="got2">${inr(payGot(a))} paid</i>` : ''}</button>
           ${st === 'paid'
-            ? `<button class="paid2" data-unpaid="${a.id}" title="Tap to see or correct this payment">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
+            ? `<button class="paid2" data-unpaid="${esc(a.id)}" title="Tap to see or correct this payment">Paid ${esc(stepDate(p.paidDate)||'')}</button>`
             : early
-              ? `<button class="btn btn--sm btn--ghost early2" data-cpay="${a.id}" title="Not due yet — this shoot has not happened. Tap to pay early anyway.">Pay early</button>`
+              ? `<button class="btn btn--sm btn--ghost early2" data-cpay="${esc(a.id)}" title="Not due yet — this shoot has not happened. Tap to pay early anyway.">Pay early</button>`
             : st === 'part'
-              ? `<button class="btn btn--sm btn--ghost part2" data-cpay="${a.id}">${inr(payDue(a))} left</button>`
-              : `<button class="btn btn--sm btn--ghost" data-cpay="${a.id}">Pay</button>`}
+              ? `<button class="btn btn--sm btn--ghost part2" data-cpay="${esc(a.id)}">${inr(payDue(a))} left</button>`
+              : `<button class="btn btn--sm btn--ghost" data-cpay="${esc(a.id)}">Pay</button>`}
         </div>`;
       };
       /* owed and paid rows first, newest on top as before; the shoots still to
@@ -7395,7 +7444,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const note = here ? 'already on this event' : busy.length ? 'busy · ' + esc(busy[0].eventTitle||'another event') : 'free';
       /* a bare ★ read as a favourite or a rating — it means this event's
          services actually call for their craft */
-      return `<button type="button" class="cpick ${on?'on':''} ${here?'here':''}" data-pick="${m.id}" ${here?'disabled':''}>
+      return `<button type="button" class="cpick ${on?'on':''} ${here?'here':''}" data-pick="${esc(m.id)}" ${here?'disabled':''}>
         <i class="dot ${here ? 'delivered' : busy.length ? 'unconfirmed' : 'booked'}"></i>
         <span class="cp-t"><b>${esc(m.name||'—')}${wanted?'<i class="wantt">needed</i>':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
       </button>`;
@@ -8149,13 +8198,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     a.href = URL.createObjectURL(b); a.download = filename; a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
   }
+  /* Leads and booking requests carry text typed by strangers, and these exports
+     are opened in Sheets or Excel. A text cell that STARTS with = + - @ (or a
+     tab / carriage return) is run as a formula there — Sheets will even send
+     neighbouring cells to a web address. Prefix such a cell with an apostrophe so
+     it stays text. Real numbers (every money column) are never touched, and a
+     string that is only digits and separators — a phone like '+91 98765 43210',
+     a '-5' — is exempt, since without letters it cannot call a function. */
   function csvEnc(rows){
-    return rows.map(r=>r.map(v=>{
-      v = (v==null ? '' : String(v));
-      return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
-    }).join(',')).join('\n');
+    const cell = v => {
+      if(v==null) return '';
+      let t = String(v);
+      if(typeof v !== 'number' && /^[=+\-@\t\r]/.test(t) && !/^[+-]?[\d\s().,-]+$/.test(t)) t = "'" + t;
+      return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t;
+    };
+    return rows.map(r=>r.map(cell).join(',')).join('\n');
   }
-  const tsDate = t => (t && t.toDate) ? t.toDate().toLocaleDateString('en-CA') : '';
+  const tsDate = t => (t && typeof t.toDate === 'function') ? t.toDate().toLocaleDateString('en-CA') : '';
   const stamp = () => new Date().toLocaleDateString('en-CA');
   /* exports fetch the FULL collections — the in-memory lists are capped, a backup must not be.
      Server-first: an offline cache copy is clearly labelled, never passed off as a full backup. */
@@ -8168,7 +8227,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{ return { snap: await getDocsFromServer(q), partial: false }; }
       catch(e){ return { snap: await getDocs(q), partial: true }; }
     };
-    const ts = d => (d.createdAt && d.createdAt.toMillis) ? d.createdAt.toMillis() : 0;
+    const ts = d => (d.createdAt && typeof d.createdAt.toMillis === 'function') ? d.createdAt.toMillis() : 0;
     const sortNew = arr => arr.sort((a,b)=>ts(b)-ts(a));
     const [p, l, t, a, st, ex] = await Promise.all([one('packages'), one('leads'), one('team'), one('assignments'), one('studios'), one('expenses')]);
     return { pkgs: sortNew(p.snap.docs.map(d=>({ id:d.id, ...d.data() }))),
@@ -8291,8 +8350,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="what">${it.icon} ${esc(it.title)}
           <span>${it.qno ? `<b class="qno">${esc(it.qno)}</b> · ` : ''}deleted ${esc(stepDate(it.on) || it.on || '—')}</span></span>
         <span class="chip-status no-dot" data-state="${esc(it.state)}">${esc(it.badge)}</span>
-        <button class="btn btn--sm btn--ghost" data-restore="${it.kind}:${it.id}">Restore</button>
-        <button class="btn btn--sm btn--danger" data-purge="${it.kind}:${it.id}" title="Delete permanently">✕ Forever</button>
+        <button class="btn btn--sm btn--ghost" data-restore="${esc(it.kind)}:${esc(it.id)}">Restore</button>
+        <button class="btn btn--sm btn--danger" data-purge="${esc(it.kind)}:${esc(it.id)}" title="Delete permanently">✕ Forever</button>
       </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
     /* silent 30-day cleanup — only once BOTH lists have arrived fresh from the server,
        never from a stale cache image (it could hard-delete something restored elsewhere) */
@@ -8569,7 +8628,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         first = false;
         /* 'estimate': a request answered a moment ago has answeredAt still
            pending — as null it would sort to the bottom of Answered */
-        SREQS = snap.docs.map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
+        SREQS = keepSafeIds(snap.docs, 'booking request').map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
         warnIfCapped('booking requests', snap.size, SREQS_CAP);
         _sreqsLoaded = true; _sreqsErr = '';
         renderStuReqs();
@@ -8750,6 +8809,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   async function acceptStuReq(id){
     const r = sreqById(id);
     if(!r || sreqStatus(r) !== 'new' || _sreqBusy) return;
+    /* the request's id becomes the package's id ('rq_' + id); the partner picked it */
+    if(!SAFE_ID.test(r.id)){ toast('Cannot accept — this request has an unusual ID. Decline or delete it.'); return; }
     const stu = studioById(r.studioId);
     if(!stu){ toast('Cannot accept — this studio is not in your Partner studios list. Add the studio first, or decline the request.'); return; }
     if(stu.active === false){ toast(`Cannot accept — ${stu.name || 'this studio'} is marked inactive. Reactivate the studio first, or decline the request.`); return; }
@@ -9003,7 +9064,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        wrap the Call link, and a control inside a button is invalid markup that
        swallows the inner tap. Same visual grammar as Clients and Packages. */
     return `
-    <article class="card ${inactive?'tm-inactive':''}" data-stu="${s.id}">
+    <article class="card ${inactive?'tm-inactive':''}" data-stu="${esc(s.id)}">
       <div class="card__head">
         <span class="card__toggle" role="button" tabindex="0" aria-label="Open ${esc(s.name||'this studio')}">
           <span class="l1">
@@ -9447,7 +9508,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           const bal = Math.max(0, Number((x.totals||{}).balance)||0);
           return `
           <div class="stujob ${open?'open':''}">
-            <div class="up-ev" data-stujob="${x.id}" role="button" tabindex="0" aria-expanded="${open}">
+            <div class="up-ev" data-stujob="${esc(x.id)}" role="button" tabindex="0" aria-expanded="${open}">
               <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
               <span class="what"><b class="qno">${esc(x.quoteNo||'—')}</b> <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span>
                 ${bal > 0 ? `<em class="sjdue">${inr(bal)} due</em>` : ''}
@@ -9459,7 +9520,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             ${open ? `<div class="sj-det">${di && di.total
               ? trackerHTML(x)
               : '<div class="empty" style="padding:.4rem 0">Delivery tracking starts once this job is booked.</div>'}
-              <button class="btn btn--sm btn--ghost" type="button" data-stuopen="${x.id}">Open package</button></div>` : ''}
+              <button class="btn btn--sm btn--ghost" type="button" data-stuopen="${esc(x.id)}">Open package</button></div>` : ''}
           </div>`;
         }).join('') : `<div class="empty" style="padding:.5rem 0">${
           _stuTab === 'closed' ? 'Nothing delivered for this studio yet.'
@@ -9712,7 +9773,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const acts = STUDIOS.filter(s=>s.active !== false);
       if(!acts.length) return;
       $('#jtWho').textContent = 'Which studio?';
-      $('#jtOpts').innerHTML = acts.map(s=>`<button type="button" data-jt-pick="${s.id}">🏢 ${esc(s.name||'—')}<em>${esc(s.city||'')}</em></button>`).join('')
+      $('#jtOpts').innerHTML = acts.map(s=>`<button type="button" data-jt-pick="${esc(s.id)}">🏢 ${esc(s.name||'—')}<em>${esc(s.city||'')}</em></button>`).join('')
         + '<button type="button" data-jt-back style="justify-content:center;color:var(--mut)">← Back</button>';
       return;
     }
@@ -10191,7 +10252,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const now = new Date();
     const cutIso = new Date(now.getTime() - 365*864e5).toLocaleDateString('en-CA');
     const inWin = iso => _insAll || (ISO_RE.test(iso||'') && iso >= cutIso);
-    const tsIso = t => (t && t.toDate) ? t.toDate().toLocaleDateString('en-CA') : '';
+    const tsIso = t => (t && typeof t.toDate === 'function') ? t.toDate().toLocaleDateString('en-CA') : '';
     /* Packages are anchored to their FIRST event date, the same anchor the
        money table uses — so a January enquiry for a November wedding counts
        as November's work on both screens. */
@@ -11474,7 +11535,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const label = ((h.childNodes[0] && h.childNodes[0].textContent) || h.textContent || '').trim();
       if(!label) return '';
       if(!s.id) s.id = 'cfgSec' + i;
-      return `<button type="button" data-cfgjump="${s.id}">${esc(label)}</button>`;
+      return `<button type="button" data-cfgjump="${esc(s.id)}">${esc(label)}</button>`;
     }).join('');
     jump.addEventListener('click', e=>{
       const b = e.target.closest('[data-cfgjump]'); if(!b) return;
