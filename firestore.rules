@@ -16,7 +16,7 @@ service cloud.firestore {
     }
 
     // last 10 characters of the signed-in user's verified phone number —
-    // used for clients (packages) AND crew (team/assignments/teamRequests).
+    // used for clients (packages) AND crew (team/assignments/editingJobs).
     // The E.164 token (e.g. "+918686868803" or NRI "+447911123456") includes a
     // leading '+', so the last 10 chars strip it and the country code down to
     // the stored "last 10 digits" key — works for +91 AND overseas clients.
@@ -41,10 +41,48 @@ service cloud.firestore {
     // how a lead field ended up rendering as markup in the signed-in admin
     // session. Every field is now typed and bounded, and `quote` is pinned to
     // its own three keys with a numeric sheet count.
+    //
+    // Two more fields were still free: createdAt and the entries of
+    // quote.events. The panel sorts the lead list by createdAt and calls
+    // .toDate() on it, and walks every event to print the quote — so one
+    // anonymous lead carrying createdAt as a map ({toDate: 1}), or a null in
+    // its events, threw inside the stats render and blanked the Leads, Home
+    // and Calendar screens for the signed-in owner. The panel now cleans each
+    // lead as it reads it (cleanLead), but a lead that can never be stored
+    // wrong is the better fix: createdAt must be a real timestamp (which
+    // also makes it required), and every event that exists must be a map.
+    // The public web form writes the client clock, not the server's
+    // (REST cannot ask for serverTimestamp()), so it is NOT pinned to
+    // request.time and has no bound either way: a phone with a wrong clock
+    // is still a real enquiry. Only the type is checked.
+    //
+    // ONE `is map` per slot, on purpose. leadEventAt(l, n) checks entry n
+    // when the list is long enough and passes when it is not — rules have no
+    // loops, but they can index — and leadEventsOk calls it for 0…11, every
+    // entry the 12-cap below allows. Anything heavier per entry (typing the
+    // services inside it, say) exhausts the 1000-expression budget and
+    // refuses a perfectly valid 12-function quote.
     function leadField(k, dflt) {
       return request.resource.data.get(k, dflt);
     }
     match /leads/{leadId} {
+      function leadEventAt(l, n) {
+        return l.size() <= n || l[n] is map;
+      }
+      function leadEventsOk(l) {
+        return leadEventAt(l, 0)
+          && leadEventAt(l, 1)
+          && leadEventAt(l, 2)
+          && leadEventAt(l, 3)
+          && leadEventAt(l, 4)
+          && leadEventAt(l, 5)
+          && leadEventAt(l, 6)
+          && leadEventAt(l, 7)
+          && leadEventAt(l, 8)
+          && leadEventAt(l, 9)
+          && leadEventAt(l, 10)
+          && leadEventAt(l, 11);
+      }
       allow create:
         if request.resource.data.keys().hasOnly(
              ['name','phone','phoneFull','eventType','weddingDate',
@@ -59,6 +97,7 @@ service cloud.firestore {
         && request.resource.data.message is string
         && request.resource.data.message.size() <= 2000
         && request.resource.data.source in ['package_builder', 'contact_form']
+        && request.resource.data.createdAt is timestamp
         // the five that used to be unchecked
         && leadField('phoneFull', '') is string
         && leadField('phoneFull', '').size() <= 20
@@ -76,6 +115,7 @@ service cloud.firestore {
               && request.resource.data.quote.get('promo', '').size() <= 40
               && request.resource.data.quote.get('events', []) is list
               && request.resource.data.quote.get('events', []).size() <= 12
+              && leadEventsOk(request.resource.data.quote.get('events', []))
            ));
       allow read, update, delete: if isAdmin();
     }
@@ -230,12 +270,27 @@ service cloud.firestore {
     //     a non-empty string of ≤ 80, qty a whole number 1–10 (the
     //     builder's MAX_QTY). Rules have no loops, but they can index, so
     //     reqItemAt(items, n) checks entry n when the list is long enough
-    //     and passes when it is not; calling it for 0…11 covers every
-    //     entry the 12-cap allows. Without this an entry could be any type
-    //     and size (a 1 MB string, a nested map) and the panel renders
-    //     them. The panel still treats each entry as untrusted when it
-    //     builds the draft job — and the price always comes from the rate
+    //     and passes when it is not; reqItemsOk calls it for 0…11, which
+    //     covers every entry the 12-cap allows. Without this an entry could
+    //     be any type and size (a 1 MB string, a nested map) and the panel
+    //     renders them. The panel still treats each entry as untrusted when
+    //     it builds the draft job — and the price always comes from the rate
     //     card held in the panel, never from anything written here.
+    //
+    //     Each entry has to be CHEAP to check. A rule may evaluate only 1000
+    //     expressions per request, and the first version of reqItemOk spent
+    //     so many per entry (a get() with a default, a type test and a
+    //     bound for each of service and qty) that a request with eight or
+    //     more distinct services ran out of budget and was refused whole —
+    //     the partner saw a failed send for a perfectly valid form. The
+    //     entry is now one hasOnly, one regex for the service (non-empty,
+    //     ≤ 80 characters, newlines allowed: (?s)), one `is int` and one
+    //     regex on the number printed as text, which is how a bound on an
+    //     int is written without two comparisons. The key lookups are
+    //     brackets, not get(): a missing key, a non-map entry or a service
+    //     that is not a string is an error, and an error is a deny.
+    //     reqItemsOk takes the list ONCE: passing request.resource.data.items
+    //     into each of twelve calls re-evaluated it twelve times.
     //
     // read — the portal queries  where('phone10','==', <verified last-10>)
     // with no orderBy and sorts on the phone, so the == below is proven
@@ -258,21 +313,32 @@ service cloud.firestore {
         return request.resource.data.get(k, '');
       }
       // one items entry: exactly { service, qty }, both typed and capped.
-      // Read with get(): `service` is a keyword in the rules language, so
+      // Read with brackets: `service` is a keyword in the rules language, so
       // i.service does not compile.
       function reqItemOk(i) {
-        return i is map
-          && i.keys().hasOnly(['service','qty'])
-          && i.get('service', null) is string
-          && i.get('service', '').size() > 0
-          && i.get('service', '').size() <= 80
-          && i.get('qty', null) is int
-          && i.get('qty', 0) >= 1
-          && i.get('qty', 0) <= 10;
+        return i.keys().hasOnly(['service','qty'])
+          && i['service'].matches('(?s)^.{1,80}$')
+          && i['qty'] is int
+          && string(i['qty']).matches('^([1-9]|10)$');
       }
       // entry n of list l, if there is one — a shorter list passes
       function reqItemAt(l, n) {
         return l.size() <= n || reqItemOk(l[n]);
+      }
+      // every entry the 12-cap allows
+      function reqItemsOk(l) {
+        return reqItemAt(l, 0)
+          && reqItemAt(l, 1)
+          && reqItemAt(l, 2)
+          && reqItemAt(l, 3)
+          && reqItemAt(l, 4)
+          && reqItemAt(l, 5)
+          && reqItemAt(l, 6)
+          && reqItemAt(l, 7)
+          && reqItemAt(l, 8)
+          && reqItemAt(l, 9)
+          && reqItemAt(l, 10)
+          && reqItemAt(l, 11);
       }
       allow create: if request.auth != null
         && clientPhone10() != '__none__'
@@ -303,18 +369,7 @@ service cloud.firestore {
         && reqField('notes').size() <= 1000
         && request.resource.data.items is list
         && request.resource.data.items.size() <= 12
-        && reqItemAt(request.resource.data.items, 0)
-        && reqItemAt(request.resource.data.items, 1)
-        && reqItemAt(request.resource.data.items, 2)
-        && reqItemAt(request.resource.data.items, 3)
-        && reqItemAt(request.resource.data.items, 4)
-        && reqItemAt(request.resource.data.items, 5)
-        && reqItemAt(request.resource.data.items, 6)
-        && reqItemAt(request.resource.data.items, 7)
-        && reqItemAt(request.resource.data.items, 8)
-        && reqItemAt(request.resource.data.items, 9)
-        && reqItemAt(request.resource.data.items, 10)
-        && reqItemAt(request.resource.data.items, 11);
+        && reqItemsOk(request.resource.data.items);
       allow read: if isAdmin() || resource.data.phone10 == clientPhone10();
       allow delete: if isAdmin()
         || (resource.data.phone10 == clientPhone10()
@@ -406,9 +461,21 @@ service cloud.firestore {
     // What an editor may change is exactly one thing: append ONE note. The
     // key list is pinned, the array must grow by exactly one entry, so
     // nothing can be deleted, and stage, deadline, driveLink, brief, editors
-    // and audit stay admin-only. An editor could still rewrite the text of an
-    // earlier note inside that same array — rules cannot compare elements —
-    // which is why the audit trail is a separate, admin-write-only field.
+    // and audit stay admin-only.
+    //
+    // The count alone left the entry itself free. An assigned editor could
+    // append a null, a string or a megabyte of text — and every other
+    // editor's page and the panel's thread would then have to render it —
+    // or rewrite an earlier note inside that same array (the studio's own
+    // instructions, say) while still growing it by one. So the new last entry
+    // is now pinned to a map of exactly the four string fields both writers
+    // send (id, at, by, text — the crew page and the panel), each capped, and
+    // everything before it must be the array the document already holds: a
+    // slice of the new list from the start up to the old count, compared
+    // with the old list. That makes the thread append-only for an editor.
+    // What rules still cannot prove is WHO a note says it is from: `by` and
+    // `at` are the editor's own words, only typed and capped here, which is
+    // why the audit trail stays a separate, admin-write-only field.
     match /editingJobs/{pkgId} {
       // `in`, and nothing else. For a LIST query Firestore has to prove every
       // condition from the query's own filter, and the crew page filters with
@@ -426,39 +493,49 @@ service cloud.firestore {
       function noteCount(d) {
         return ('comments' in d) && d.comments is list ? d.comments.size() : 0;
       }
+      // one note: exactly { id, at, by, text }, all strings, all capped.
+      // Brackets, so a missing key or a non-map entry is an error — a deny.
+      function noteOk(n) {
+        return n.keys().hasOnly(['id','at','by','text'])
+          && n['id'] is string && n['id'].size() <= 40
+          && n['at'] is string && n['at'].size() <= 40
+          && n['by'] is string && n['by'].size() <= 80
+          && n['text'] is string && n['text'].size() <= 1000;
+      }
       function addsOneNote() {
         return request.resource.data.diff(resource.data)
                  .affectedKeys().hasOnly(['comments','updatedAt'])
             && request.resource.data.comments is list
             && noteCount(request.resource.data) == noteCount(resource.data) + 1
             && noteCount(request.resource.data) <= 400
-            && request.resource.data.updatedAt == request.time;
+            && request.resource.data.updatedAt == request.time
+            && noteOk(request.resource.data.comments[noteCount(resource.data)])
+            // the first note has nothing before it (no comments field yet)
+            && (noteCount(resource.data) == 0
+                || request.resource.data.comments[0:noteCount(resource.data)]
+                     == resource.data.comments);
       }
       allow read: if isAdmin() || myJob();
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (myJob() && addsOneNote());
     }
 
-    // join requests from the crew page. One per signed-in account (doc id is
-    // the auth uid), the phone is pinned to the OTP-verified number, and the
-    // fields are pinned + size-capped so nothing arbitrary can be injected
-    // into the admin console. Only the admin can approve/dismiss (update/
-    // delete); the requester can re-read their own request to see it pending.
+    // join requests from the crew page — a collection that is only READ now.
+    // One per signed-in account (doc id is the auth uid). The crew page
+    // stopped sending them on 29 Sep 2026 (one sign-in for everyone: crew
+    // come in through a team/ card the admin creates, not a request), and no
+    // page, function or script writes here any more — only the admin panel
+    // reads, approves and dismisses the ones already sitting in it, and
+    // deleteMyAccount clears the caller's own with the admin SDK. create
+    // used to be open to ANY signed-in account with a verified phone, so a
+    // stranger holding the web API key could fill the panel's Crew tab with
+    // requests it renders. Nothing legitimate needs that door, so it is
+    // shut: `if false`, not a tighter condition. The requester can still
+    // re-read their own request to see it pending.
+    // (If a join form ever comes back, this is the rule to reopen — with the
+    // fields pinned and capped, status 'pending', phone10 == clientPhone10().)
     match /teamRequests/{uid} {
-      allow create: if request.auth != null
-        && request.auth.uid == uid
-        && clientPhone10() != '__none__'
-        && request.resource.data.keys().hasOnly(
-             ['name','note','phone10','phoneFull','status','createdAt'])
-        && request.resource.data.status == 'pending'
-        && request.resource.data.phone10 == clientPhone10()
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 80
-        && request.resource.data.note is string
-        && request.resource.data.note.size() <= 300
-        && request.resource.data.phoneFull is string
-        && request.resource.data.phoneFull.size() <= 20;
+      allow create: if false;
       allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow list, update, delete: if isAdmin();
     }
@@ -581,22 +658,17 @@ service cloud.firestore {
     }
 
     // "Delete my account" leaves one note here so the studio knows the person
-    // asked. The deleteMyAccount Cloud Function writes it with the admin SDK,
-    // which bypasses these rules; the create rule is the fallback that lets
-    // the page leave the note itself if the function cannot be reached. One
-    // per login (doc id is the uid), create-only so it can never be rewritten,
-    // the phone pinned to the verified number, and `at` (when sent) the
-    // server's own time, as stampsOk() pins the profile stamps: the admin
-    // panel sorts and dates the list by it. Only you read and clear them.
+    // asked. Only the deleteMyAccount Cloud Function writes it, with the admin
+    // SDK, which bypasses these rules — one per login (doc id is the uid),
+    // created once, never rewritten. This rule used to double as a fallback
+    // that let the page leave the note itself when the function could not be
+    // reached; no page does that any more (fs-auth.js just calls the
+    // function), so create was open to any signed-in account for nothing: a
+    // stranger could file account-deletion notes under their own uid for the
+    // panel's Home to list and date. It is shut — `if false`. Only you read
+    // and clear them.
     match /deletionRequests/{uid} {
-      allow create: if request.auth != null
-        && request.auth.uid == uid
-        && clientPhone10() != '__none__'
-        && request.resource.data.keys().hasOnly(['uid','phone10','at'])
-        && request.resource.data.get('uid', uid) == uid
-        && request.resource.data.phone10 == clientPhone10()
-        && (!('at' in request.resource.data)
-            || request.resource.data.at == request.time);
+      allow create: if false;
       allow read, delete: if isAdmin();
     }
 
