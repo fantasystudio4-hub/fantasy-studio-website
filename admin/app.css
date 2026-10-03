@@ -109,6 +109,25 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:var(--r-pill);padding:.9em;font-size:var(--fs-lg);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:var(--tap)}
 .gbtn:active{transform:scale(.98)}
 .err{color:var(--err);font-size:var(--fs-md);margin-top:.7rem}
+/* the not-authorised message prints the rejected address, and a long one with no
+   spaces would otherwise run past the card's edge */
+.login .err{overflow-wrap:anywhere}
+/* Continue with Google. A white pill with ink type is Google's own neutral
+   button, and on this dark panel it reads as the one bright thing to press —
+   the gold .gbtn stays the colour of the password form's Sign In. Sentence
+   case, not .gbtn's capitals: that is how Google writes its own label. */
+.gsign{width:100%;display:flex;align-items:center;justify-content:center;gap:.7rem;background:var(--white);color:var(--ink);border:1px solid var(--line-2);border-radius:var(--r-pill);padding:.6em 1.2em;font-size:var(--fs-lg);font-weight:500;letter-spacing:.01em;cursor:pointer;min-height:var(--tap)}
+.gsign svg{flex:0 0 auto;width:20px;height:20px;display:block}
+/* the page-wide ring is gold on a dark ground; on white it needs the light gold
+   and a little more air to stay visible against both */
+.gsign:focus-visible{outline:3px solid var(--gold-b);outline-offset:3px;border-radius:var(--r-pill)}
+.gsign:active{transform:scale(.98)}
+.gsign:disabled{opacity:.7;cursor:progress;transform:none}
+@media(hover:hover){ .gsign:hover:not(:disabled){filter:brightness(.94)} }
+.login .login-hint{margin:.7rem 0 0;font-size:var(--fs-md);line-height:1.45}
+/* the switch between the two sign-in methods: a quiet text link centred under
+   whichever one is showing, one line below the error */
+.login .linky--sw{margin:1rem auto 0}
 .note{background:var(--gold-t1);border:1px solid var(--line);border-radius:var(--r-md);padding:1rem;font-size:var(--fs-base);color:var(--mut);margin-top:1rem;text-align:left}
 .note code{color:var(--gold-b)}
 

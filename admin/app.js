@@ -321,7 +321,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   $('#setupView').hidden = false;
 }else{
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } =
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
+          GoogleAuthProvider, signInWithPopup } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
           collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField,
@@ -579,13 +580,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        session. Cleared only once the sign-in has resolved, so the password
        manager has already had its chance to offer to save it; after a failed
        attempt the value stays, for a retry. */
-    if(signedIn){
-      const p = $('#pass');
-      p.value = ''; p.type = 'password';
-      $('#passEye').innerHTML = EYE_ON;
-      $('#passEye').setAttribute('aria-label', 'Show password');
-    }
+    if(signedIn) clearPass();
   });
+  function clearPass(){
+    const p = $('#pass');
+    p.value = ''; p.type = 'password';
+    $('#passEye').innerHTML = EYE_ON;
+    $('#passEye').setAttribute('aria-label', 'Show password');
+  }
   const EYE_ON  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   on('#passEye', 'click', ()=>{
@@ -602,6 +604,86 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{ await sendPasswordResetEmail(auth, email); toast('Password reset link sent to ' + email); }
     catch(err){ toast('Could not send: ' + (err.code||'').replace('auth/','').replace(/-/g,' ')); }
   });
+
+  /* ---- Continue with Google ----
+     The way in. The popup only hands Firebase a Google identity: whether that
+     identity may open the panel is decided afterwards, by the same gate as a
+     password sign-in (isAdmin in onAuthStateChanged below), so a wrong Google
+     account is signed straight back out with a message naming it. */
+  const GOOGLE_ERR = {
+    /* closing the window is a choice, not a fault: say nothing */
+    'auth/popup-closed-by-user': '',
+    'auth/cancelled-popup-request': '',
+    'auth/popup-blocked': 'Your browser blocked the Google window. Allow pop-ups for this site and try again.',
+    'auth/operation-not-supported-in-this-environment': 'Google sign-in cannot open in this window. Open the panel in your browser, or use the password link below.',
+    'auth/operation-not-allowed': 'Google sign-in is not switched on for this project (Firebase console, Authentication, Sign-in method).',
+    'auth/unauthorized-domain': 'This address is not an authorised domain for Google sign-in (Firebase console, Authentication, Settings).',
+    'auth/network-request-failed': 'No connection. Check your internet and try again.'
+  };
+  let _googleBusy = false;
+  on('#googleBtn', 'click', async ()=>{
+    /* disabled stops a second tap once the button repaints, but two clicks can
+       land in the same frame, and a second popup would cancel the first */
+    if(_googleBusy) return;
+    _googleBusy = true;
+    const btn = $('#googleBtn'), lbl = $('#googleLbl');
+    const idle = lbl.textContent;
+    $('#loginErr').hidden = true;
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+    lbl.textContent = 'Opening Google…';
+    try{
+      /* nothing is awaited before this call: a popup opened after an await can
+         lose the click's permission and be blocked */
+      const provider = new GoogleAuthProvider();
+      /* the account chooser always shows, so a phone already signed in to a
+         client's Google account cannot slip straight through as them; the hint
+         puts the owner's address first in it */
+      const hint = { prompt: 'select_account' };
+      if(ADMIN_EMAILS.length) hint.login_hint = ADMIN_EMAILS[0];
+      provider.setCustomParameters(hint);
+      await signInWithPopup(auth, provider);
+    }catch(err){
+      const code = (err && err.code) || '';
+      const msg = code in GOOGLE_ERR ? GOOGLE_ERR[code]
+        : 'Google sign-in failed: ' + code.replace('auth/','').replace(/-/g,' ');
+      if(msg){ $('#loginErr').textContent = msg; $('#loginErr').hidden = false; }
+    }finally{
+      _googleBusy = false;
+      btn.disabled = false; btn.removeAttribute('aria-busy');
+      lbl.textContent = idle;
+      /* a disabled button can drop keyboard focus; hand it back after a
+         cancelled or failed attempt (a no-op once the panel has replaced it) */
+      if(document.activeElement === document.body) btn.focus();
+    }
+  });
+  /* The password form is the fallback while Google is proven out: hidden until
+     asked for. Whichever method is showing, the other's focusable controls are
+     out of the page (display:none), and focus moves with the person rather
+     than falling to the body when the link they pressed disappears. */
+  function setLoginMethod(pw){
+    $('#googleBlock').hidden = pw;
+    $('#loginForm').hidden = !pw;
+    $('#usePw').hidden = pw;
+    $('#useGoogle').hidden = !pw;
+    $('#usePw').setAttribute('aria-expanded', String(pw));
+    /* an error belongs to the method that raised it */
+    $('#loginErr').hidden = true;
+    /* no password left sitting in a form nobody can see */
+    if(!pw) clearPass();
+    (pw ? $('#email') : $('#googleBtn')).focus();
+  }
+  on('#usePw', 'click', ()=>setLoginMethod(true));
+  on('#useGoogle', 'click', ()=>setLoginMethod(false));
+  /* index.html ships in the OLD working state: the password form showing, the
+     Google block and the link hidden. Only here, with the Google button wired
+     above, does the page become Google-first — so a fresh page held against a
+     stale app.js (the skew the service worker makes rare, not impossible) still
+     has a login that works, and so does the reverse, since each id is checked. */
+  if($('#googleBlock') && $('#googleBtn') && $('#loginForm') && $('#usePw') && $('#useGoogle')){
+    $('#googleBlock').hidden = false;
+    $('#loginForm').hidden = true;
+    $('#usePw').hidden = false;
+  }
   const updNet = ()=>{ $('#netDot').hidden = navigator.onLine; };
   window.addEventListener('online',  ()=>{ updNet(); toast('Back online — syncing'); });
   window.addEventListener('offline', ()=>{ updNet(); toast('Offline — changes will sync when signal returns'); });
@@ -618,7 +700,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      to reach it — one mis-tap signed the owner out mid-task */
   on('#logoutBtn', 'click', async ()=>{
     if(_loggingOut) return;
-    if(!await confirmDialog({ title:'Log out?', body:'You will need your email and password to get back in.',
+    if(!await confirmDialog({ title:'Log out?', body:'You will need to sign in again to get back in.',
                               confirmText:'Log out', danger:false })) return;
     if(DEMO){ signOut(auth); return; }   /* fixtures only: nothing was cached, nothing to wipe */
 
@@ -677,7 +759,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   async function isAdmin(user){
     if(!ADMIN_EMAILS.length) return true;          // gate not configured yet
     const email = String(user.email||'').trim().toLowerCase();
-    if(ADMIN_EMAILS.some(e=>String(e).trim().toLowerCase() === email)) return true;
+    /* A Google session is only as good as Google's word that the address is
+       the person's. Gmail always says so, but a federated identity whose
+       address is not marked verified must not open the panel on the strength
+       of the string alone. Password-only sessions are exempt on purpose: the
+       owner's password account may never have been verified, and requiring it
+       would lock the fallback out. */
+    const viaGoogle = (user.providerData||[]).some(p=>p && p.providerId === 'google.com');
+    if(ADMIN_EMAILS.some(e=>String(e).trim().toLowerCase() === email)
+       && !(viaGoogle && user.emailVerified !== true)) return true;
     /* Claim check is a network call on a cold token. If it throws we must NOT
        lock the owner out on a train — fall back to the email list, which is
        already satisfied above, so reaching here means genuinely not an admin. */
