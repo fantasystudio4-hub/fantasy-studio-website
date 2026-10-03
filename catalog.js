@@ -340,7 +340,17 @@ function eventTotal(ev){
   for(var k in ev.services){ t += (PRICES[k]||0) * ev.services[k]; }
   return t;
 }
-function activePromo(st){ return PROMO_CODES[st.promo] || null; }
+/* A lookup keyed by something a visitor types or a link carries — ?p=, a promo
+   code, a #q= package — must only ever find the table's OWN entries. A plain
+   object also answers "constructor", "toString" and "__proto__" with a function
+   or the prototype, both truthy, which read as a real preset or promo: ?p=
+   constructor halted the builder, and a promo of 'constructor' priced every
+   quote at NaN and was saved into the visitor's own browser. The key has to be
+   a string as well, since an array such as ['SPECIAL10'] coerces to a real one. */
+function own(o, k){
+  return o != null && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+}
+function activePromo(st){ return own(PROMO_CODES, st.promo) ? PROMO_CODES[st.promo] : null; }
 function calcQuote(st){
   var sub = st.events.reduce(function(s,e){ return s + eventTotal(e); }, 0);
   var p = activePromo(st);
@@ -456,7 +466,7 @@ function clearSavedQuote(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){}
 function quoteHasContent(d){
   if(!d || !Array.isArray(d.events)) return false;
   var hasSvc = d.events.some(function(e){
-    return Object.values(e.services||{}).some(function(q){ return q>0; });
+    return Object.values((e && e.services) || {}).some(function(q){ return q>0; });
   });
   return hasSvc;
 }
@@ -468,7 +478,7 @@ function restoreQuote(d){
   st.events = d.events.slice(0,12).map(function(e){ return normalizeEvent(e); });
   /* a package saved or shared before the album step was removed still carries
      its sheet count — it is read past, not restored */
-  st.promo = PROMO_CODES[d.promo] ? d.promo : '';
+  st.promo = own(PROMO_CODES, d.promo) ? d.promo : '';
   return st;
 }
 

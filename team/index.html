@@ -1808,6 +1808,19 @@ if(!CONFIGURED){
   /* a link the studio typed — only ever opened, never trusted as markup, and
      only if it is really http(s) */
   const ejSafeUrl = u => /^https?:\/\//i.test(String(u||'').trim()) ? String(u).trim() : '';
+  /* The thread, newest first. The rule that lets an editor add a note counts
+     the entries in comments[] — it cannot look inside one — so an editor can
+     append a null, a string or a map whose text is an object, and every other
+     editor's page would then throw in this render until they reloaded. An entry
+     that is not a plain object is skipped, and each field is kept only if it is
+     text or a number, because esc() and Date both call String() on what they
+     are given and that throws on a map that carries its own `toString`. */
+  const ejNoteOk = c => !!c && typeof c === 'object' && !Array.isArray(c);
+  const ejTxt = v => (typeof v === 'string' || typeof v === 'number') ? v : '';
+  const ejNotes = j => (j && Array.isArray(j.comments) ? j.comments : [])
+    .filter(ejNoteOk)
+    .map(c => ({ by: ejTxt(c.by), at: ejTxt(c.at), text: ejTxt(c.text) }))
+    .sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
 
   const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 
@@ -1885,7 +1898,7 @@ if(!CONFIGURED){
   };
   const ejBare = j => !j || !(ejSafeUrl(j.driveLink) || j.brief || j.footage
     || ejHasScope(j)
-    || (Array.isArray(j.comments) && j.comments.length));
+    || (Array.isArray(j.comments) && j.comments.some(ejNoteOk)));
   const EJ_NONE = () => _ejErr === 'permission-denied'
     ? `<p class="ejnone ejnone--x">This job's details are not open to you. Your number has to be on
        the job for the server to release the footage link, the brief and the notes — ask the studio
@@ -1900,8 +1913,7 @@ if(!CONFIGURED){
     /* the fee lives on the assignment, so it works either way */
     if(ejBare(j)) return EJ_NONE() + fee;
     const url = ejSafeUrl(j.driveLink);
-    const notes = (Array.isArray(j.comments) ? j.comments : [])
-      .slice().sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
+    const notes = ejNotes(j);
     const bits = [];
     if(EJ_STAGE[j.stage]) bits.push(`<div class="ln"><span>Stage</span><span>${esc(EJ_STAGE[j.stage])}</span></div>`);
 
@@ -2887,7 +2899,9 @@ if(!CONFIGURED){
     const had = Array.isArray(j.comments) ? j.comments : [];
     const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
                     at: new Date().toISOString(),
-                    by: (ME && ME.name) || _pretty || 'editor',
+                    /* the rules cap a note's author at 80 characters; a longer name
+                       would make every send refuse, so cut it here */
+                    by: String((ME && ME.name) || _pretty || 'editor').slice(0,80),
                     text: text.slice(0,1000) };
     btn.disabled = true; btn.textContent = 'Sending…';
     try{

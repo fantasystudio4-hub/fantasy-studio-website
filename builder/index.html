@@ -1196,6 +1196,11 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
    and the worker can serve that copy on a slow connection, so fall back to
    the same cap rather than throw on the first + tap. */
 if(typeof MAX_QTY === 'undefined') var MAX_QTY = 10;
+/* the same goes for own(): a stale catalog.js has no such function, and a
+   missing one would stop every ?p= and promo lookup below */
+if(typeof own !== 'function') var own = function(o, k){
+  return o != null && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+};
 
 const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const smooth = REDUCE_MOTION ? 'auto' : 'smooth';
@@ -1406,7 +1411,7 @@ function eventPanelHTML(ev, idx){
     </div>`;
   }).join('');
 
-  const m = EVENT_META[ev.type] || {};
+  const m = (own(EVENT_META, ev.type) && EVENT_META[ev.type]) || {};
   /* whichever function still has nothing on it is the one to go to next */
   const nextEv = state.events.slice(idx+1).find(e=>chosenCount(e) === 0)
               || state.events.slice(0, idx).find(e=>chosenCount(e) === 0);
@@ -2011,7 +2016,7 @@ function syncPromoUI(){
 function tryApplyPromo(inp, status){
   const code = (inp.value||'').trim().toUpperCase();
   if(!code){ state.promo=''; renderQuote(); syncPromoUI(); return; }
-  if(PROMO_CODES[code]){
+  if(own(PROMO_CODES, code)){
     state.promo = code;
     track('promo_applied', { code: code });
     renderQuote(); syncPromoUI();
@@ -2521,7 +2526,8 @@ const savedQuote = loadQuote();
 const wantedPreset = params.get('p') || '';
 let _presetLoaded = false;
 function loadWantedPreset(){
-  const p = PRESETS[wantedPreset];
+  /* own(): ?p=constructor must be "no such package", like any other unknown key */
+  const p = own(PRESETS, wantedPreset) ? PRESETS[wantedPreset] : null;
   if(!p || _presetLoaded) return false;
   _presetLoaded = true;
   state.events = p.events.map(ev=>normalizeEvent(ev));
@@ -2549,12 +2555,20 @@ function loadWantedPreset(){
 const wantsAdd = location.hash === '#events' || params.get('add') === '1';
 
 if(_shared){
-  state = restoreQuote({ events: _shared.e.map(ev=>({ type: ev.t, date: ev.d, services: ev.s })),
-                         promo: _shared.p });
+  /* The link is whatever its sender wrote. (ev||{}) lets a null entry in e[]
+     through as an empty function, and the catch is for the rest — a value
+     that cannot even be turned into text, such as {"t":{"toString":1}} — which
+     costs the visitor that link, not the page. */
+  let _linkOk = true;
+  try{
+    state = restoreQuote({ events: _shared.e.map(ev=>({ type: (ev||{}).t, date: (ev||{}).d, services: (ev||{}).s })),
+                           promo: _shared.p });
+  }catch(e){ _linkOk = false; }
   history.replaceState(null, '', location.pathname + location.search);
   track('quote_link_opened');
-  setTimeout(()=>showToast('Shared quote loaded — feel free to adjust it.'), 300);
-}else if(wantedPreset && PRESETS[wantedPreset]){
+  setTimeout(()=>showToast(_linkOk ? 'Shared quote loaded — feel free to adjust it.'
+                                   : 'That quote link could not be read.'), 300);
+}else if(wantedPreset && own(PRESETS, wantedPreset)){
   loadWantedPreset();
 }else if(quoteHasContent(savedQuote)){
   state = restoreQuote(savedQuote);
@@ -2563,7 +2577,7 @@ if(_shared){
 
 /* ?promo=CODE — the home page's offer ribbon hands the code over this way */
 const wantedPromo = (params.get('promo')||'').toUpperCase();
-if(wantedPromo && PROMO_CODES[wantedPromo]){
+if(wantedPromo && own(PROMO_CODES, wantedPromo)){
   state.promo = wantedPromo;
   setTimeout(()=>showToast(`Code ${wantedPromo} applied to your package.`), 900);
 }
