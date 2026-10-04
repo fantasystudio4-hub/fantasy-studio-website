@@ -312,6 +312,8 @@ const ROW = {
   client: { ic: '💍', name: 'My booking',     em: () => 'Your package, payments and delivery' },
   crew:   { ic: '🎬', name: 'Crew',           em: i => i && i.name ? i.name + ' · shoots, editing and pay' : 'Your shoots, editing and pay' },
   studio: { ic: '🏢', name: 'Partner studio', em: i => (i && i.studioName) || 'Your studio’s jobs with Fantasy Studio' },
+  /* crew AND partner studio share one row (drawPick); its em gets all of info */
+  pair:   { ic: '🎬', name: 'Crew / Partner', em: i => [i.crew && i.crew.name, i.studio && i.studio.studioName].filter(Boolean).join(' · ') || 'Your crew page and partner studio' },
 };
 const OPENING = { client: 'Opening your booking…', crew: 'Opening your crew page…', studio: 'Opening your studio page…' };
 /* Only numbers the studio has set up get an OTP: the pre-check reads the
@@ -405,16 +407,22 @@ async function route(user, fresh){
 function drawPick(roles, info, user, last){
   const rows = $('#rows');
   rows.textContent = '';
-  roles.forEach(role => {
-    const d = ROW[role];
+  /* Crew and partner studio are one row, "Crew / Partner" (owner, 4 Oct
+     2026): both pages carry the Crew | Partner switch at the top, so one
+     door is enough. It opens Crew, or Partner when that was the last page. */
+  const pair = roles.includes('crew') && roles.includes('studio');
+  const items = roles.filter(r => !(pair && r === 'studio')).map(r => pair && r === 'crew'
+    ? { role: last === 'studio' ? 'studio' : 'crew', d: ROW.pair, em: ROW.pair.em(info), was: last === 'crew' || last === 'studio' }
+    : { role: r, d: ROW[r], em: ROW[r].em(info[r]), was: r === last });
+  items.forEach(({ role, d, em, was }) => {
     const a = document.createElement('a');
     a.className = 'opt';
     a.href = '../' + withDemo(FS.PORTALS[role]);
     a.innerHTML = '<span class="ic" aria-hidden="true"></span><span class="t"><b></b><em></em></span><span class="go" aria-hidden="true">→</span>';
     a.firstChild.textContent = d.ic;
     a.querySelector('b').textContent = d.name;
-    if(role === last && roles.length > 1){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'Last used'; a.querySelector('b').appendChild(t); }
-    a.querySelector('em').textContent = d.em(info[role]);
+    if(was && items.length > 1){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'Last used'; a.querySelector('b').appendChild(t); }
+    a.querySelector('em').textContent = em;
     /* a modified click (new tab) keeps its ordinary meaning */
     a.addEventListener('click', e => {
       if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
