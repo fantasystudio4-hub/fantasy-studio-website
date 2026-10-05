@@ -2383,7 +2383,9 @@ html.shell .stu-hd #stuBack{display:none}
   html.has-side #hdr{margin-left:var(--side-w,224px)}
   html.has-side #appView{max-width:calc(860px + var(--side-w,224px));padding-left:calc(var(--gut) + var(--side-w,224px));padding-top:1rem}
   html.has-side .savebar,html.has-side .bulkbar{left:var(--side-w,224px)}
-  html.has-side .toast{left:calc(50% + var(--side-w,224px) / 2)}
+  /* only while the app (and so the sidebar) is on screen: the toast is a
+     sibling of #appView, and the login screen has no sidebar to clear */
+  html.has-side #appView:not([hidden]) ~ .toast{left:calc(50% + var(--side-w,224px) / 2)}
   /* More's screens are one click away in the sidebar: no arrow back to More */
   html.has-side #hdr.up-more #hdrBack{display:none}
 }

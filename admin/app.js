@@ -995,10 +995,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          that list, nothing opened over it, the entry untouched. Anything else
          and the moment has passed — a page must not open under their thumb. */
       const st = (history.state && history.state.view) || '';
-      const still = curRoute() === listKey && !document.querySelector('.pay-modal.open')
+      const still = curRoute() === listKey && !document.querySelector('.pay-modal.open, #gsModal.open')
         && !viewShown('calAdd') && !viewShown('pkgEditView') && !viewShown('studioDetailView') && !viewShown('ejDetailView')
         && (b.replace ? (st === b.view || MODAL_VIEWS.includes(st)) : st === list.view);
-      if(!still){ _bootFull = null; return; }
+      if(!still){
+        _bootFull = null;
+        /* a cold link's placeholder: the list's entry still carries the id */
+        if(!b.replace && st === list.view && location.hash !== list.hash){ try{ history.replaceState(history.state, '', list.hash); }catch(e2){} }
+        return;
+      }
       let ready = false, found = false, fresh = false;
       if(b.view === 'studio'){
         /* the page reads the studio AND its jobs: before the bookings arrive it
@@ -1031,6 +1036,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            look exactly like the one that was lost. The list opens on that
            booking's card instead — Edit is one tap away. */
         expandedPkg = b.id; renderPkgListOnly();
+        if(b.replace && MODAL_VIEWS.includes(st)){ history.back(); return; }   /* drop the sheet's entry; popstate lands on the editor's and shows the list */
         try{ history.replaceState({ view: list.view }, '', list.hash); }catch(e){}
         setTimeout(()=>{
           const card = [...document.querySelectorAll('#pkgList .card[data-id]')].find(c=>c.dataset.id === b.id);
@@ -1038,6 +1044,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }, 80);
         return;
       }
+      /* a reload with a sheet open over the page: the page's OWN entry lies
+         beneath the sheet's. Step back onto it — popstate opens the record it
+         names — rather than turn the sheet's entry into a second copy. */
+      if(b.replace && MODAL_VIEWS.includes(st)){ history.back(); return; }
       /* a cold link: this entry is the list, with the id still in its address
          — put the list's own address back, and the page is pushed above it */
       if(!b.replace){ try{ history.replaceState({ view: list.view }, '', list.hash); }catch(e){} }
@@ -1162,7 +1172,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const on = !!ROUTES[k] && (ROUTES[k] === r || (k === 'analytics' && r === ROUTES.insights) || (k === 'settings' && r.up === 'settings'));
       const src = badge ? $(badge) : null;
       const n = (src && !src.hidden) ? src.textContent : '';
-      return `<button type="button" data-go="${k}" class="${on ? 'on' : ''}"${on ? ' aria-current="page"' : ''}><i>${ic}</i><span>${label}</span>${n ? `<b>${esc(n)}</b>` : ''}</button>`;
+      return `<button type="button" data-go="${k}" class="${on ? 'on' : ''}"${on ? ' aria-current="page"' : ''}><i>${ic}</i><span>${label}</span>${n ? `<b title="${esc(src.title||'')}">${esc(n)}</b>` : ''}</button>`;
     }).join('');
     if(nav.dataset.sig === html) return;
     /* a keyboard user who just pressed one of its buttons keeps their place */
@@ -1223,7 +1233,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      section first, so the entry that is pushed names the right one. `replace`
      = a move inside one section (the strip), which adds no Back step;
      `fromMore` marks the entry so the header's back arrow can simply go back. */
-  let _navReplace = false, _moreNext = false;
+  let _navReplace = false, _moreNext = false, _sideStep = false;
   /* Show the Money page that is current: 'open' goes on exactly the pane on
      screen (and comes off all three when Money is not), and that pane is
      drawn. The snapshot handlers redraw a pane only while it has 'open'. */
@@ -1286,7 +1296,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           /* reached from a sheet (＋ or Search) whose entry is still current:
              setTeamSeg could not rename the screen under it, so the sheet's
              dead entry becomes this screen's (pushView replaces a sheet entry) */
-          if(MODAL_VIEWS.includes(history.state && history.state.view)) pushView(r.view, r.hash);
+          const sv = history.state && history.state.view;
+          if(MODAL_VIEWS.includes(sv)) pushView(r.view, r.hash);
+          /* an editing job's entry with no job on screen (a reload still
+             waiting for its lists, or a page closed just above): setTeamSeg
+             will not rename a full page's entry, so do it here */
+          else if(sv === 'ejob') pushView(r.view, r.hash, true);
         }
         else window.scrollTo({ top: 0, behavior: 'smooth' });
         syncShell();
@@ -1558,7 +1573,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          not a Back step). The bar's own button has to do the same when it
          stays inside that section, or the two take turns stacking entries
          that Back then has to walk through one dead press at a time. */
-      const sameSec = !!STRIPS[rt.sec] && rt.sec === fromSec;
+      /* (not from the desktop sidebar: there every move is a step — see its handler) */
+      const sameSec = !_sideStep && !!STRIPS[rt.sec] && rt.sec === fromSec;
       pushView(rt.view, rt.hash, replace || _navReplace || sameSec, _moreNext ? { fromMore: true } : null);
     });
   });
@@ -1711,6 +1727,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            opened over it) used to throw away dates banked there */
         if(tab === 'tabCal' && !$('#studioDetailView').hidden && typeof closeStudioDetail === 'function') closeStudioDetail();
         if(typeof closeEjDetail === 'function') closeEjDetail();
+        /* a LIST entry whose address still names a record: the placeholder a
+           cold link leaves when its page never opened. Give it the list's own
+           address, or a reload here would open that record after all. */
+        if(fullOfHash(location.hash)){ try{ history.replaceState(e.state, '', ROUTES[routeOfHash(location.hash)].hash); }catch(e2){} }
       }
     }finally{
       _navFromPop = false;
@@ -12702,8 +12722,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#homeJoin', 'click', ()=>go('members'));
   on('#navAdd', 'click', openQa);    /* phone: centre of the bottom bar */
   on('#hdrAdd', 'click', openQa);    /* desktop: in the header */
-  /* The desktop sidebar. Unlike the strip, a move from here IS a step: Back
-     returns to the screen before it. Screens that share one view (Crew,
+  /* The desktop sidebar. Unlike the strip, EVERY move from here is a step:
+     Back returns to the screen before it. Screens that share one view (Crew,
      Editing, Crew pay and Team are the Team view; Money's pages are the Money
      view) are switched in place by go(), which renames the current entry —
      so the new entry is pushed first, and go() then finds it already right. */
@@ -12718,7 +12738,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(k === 'studios' && viewShown('calView') && viewShown('studioDetailView')){ backFrom('studio', closeStudioDetail); return; }
     if(k === 'editing' && viewShown('teamView') && viewShown('ejDetailView')){ backFrom('ejob', closeEjDetail); return; }
     if(curRoute() !== k && ((r.seg && viewShown('teamView')) || (r.pane && MONEY_PAGES && viewShown('moneyView')))) pushView(r.view, r.hash);
-    go(k);
+    /* ...and where the move changes view (Bookings -> Crew, Expenses -> Crew
+       pay) the bar's rule "inside one section, replace" must not apply */
+    _sideStep = true;
+    try{ go(k); }finally{ _sideStep = false; }
   });
   on('#subnav', 'click', e=>{
     const b = e.target.closest('[data-go]'); if(!b) return;
