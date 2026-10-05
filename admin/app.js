@@ -828,7 +828,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      names, one per section, so Back can return to the right one. 'team',
      'calendar' and 'editing' are the names older history entries carry. */
   const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig',
-                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', expenses:'tabMoney', analytics:'tabMoney', insights:'tabMoney', more:'tabMore' };
+                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', expenses:'tabMoney', analytics:'tabMoney', insights:'tabMoney', more:'tabMore',
+                        'cfg-prices':'tabConfig', 'cfg-quote':'tabConfig', 'cfg-workflow':'tabConfig', 'cfg-calendar':'tabConfig', 'cfg-web':'tabConfig', trash:'tabConfig', backup:'tabConfig' };
   const SEG_OF_VIEW = { crew:'work', editing:'edit', paytrack:'pay', members:'crew' };
   /* Money's pages live in one view, the way the Team view's sections do: the
      entry's name says which page of it to show. Analytics has two read-only
@@ -846,6 +847,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* which Money page is showing (tx | ex | an) and, on Analytics, which of its
      two read-only views (money | ins) */
   let _mnyPane = 'tx', _anView = 'money', _paneNext = '';
+  /* Settings is a menu and seven PAGES of the one Site Config view when this
+     page's markup has the menu and the blocks say which page they are on. A
+     stale cached page has neither: there Settings stays the one long page,
+     with its jump chips, and More's Trash / Backup rows scroll to their block.
+     Every block stays in #configView whatever is shown — Save All reads all of
+     them from the page, every time. */
+  const CFG_PAGES = !!($('#cfgMenu') && $('#saveDirty') && document.querySelector('#configView > .sec[data-cfg]'));
+  document.documentElement.classList.toggle('cfg-pages', CFG_PAGES);   /* the stylesheet's switch */
+  /* which page of it is showing: menu | prices | quote | workflow | calendar | web | trash | backup */
+  let _cfgPage = 'menu', _cfgNext = '', _cfgScrollOf = '';
+  const CFG_OF_VIEW = { config:'menu', 'cfg-prices':'prices', 'cfg-quote':'quote', 'cfg-workflow':'workflow', 'cfg-calendar':'calendar', 'cfg-web':'web', trash:'trash', backup:'backup' };
+  const CFG_ROUTE   = { menu:'settings', prices:'cfgPrices', quote:'cfgQuote', workflow:'cfgWorkflow', calendar:'cfgCalendar', web:'cfgWeb', trash:'trash', backup:'backup' };
+  /* unsaved Settings edits: the flag Save All's guard has always read, and the
+     groups that were touched (the menu marks them). Declared up here because
+     the chrome reads them on the first paint. */
+  let _cfgTouched = false, _cfgSaving = false;
+  const _cfgDirtyGroups = new Set();
 
   /* ---------- the screens, as the owner sees them ----------
      Home | Leads | ＋ | Work | Money in the bar, More in the header.
@@ -870,7 +888,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     more:     { tab:'tabMore',   view:'more',     hash:'#/more',           title:'More',            sec:'more' },
     studios:  { tab:'tabCal',    view:'b2b',      hash:'#/more/studios',   title:'Partner studios', sec:'more',  up:true },
     members:  { tab:'tabTeam',   view:'members',  hash:'#/more/team',      title:'Team',            sec:'more',  seg:'crew', up:true },
-    settings: { tab:'tabConfig', view:'config',   hash:'#/more/settings',  title:'Settings',        sec:'more',  up:true },
+    settings: { tab:'tabConfig', view:'config',   hash:'#/more/settings',  title:'Settings',        sec:'more',  up:true, cfg:'menu' },
+    /* pages of Settings: `up` names the screen the back arrow returns to */
+    cfgPrices:  { tab:'tabConfig', view:'cfg-prices',   hash:'#/more/settings/prices',    title:'Prices & packages',   sec:'more', up:'settings', cfg:'prices' },
+    cfgQuote:   { tab:'tabConfig', view:'cfg-quote',    hash:'#/more/settings/quotation', title:'Quotation & contact', sec:'more', up:'settings', cfg:'quote' },
+    cfgWorkflow:{ tab:'tabConfig', view:'cfg-workflow', hash:'#/more/settings/workflow',  title:'Workflow',            sec:'more', up:'settings', cfg:'workflow' },
+    cfgCalendar:{ tab:'tabConfig', view:'cfg-calendar', hash:'#/more/settings/calendar',  title:'Calendar',            sec:'more', up:'settings', cfg:'calendar' },
+    cfgWeb:     { tab:'tabConfig', view:'cfg-web',      hash:'#/more/settings/website',   title:'Website content',     sec:'more', up:'settings', cfg:'web' },
+    trash:      { tab:'tabConfig', view:'trash',        hash:'#/more/trash',              title:'Trash',               sec:'more', up:true, cfg:'trash' },
+    backup:     { tab:'tabConfig', view:'backup',       hash:'#/more/backup',             title:'Backup & export',     sec:'more', up:true, cfg:'backup' },
   };
   /* the sections shown as a strip under the header; the third item is the
      existing badge the strip mirrors (still written by the Team renderers) */
@@ -894,7 +920,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(viewShown('pkgView')) return 'bookings';
     if(viewShown('calView')) return 'studios';
     if(viewShown('teamView')){ const g = teamSeg(); return g === 'edit' ? 'editing' : g === 'pay' ? 'paytrack' : g === 'crew' ? 'members' : 'crew'; }
-    if(viewShown('configView')) return 'settings';
+    if(viewShown('configView')) return CFG_PAGES ? (CFG_ROUTE[_cfgPage] || 'settings') : 'settings';
     if(viewShown('moneyView')) return !MONEY_PAGES ? 'money' : _mnyPane === 'ex' ? 'expenses' : _mnyPane === 'an' ? (_anView === 'ins' ? 'insights' : 'analytics') : 'money';
     if(viewShown('moreView')) return 'more';
     return 'home';
@@ -912,9 +938,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!MONEY_PAGES) return 'money';   /* a stale page has one Money screen */
       return b === 'expenses' ? 'expenses' : b === 'analytics' ? 'analytics' : b === 'insights' ? 'insights' : 'money';
     }
-    if(a === 'more')  return b === 'studios' ? 'studios' : b === 'team' ? 'members' : b === 'settings' ? 'settings' : 'more';
-    const OLD = { home:'home', calendar:'home', leads:'leads', packages:'bookings', b2b:'studios', team:'crew', editing:'editing', config:'settings' };
-    return Object.prototype.hasOwnProperty.call(OLD, a) ? OLD[a] : 'home';
+    if(a === 'more'){
+      if(b === 'studios') return 'studios';
+      if(b === 'team') return 'members';
+      if(b === 'settings'){
+        if(!CFG_PAGES) return 'settings';   /* a stale page has one Settings screen */
+        const c = p[2] || '';
+        return c === 'prices' ? 'cfgPrices' : c === 'quotation' ? 'cfgQuote' : c === 'workflow' ? 'cfgWorkflow'
+             : c === 'calendar' ? 'cfgCalendar' : c === 'website' ? 'cfgWeb' : 'settings';
+      }
+      if(b === 'trash' || b === 'backup') return CFG_PAGES ? b : 'settings';
+      return 'more';
+    }
+    /* the last three are what the money sheets used to write into the address */
+    const OLD = { home:'home', calendar:'home', leads:'leads', packages:'bookings', b2b:'studios', team:'crew', editing:'editing', config:'settings',
+                  ledger:'money', insights:'insights', expense:'expenses' };
+    const k = Object.prototype.hasOwnProperty.call(OLD, a) ? OLD[a] : 'home';
+    return (!MONEY_PAGES && (k === 'insights' || k === 'expenses')) ? 'money' : k;
   }
   /* first paint: the screen the address names, and an entry that says so */
   function bootRoute(){
@@ -925,6 +965,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{ setTeamSeg(r.seg); }finally{ _navFromPop = false; }
     }
     if(r.pane && MONEY_PAGES){ _mnyPane = r.pane; if(r.an) _anView = r.an; }   /* showTab draws the page this names */
+    if(r.cfg && CFG_PAGES) _cfgPage = r.cfg;
     showTab(r.tab);
     try{
       /* a reload keeps the "came from More" mark, so the back arrow still just goes back */
@@ -1003,6 +1044,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(lit) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     ttl.textContent = full || r.title;
+    try{ document.title = (!full && r === ROUTES.home) ? 'Fantasy Studio — Admin' : (full || r.title) + ' — Fantasy Studio Admin'; }catch(e){}
     const up = !!full || !!r.up;
     back.hidden = !up;
     $('#hdr').classList.toggle('has-back', up);
@@ -1059,6 +1101,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(fin){ ensureFinYear(); renderFin(); }
     if(ins) renderIns();
   }
+  /* Show the Settings page that is current — by showing and hiding, nothing
+     else. No block is moved, emptied or redrawn: Save All reads every one of
+     them from the page whichever is on screen. The stylesheet does the work
+     from data-page; this only names the page and shows the menu on its own. */
+  function syncCfgPage(){
+    if(!CFG_PAGES) return;
+    const v = $('#configView'); if(!v) return;
+    v.dataset.page = _cfgPage;
+    const menu = $('#cfgMenu'); if(menu) menu.hidden = _cfgPage !== 'menu';
+    syncCfgDirty();
+  }
+  /* the "not saved" mark: on the Save All bar, and on the menu row of every
+     group that has an unsaved edit in it */
+  function syncCfgDirty(){
+    if(!CFG_PAGES) return;
+    const v = $('#configView'), mark = $('#saveDirty'); if(!v || !mark) return;
+    mark.hidden = !_cfgTouched;
+    v.classList.toggle('dirty', _cfgTouched);
+    $$('#cfgMenu [data-cfgpage]').forEach(b=>{
+      const g = b.querySelector('.badge');
+      if(g) g.hidden = !(_cfgTouched && _cfgDirtyGroups.has(b.dataset.cfgpage));
+    });
+  }
   function setMoneyPane(p){
     if(!MONEY_PAGES || !['tx','ex','an'].includes(p)) return;
     _mnyPane = p;
@@ -1101,11 +1166,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       _anView = an;
     }
+    if(r.cfg && CFG_PAGES && viewShown('configView')){
+      /* already on Settings: another page of the same view. Unlike the strip's
+         moves this one IS a step — the menu, then a group — so Back returns
+         to the menu. `fromMore` marks an entry whose parent lies beneath it. */
+      if(_cfgPage !== r.cfg){
+        _cfgPage = r.cfg; syncCfgPage(); scrollTopNow();
+        pushView(r.view, r.hash, !!o.replace, o.fromMore ? { fromMore: true } : null);
+      }
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+      syncShell();
+      return;
+    }
     const was = _curTab;
     _navReplace = !!o.replace; _moreNext = !!o.fromMore;
     _paneNext = (r.pane && MONEY_PAGES) ? r.pane : '';   /* the tab handler opens Money on this page */
+    _cfgNext  = (r.cfg && CFG_PAGES) ? r.cfg : '';       /* ...and Settings on this one */
     try{ const b = $('#' + r.tab); if(b) b.click(); }
-    finally{ _navReplace = false; _moreNext = false; _paneNext = ''; }
+    finally{ _navReplace = false; _moreNext = false; _paneNext = ''; _cfgNext = ''; }
     if(r.seg && _curTab === r.tab && was !== r.tab) scrollTopNow();
   }
   /* One gate for "may I throw away what's in the builder?" — every caller that
@@ -1249,6 +1327,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_curTab && _curTab !== id){
       _tabScroll[_curTab] = window.scrollY;
       if(_curTab === 'tabMoney') _mnyScrollOf = mnyKey();   /* still names the page being left */
+      if(_curTab === 'tabConfig') _cfgScrollOf = _cfgPage;  /* Settings is several pages behind one button too */
     }
     Object.keys(TABS).forEach(t=>{
       /* a stale cached page may not have the newer buttons or views */
@@ -1263,6 +1342,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        bulk bar on screen acting on a list that is no longer in front of you */
     if(id !== 'tabLeads' && typeof setBulk === 'function' && _bulkOn) setBulk(false);
     syncMoneyPane();   /* draws the Money page on arrival, and takes 'open' off its panes on leaving */
+    syncCfgPage();     /* shows the Settings page that is current */
     if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
@@ -1276,7 +1356,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          be undone by this restore firing a frame later, so those pages opened
          part-way down. A token lets the newer intent win. */
       const token = ++_scrollToken;
-      const y = (id === 'tabMoney' && MONEY_PAGES && _mnyScrollOf !== mnyKey()) ? 0 : (_tabScroll[id] || 0);
+      const y = ((id === 'tabMoney' && MONEY_PAGES && _mnyScrollOf !== mnyKey())
+              || (id === 'tabConfig' && CFG_PAGES && _cfgScrollOf !== _cfgPage)) ? 0 : (_tabScroll[id] || 0);
       requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
     }
   }
@@ -1298,7 +1379,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(leavingEditor && !canLeaveEditor()) return;
       /* a tab switch closes the quick-add form — with dates BANKED on it that
          silently threw away a whole wedding's queue. Ask first, like the
-         editor does. (The popstate path stays silent, same as the editor.) */
+         editor does. (The phone's Back asks the same question, in popstate.) */
       if(_qeQueue.length && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')
          && !confirm(`Leave this page? The ${_qeQueue.length} date${_qeQueue.length>1?'s':''} banked on the add-event form will be discarded.`)) return;
       /* tapping B2B while a studio detail is open = back to the studio list */
@@ -1319,6 +1400,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       const fromSec = ROUTES[curRoute()].sec;
       if(id === 'tabMoney' && MONEY_PAGES) _mnyPane = _paneNext || 'tx';   /* before showTab draws it */
+      if(id === 'tabConfig' && CFG_PAGES) _cfgPage = _cfgNext || 'menu';
       showTab(id);
       /* the editor / studio detail we just closed owns the current history
          entry — REPLACE it, or the back button resurrects a closed page */
@@ -1341,6 +1423,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _navFromPop = true;
     try{
       const v = (e.state && e.state.view) || 'home';
+      /* a question left on screen over a sheet that Back is about to close
+         would still act on Confirm — after the sheet's own fields were cleared */
+      if(_cfmResolve) closeConfirm(false);
       /* Sheets close FIRST and unconditionally — an early return further down
          used to leave a sheet on screen with its history entry already gone. */
       if(typeof closePayUI === 'function') closePayUI();
@@ -1371,6 +1456,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }
         closeEditorSilently();
       }
+      /* The add-event form with dates BANKED on it. A bar button asks before
+         leaving its page; the phone's Back did not, and took a whole wedding's
+         dates with it. Same question, and on Cancel the entry that was just
+         left is put back. Only when Back really leaves the form's page — a
+         sheet closing over it lands on that page's own entry. */
+      if(!MODAL_VIEWS.includes(v) && _qeQueue.length && viewShown('calAdd')){
+        const onStudio = viewShown('calView') && viewShown('studioDetailView');
+        const stays = _qeAnchor === 'b2b' ? (onStudio ? v === 'studio' : tabOfView(v) === 'tabCal')
+                                          : tabOfView(v) === 'tabHome';
+        if(!stays && !confirm(`Leave this page? The ${_qeQueue.length} date${_qeQueue.length>1?'s':''} banked on the add-event form will be discarded.`)){
+          const here = onStudio ? { view:'studio', hash:'#/more/studios/studio' } : ROUTES[curRoute()];
+          try{ history.pushState({ view: here.view }, '', here.hash); }catch(e2){}
+          return;
+        }
+      }
       /* landing on a sheet's own entry (forward button / stray entry): the
          sheets are closed above — stay on the current tab instead of
          teleporting to Home */
@@ -1395,6 +1495,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
       }else{
         const tab = tabOfView(v);
+        if(CFG_PAGES && Object.prototype.hasOwnProperty.call(CFG_OF_VIEW, v)) _cfgPage = CFG_OF_VIEW[v];   /* before showTab draws it */
         if(MONEY_PAGES && Object.prototype.hasOwnProperty.call(PANE_OF_VIEW, v)){   /* before showTab draws it */
           _mnyPane = PANE_OF_VIEW[v];
           if(ROUTES[v] && ROUTES[v].an) _anView = ROUTES[v].an;
@@ -2098,7 +2199,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       CFG.deliverySteps = DEFAULTS.deliverySteps.slice();
       try{ setDoc(doc(db,'config','site'), { deliverySteps: CFG.deliverySteps }, { merge: true }); }catch(e){}
     }
-    buildConfigForms();
+    /* A form that stops half-drawn leaves every list after it EMPTY, and Save
+       All would publish that. On the one long page the owner could see it;
+       with groups shown one at a time nobody would — so lock Save All. */
+    try{ buildConfigForms(); }
+    catch(err){
+      console.error('[config] the settings forms could not be drawn', err);
+      setCfgBlocked(true, 'The settings could not be drawn completely — do NOT save. Reload the page.');
+    }
   }
 
   /* ---------- is "Pay now" actually on? ----------
@@ -2189,7 +2297,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!have.has(n)){ $('#rateList').insertAdjacentHTML('beforeend', rateRow(n, seen[n])); added++; }
     });
     renderRateState();
-    if(filled || added) _cfgTouched = true;
+    if(filled || added) cfgTouch($('#rateList'));
     toast(!filled && !added
       ? 'Nothing to recover — no past quotation carries a rate these rows are missing'
       : `Filled ${filled} rate${filled===1?'':'s'}`
@@ -2224,7 +2332,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const p = CFG.prices || {};
     $('#priceGrid').innerHTML = Object.keys(SERVICE_LABELS).map(k=>`
       <div class="fld"><label>${SERVICE_LABELS[k]}</label>
-      <input type="number" min="0" data-price="${k}" value="${Number(p[k])||0}" /></div>`).join('');
+      <input type="number" min="0" inputmode="numeric" data-price="${k}" value="${Number(p[k])||0}" /></div>`).join('');
     $('#albumPerSheet').value  = Number(p.albumPerSheet)||400;
     $('#albumMinSheets').value = Number(p.albumMinSheets)||15;
     $('#albumMaxSheets').value = Number(p.albumMaxSheets)||100;
@@ -2260,6 +2368,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#testiList').innerHTML = (CFG.testimonials||[]).map(testiRow).join('');
     $('#faqList').innerHTML = (CFG.faqs||[]).map(faqRow).join('');
     renderAvailConfig();   /* its own document, its own Save — but the same tab */
+    /* what is on screen now IS the saved config: anything typed into a field
+       before it arrived was just overwritten, so no mark is owed for it */
+    _cfgTouched = false; _cfgDirtyGroups.clear(); syncCfgDirty();
   }
   /* ---------- ready-made packages ----------
      These were edited as raw JSON: the one place in the panel where a missing
@@ -2281,7 +2392,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="mini-f"><label>Qty</label>
           <div class="qwrap">
             <button type="button" data-pqm>−</button>
-            <input data-pq type="number" min="1" max="${PRESET_QTY_MAX}" value="${Math.min(PRESET_QTY_MAX, Math.max(1, Number(qty)||1))}" />
+            <input data-pq type="number" inputmode="numeric" min="1" max="${PRESET_QTY_MAX}" value="${Math.min(PRESET_QTY_MAX, Math.max(1, Number(qty)||1))}" />
             <button type="button" data-pqp>+</button>
           </div>
         </div>
@@ -2312,7 +2423,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>Key (no spaces)</label><input data-k="key" value="${esc(key)}" /></div>
         <div class="fld"><label>Name</label><input data-k="name" value="${esc(p.name||'')}" /></div>
         <div class="fld"><label>Tag (optional)</label><input data-k="tag" value="${esc(p.tag||'')}" /></div>
-        <div class="fld"><label>Album sheets</label><input type="number" min="0" data-k="album" value="${Number(p.album)||0}" /></div>
+        <div class="fld"><label>Album sheets</label><input type="number" min="0" inputmode="numeric" data-k="album" value="${Number(p.album)||0}" /></div>
       </div>
       <div class="fld"><label>Description</label><input data-k="desc" value="${esc(p.desc||'')}" /></div>
       <label>Events &amp; services</label>
@@ -2340,7 +2451,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <button class="del" data-del title="Remove">✕</button>
       <div class="grid2">
         <div class="fld"><label>Service name</label><input data-k="name" value="${esc(name)}" /></div>
-        <div class="fld"><label>Rate (₹)</label><input data-k="rate" type="number" min="0" value="${Number(rate)||0}" /></div>
+        <div class="fld"><label>Rate (₹)</label><input data-k="rate" type="number" inputmode="numeric" min="0" value="${Number(rate)||0}" /></div>
       </div>
     </div>`;
   const termRow = (t='') => `
@@ -2417,10 +2528,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   on('#saveConfig', 'click', async ()=>{
+    /* The bar is on every settings page now, so two things it never needed:
+       one save at a time (a second tap used to read the first one's pending
+       write and report "changed on another device"), and no write at all from
+       the demo — its forms hold sample values, and this is a full overwrite. */
+    if(_cfgSaving) return;
+    if(DEMO){
+      _cfgTouched = false; _cfgDirtyGroups.clear(); syncCfgDirty();
+      $('#saveMsg').textContent = 'Demo — nothing was saved.';
+      toast('Demo — nothing is saved');
+      return;
+    }
     if(_cfgLoadFailed){
       toast('Config never loaded — saving now would overwrite your live values with defaults');
       return;
     }
+    _cfgSaving = true;
     try{
       const prices = {};
       $$('[data-price]').forEach(i=>{ prices[i.dataset.price] = Number(i.value)||0; });
@@ -2448,6 +2571,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            "Package ₹0" — say so here instead of letting it vanish silently */
         if(!events.length || !events.some(ev=>Object.keys(ev.services).length) && !(Number(get('album'))||0)){
           toast(`Package "${get('name').trim() || key}" has no services and no album — give it something to price, or remove it with ✕`);
+          /* the package named may be on a page that is not on screen */
+          if(CFG_PAGES && viewShown('configView') && _cfgPage !== 'prices'){
+            go('cfgPrices');
+            setTimeout(()=>{ try{ row.scrollIntoView({ block:'center' }); }catch(e){} }, 120);
+          }
           return;
         }
         presets[key] = { name:get('name').trim(), tag:get('tag').trim(), desc:get('desc').trim(),
@@ -2550,17 +2678,43 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : 'Saved — the live site now uses these values.';
       toast(res === 'queued' ? 'Config saved offline — will publish when online' : 'Config published ✓');
       _cfgTouched = false;
+      _cfgDirtyGroups.clear(); syncCfgDirty();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ _cfgSaving = false; }
   });
 
   /* ---------- one guard for everything the browser could throw away ----------
      In-app navigation already asks before leaving a dirty builder, but a page
      refresh, a closed tab or an Android back-out took a half-written quotation,
      unsaved Config edits or a half-typed add-event form with it, silently. */
-  let _cfgTouched = false;
-  /* the Availability card saves with its own button, so a change there must
-     not arm Save All's guard — it has one of its own (_availDirty) */
-  on('#configView', 'input', e=>{ if(!e.target.closest('#availSec')) _cfgTouched = true; });
+  /* (_cfgTouched is declared with the Settings pages, near the top) */
+  /* A Settings edit, by typing or by a tap: arm Save All's guard, remember
+     which group it was in, and show the "not saved" mark. The Availability
+     card saves with its own button, so a change there must not arm this guard
+     — it has one of its own (_availDirty) — and Trash and Backup hold nothing
+     that Save All saves. */
+  function cfgTouch(el){
+    if(!el || !el.closest || el.closest('#availSec')) return;
+    const sec = el.closest('#configView > .sec');
+    const g = sec ? (sec.dataset.cfg || '') : '';
+    if(g === 'trash' || g === 'backup') return;
+    _cfgTouched = true;
+    if(g) _cfgDirtyGroups.add(g);
+    /* "Saved — the live site now uses these values" is no longer true */
+    const m = $('#saveMsg');
+    if(m && !_cfgLoadFailed && /^Saved/.test(m.textContent)) m.textContent = 'Changes go live on the site immediately after saving.';
+    syncCfgDirty();
+  }
+  on('#configView', 'input', e=>cfgTouch(e.target));
+  /* The edits that are taps, not typing — removing a row, adding one, and
+     everything inside a ready-made package card. None of them fired `input`,
+     so a deleted testimonial left no mark and no "leave without saving?"
+     question. Bound here on the view, which hears the tap BEFORE the
+     document-level remover takes the row out of the page. */
+  on('#configView', 'click', e=>{
+    const t = e.target.closest('[data-del],[data-addpev],[data-rmpev],[data-pevname],[data-addpsvc],[data-rmpsvc],[data-pqm],[data-pqp],#addPkg,#addRate,#addTerm,#addDstep,#addBstep,#addTesti,#addFaq');
+    if(t) cfgTouch(t);
+  });
   function unsavedWork(){
     try{
       if(typeof pkgDirty === 'function' && pkgDirty()) return true;
@@ -4741,8 +4895,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the B2B list: directly under the two buttons it was launched from,
          not below a season's worth of studios. The .sec around them is never
          rebuilt — only #studioList itself is. */
-      const adds = $('#calView .b2b-adds');
-      if(adds && adds.parentNode) adds.parentNode.insertBefore(node, adds.nextSibling);
+      const adds = $('#calView .b2b-adds'), bar = $('#stuSearchBar'), btn = $('#b2bAddEv');
+      /* ＋ Add event is in the page's top row now: the form opens under that
+         row (a stale page still has the button beside ＋ Add studio) */
+      if(bar && btn && bar.contains(btn) && bar.parentNode) bar.parentNode.insertBefore(node, bar.nextSibling);
+      else if(adds && adds.parentNode) adds.parentNode.insertBefore(node, adds.nextSibling);
       else $('#calView').appendChild(node);
     }
     _qeMode = _qeAnchor === 'b2b' ? 'studio' : 'client';
@@ -4759,7 +4916,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     syncFabs();   /* the floating buttons would sit on top of the Save row */
     setTimeout(()=>{ if(!node.hidden) node.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
   }
+  /* the screen ＋ → Quick booking was pressed on, when it was not Home: a
+     saved booking returns there (the form itself lives on Home) */
+  let _qeReturn = '';
   function closeCalAdd(){
+    _qeReturn = '';
     const b = $('#calAdd'); if(b) b.hidden = true;
     /* a saved or abandoned job must not leave its dates behind for the next one */
     _qeQueue = []; renderQeQueue();
@@ -5025,8 +5186,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       if(res === 'denied'){ toast('NOT saved — the server refused the write. Nothing was added.'); return; }
       toast(res === 'queued' ? 'Saved offline — will sync' : okMsg);
+      const back = _qeReturn;   /* closeCalAdd forgets it */
       closeCalAdd();
       loadPkgs();
+      if(back && viewShown('homeView')) go(back);
     }catch(err){ toast('Could not save: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
   });
@@ -5640,7 +5803,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const jobs = ASGS.filter(a=>a.kind === 'edit');
     if(!jobs.length){
       $('#edCount').textContent = '';
-      el.innerHTML = '<div class="empty" style="padding:.5rem 0">No editing assigned yet. Use <b style="color:var(--gold-b)">＋ Assign editing</b> below — it reaches shoots that have already happened.</div>';
+      el.innerHTML = '<div class="empty" style="padding:.5rem 0">No editing assigned yet. Use <b style="color:var(--gold-b)">＋ Assign editing</b> — it reaches shoots that have already happened.</div>';
       return;
     }
     const today = todayISO();
@@ -6352,6 +6515,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     $('#workSec').hidden     = _tSeg !== 'work';
+    { const tb = $('#teamBar'); if(tb) tb.hidden = _tSeg !== 'crew'; }   /* absent on a stale page */
     $('#squadSec').hidden    = _tSeg !== 'crew';
     $('#lbSec').hidden       = _tSeg !== 'crew' || !LB_HAS;
     /* an error has to be visible too, or the one thing that explains the empty
@@ -6672,7 +6836,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          sitting under tiles that count something else, is how a list lies
          about being empty. */
       _ejStageF = viewGet('ejStageF','') === 'awaiting' ? '' : viewGet('ejStageF',''),
-      _ejEditorF= viewGet('ejEditorF',''),
+      /* the editor chips are not on the page any more: a filter saved while
+         they were would shorten the desk with nothing lit to say why */
+      _ejEditorF= $('#ejEditorChips') ? viewGet('ejEditorF','') : '',
       _ejSort   = viewGet('ejSort','deadline');
   const EJ_SORTS = [
     ['deadline','↕ Deadline'],
@@ -7164,7 +7330,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     viewSet('ejStageF', _ejStageF === 'awaiting' ? '' : _ejStageF);
     renderEditTab();
   });
-  on('#ejEditorChips', 'click', e=>{
+  if($('#ejEditorChips')) on('#ejEditorChips', 'click', e=>{
     const b = e.target.closest('[data-ejeditor]'); if(!b) return;
     _ejEditorF = b.dataset.ejeditor; viewSet('ejEditorF', _ejEditorF); renderEditTab();
   });
@@ -8379,7 +8545,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const name = (m && m.name) || rows[0].memberName || 'this member';
     const total = rows.reduce((s,a)=>s + payDue(a), 0);
     _cpId = null; _cpAllMember = mid;
-    exitCpEdit(); setCpMode('online');
+    exitCpEdit(); setCpMode(viewGet('cpMode','online') === 'cash' ? 'cash' : 'online');
     $('#cpWho').textContent = `${name} — ${inr(total)} owed across ${rows.length} shoot${rows.length===1?'':'s'}`;
     $('#cpAmt').value = ''; $('#cpNote').value = '';
     const quick = [['Everything owed', total]];
@@ -8435,6 +8601,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          summary would be a lie — the owner has handed over cash and needs to
          know which shoots it was recorded against. */
       if(!n){ toast('Nothing was recorded — ' + (failed ? 'the server refused the writes' : 'no shoot had a balance')); return; }
+      viewSet('cpMode', mode);
       renderTeam(); renderPkgStats(); buzz();
       const stillOwed = dueRowsFor(mid).reduce((s,a)=>s + payDue(a), 0);
       toast(failed
@@ -8450,7 +8617,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function openCrewPay(a){
     _cpId = a.id; _cpAllMember = null;
-    exitCpEdit(); setCpMode('online');
+    exitCpEdit(); setCpMode(viewGet('cpMode','online') === 'cash' ? 'cash' : 'online');
     const fee = payFee(a), got = payGot(a), due = payDue(a);
     $('#cpWho').textContent = `${a.memberName||'—'} · ${a.eventTitle||'Event'} ${stepDate(a.date)||a.date||''} — `
       + (fee > 0 ? `${inr(due)} left of ${inr(fee)}` : 'no fee set on this assignment');
@@ -8698,9 +8865,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       const { pay, queued } = await recordCrewPayment(a, entry);
       const left = Math.max(0, payFee({ pay }) - pay.paidAmount);
-      toast(queued
-        ? `${inr(amount)} (${mode}) saved — will sync when you're back online`
-        : `${inr(amount)} (${mode}) to ${a.memberName||'crew'} recorded — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`);
+      viewSet('cpMode', mode);
+      /* Undo takes this one entry back off with the same remover the sheet's
+         "Delete this payment" uses. Not while it is only queued offline: the
+         remover is a transaction, and a transaction needs the server. */
+      if(queued) toast(`${inr(amount)} (${mode}) saved — will sync when you're back online`);
+      else toastUndo(`${inr(amount)} (${mode}) to ${a.memberName||'crew'} recorded — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`, async ()=>{
+        try{
+          a.pay = await removeCrewPayment(a, entry.id);
+          renderTeam(); renderPkgStats();
+          if($('#txModal').classList.contains('open')) renderTx();
+          toast(`${inr(amount)} taken back off — nothing recorded`);
+        }catch(err){ toast('Could not undo: ' + (err.message||err.code||'no signal')); }
+      });
       a.pay = pay;
       buzz();
       renderTeam(); renderPkgStats();
@@ -8709,6 +8886,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     finally{ btn.disabled = false; }
   }
   on('#cpSave', 'click', saveCrewPayment);
+  /* the keypad's Done key: press the button (a disabled one ignores it), so a
+     Done followed by a tap cannot record the payment twice */
+  on('#cpAmt', 'keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); $('#cpSave').click(); } });
+  on('#payAmt', 'keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); const b = $('#paySave'); if(b) b.click(); } });
   /* One flow for taking an instalment off, whichever control asked for it */
   async function dropCrewPayment(pid){
     const a = ASGS.find(v=>v.id===_cpId); if(!a) return;
@@ -9961,7 +10142,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <button class="del" data-del title="Remove">✕</button>
       <div class="grid2">
         <div class="fld"><label>Service</label><input data-k="name" value="${esc(name)}" /></div>
-        <div class="fld"><label>Rate (₹)</label><input data-k="rate" type="number" min="0" value="${Number(rate)||0}" /></div>
+        <div class="fld"><label>Rate (₹)</label><input data-k="rate" type="number" inputmode="numeric" min="0" value="${Number(rate)||0}" /></div>
       </div>
     </div>`;
   function renderStudioDetail(){
@@ -10056,6 +10237,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           </span>
             <span class="car">▾</span></h3>
         </div>
+        <!-- Always on the page. These five sat inside the profile box, which
+             opens closed — so calling the studio, or adding a job for it, was
+             a tap on its name first. A sibling of the name's toggle, never a
+             child of it (see the note above). Same buttons, same handlers. -->
+        <div class="ev-acts stu-acts">
+          ${s.phone ? `${telOf(s.phone) ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(telOf(s.phone))}">📞 Call</a>` : ''}
+          <a class="btn btn--sm btn--ghost stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
+          <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
+          <button class="btn btn--sm btn--ghost" type="button" data-stuaddev>＋ Add event</button>
+        </div>
         ${profOpen ? `
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
         ${pfS ? `<div class="pf-box">
@@ -10078,13 +10270,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              for good, with no Fix now button on a partner who cannot log in. */
           : loginBad ? `⚠ login key missing — this partner cannot sign in <button class="btn btn--sm btn--ghost" type="button" data-stufixlogin style="margin-left:.4rem">Fix now</button>`
           : 'checking the login key…'}</span></div>
-        <div class="ev-acts">
-          ${s.phone ? `${telOf(s.phone) ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(telOf(s.phone))}">📞 Call</a>` : ''}
-          <a class="btn btn--sm btn--ghost stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-          <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
-          <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
-          <button class="btn btn--sm btn--ghost" type="button" data-stuaddev>＋ Add event</button>
-        </div>` : ''}
+        ` : ''}
       </div>
       <div class="sec">
         <h3>📦 Job history <span style="font-size:.7rem;color:var(--mut)">(${jobs.length})</span></h3>
@@ -10123,6 +10309,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="sec">
         <h3>📒 Ledger <span style="font-size:.7rem;color:var(--mut)">(booked &amp; delivered jobs)</span></h3>
         ${led.length ? `
+          <!-- its two actions first: they were under every row of the ledger -->
+          <div class="ev-acts stu-ledacts">
+            <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
+            ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>` : ''}
+          </div>
           <!-- The ledger only ever showed what was still OWED. What the studio
                has actually paid across the relationship is the other half of
                the picture, and it was nowhere on this page. -->
@@ -10146,10 +10337,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                            r.x.endClientName].filter(Boolean).join(' · '))}</span>
             </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
-          <div class="ev-acts" style="margin-top:.7rem">
-            <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
-            ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>` : ''}
-          </div>
           <h4 class="shotlist-h ${_stuEvOpen?'':'closed'}" data-stuevtog role="button" tabindex="0" aria-expanded="${_stuEvOpen}">
             🎬 Every shoot for this studio <b>${shot.length}</b><span class="car">▾</span></h4>
           ${_stuEvOpen ? (shot.length ? `<div class="shotlist">${shot.map(r=>`
@@ -10455,7 +10642,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function openPay(x){
     payingId = x.id;
-    exitPayEdit(); setPayMode('online');
+    /* opens on the mode the last payment was taken in — a studio collecting
+       cash at venues tapped Cash on every single one. Its own key: money in
+       and money out need not share a habit. */
+    exitPayEdit(); setPayMode(viewGet('payMode','online') === 'cash' ? 'cash' : 'online');
     $('#payWho').textContent = `${x.clientName||'—'} — balance ${inr(Math.max(0,(x.totals||{}).balance||0))} of ${inr((x.totals||{}).finalPrice||0)}`;
     $('#payAmt').value = '';
     /* cleared every open — a note left over from the last payment would attach
@@ -10710,6 +10900,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       tt.advance = (Number(tt.advance)||0) + amount;
       tt.balance = (Number(tt.finalPrice)||0) - tt.advance;
       x.totals = tt;
+      viewSet('payMode', payMode);   /* a NEW payment only — a correction keeps its own mode */
       buzz(); renderPkgList();
       closePay();
       toast(res === 'queued'
@@ -12215,12 +12406,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       /* the add-event form is the minimal booking path and already exists —
          it just needs a date chosen, so quick-add starts it on today */
+      const from = viewShown('homeView') ? '' : curRoute();
       closeQaUI(); gotoCalendar(todayISO());
       /* already on Home: no screen change happened, so the menu's own entry
          is still on top — drop it, or the next Back is a dead press */
       if(history.state && history.state.view === 'qa') closeQa();
       /* only if Home really came up: a leave-this-page question can be refused */
-      setTimeout(()=>{ if(viewShown('homeView')) openCalAdd(); }, 220);
+      setTimeout(()=>{ if(viewShown('homeView')){ openCalAdd(); _qeReturn = (viewShown('calAdd') ? from : ''); } }, 220);
       return;
     }
     /* Quotation: straight to the builder for a direct client — the chooser's
@@ -12309,33 +12501,49 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       case 'pay': go('paytrack', { replace: true }); break;
     }
   });
-  on('#moreMenu', 'click', e=>{
-    const b = e.target.closest('[data-more]'); if(!b) return;
-    const k = b.dataset.more;
-    if(k === 'logout'){ $('#logoutBtn').click(); return; }   /* the same handler, the same questions */
-    if(k === 'trash' || k === 'backup'){
-      /* both are blocks of the Site Config page still: open it on that block */
-      go('settings', { fromMore: true });
+  /* One function behind every door to the More screens — the rows of More
+     and the desktop sidebar. */
+  function moreGo(k, opts){
+    if(k === 'logout'){
+      if(DEMO){ toast('Demo — nobody is signed in here'); return; }
+      $('#logoutBtn').click();   /* the same handler, the same questions */
+      return;
+    }
+    if((k === 'trash' || k === 'backup') && !CFG_PAGES){
+      /* a stale page: both are still blocks of the one Site Config page */
+      go('settings', opts);
       if(!viewShown('configView')) return;
       const sec = $$('#configView .sec')[k === 'trash' ? 0 : 1];
       /* after showTab's own scroll restore, which runs a frame later */
       if(sec) setTimeout(()=>sec.scrollIntoView({ block:'start' }), 80);
       return;
     }
-    go(k, { fromMore: true });
+    go(k, opts);
+  }
+  on('#moreMenu', 'click', e=>{
+    const b = e.target.closest('[data-more]'); if(!b) return;
+    moreGo(b.dataset.more, { fromMore: true });
+  });
+  /* Settings' own menu: a group is a step below it, so Back returns here */
+  if($('#cfgMenu')) on('#cfgMenu', 'click', e=>{
+    const b = e.target.closest('[data-cfgpage]'); if(!b) return;
+    const k = CFG_ROUTE[b.dataset.cfgpage];
+    if(k) go(k, { fromMore: true });
   });
   /* One back control, top left. On a full page it presses that page's OWN
      Back, so the same "discard unsaved changes?" question is asked; on a
      screen opened from More it returns to More. */
   on('#hdrBack', 'click', ()=>{
     if(viewShown('pkgView') && viewShown('pkgEditView')){ $('#pkgBack').click(); return; }
-    if(viewShown('calView') && viewShown('studioDetailView')){ const b = $('#stuBack'); if(b){ b.click(); return; } }
+    if(viewShown('calView') && viewShown('studioDetailView')){ backFrom('studio', closeStudioDetail); return; }
     if(viewShown('teamView') && viewShown('editView') && viewShown('ejDetailView')){ backFrom('ejob', closeEjDetail); return; }
     /* Straight back to More — unless dates are banked on the add-event form:
        then leave through the More button, which asks before they are lost.
        backFrom latches for 800ms, so a double tap cannot go back twice. */
     if(history.state && history.state.fromMore && !_qeQueue.length){ backFrom(history.state.view); return; }
-    go('more');
+    /* up one level: a Settings group returns to the Settings menu, everything else to More */
+    const up = ROUTES[curRoute()].up;
+    go(typeof up === 'string' ? up : 'more');
   });
   /* tap the screen's name to jump to its top — More's screens have no lit
      bar item to re-tap */
@@ -12477,7 +12685,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(viewShown('teamView')) openTm(m);
         break;
       }
-      case 'studio': $('#tabCal').click(); openStudioDetail(r.id); break;
+      case 'studio': $('#tabCal').click(); if(!viewShown('calView')) break; openStudioDetail(r.id); break;
       case 'event':  $('#tabHome').click(); gotoCalendar(r.id); break;
     }
   }

@@ -24,9 +24,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <!-- design tokens -> shared components -> screen styles. Order matters:
      tokens define the values, ui.css builds the components from them,
      app.css is per-screen and may only reference what those two publish. -->
-<link rel="stylesheet" href="tokens.css?v=p3" />
-<link rel="stylesheet" href="ui.css?v=p3" />
-<link rel="stylesheet" href="app.css?v=p3" />
+<link rel="stylesheet" href="tokens.css?v=p4" />
+<link rel="stylesheet" href="ui.css?v=p4" />
+<link rel="stylesheet" href="app.css?v=p4" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -152,7 +152,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button class="fab" id="stuAddFab" hidden aria-label="Add partner studio" title="Add partner studio">＋</button>
 
   <div id="leadsView">
-    <div class="stats" id="stats"></div>
+    <!-- every section page reads the same way: the row with the page's main
+         action, then the filters, then the list. The tiles sat above the row. -->
     <div class="bar">
       <input id="leadSearch" type="search" placeholder="Name or phone" aria-label="Search leads by name or phone" />
       <button id="leadPick" type="button" aria-pressed="false" title="Select several leads" aria-label="Select several leads">☑</button>
@@ -162,6 +163,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button class="btn btn--primary" id="leadAdd" type="button">＋ Lead</button>
     </div>
     <div class="fchips" id="leadChips"></div>
+    <div class="stats" id="stats"></div>
     <div id="leadList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
   </div>
   <!-- Bulk action bar — only on screen while rows are being selected. Fixed to
@@ -238,7 +240,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <button type="button" class="gbtn" id="qeSave">Save event</button>
         <button type="button" class="btn btn--sm btn--ghost" id="qeCancel">Cancel</button>
       </div>
-      <p class="qe-note">Services are optional here — add them now, or any time from <b>Packages</b> along with the album, the discount and the PDF.</p>
+      <p class="qe-note">Services are optional here — add them now, or any time from <b>Work › Bookings</b> along with the album, the discount and the PDF.</p>
     </div>
     <!-- The tile block: it was the very LAST thing on Home, about three
          screens down, and the only door to Money Analytics. Same block, same
@@ -283,7 +285,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     </div>
 
     <div id="pkgEditView" hidden>
-      <div class="hint">Service rates auto-fill from <b>Site Config → Quotation Service Rates</b> — you can change any rate per quote. Once saved, a package keeps its own prices even if the presets change later.</div>
+      <div class="hint">Service rates auto-fill from <b>More › Settings › Prices and packages</b> — you can change any rate per quote. Once saved, a package keeps its own prices even if the presets change later.</div>
       <div class="sec">
         <h3><span class="stepnum">1</span><span id="pkgEditTitle">New Package</span></h3>
         <p class="sub">Who is this quotation for?</p>
@@ -337,7 +339,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <div class="sec" data-retail-only>
         <h3><span class="stepnum">6</span>Terms on this PDF</h3>
-        <p class="sub">Untick anything you don't want printed on this quotation. Edit the master list in Site Config. When an advance is recorded, the payment term automatically becomes the exact ₹ split.</p>
+        <p class="sub">Untick anything you don't want printed on this quotation. Edit the master list in More › Settings › Quotation and contact. When an advance is recorded, the payment term automatically becomes the exact ₹ split.</p>
         <div id="pkgTerms"></div>
       </div>
       <div class="sec">
@@ -359,20 +361,22 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
        this is readable by clients, crew or the public site (see firestore.rules). -->
   <div id="calView" hidden>
     <div id="studioListView">
+      <!-- the page's row: search, order, and its main action. ＋ Add event
+           came up from the block under the tiles; the add-event form opens
+           directly under this row. -->
+      <div class="bar" id="stuSearchBar">
+        <input id="stuSearch" type="search" placeholder="Search" aria-label="Search by studio, owner, city or phone" />
+        <button id="stuSort" type="button" title="Change the order">↕ Most due</button>
+        <button class="btn btn--primary" id="b2bAddEv" type="button">＋ Add event</button>
+      </div>
       <!-- Booking requests a partner studio sent from the partner page
-           (studioRequests). First on the tab because it is the one thing here
-           that is waiting on the owner; the whole box stays hidden until there
-           is a request, an answered one, or a load error to report. -->
+           (studioRequests). Under the page's row: a request card is a screen
+           tall, and the waiting ones are on Home as well. The whole box stays
+           hidden until there is a request, an answered one, or a load error. -->
       <div class="sec" id="stuReqSec" hidden>
         <h3>📥 Booking requests<b class="rq-count" id="stuReqCount" hidden></b></h3>
         <p class="sub">Sent from the partner page. Accept opens a draft job for you to price; the studio is told either way.</p>
         <div id="stuReqs"></div>
-      </div>
-      <!-- always on screen, the way every other list in the panel does it —
-           it used to be revealed by a floating button that is now gone -->
-      <div class="bar" id="stuSearchBar">
-        <input id="stuSearch" type="search" placeholder="Studio, owner, city or phone…" />
-        <button id="stuSort" type="button" title="Change the order">↕ Most due</button>
       </div>
       <div class="stats" id="b2bStats"></div>
       <div class="sec">
@@ -385,7 +389,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
              this screen already does exactly that. -->
         <p class="sub">Admin-only — none of this reaches the website or a client page.</p>
         <div class="b2b-adds">
-          <button class="addrow" id="b2bAddEv">＋ Add event</button>
           <!-- was an unlabelled floating ＋ (#stuAddFab, parked below the bar) -->
           <button class="addrow" id="stuAddBtn" type="button">＋ Add studio</button>
         </div>
@@ -405,6 +408,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button type="button" data-tseg="pay" role="tab">💰 Pay<b class="segb" id="segPayB" hidden></b></button>
       <button type="button" data-tseg="edit" role="tab">✂️ Editing<b class="segb" id="segEditB" hidden></b></button>
     </div>
+    <!-- More > Team only (applyTeamSeg shows it): the page's main action first,
+         above the join requests and the roster -->
+    <div class="bar" id="teamBar" hidden>
+      <button class="btn btn--primary" id="tmAdd" type="button">＋ Add team member</button>
+    </div>
     <div class="sec" id="teamReqSec" hidden>
       <h3>🙋 Join requests</h3>
       <p class="sub">Signed in on the crew page and asked to join. Approve opens a member card, already filled in.</p>
@@ -418,18 +426,16 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
           <div id="teamEvents"></div>
         </div>
         <div id="workEd" hidden>
+          <!-- was the last thing under a season's worth of rows -->
+          <button class="addrow" id="edAdd" style="margin:0 0 .7rem">＋ Assign editing</button>
           <p class="sub">One row per person per job — for chasing somebody and paying them. <b style="color:var(--gold-b)">Work → Editing</b> is one row per booking, with its stage and notes. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event, including ones already shot and ones not yet on the editing desk. <span id="edCount"></span></p>
           <div id="edList"></div>
-          <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
         </div>
       </div>
     </div>
     <div class="sec" id="squadSec">
       <h3>👥 Squad</h3>
       <p class="sub">Tap anyone to edit. Their phone number is their crew-page login.</p>
-      <!-- adding someone is the reason this section gets opened, so the button
-           sits above the roster instead of below a season's worth of it -->
-      <button class="addrow" id="tmAdd">＋ Add team member</button>
       <div class="fchips" id="squadCats"></div>
       <div id="teamMembers"></div>
     </div>
@@ -470,7 +476,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
          in editingJobs/{pkgId}. -->
     <div id="editView" hidden>
     <div id="ejListView">
-      <div class="stats" id="ejStats"></div>
       <div class="bar">
         <input id="ejSearch" type="search" placeholder="Search" aria-label="Search client or quote number" />
         <button id="ejSort" type="button" title="Change the order">↕ Deadline</button>
@@ -478,6 +483,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <button class="btn btn--primary" id="ejAssign" type="button" title="Assign editing" aria-label="Assign editing">＋ Assign</button>
       </div>
       <div class="fchips" id="ejStageChips"></div>
+      <div class="stats" id="ejStats"></div>
       <button class="upmore ejby" id="ejByEditor" type="button">Editor jobs — one row per person ›</button>
       <!-- One-time repair, and it shows itself only while there is something to
            repair. A job written before the crew side existed carries no
@@ -491,13 +497,27 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   </div>
 
 
+  <!-- SETTINGS — the same blocks as always, all in this one view (Save All
+       reads every one of them from the page, every time). What changed is how
+       they are SHOWN: a short menu, and each group, Trash and Backup as a page
+       of its own. A block says which page it belongs to with data-cfg; the
+       script sets data-page on the view and the stylesheet shows that page.
+       With no script help the whole view still reads as one long page. -->
   <div id="configView" hidden>
-    <div class="fchips" id="cfgJump"></div>
-    <div class="sec">
+    <!-- PARKED: the jump chips of the one long page (a stale page still uses its own) -->
+    <div class="fchips" id="cfgJump" hidden></div>
+    <div class="st-opts menu" id="cfgMenu" hidden>
+      <button type="button" data-cfgpage="prices">💰 Prices and packages <em>website prices · album · ready-made packages · quotation rates</em><b class="badge" hidden>not saved</b></button>
+      <button type="button" data-cfgpage="quote">📄 Quotation and contact <em>phone · website · UPI · quotation terms</em><b class="badge" hidden>not saved</b></button>
+      <button type="button" data-cfgpage="workflow">✅ Workflow <em>editing due days · delivery steps · B2B steps</em><b class="badge" hidden>not saved</b></button>
+      <button type="button" data-cfgpage="calendar">📅 Calendar <em>festival dates · availability</em><b class="badge" hidden>not saved</b></button>
+      <button type="button" data-cfgpage="web">🌐 Website content <em>testimonials · FAQs</em><b class="badge" hidden>not saved</b></button>
+    </div>
+    <div class="sec" data-cfg="trash">
       <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days, except packages with recorded payments, which are kept as financial records until you delete them here)</span></h3>
       <div id="trashList"></div>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="backup">
       <h3>Backup &amp; Export</h3>
       <p class="sub">Download your data for safekeeping and accounts.</p>
       <div class="grid2">
@@ -508,11 +528,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <button class="addrow" id="expSpend">⬇ Expenses CSV</button>
       </div>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="prices">
       <h3>Service Rates (₹)</h3>
       <div class="grid2" id="priceGrid"></div>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="prices">
       <h3>Album</h3>
       <div class="grid2">
         <div class="fld"><label>Price per sheet</label><input type="number" id="albumPerSheet" min="0" inputmode="numeric" /></div>
@@ -520,12 +540,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <div class="fld"><label>Maximum sheets</label><input type="number" id="albumMaxSheets" min="1" inputmode="numeric" /></div>
       </div>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="prices">
       <h3>Ready-made Packages</h3>
       <div id="pkgListRM"></div>
       <button class="addrow" id="addPkg">＋ Add package</button>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="prices">
       <h3>Quotation Service Rates <span style="font-size:.7rem;color:var(--mut)">(admin package builder)</span></h3>
       <p class="sub">Everything the builder prefills, including rates it picked up from quotations you have already saved. Edit any of them here; <b style="color:var(--gold-b)">Save All</b> makes this list the whole truth again, so what you see is exactly what the next quote will use.</p>
       <p class="cfgnote" id="rateState"></p>
@@ -533,7 +553,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button class="addrow" id="addRate">＋ Add service rate</button>
       <button class="addrow" id="recoverRates">⟲ Fill ₹0 rates from past quotations</button>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="quote">
       <h3>Contact &amp; Payment</h3>
       <p class="sub">Phone and website print on every quotation PDF. The UPI IDs are what the client portal's <b style="color:var(--gold-b)">Pay now</b> button sends to — leave them blank to hide that button.</p>
       <div class="grid2">
@@ -544,21 +564,21 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <p class="cfgnote" id="payState"></p>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="workflow">
       <div class="fld" style="max-width:260px"><label>Editing due after (days)</label>
-        <input type="number" id="cfgEditDue" min="1" max="365" placeholder="21" /></div>
+        <input type="number" id="cfgEditDue" min="1" max="365" inputmode="numeric" placeholder="21" /></div>
       <p class="sub">The due date a new editing assignment starts with, counted from the event.</p>
       <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist — steps containing “Album”, “Cinematic/Teaser”, “Photo” or “Video” auto-hide for packages without those services)</span></h3>
       <div id="dstepList"></div>
       <button class="addrow" id="addDstep">＋ Add step</button>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="workflow">
       <h3>B2B Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(partner-studio jobs only)</span></h3>
       <p class="sub">A studio collects the footage and does its own post, so the album, pendrive and teaser steps above never applied to them. This shorter checklist is what a 🏢 B2B job shows instead.</p>
       <div id="bstepList"></div>
       <button class="addrow" id="addBstep">＋ Add step</button>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="calendar">
       <h3>Calendar Festivals</h3>
       <p class="sub">Shown on the calendar — a marker on the date, the name in the day box below it. One per line as <b style="color:var(--gold-b)">YYYY-MM-DD|Name</b>.
         <br><b style="color:var(--warn)">Check the lunar ones.</b> Hindu festivals follow a lunisolar calendar and Islamic ones the Hijri, so their dates move every year and an Indian observance can shift a day on a moon sighting. The seeded list is a starting point, not an authority — fixed-date holidays like Republic Day and Christmas are safe; Raksha Bandhan, Milad un Nabi, Diwali and the rest are worth a minute against a panchang.</p>
@@ -566,7 +586,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="fld"><label>Festival dates</label><textarea id="cfgFestivals" rows="10" spellcheck="false" placeholder="2026-08-28|Raksha Bandhan"></textarea></div>
     </div>
     <!-- config/availability, saved on its own — Save All below never touches it -->
-    <div class="sec" id="availSec">
+    <div class="sec" id="availSec" data-cfg="calendar">
       <h3>Availability</h3>
       <p class="sub">Signed-in clients, crew and partner studios see a month calendar with every day split into a morning and an evening: plain when free, <b style="color:var(--state-pending)">yellow</b> once something is booked, <b style="color:var(--state-overdue)">red</b> when full or blocked. Colours only — it never shows names, counts or what the events are. To block or open one particular morning or evening, use the day box under the calendar on Home.</p>
       <p class="cfgnote" id="availState">Loading…</p>
@@ -577,17 +597,17 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <p class="av-cfg-note">Fewer than this and the half-day shows yellow; this many or more, red. Saved by the button here, not by Save All.</p>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="quote">
       <h3>Quotation Terms</h3>
       <div id="termList"></div>
       <button class="addrow" id="addTerm">＋ Add term</button>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="web">
       <h3>Testimonials</h3>
       <div id="testiList"></div>
       <button class="addrow" id="addTesti">＋ Add testimonial</button>
     </div>
-    <div class="sec">
+    <div class="sec" data-cfg="web">
       <h3>FAQs</h3>
       <p class="sub" style="margin:-.3rem 0 .8rem">Type a price as a tag and the site fills in today's figure, so an answer can never go stale:
         <code>{ladyShooterTotal}</code> (photography + pardah premium),
@@ -598,7 +618,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div id="faqList"></div>
       <button class="addrow" id="addFaq">＋ Add FAQ</button>
     </div>
+    <!-- ONE Save All, on every settings page: it saves every group, not only
+         the one on screen. #saveDirty is the "not saved" mark. -->
     <div class="savebar"><div class="in">
+      <b class="dirty" id="saveDirty" hidden>● Not saved</b>
       <div class="msg" id="saveMsg">Changes go live on the site immediately after saving.</div>
       <button class="gbtn" id="saveConfig">Save All</button>
     </div></div>
@@ -624,7 +647,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
          first. Every row opens the sheet that owns it, over this list. -->
     <div class="mpane" id="txModal" aria-label="Transactions — every payment in and out">
       <button class="pay-close" id="txClose" type="button" aria-label="Close" hidden>&times;</button>
-      <div class="who" id="txWho">Every transaction — money in and money out</div>
       <!-- search, main action and filters sit OUTSIDE #txBody on purpose: that
            box is rebuilt on every packages, assignments or expenses snapshot,
            which would wipe a half-typed search from under the owner's thumb -->
@@ -639,6 +661,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <button type="button" data-txf="crew">🎬 Crew</button>
         <button type="button" data-txf="exp">💸 Spend</button>
       </div>
+      <div class="who" id="txWho">Every transaction — money in and money out</div>
       <div id="txBody"></div>
     </div>
 
@@ -880,9 +903,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 </div>
 
 <div class="pay-backdrop" id="qaBackdrop"></div>
-<div class="pay-modal" id="qaModal" role="dialog" aria-modal="true" aria-label="Quick actions">
+<div class="pay-modal" id="qaModal" role="dialog" aria-modal="true" aria-label="Add">
   <button class="pay-close" id="qaClose" type="button" aria-label="Close">&times;</button>
-  <h3>⚡ Quick Actions</h3>
+  <h3>＋ Add</h3>
   <div class="who" id="qaWho"></div>
   <div class="st-opts" id="qaOpts"></div>
 </div>
@@ -962,7 +985,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p3"></script>
+<script type="module" src="app.js?v=p4"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is
