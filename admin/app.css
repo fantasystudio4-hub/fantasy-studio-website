@@ -956,6 +956,32 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(max-width:699px){
   .pay-modal > .gbtn{bottom:calc(-1.4rem - env(safe-area-inset-bottom))}
 }
+/* The expense sheet has TWO buttons to keep in reach (Save, and Save & add
+   another), so the pair rides the bottom edge together the way a lone .gbtn
+   does above. It also opens ON TOP of Money Analytics and Transactions, hence
+   one step above the ordinary sheet layer — still under the toast and the
+   confirm dialog. */
+#expBackdrop{z-index:calc(var(--z-sheet) + 1)}
+#expModal{z-index:calc(var(--z-sheet) + 2)}
+.sheet-foot{position:sticky;bottom:-1.4rem;z-index:3;display:flex;gap:.6rem;align-items:stretch;
+  margin-top:.9rem;background:var(--panel);box-shadow:0 -14px 18px -8px var(--panel), 0 0 0 6px var(--panel)}
+.sheet-foot .gbtn{flex:1 1 0;width:auto;min-width:0}
+.sheet-foot .btn{flex:1.15 1 0;margin-top:0;min-width:0;min-height:var(--tap);border-radius:var(--r-pill);white-space:nowrap}
+.sheet-foot [hidden] + .gbtn{flex:1 1 100%}
+@media(max-width:699px){
+  .sheet-foot{bottom:calc(-1.4rem - env(safe-area-inset-bottom))}
+}
+/* the fold over Date and Note: says what they hold, so it rarely needs opening */
+.exmore{display:flex;align-items:center;justify-content:space-between;gap:.75rem;width:100%;min-height:var(--tap);
+  background:none;border:1px dashed var(--line);border-radius:var(--r-md);color:var(--gold-b);
+  padding:.45em .85em;margin:0 0 .9rem;font:inherit;font-size:var(--fs-base);cursor:pointer;text-align:left}
+.exmore span{flex:0 0 auto;white-space:nowrap}
+.exmore em{font-style:normal;color:var(--mut);font-size:var(--fs-md);min-width:0;overflow-wrap:anywhere;text-align:right}
+/* the sticky ✕ rides over the right end of the first line */
+#expModal .who{padding-right:2.6rem}
+.exmore[aria-expanded="true"]{border-style:solid;border-color:var(--line-3)}
+.exmore:active{background:var(--gold-t1)}
+#exAmt{font-size:1.35rem;font-family:var(--serif);color:var(--gold-b)}
 .fld input:focus,.fld select:focus,.fld textarea:focus,.bar input[type=search]:focus,.card__body .input:focus,.prow input:focus,.itemrow select:focus,.itemrow input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.18);outline:none}
 .gbtn,.btn--primary{box-shadow:0 6px 16px rgba(var(--gold-d-rgb),.35)}
 .gbtn:active,.btn--primary:active{box-shadow:0 3px 8px rgba(var(--gold-d-rgb),.3)}
@@ -1399,6 +1425,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
      46px + gaps ≈ 176px of pinned UI above the tab bar) */
   #homeView > .stats:last-child{margin-bottom:132px}
   #studioListView{padding-bottom:132px}
+  /* ⚡ now floats over these three lists as well: room for the last record's
+     own buttons to scroll clear of it (54px button + 12px gap) */
+  #leadsView,#pkgListView,#teamView{padding-bottom:66px}
 }
 
 /* The chevron again, at component specificity: .fld/.bar/.itemrow

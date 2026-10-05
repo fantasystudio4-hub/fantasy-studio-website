@@ -24,9 +24,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <!-- design tokens -> shared components -> screen styles. Order matters:
      tokens define the values, ui.css builds the components from them,
      app.css is per-screen and may only reference what those two publish. -->
-<link rel="stylesheet" href="tokens.css" />
-<link rel="stylesheet" href="ui.css" />
-<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="tokens.css?v=p1a" />
+<link rel="stylesheet" href="ui.css?v=p1a" />
+<link rel="stylesheet" href="app.css?v=p1a" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -714,26 +714,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button class="pay-close" id="finClose" type="button" aria-label="Close">&times;</button>
   <h3>💰 Money Analytics</h3>
   <div class="who" id="finWho"></div>
-  <!-- deliberately OUTSIDE #finBody: that box is rebuilt on every packages,
-       assignments or expenses snapshot, which would wipe a half-typed entry -->
-  <div id="expForm" hidden>
-    <h4 class="finh" id="exTitle" style="margin-top:0">＋ New expense</h4>
-    <div class="fld"><label>Date</label><input id="exDate" type="date" /></div>
-    <div class="fld"><label>Amount (₹)</label><input id="exAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" placeholder="e.g. 25000" /></div>
-    <div class="fld"><label>Category</label><div class="mode-pills expcats" id="exCat"></div></div>
-    <div class="fld"><label>Paid by</label>
-      <div class="mode-pills" id="exMode">
-        <button type="button" data-exm="online" class="on">💳 Online</button>
-        <button type="button" data-exm="cash">💵 Cash</button>
-      </div>
-    </div>
-    <div class="fld"><label>Note <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional)</span></label>
-      <input id="exNote" maxlength="120" placeholder="e.g. studio rent — August" /></div>
-    <div class="qe-acts">
-      <button type="button" class="gbtn" id="exSave">Save expense</button>
-      <button type="button" class="btn btn--sm btn--ghost" id="exCancel">Cancel</button>
-    </div>
-  </div>
+  <!-- The expense form used to sit here, inside the report. It is its own
+       sheet now (#expModal, below Transactions), so ＋ Add expense in this
+       list, a Transactions row and the ⚡ menu all open the same one. -->
   <div id="finBody"></div>
 </div>
 
@@ -767,6 +750,40 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <input id="txSearch" type="search" autocomplete="off" placeholder="Name, note, quote # or amount…" aria-label="Search transactions" />
   </div>
   <div id="txBody"></div>
+</div>
+
+<!-- Expense — ONE sheet for every door: ⚡ Quick Actions, ＋ Add expense in
+     Money Analytics, and an expense row in Transactions. Logging a ₹500 fuel
+     bill used to mean opening the report and scrolling past three tables to
+     find the button. Amount comes first because it is the one thing that is
+     always typed; Date and Note are folded away because today and "no note"
+     are right nearly every time.
+     AFTER the money sheets on purpose: it opens on top of them, and the Tab
+     trap and the stacking order both take the last open sheet in the page. -->
+<div class="pay-backdrop" id="expBackdrop"></div>
+<div class="pay-modal" id="expModal" role="dialog" aria-modal="true" aria-label="Expense">
+  <button class="pay-close" id="expClose" type="button" aria-label="Close">&times;</button>
+  <h3 id="exTitle">＋ New expense</h3>
+  <div class="who">Rent, gear, travel, food — anything the studio spends</div>
+  <div class="fld"><label>Amount (₹)</label><input id="exAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="e.g. 500" /></div>
+  <div class="fld"><label>Category</label><div class="mode-pills expcats" id="exCat"></div></div>
+  <div class="fld"><label>Paid by</label>
+    <div class="mode-pills" id="exMode">
+      <button type="button" data-exm="online" class="on">💳 Online</button>
+      <button type="button" data-exm="cash">💵 Cash</button>
+    </div>
+  </div>
+  <button type="button" class="exmore" id="exMoreBtn" aria-expanded="false" aria-controls="exMoreBox"><span>More details</span><em id="exMoreSum"></em></button>
+  <div id="exMoreBox" hidden>
+    <div class="fld"><label>Date</label><input id="exDate" type="date" /></div>
+    <div class="fld"><label>Note <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional)</span></label>
+      <input id="exNote" maxlength="120" autocomplete="off" placeholder="e.g. studio rent — August" /></div>
+  </div>
+  <!-- both buttons ride the bottom edge of the sheet, within thumb reach -->
+  <div class="sheet-foot">
+    <button type="button" class="btn btn--ghost" id="exSaveMore">Save &amp; add another</button>
+    <button type="button" class="gbtn" id="exSave">Save</button>
+  </div>
 </div>
 
 <div class="pay-backdrop" id="evBackdrop"></div>
@@ -867,7 +884,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=google-only"></script>
+<script type="module" src="app.js?v=p1a"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

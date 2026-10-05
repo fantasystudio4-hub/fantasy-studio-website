@@ -839,7 +839,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      current (e.g. event sheet → ＋ Payment) used to strand the sheet's entry
      in history, costing dead back-presses that dumped the user on Home.
      pushView REPLACES a modal entry instead of stacking on top of it. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns'];
+  /* 'gs' (search) and 'fee' (edit fee) were missing: each pushed its own entry
+     and closed through history.back(), but nothing here knew them, so the
+     first ✕ or Back only dropped the entry and left the sheet on screen. */
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp'];
   function pushView(view, hash, replace){
     if(_navFromPop) return;
     try{
@@ -962,7 +965,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   document.addEventListener('keydown', e=>{
     if(e.key !== 'Tab') return;
-    const m = document.querySelector('.pay-modal.open'); if(!m) return;
+    /* the LAST open sheet in the page: the expense sheet opens on top of
+       Money Analytics and Transactions, and sits after them in the markup */
+    const open = document.querySelectorAll('.pay-modal.open');
+    const m = open[open.length - 1]; if(!m) return;
     const f = [...m.querySelectorAll(FOCUSABLE)].filter(el=>!el.hidden && el.offsetParent !== null);
     if(!f.length) return;
     const first = f[0], last = f[f.length-1], inside = m.contains(document.activeElement);
@@ -1060,6 +1066,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeJtUI === 'function') closeJtUI();
       if(typeof closeCrewPayUI === 'function') closeCrewPayUI();
       if(typeof closeTxUI === 'function') closeTxUI();
+      if(typeof closeFeeUI === 'function') closeFeeUI();
+      if(typeof closeGsUI === 'function') closeGsUI();
+      if(typeof closeExpUI === 'function') closeExpUI();
       /* Close the editor honestly: prompt ONLY when the form is genuinely
          dirty AND actually on screen. Closing a Home sheet must never raise
          "Discard unsaved changes?" for an editor parked on another tab —
@@ -1364,6 +1373,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
     renderLeads(); renderBulkBar();
+    if(typeof syncFabs === 'function') syncFabs();   /* the bulk bar takes the ⚡ button's corner */
   }
   on('#leadPick', 'click', ()=>setBulk(!_bulkOn));
 
@@ -5930,7 +5940,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(patch['pay.payments'])   a.pay.payments   = patch['pay.payments'];
       if('pay.paidAmount' in patch) a.pay.paidAmount = patch['pay.paidAmount'];
       if('pay.paid' in patch)       a.pay.paid       = patch['pay.paid'];
-      closeFeeUI();
+      closeFeeUI();   /* off the screen now; closeFee then drops the sheet's history entry */
+      closeFee();
       renderTeam();
     }catch(err){
       btn.disabled = false; btn.textContent = 'Save Fee';
@@ -9293,16 +9304,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      own page has its own actions). One place decides who is on screen, because
      they are fixed to the bottom right and would otherwise sit on top of the
      add-event form's Save row. */
-  /* One floating button per screen, and only where there is an action worth
-     floating: ⚡ on Home, ＋ on the B2B list. Search left this rail for the
-     header — two stacked buttons covered whatever sat under them, and Team,
-     Packages and Leads were carrying the search button alone, so they have no
-     floating button at all now. */
+  /* One floating button per screen: ⚡ on Home and the lists, ＋ on the B2B
+     list. Search left this rail for the header — two stacked buttons covered
+     whatever sat under them. */
   function syncFabs(){
     const formOpen = !$('#calAdd').hidden;
     const onHome = !$('#homeView').hidden;
     const onStudioList = !$('#calView').hidden && $('#studioDetailView').hidden;
-    $('#fabBtn').hidden = !onHome || formOpen;
+    /* ⚡ follows the owner onto the lists a working day is spent in. Not where
+       its corner is taken: the B2B list has its own ＋, Site Config has Save
+       All there, the quotation editor its action bar, and Leads its bulk bar
+       while rows are being selected. */
+    const onLeads = !$('#leadsView').hidden && !_bulkOn;
+    const onPkgList = !$('#pkgView').hidden && $('#pkgEditView').hidden;
+    const onTeam = !$('#teamView').hidden;
+    $('#fabBtn').hidden = !(onHome || onLeads || onPkgList || onTeam) || formOpen;
     $('#stuAddFab').hidden = !onStudioList || formOpen;
     if(!onStudioList) clearStuSearch();
   }
@@ -10120,9 +10136,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#modeCash', 'click', ()=>setPayMode('cash'));
   document.addEventListener('keydown', e=>{
     if(e.key !== 'Escape') return;
-    /* the expense form sits inside the money sheet — one Escape should close
-       the form, not the sheet out from under it */
-    if(!$('#expForm').hidden){ closeExpForm(); return; }
+    /* the expense sheet can sit on top of the money sheet — one Escape should
+       close it, not the sheet out from under it */
+    const em = $('#expModal');
+    if(em && em.classList.contains('open')){ closeExp(); return; }
     /* Three sheets were never on the list below, so Escape did nothing on
        them: the event-fee editor, the crew payment sheet and Insights. The
        first two open ON TOP of another sheet, so they are tested first and
@@ -10357,6 +10374,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const liveExps = () => EXPS.filter(x=>!x.deleted);
   const expAmt = x => Math.max(0, Number(x && x.amount)||0);
   function loadExps(){
+    if(DEMO) return;   /* the fixtures own the list; a listener would only report permission-denied */
     if(_expsUnsub) return;
     _expsErr = '';
     try{
@@ -10737,7 +10755,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#finModal').classList.add('open'); $('#finBackdrop').classList.add('open');
     if(!wasOpen) pushView('fin', '#money');
   }
-  function closeFinUI(){ $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); closeExpForm(); }
+  function closeFinUI(){ $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); }
   function closeFin(){
     backFrom('fin', closeFinUI);
   }
@@ -10917,15 +10935,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const copy = { date: x.date||'', amount: expAmt(x), cat: String(x.cat||'other'),
                      mode: x.mode||'', note: x.note||'' };
       try{
-        const res = await settle(deleteDoc(doc(db,'expenses',x.id)));
+        const res = DEMO ? 'ok' : await settle(deleteDoc(doc(db,'expenses',x.id)));
         if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         EXPS = EXPS.filter(v=>v.id !== x.id);
-        if(_expEdit === x.id) closeExpForm();
+        if(_expEdit === x.id) closeExpUI();
         renderFin();
         toastUndo('Expense deleted', async ()=>{
           try{
-            const ref = doc(collection(db,'expenses'));
-            const r2 = await settle(setDoc(ref, { ...copy, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+            const ref = DEMO ? { id: 'demo-' + Date.now() } : doc(collection(db,'expenses'));
+            const r2 = DEMO ? 'ok' : await settle(setDoc(ref, { ...copy, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
             if(r2 === 'denied'){ toast('Undo failed — the server refused the write'); return; }
             addExpLocal({ id: ref.id, ...copy });
             renderFin(); toast('Expense restored');
@@ -10938,30 +10956,91 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(yr){ finYear = Number(yr.dataset.fyr); renderFin(); }
   });
 
-  /* ---------- add / edit one expense ---------- */
+  /* ---------- add / edit one expense ----------
+     ONE sheet (#expModal) for every door: ⚡ Quick Actions, ＋ Add expense in
+     Money Analytics, an expense row in Transactions. The fields and the write
+     are exactly what the old in-report form saved — { date, amount, cat, mode,
+     note } in whole rupees — so nothing downstream reads a different shape. */
   let _expAll = false, _expEdit = null, _exCat = '', _exMode = 'online';
   /* the list is date-desc; keep the local mirror in the same order as the
      snapshot that will replace it, so a saved row does not jump on refresh */
-  const addExpLocal = row => { EXPS = [row, ...EXPS].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); };
+  /* filtered first: offline, the listener has already delivered the pending
+     row, and adding it again listed and counted the same expense twice until
+     the next snapshot */
+  const addExpLocal = row => { EXPS = [row, ...EXPS.filter(v=>v.id !== row.id)].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); };
+  /* the chips, most-used first: fuel and food are logged every week, rent once
+     a month. The fixed order breaks ties and stands in until expenses load. */
+  function exCatsByUse(){
+    const n = {};
+    liveExps().forEach(x=>{ const c = String(x.cat||'other'); n[c] = (n[c]||0) + 1; });
+    return EXP_CATS.map((c,i)=>({ c, i, n: n[c[0]]||0 })).sort((p,q)=>q.n - p.n || p.i - q.i).map(o=>o.c);
+  }
   function syncExPills(){
     $$('#exCat button').forEach(b=>b.classList.toggle('on', b.dataset.exc === _exCat));
     $$('#exMode button').forEach(b=>b.classList.toggle('on', b.dataset.exm === _exMode));
   }
+  /* what the folded-away fields currently hold, said on the fold itself */
+  function syncExMore(){
+    const d = $('#exDate').value, note = $('#exNote').value.trim();
+    $('#exMoreSum').textContent = (d === todayISO() ? 'Today' : (dmy(d) || 'no date')) + ' · ' + (note || 'no note');
+  }
+  function setExMore(open){
+    $('#exMoreBox').hidden = !open;
+    $('#exMoreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  /* the two money lists show expenses; redraw whichever is on screen */
+  function refreshMoneyLists(){
+    if($('#finModal').classList.contains('open')) renderFin();
+    if($('#txModal').classList.contains('open')) renderTx();
+  }
+  /* Bumped on every open and every close, so a save that was still waiting on
+     the network can tell whether the sheet on screen is still the one it was
+     started from (offline, that wait is 2.5 seconds). */
+  let _expSeq = 0;
   function openExpForm(x){
+    /* a stale cached page against this script has no sheet to open */
+    if(!$('#expModal') || !$('#exMoreBox')){ toast('Reload the panel to use the expense sheet'); return; }
+    _expSeq++;
+    /* the last save's Undo toast would sit on this sheet's Amount field */
+    { const t = $('#toast'); t.classList.remove('show'); t.style.pointerEvents = 'none'; }
+    loadExps();   /* no-op when already listening; the chips' order needs the list */
     _expEdit = x ? x.id : null;
     _exCat = x ? String(x.cat||'other') : '';   /* no default: a wrong category is worse than one extra tap */
-    _exMode = (x && x.mode === 'cash') ? 'cash' : 'online';
+    /* a new entry starts on whichever of Cash / Online was used last */
+    _exMode = x ? (x.mode === 'cash' ? 'cash' : 'online')
+                : (viewGet('exMode','online') === 'cash' ? 'cash' : 'online');
     $('#exTitle').textContent = x ? '✎ Edit expense' : '＋ New expense';
     $('#exDate').value = (x && x.date) ? x.date : todayISO();
     $('#exAmt').value = x ? expAmt(x) : '';
     $('#exNote').value = (x && x.note) || '';
-    $('#exCat').innerHTML = EXP_CATS.map(([v,l])=>`<button type="button" data-exc="${v}">${l}</button>`).join('');
-    syncExPills();
-    $('#expForm').hidden = false;
-    $('#expForm').scrollIntoView({ block:'nearest' });
-    setTimeout(()=>{ if(!$('#expForm').hidden) $('#exAmt').focus(); }, 80);
+    $('#exCat').innerHTML = exCatsByUse().map(([v,l])=>`<button type="button" data-exc="${v}">${l}</button>`).join('');
+    syncExPills(); syncExMore();
+    setExMore(!!x);                    /* correcting an entry: every field on show */
+    $('#exSaveMore').hidden = !!x;     /* "add another" only makes sense for a new one */
+    $('#exSave').textContent = x ? 'Save changes' : 'Save';
+    const wasOpen = $('#expModal').classList.contains('open');
+    $('#expModal').classList.add('open'); $('#expBackdrop').classList.add('open');
+    /* Over Money Analytics or Transactions the sheet rides on THEIR history
+       entry: pushView would replace it, and closing this sheet with ✕, the
+       backdrop, Escape or Save would then shut the list underneath as well.
+       The phone's Back still leaves the whole stack for the page, exactly as
+       it did when this form lived inside Money Analytics. */
+    const cur = history.state && history.state.view;
+    if(!wasOpen && cur !== 'fin' && cur !== 'txns') pushView('exp', '#expense');
+    setTimeout(()=>{
+      if(!$('#expModal').classList.contains('open')) return;
+      const a = $('#exAmt'); a.focus(); if(x) a.select();
+    }, 80);
   }
-  function closeExpForm(){ $('#expForm').hidden = true; _expEdit = null; }
+  function closeExpUI(){
+    const m = $('#expModal'), b = $('#expBackdrop');
+    if(m) m.classList.remove('open');
+    if(b) b.classList.remove('open');
+    _expEdit = null; _expSeq++;
+  }
+  function closeExp(){ backFrom('exp', closeExpUI); }
+  on('#expClose', 'click', closeExp);
+  on('#expBackdrop', 'click', closeExp);
   on('#exCat', 'click', e=>{
     const b = e.target.closest('[data-exc]'); if(!b) return;
     _exCat = b.dataset.exc; syncExPills();
@@ -10970,37 +11049,103 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('[data-exm]'); if(!b) return;
     _exMode = b.dataset.exm; syncExPills();
   });
-  on('#exCancel', 'click', closeExpForm);
-  on('#exSave', 'click', async ()=>{
+  on('#exMoreBtn', 'click', ()=>{
+    const open = $('#exMoreBox').hidden;
+    setExMore(open);
+    /* with the keypad up the sheet is short, and the fields would open behind
+       the Save row — bring them into view so the tap visibly did something */
+    if(open) $('#exMoreBox').scrollIntoView({ block:'nearest' });
+  });
+  on('#exDate', 'change', syncExMore);
+  on('#exNote', 'input', syncExMore);
+  /* Undo for an entry that was only just added: the same hard delete the ✕ in
+     the expense list performs, on the one record this sheet created. */
+  async function undoExpAdd(id){
+    if(_expEdit === id) closeExpUI();   /* the sheet may have been reopened on this very record */
+    try{
+      const res = DEMO ? 'ok' : await settle(deleteDoc(doc(db,'expenses',id)));
+      if(res === 'denied'){ toast('Undo failed — the server refused the write'); return; }
+      EXPS = EXPS.filter(v=>v.id !== id);
+      refreshMoneyLists();
+      toast('Expense removed');
+    }catch(err){ toast('Undo failed'); }
+  }
+  /* The write itself is the one the in-report form made, unchanged. `another`
+     keeps the sheet open for the next entry instead of closing it. */
+  async function saveExp(another){
+    /* a closed sheet saves nothing: it stays focusable for the 0.3s it takes
+       to fade, and Done pressed in that moment used to be a second save */
+    if(!$('#expModal').classList.contains('open')) return;
     const date = $('#exDate').value;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this expense'); $('#exDate').focus(); return; }
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){ toast('Pick a date for this expense'); setExMore(true); $('#exDate').focus(); return; }
     const amount = Math.round(Number($('#exAmt').value)||0);
     if(amount <= 0){ toast('Enter the amount spent'); $('#exAmt').focus(); return; }
     if(!_exCat){ toast('Pick a category'); return; }
-    const btn = $('#exSave'); if(btn.disabled) return;
-    btn.disabled = true;
+    const btn = $('#exSave'), btn2 = $('#exSaveMore'); if(btn.disabled) return;
+    btn.disabled = btn2.disabled = true;
+    btn.textContent = 'Saving…';
     const d = { date, amount, cat: _exCat, mode: _exMode, note: $('#exNote').value.trim(), updatedAt: serverTimestamp() };
+    const wasEdit = !!_expEdit;
+    const seq = _expSeq;
     try{
-      let res;
-      if(_expEdit){
+      let res, newId = null;
+      if(wasEdit){
         const id = _expEdit;
-        res = await settle(updateDoc(doc(db,'expenses',id), d));
+        res = DEMO ? 'ok' : await settle(updateDoc(doc(db,'expenses',id), d));
         if(res !== 'denied'){
           const it = EXPS.find(v=>v.id === id);
           if(it){ Object.assign(it, d); EXPS = [...EXPS].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); }
         }
       }else{
-        const ref = doc(collection(db,'expenses'));
-        res = await settle(setDoc(ref, { ...d, createdAt: serverTimestamp() }));
-        if(res !== 'denied') addExpLocal({ id: ref.id, ...d });
+        const ref = DEMO ? { id: 'demo-' + Date.now() } : doc(collection(db,'expenses'));
+        res = DEMO ? 'ok' : await settle(setDoc(ref, { ...d, createdAt: serverTimestamp() }));
+        if(res !== 'denied'){ addExpLocal({ id: ref.id, ...d }); newId = ref.id; }
       }
-      const sm = settleMsg(res, `${inr(amount)} · ${catName(_exCat)} recorded`);
-      if(!sm.ok){ toast(sm.msg); return; }   /* leave the form filled in so nothing is retyped */
-      closeExpForm();
-      renderFin();
-      toast(sm.msg);
+      const sm = settleMsg(res,
+        wasEdit ? `Expense updated — ${inr(amount)} · ${catName(d.cat)}` : `Expense ${inr(amount)} added — ${catName(d.cat)}`,
+        `Expense ${inr(amount)} saved offline — will sync`);
+      if(!sm.ok){ toast(sm.msg); return; }   /* leave the sheet filled in so nothing is retyped */
+      if(!wasEdit) viewSet('exMode', d.mode);
+      refreshMoneyLists();
+      /* While the write was in flight the owner may have closed this sheet,
+         or closed it and opened another. Only touch the sheet if it is still
+         the one this save started from. */
+      const mine = seq === _expSeq;
+      if(another && !wasEdit && mine){
+        /* The sheet stays up for the next one, so the toast carries no Undo:
+           it would sit right where the next tap lands. A wrong entry is one
+           tap to fix from the expense list. The chips keep their order until
+           the sheet is next opened — a chip that moved between two entries
+           is a chip tapped by mistake. */
+        toast(sm.msg);
+        _exCat = ''; $('#exAmt').value = ''; $('#exNote').value = '';
+        syncExPills(); syncExMore();
+        $('#exAmt').focus();
+      }else{
+        /* history.back() is asynchronous: shut the sheet on screen NOW, so a
+           second tap or the Done key cannot save the same entry twice, then
+           drop its history entry (a no-op over Money Analytics / Transactions) */
+        if(mine){ closeExpUI(); closeExp(); }
+        /* Undo only when no expense sheet is up for it to land on */
+        if(newId && !$('#expModal').classList.contains('open')) toastUndo(sm.msg, ()=>undoExpAdd(newId));
+        else toast(sm.msg);
+      }
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
-    finally{ btn.disabled = false; }
+    finally{
+      btn.disabled = btn2.disabled = false;
+      btn.textContent = _expEdit ? 'Save changes' : 'Save';
+    }
+  }
+  on('#exSave', 'click', ()=>saveExp(false));
+  on('#exSaveMore', 'click', ()=>saveExp(true));
+  /* the keypad's Done key saves, the way it already does on the fee sheet */
+  /* ...but only once a category is chosen. Before that, Done is how the
+     keypad is put away to reach the chips, and it must not answer with
+     "Pick a category". */
+  on('#exAmt', 'keydown', e=>{
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    if(_exCat) saveExp(false); else e.target.blur();
   });
   on('#finClose', 'click', closeFin);
   on('#finBackdrop', 'click', closeFin);
@@ -11154,9 +11299,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }else{
       const x = EXPS.find(v=>v.id === id);
       if(!x){ toast('That expense is no longer here'); return; }
-      /* expenses are edited in the money sheet's own form — the one place that
-         knows the categories */
-      closeTxUI(); openFin(); openExpForm(x);
+      /* the shared expense sheet opens over this list; Save, ✕, the backdrop
+         and Escape come back to it (it used to close the list and open Money
+         Analytics to reach its form) */
+      openExpForm(x);
     }
   });
 
@@ -11333,6 +11479,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qaOpts').classList.remove('qa-form');
     $('#qaWho').textContent = 'The things you do most — one tap away';
     $('#qaOpts').innerHTML = `
+      <button type="button" data-qa-exp>💸 New expense <em>amount first — travel, food, rent</em></button>
       <button type="button" data-qa-lead>👤 New lead <em>name + number, that is all</em></button>
       <button type="button" data-qa-book>📅 New booking <em>a date on the calendar</em></button>
       <button type="button" data-qa-new>📦 New package / quotation</button>
@@ -11414,11 +11561,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         toast('NOT saved — the server refused this write. Check your sign-in and try again.');
         return;
       }
-      closeQaUI();
+      /* Stay on the screen the ⚡ was opened from. This used to clear the Leads
+         filter and jump to the Leads tab — fine when ⚡ lived only on Home, but
+         it now opens from the lists too, and nobody adding a lead mid-task
+         wants to be moved. closeQa (not closeQaUI) drops the menu's own
+         history entry, so Back still means "the screen before this one". */
+      closeQa();
       toast(`Lead saved — ${name}`);
       buzz();
-      leadFilterVal = ''; $('#leadSearch').value = '';
-      $('#tabLeads').click(); renderStats(); renderLeads();
+      renderStats(); renderLeads();
     }catch(err){
       btn.disabled = false; btn.textContent = 'Save lead';
       toast('Save failed');
@@ -11502,6 +11653,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + (more > 0 ? `<button type="button" data-qa-paymore style="justify-content:center;color:var(--gold-b)">＋ ${more} more with a balance</button>` : '');
   }
   on('#qaOpts', 'click', e=>{
+    /* closeQaUI, not closeQa: the menu's history entry is replaced by the
+       expense sheet's, so Back from the sheet lands on the page */
+    if(e.target.closest('[data-qa-exp]')){ closeQaUI(); openExpForm(null); return; }
     if(e.target.closest('[data-qa-lead]')){ renderQaLead(); return; }
     if(e.target.closest('#qlSave')){ saveQaLead(); return; }
     if(e.target.closest('[data-qa-book]')){
@@ -11695,6 +11849,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   document.addEventListener('keydown', e=>{
     if((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')){
       e.preventDefault();
+      /* the expense sheet sits a layer above the palette — it would open unseen */
+      const em = $('#expModal'); if(em && em.classList.contains('open')) return;
       $('#gsModal').classList.contains('open') ? closeGs() : openGs();
     }
   });
