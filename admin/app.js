@@ -956,8 +956,97 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const k = Object.prototype.hasOwnProperty.call(OLD, a) ? OLD[a] : 'home';
     return (!MONEY_PAGES && (k === 'insights' || k === 'expenses')) ? 'money' : k;
   }
+  /* ---------- a full page's address names the record it shows ----------
+     #/more/studios/<studio id> · #/work/editing/<booking id> ·
+     #/work/bookings/<booking id>. routeOfHash above still answers with the
+     LIST the page belongs to (so an old script, or a stale page, lands there);
+     this reads the id beside it. The three words an id-less entry has always
+     carried (studio / job / edit) are not ids. The id comes out of the address
+     bar, so it is only ever compared with ids already in memory — never used
+     as a key, never written into the page. */
+  const FULL_HASH = { pkgedit:'#/work/bookings/', studio:'#/more/studios/', ejob:'#/work/editing/' };
+  const FULL_NOID = { pkgedit:'edit', studio:'studio', ejob:'job' };
+  const FULL_LIST = { pkgedit:'bookings', studio:'studios', ejob:'editing' };
+  const fullHash = (view, id) => FULL_HASH[view] + (id ? encodeURIComponent(id) : FULL_NOID[view]);
+  function fullOfHash(h){
+    const p = String(h||'').replace(/^#\/?/, '').split('/').filter(Boolean);
+    if(p.length !== 3) return null;
+    const view = (p[0] === 'work' && p[1] === 'bookings') ? 'pkgedit'
+               : (p[0] === 'more' && p[1] === 'studios')  ? 'studio'
+               : (p[0] === 'work' && p[1] === 'editing')  ? 'ejob' : '';
+    if(!view) return null;
+    let id = '';
+    try{ id = decodeURIComponent(p[2]); }catch(e){ return null; }   /* a bare % */
+    if(id === FULL_NOID[view] || !SAFE_ID.test(id)) return null;
+    return { view, id };
+  }
+  /* The page to reopen after a reload or a cold link, once its data has
+     arrived: the lists come from live snapshots, so on the first paint there
+     is nothing to open it WITH. A module variable, never history.state — the
+     entry may be renamed under it. `replace`: the entry was already this
+     page's (a reload), so opening it must not stack a second one. */
+  let _bootFull = null, _studiosFresh = false;
+  function bootFullSoon(){ if(_bootFull) setTimeout(tryBootFull, 0); }
+  function tryBootFull(){
+    const b = _bootFull; if(!b) return;
+    try{
+      const listKey = FULL_LIST[b.view], list = ROUTES[listKey];
+      /* only while the owner is still where the first paint left them: on
+         that list, nothing opened over it, the entry untouched. Anything else
+         and the moment has passed — a page must not open under their thumb. */
+      const st = (history.state && history.state.view) || '';
+      const still = curRoute() === listKey && !document.querySelector('.pay-modal.open')
+        && !viewShown('calAdd') && !viewShown('pkgEditView') && !viewShown('studioDetailView') && !viewShown('ejDetailView')
+        && (b.replace ? (st === b.view || MODAL_VIEWS.includes(st)) : st === list.view);
+      if(!still){ _bootFull = null; return; }
+      let ready = false, found = false, fresh = false;
+      if(b.view === 'studio'){
+        /* the page reads the studio AND its jobs: before the bookings arrive it
+           would say "everything is delivered" and offer a nil statement */
+        ready = _studiosLoaded && _pkgsLoaded; fresh = _studiosFresh;
+        found = ready && !!studioById(b.id);
+      }else if(b.view === 'ejob'){
+        /* a job page saves on a tap, and works its editors list out from the
+           assignments and the roster: all four lists first, and only a booking
+           the editing desk would list */
+        ready = _pkgsLoaded && _asgsLoaded && _ejLoaded && _teamLoaded; fresh = _pkgsFresh;
+        found = ready && ejCandidates().some(r=>r.pk && r.pk.id === b.id);
+      }else{
+        ready = _pkgsLoaded; fresh = _pkgsFresh;
+        found = ready && livePkgs().some(x=>x.id === b.id);
+      }
+      if(!ready) return;   /* the next snapshot tries again */
+      if(!found){
+        /* a cache image may simply not hold it yet: "gone" is the server's word */
+        if(!fresh) return;
+        _bootFull = null;
+        try{ history.replaceState({ view: list.view }, '', list.hash); }catch(e){}
+        toast(b.view === 'studio' ? 'That studio is not in the list any more' : b.view === 'ejob' ? 'That editing job is not on the desk any more' : 'That booking is not in the list any more');
+        return;
+      }
+      _bootFull = null;
+      if(b.view === 'pkgedit'){
+        /* The quotation editor is NOT reopened: what was being typed went with
+           the reload, and a form quietly rebuilt from the saved values would
+           look exactly like the one that was lost. The list opens on that
+           booking's card instead — Edit is one tap away. */
+        expandedPkg = b.id; renderPkgListOnly();
+        try{ history.replaceState({ view: list.view }, '', list.hash); }catch(e){}
+        setTimeout(()=>{
+          const card = [...document.querySelectorAll('#pkgList .card[data-id]')].find(c=>c.dataset.id === b.id);
+          if(card) card.scrollIntoView({ block:'center' });
+        }, 80);
+        return;
+      }
+      /* a cold link: this entry is the list, with the id still in its address
+         — put the list's own address back, and the page is pushed above it */
+      if(!b.replace){ try{ history.replaceState({ view: list.view }, '', list.hash); }catch(e){} }
+      if(b.view === 'studio') openStudioDetail(b.id); else openEjDetail(b.id);
+    }catch(e){ _bootFull = null; console.error('[route] could not reopen the page in the address', e); }
+  }
   /* first paint: the screen the address names, and an entry that says so */
   function bootRoute(){
+    const want = fullOfHash(location.hash);
     const r = ROUTES[routeOfHash(location.hash)];
     if(r.seg && typeof setTeamSeg === 'function'){
       /* only records the section; the entry is written below, once */
@@ -967,12 +1056,25 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(r.pane && MONEY_PAGES){ _mnyPane = r.pane; if(r.an) _anView = r.an; }   /* showTab draws the page this names */
     if(r.cfg && CFG_PAGES) _cfgPage = r.cfg;
     showTab(r.tab);
+    _bootFull = null;
     try{
-      /* a reload keeps the "came from More" mark, so the back arrow still just goes back */
-      const keep = history.state && history.state.view === r.view && history.state.fromMore;
-      history.replaceState(keep ? { view: r.view, fromMore: true } : { view: r.view }, '', r.hash);
+      const st = history.state || {};
+      if(want && (st.view === want.view || MODAL_VIEWS.includes(st.view))){
+        /* a reload on that page (or with a sheet over it): the entry is
+           already the page's own — it is left alone until the page opens */
+        _bootFull = { view: want.view, id: want.id, replace: true };
+      }else{
+        /* a reload keeps the "came from More" mark, so the back arrow still just goes back */
+        const keep = st.view === r.view && st.fromMore;
+        /* a cold link to a full page: this entry is its list for now, and
+           keeps the id in the address until the page opens above it (a second
+           impatient reload must still know what was asked for) */
+        history.replaceState(keep ? { view: r.view, fromMore: true } : { view: r.view }, '', want ? location.hash : r.hash);
+        if(want) _bootFull = { view: want.view, id: want.id, replace: false };
+      }
     }catch(e){}
     syncShell();
+    tryBootFull();   /* in the demo the data is already here; signed in, the snapshots call it */
   }
   /* The view name comes out of the address bar (/admin/#constructor), and a
      plain-object lookup answers for inherited keys too: TAB_OF_VIEW['constructor']
@@ -992,13 +1094,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_navFromPop) return;
     try{
       const cur = history.state && history.state.view;
-      if(cur === view) return;                       /* re-tapping the tab you're on must not stack dead entries */
+      /* a full page's entry is the page AND its record: opening studio B over
+         an entry that still says studio A must rewrite it, or the address (and
+         a reload) keeps naming A */
+      const id = (extra && extra.id) || '', curId = (history.state && history.state.id) || '';
+      if(cur === view && id === curId) return;       /* re-tapping the tab you're on must not stack dead entries */
       /* A sheet keeps the address of the screen it is over. It used to write
          its own (#money, #ledger, #quick…), none of which could be opened
          from the address bar, so a reload with a sheet up landed on Home. */
       const h = MODAL_VIEWS.includes(view) ? (location.hash || '#/home') : hash;
       const st = extra ? { view, ...extra } : { view };
-      if(replace || MODAL_VIEWS.includes(cur)) history.replaceState(st, '', h);
+      if(replace || MODAL_VIEWS.includes(cur) || cur === view) history.replaceState(st, '', h);
       else history.pushState(st, '', h);
     }catch(e){}
   }
@@ -1030,6 +1136,40 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* the same care one phase on: a cached Phase 1 page has the chrome but not
      the labelled ＋ Add studio, so it keeps its floating one */
   document.documentElement.classList.toggle('has-stuadd', !!$('#stuAddBtn'));
+  /* ...and one more: the desktop sidebar's rules (1000px and wider) apply
+     only on a page that HAS the sidebar. Never un-hide the element from here:
+     the stylesheet shows it, so an older cached stylesheet leaves it hidden. */
+  document.documentElement.classList.toggle('has-side', !!$('#sideNav'));
+  /* The sidebar: every screen, grouped the way the bar and More group them.
+     [route, icon, label, the existing badge it mirrors]; a lone string is a
+     heading. Trash, Backup and Logout go through moreGo, like More's rows. */
+  const SIDE = [
+    ['home','🏠','Home','#homeBadge'], ['leads','👥','Leads','#leadsBadge'],
+    'Work',
+    ['bookings','📦','Bookings'], ['crew','🎬','Crew'], ['editing','✂️','Editing','#segEditB'],
+    'Money',
+    ['money','🧾','Transactions'], ['expenses','💸','Expenses'], ['paytrack','💰','Crew pay','#segPayB'], ['analytics','📊','Analytics'],
+    'More',
+    ['studios','🤝','Partner studios','#b2bBadge'], ['members','👤','Team','#teamBadge'], ['settings','⚙️','Settings'],
+    ['trash','🗑','Trash'], ['backup','⬇','Backup & export'], ['logout','↩','Logout'],
+  ];
+  function syncSide(r){
+    const nav = $('#sideNav'); if(!nav) return;
+    const html = SIDE.map(it=>{
+      if(typeof it === 'string') return `<h2>${it}</h2>`;
+      const [k, ic, label, badge] = it;
+      /* Insights is a view of Analytics; a Settings group is a page of Settings */
+      const on = !!ROUTES[k] && (ROUTES[k] === r || (k === 'analytics' && r === ROUTES.insights) || (k === 'settings' && r.up === 'settings'));
+      const src = badge ? $(badge) : null;
+      const n = (src && !src.hidden) ? src.textContent : '';
+      return `<button type="button" data-go="${k}" class="${on ? 'on' : ''}"${on ? ' aria-current="page"' : ''}><i>${ic}</i><span>${label}</span>${n ? `<b>${esc(n)}</b>` : ''}</button>`;
+    }).join('');
+    if(nav.dataset.sig === html) return;
+    /* a keyboard user who just pressed one of its buttons keeps their place */
+    const had = nav.contains(document.activeElement) ? document.activeElement.dataset.go : '';
+    nav.innerHTML = html; nav.dataset.sig = html;
+    if(had){ const b = nav.querySelector(`[data-go="${had}"]`); if(b) try{ b.focus({ preventScroll: true }); }catch(e){} }
+  }
   function syncShell(){
     const strip = $('#subnav'), ttl = $('#hdrTitle'), back = $('#hdrBack');
     if(!strip || !ttl || !back || !$('#tabMore') || !$('#tabMoney')) return;   /* a stale cached page: leave its own chrome alone */
@@ -1048,6 +1188,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const up = !!full || !!r.up;
     back.hidden = !up;
     $('#hdr').classList.toggle('has-back', up);
+    /* on desktop the sidebar is the way back to More's screens: the arrow
+       stays only where it means "up one level" (a full page, a Settings group) */
+    $('#hdr').classList.toggle('up-more', !full && r.up === true);
+    syncSide(r);
     /* the strip: only on a section's own screens, never over a full page */
     const items = full ? null : STRIPS[r.sec];
     if(!items){ if(!strip.hidden){ strip.hidden = true; strip.innerHTML = ''; strip.dataset.sig = ''; } return; }
@@ -1422,7 +1566,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   window.addEventListener('popstate', e=>{
     _navFromPop = true;
     try{
-      const v = (e.state && e.state.view) || 'home';
+      /* An address typed or pasted into a tab that is already open arrives
+         here with NO entry state. It used to be read as "Home", so the screen
+         and the address bar disagreed until a reload. Read the address
+         instead, the way the first paint does. */
+      const typed = !e.state;
+      const want = typed ? fullOfHash(location.hash) : null;
+      const v = typed ? (want ? want.view : ROUTES[routeOfHash(location.hash)].view) : (e.state.view || 'home');
+      /* the record a full page's entry names (see fullOfHash) */
+      const sid = typed ? (want ? want.id : '') : ((typeof e.state.id === 'string' && SAFE_ID.test(e.state.id)) ? e.state.id : '');
+      _bootFull = null;   /* the owner has moved: a page still waiting for its data must not open now */
       /* a question left on screen over a sheet that Back is about to close
          would still act on Confirm — after the sheet's own fields were cleared */
       if(_cfmResolve) closeConfirm(false);
@@ -1448,10 +1601,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          dirty AND actually on screen. Closing a Home sheet must never raise
          "Discard unsaved changes?" for an editor parked on another tab —
          that one is dismissed silently instead. */
-      if(v !== 'pkgedit' && !$('#pkgEditView').hidden){
+      if((typed || v !== 'pkgedit') && !$('#pkgEditView').hidden){
         const onScreen = !$('#pkgView').hidden;
         if(onScreen && typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
-          try{ history.pushState({view:'pkgedit'}, '', '#/work/bookings/edit'); }catch(e2){}
+          /* the editor's own entry goes back on top, naming the booking it holds */
+          try{ history.pushState(editingId ? { view:'pkgedit', id: editingId } : { view:'pkgedit' }, '', fullHash('pkgedit', editingId)); }catch(e2){}
           return;
         }
         closeEditorSilently();
@@ -1463,17 +1617,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          sheet closing over it lands on that page's own entry. */
       if(!MODAL_VIEWS.includes(v) && _qeQueue.length && viewShown('calAdd')){
         const onStudio = viewShown('calView') && viewShown('studioDetailView');
-        const stays = _qeAnchor === 'b2b' ? (onStudio ? v === 'studio' : tabOfView(v) === 'tabCal')
+        const stays = typed ? false
+                    : _qeAnchor === 'b2b' ? (onStudio ? (v === 'studio' && (!sid || sid === _stuDetailId)) : tabOfView(v) === 'tabCal')
                                           : tabOfView(v) === 'tabHome';
         if(!stays && !confirm(`Leave this page? The ${_qeQueue.length} date${_qeQueue.length>1?'s':''} banked on the add-event form will be discarded.`)){
-          const here = onStudio ? { view:'studio', hash:'#/more/studios/studio' } : ROUTES[curRoute()];
-          try{ history.pushState({ view: here.view }, '', here.hash); }catch(e2){}
+          try{
+            if(onStudio) history.pushState({ view:'studio', id: _stuDetailId }, '', fullHash('studio', _stuDetailId));
+            else{ const here = ROUTES[curRoute()]; history.pushState({ view: here.view }, '', here.hash); }
+          }catch(e2){}
           return;
         }
       }
       /* landing on a sheet's own entry (forward button / stray entry): the
          sheets are closed above — stay on the current tab instead of
          teleporting to Home */
+      if(typed){
+        /* the first paint's own routine, on whatever the address now names */
+        if(viewShown('studioDetailView') && typeof closeStudioDetail === 'function') closeStudioDetail();
+        if(typeof closeEjDetail === 'function') closeEjDetail();
+        _navFromPop = false;   /* bootRoute writes the entry itself */
+        bootRoute();
+        return;
+      }
       if(MODAL_VIEWS.includes(v)) return;
       if(v === 'pkgedit'){
         showTab('tabPkgs');
@@ -1484,15 +1649,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         syncFabs();
       }else if(v === 'studio'){
         showTab('tabCal');
-        if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
+        if(sid && sid !== _stuDetailId){
+          /* the entry names a studio that is not the page on screen (Forward
+             after Back, or Back onto a page that was left by another door):
+             open THAT studio through its opener — never by setting the id,
+             which would carry one studio's half-typed rates onto another */
+          if(_studiosLoaded && _pkgsLoaded && studioById(sid)) openStudioDetail(sid);
+          else{
+            if(viewShown('studioDetailView') && typeof closeStudioDetail === 'function') closeStudioDetail();
+            try{ history.replaceState({ view:'b2b' }, '', ROUTES.studios.hash); }catch(e2){}
+          }
+        }
+        /* the page already on screen (a sheet closed over it): shown as it is,
+           scroll, open boxes and banked dates untouched */
+        else if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
       }else if(v === 'ejob'){
-        /* the job this entry belonged to was closed under a sheet (＋ → Assign
-           crew, Search → a crew member): the entry is dead. Step over it to
-           the list below rather than spend a Back press on nothing. */
-        if(!_ejOpenId){ history.back(); return; }
-        showTab('tabTeam');
-        if(typeof setTeamSeg === 'function') setTeamSeg('edit');
-        $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
+        if(sid && sid !== _ejOpenId){
+          /* the same for an editing job — only a booking the desk would list,
+             and only once everything its page saves from has loaded */
+          const ok = _pkgsLoaded && _asgsLoaded && _ejLoaded && _teamLoaded && ejCandidates().some(r=>r.pk && r.pk.id === sid);
+          showTab('tabTeam');
+          if(typeof setTeamSeg === 'function') setTeamSeg('edit');
+          if(ok) openEjDetail(sid);
+          else{
+            if(typeof closeEjDetail === 'function') closeEjDetail();
+            try{ history.replaceState({ view:'editing' }, '', ROUTES.editing.hash); }catch(e2){}
+          }
+        }else{
+          /* an entry with no id whose job was closed under a sheet (＋ → Assign
+             crew, Search → a crew member) is dead. Step over it to the list
+             below rather than spend a Back press on nothing. */
+          if(!_ejOpenId){ history.back(); return; }
+          showTab('tabTeam');
+          if(typeof setTeamSeg === 'function') setTeamSeg('edit');
+          $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
+        }
       }else{
         const tab = tabOfView(v);
         if(CFG_PAGES && Object.prototype.hasOwnProperty.call(CFG_OF_VIEW, v)) _cfgPage = CFG_OF_VIEW[v];   /* before showTab draws it */
@@ -3217,7 +3408,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         { includeMetadataChanges: true }, async snap=>{
         PKGS = keepSafeIds(snap.docs, 'package').map(d=>({ id:d.id, ...d.data() }));
         warnIfCapped('packages', snap.size, PKGS_CAP);
-        _pkgsLoaded = true;
+        _pkgsLoaded = true; bootFullSoon();
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
         syncStudioCrew();   /* partner portal reads crew off the package doc */
         renderPkgList();
@@ -5417,7 +5608,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             TEAM = snap.docs.map(d=>({ id:d.id, ...d.data() }))
               .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
             warnIfCapped('team members', snap.size, TEAM_CAP);
-            _teamLoaded = true;
+            _teamLoaded = true; bootFullSoon();
             syncCrewRanks();    /* the roster is what the places are written onto */
             renderTeam();
             renderEditTab();    /* editor names and the editor filter chips */
@@ -5437,7 +5628,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           { includeMetadataChanges: true }, snap=>{
           ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
           warnIfCapped('assignments', snap.size, ASGS_CAP);
-          _asgsLoaded = true;
+          _asgsLoaded = true; bootFullSoon();
           if(!snap.metadata.fromCache) _asgsFresh = true;
           syncStudioCrew();   /* partner portal reads crew off the package doc */
           syncCrewRanks();    /* each member's leaderboard place, onto their team doc */
@@ -6661,7 +6852,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _ejUnsub = onSnapshot(query(collection(db,'editingJobs'), limit(EJOBS_CAP)), snap=>{
         EJOBS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         warnIfCapped('editing jobs', snap.size, EJOBS_CAP);
-        _ejLoaded = true; _ejErr = '';
+        _ejLoaded = true; _ejErr = ''; bootFullSoon();
         renderEditTab();
         renderPkgStats();   /* Home's "edits need you" tile reads these */
       }, err=>{
@@ -7374,7 +7565,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderEjDetail();
     $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
     scrollTopNow();
-    pushView('ejob', '#/work/editing/job');
+    pushView('ejob', fullHash('ejob', id), false, { id });
     syncShell();
   }
   function closeEjDetail(){
@@ -9299,6 +9490,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
         warnIfCapped('studios', snap.size, STUDIOS_CAP);
         _studiosLoaded = true;
+        if(!snap.metadata.fromCache) _studiosFresh = true;
+        bootFullSoon();
         renderHomeWait();   /* a request card on Home prices itself from the studio's rate card */
         /* one-time fix-up: studios saved before the partner portal existed
            carry no phone10 login key — derive it from the profile phone.
@@ -10127,7 +10320,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#studioListView').hidden = true; $('#studioDetailView').hidden = false;
     syncFabs();
     scrollTopNow();
-    pushView('studio', '#/more/studios/studio');
+    pushView('studio', fullHash('studio', id), false, { id });
   }
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
@@ -12485,6 +12678,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#homeJoin', 'click', ()=>go('members'));
   on('#navAdd', 'click', openQa);    /* phone: centre of the bottom bar */
   on('#hdrAdd', 'click', openQa);    /* desktop: in the header */
+  /* The desktop sidebar. Unlike the strip, a move from here IS a step: Back
+     returns to the screen before it. Screens that share one view (Crew,
+     Editing, Crew pay and Team are the Team view; Money's pages are the Money
+     view) are switched in place by go(), which renames the current entry —
+     so the new entry is pushed first, and go() then finds it already right. */
+  if($('#sideNav')) on('#sideNav', 'click', e=>{
+    const b = e.target.closest('[data-go]'); if(!b) return;
+    let k = b.dataset.go;
+    if(k === 'logout' || k === 'trash' || k === 'backup'){ moreGo(k); return; }
+    if(k === 'analytics' && curRoute() === 'insights') k = 'insights';   /* re-pressing the lit item keeps its view */
+    const r = ROUTES[k]; if(!r) return;
+    /* a full page is open on the screen being asked for: this is its Back */
+    if(k === 'bookings' && viewShown('pkgView') && viewShown('pkgEditView')){ $('#pkgBack').click(); return; }
+    if(k === 'studios' && viewShown('calView') && viewShown('studioDetailView')){ backFrom('studio', closeStudioDetail); return; }
+    if(k === 'editing' && viewShown('teamView') && viewShown('ejDetailView')){ backFrom('ejob', closeEjDetail); return; }
+    if(curRoute() !== k && ((r.seg && viewShown('teamView')) || (r.pane && MONEY_PAGES && viewShown('moneyView')))) pushView(r.view, r.hash);
+    go(k);
+  });
   on('#subnav', 'click', e=>{
     const b = e.target.closest('[data-go]'); if(!b) return;
     let k = b.dataset.go;
@@ -12565,7 +12776,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   (function(){
     const obs = new MutationObserver(()=>{ syncMoreBadges(); syncShell(); });
-    ['#b2bBadge','#teamBadge','#segPayB','#segEditB'].forEach(sel=>{
+    ['#b2bBadge','#teamBadge','#segPayB','#segEditB','#homeBadge','#leadsBadge'].forEach(sel=>{
       const el = $(sel);
       if(el) obs.observe(el, { attributes:true, childList:true, characterData:true, subtree:true });
     });
@@ -12918,7 +13129,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     syncFabs();
     computePkg();
     scrollTopNow();
-    pushView('pkgedit', '#/work/bookings/edit');
+    /* a saved booking's address names it; a new quote has no id until its first save */
+    pushView('pkgedit', fullHash('pkgedit', editingId), false, editingId ? { id: editingId } : null);
     _pkgBaseline = JSON.stringify(readForm());
     /* last, not earlier: #pcPhone is filled in halfway down this function, so
        anywhere above here it is still holding the PREVIOUS package's number
@@ -13199,7 +13411,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* only adopt the new id if the write was NOT refused — otherwise every
            retry would update a document that does not exist, and Save could
            never succeed again */
-        if(res !== 'denied') editingId = ref.id;
+        if(res !== 'denied'){
+          editingId = ref.id;
+          /* the save is async: only if this editor's own entry is still current */
+          try{
+            if(history.state && history.state.view === 'pkgedit' && !history.state.id && viewShown('pkgView') && viewShown('pkgEditView'))
+              history.replaceState({ view:'pkgedit', id: editingId }, '', fullHash('pkgedit', editingId));
+          }catch(e2){}
+        }
       }
       if(res === 'denied'){
         /* leave the form dirty and the editor open: the baseline must NOT be
@@ -13331,7 +13550,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* every "have we heard from the server yet" flag, or the panel paints
            skeletons and "nothing yet" over perfectly good fixtures */
         _leadsLoaded = _pkgsLoaded = _teamLoaded = _asgsLoaded = true;
-        _studiosLoaded = _expsLoaded = _ejLoaded = _sreqsLoaded = true;
+        _studiosLoaded = _expsLoaded = _ejLoaded = _sreqsLoaded = _studiosFresh = true;
         _leadsFresh = _pkgsFresh = _asgsFresh = true;
 
         $('#loginView').hidden = true;

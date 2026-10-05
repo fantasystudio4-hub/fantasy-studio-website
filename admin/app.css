@@ -2347,3 +2347,36 @@ html.shell .stu-hd #stuBack{display:none}
   :root.kb-up #calAdd .qe-acts{bottom:var(--kb)}
   .st-opts.qa-form .qa-acts{bottom:calc(-1.4rem - env(safe-area-inset-bottom))}
 }
+
+/* ---- DESKTOP SIDEBAR — 1000px and wider ----
+   Every screen in a left column under Work / Money / More; Search and ＋ Add
+   stay in the top bar. html.has-side is set by app.js only when THIS page has
+   the <nav>; the nav carries the hidden attribute and only the rule below
+   shows it, so a phone, a 700–999px window, a stale page and an older cached
+   stylesheet all keep today's layout. The bar, the strip and More are hidden
+   here, never removed — the panel still presses them to change screen. */
+@media(min-width:1000px){
+  html.has-side #sideNav{display:flex!important;flex-direction:column;gap:.12rem;position:fixed;left:0;top:0;bottom:0;
+    width:var(--side-w,224px);z-index:var(--z-nav);overflow-y:auto;overscroll-behavior:contain;
+    background:var(--bar-2);border-right:1px solid var(--line);
+    padding:.9rem .6rem calc(.9rem + env(safe-area-inset-bottom)) calc(.6rem + env(safe-area-inset-left))}
+  #sideNav h2{font-family:var(--sans);font-size:var(--fs-xs);letter-spacing:.18em;text-transform:uppercase;color:var(--mut);
+    font-weight:600;margin:.95rem .65rem .25rem}
+  #sideNav button{display:flex;align-items:center;gap:.6rem;width:100%;min-height:var(--tap);padding:.4em .65em;background:none;
+    border:1px solid transparent;border-radius:var(--r-md);color:var(--text);font:inherit;font-size:var(--fs-base);text-align:left;cursor:pointer}
+  #sideNav button.on{background:var(--gold-t3);border-color:var(--gold);color:var(--gold-b);font-weight:600}
+  #sideNav button i{font-style:normal;flex:0 0 1.5em;text-align:center}
+  #sideNav button span{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #sideNav button b{flex:0 0 auto;background:var(--err);color:var(--ink-0);font-size:var(--fs-xs);font-weight:600;
+    border-radius:var(--r-md);padding:.05em .5em;line-height:1.5;font-family:var(--sans)}
+  html.has-side .tabs,html.has-side #subnav,html.has-side #tabMore{display:none}
+  /* the page moves over by the sidebar's width: the header and the content
+     column stay centred on each other in what is left */
+  html.has-side #hdr{margin-left:var(--side-w,224px)}
+  html.has-side #appView{max-width:calc(860px + var(--side-w,224px));padding-left:calc(var(--gut) + var(--side-w,224px));padding-top:1rem}
+  html.has-side .savebar,html.has-side .bulkbar{left:var(--side-w,224px)}
+  html.has-side .toast{left:calc(50% + var(--side-w,224px) / 2)}
+  /* More's screens are one click away in the sidebar: no arrow back to More */
+  html.has-side #hdr.up-more #hdrBack{display:none}
+}
+@media(min-width:1000px) and (hover:hover){ #sideNav button:hover{background:var(--white-t4)} }
