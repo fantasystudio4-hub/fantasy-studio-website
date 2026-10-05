@@ -24,9 +24,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <!-- design tokens -> shared components -> screen styles. Order matters:
      tokens define the values, ui.css builds the components from them,
      app.css is per-screen and may only reference what those two publish. -->
-<link rel="stylesheet" href="tokens.css?v=p2" />
-<link rel="stylesheet" href="ui.css?v=p2" />
-<link rel="stylesheet" href="app.css?v=p2" />
+<link rel="stylesheet" href="tokens.css?v=p3" />
+<link rel="stylesheet" href="ui.css?v=p3" />
+<link rel="stylesheet" href="app.css?v=p3" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -76,7 +76,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <!-- desktop only: the bar's ＋ is at the top of the page there and scrolls away -->
     <button class="out add" id="hdrAdd" type="button" title="Add — expense, payment, lead, booking">＋ Add</button>
     <button class="out cfg" id="hdrSearch" title="Search everything (Ctrl+K)" aria-label="Search everything"><i>🔍</i><em>Search</em></button>
-    <button class="out cfg" id="hdrTxns" title="Transactions — every payment in and out" aria-label="Transactions"><i>🧾</i><em>Transactions</em></button>
+    <!-- PARKED: Transactions is the page Money opens on, one tap from the bar -->
+    <button class="out cfg" id="hdrTxns" hidden title="Transactions — every payment in and out" aria-label="Transactions"><i>🧾</i><em>Transactions</em></button>
     <!-- More keeps its WORD at every width: it took the place of the Logout
          pill, which was the one header button that always had one -->
     <button class="out more" id="tabMore" type="button" title="Partner studios, Team, Settings, Trash, Backup, Logout">More<b class="badge" id="moreBadge" hidden></b></button>
@@ -132,7 +133,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
        by pressing them, and their badges are still written here and mirrored
        onto More. -->
   <div class="tabs">
-    <button id="tabHome" class="on"><i>🏠</i><span>Home</span></button>
+    <button id="tabHome" class="on"><i>🏠</i><span>Home</span><b class="badge" id="homeBadge" hidden></b></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
     <button id="navAdd" class="plus" type="button" aria-label="Add — expense, payment, lead, booking" title="Add"><i>＋</i><span>Add</span></button>
     <button id="tabPkgs"><i>💼</i><span>Work</span></button>
@@ -239,13 +240,27 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
       <p class="qe-note">Services are optional here — add them now, or any time from <b>Packages</b> along with the album, the discount and the PDF.</p>
     </div>
+    <!-- The tile block: it was the very LAST thing on Home, about three
+         screens down, and the only door to Money Analytics. Same block, same
+         renderer, moved up to sit under the day box. -->
+    <div class="stats" id="pkgStats"></div>
+    <!-- Waiting on you: only what needs an ANSWER from the owner, and hidden
+         whenever nothing does. Partner booking requests are the same cards,
+         with the same Accept / Decline, that head the Partner studios page —
+         drawn here too because that page is two taps away now. It sits UNDER
+         the tiles: a request card is a screen tall, and the tiles must not
+         move down a screen each time one waits. -->
+    <div class="sec" id="homeWait" hidden>
+      <h3>⏳ Waiting on you</h3>
+      <div id="homeReqs"></div>
+      <button class="upall" id="homeJoin" type="button" hidden></button>
+    </div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" id="bookingsSec">
       <h3>📸 Bookings <span class="swipehint">swipe</span></h3>
       <div class="fchips" id="homeTabs"></div>
       <div id="homeBooked"><div class="skeleton"></div><div class="skeleton"></div></div>
     </div>
-    <div class="stats" id="pkgStats"></div>
   </div>
 
   <div id="pkgView" hidden>
@@ -589,16 +604,67 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     </div></div>
   </div>
 
-  <!-- MONEY — for now a short menu onto the money screens that already exist.
-       They become tabs of this page in a later phase; nothing here is a copy:
-       every row opens the same sheet or screen its old door opened. -->
+  <!-- MONEY — four pages behind the strip: Transactions | Expenses | Crew pay |
+       Analytics. Transactions, Money Analytics and Insights are the SAME three
+       elements that used to be bottom sheets (same ids, same renderers, same
+       numbers), moved in here; Crew pay is the Team view's Pay section.
+       "open" on a pane still means "on screen", which is what every snapshot
+       handler tests before redrawing it. -->
   <div id="moneyView" hidden>
-    <div class="st-opts menu" id="moneyMenu">
+    <!-- PARKED: the interim menu of Phase 1 -->
+    <div class="st-opts menu" id="moneyMenu" hidden>
       <button type="button" data-mny="exp">💸 New expense <em>amount first</em></button>
       <button type="button" data-mny="tx">🧾 Transactions <em>every payment in and out</em></button>
       <button type="button" data-mny="pay">🎬 Crew pay <em>who is owed</em><b class="badge" id="mnyPayB" hidden></b></button>
       <button type="button" data-mny="fin">💰 Money Analytics <em>billed · collected · expenses</em></button>
       <button type="button" data-mny="ins">📊 Insights <em>what sells, what converts</em></button>
+    </div>
+
+    <!-- TRANSACTIONS — every rupee in and out as individual entries, newest
+         first. Every row opens the sheet that owns it, over this list. -->
+    <div class="mpane" id="txModal" aria-label="Transactions — every payment in and out">
+      <button class="pay-close" id="txClose" type="button" aria-label="Close" hidden>&times;</button>
+      <div class="who" id="txWho">Every transaction — money in and money out</div>
+      <!-- search, main action and filters sit OUTSIDE #txBody on purpose: that
+           box is rebuilt on every packages, assignments or expenses snapshot,
+           which would wipe a half-typed search from under the owner's thumb -->
+      <div class="txbar">
+        <input id="txSearch" type="search" autocomplete="off" placeholder="Search" aria-label="Search transactions by name, note, quote number or amount" />
+        <button class="btn btn--primary" id="txAddPay" type="button">＋ Record payment</button>
+      </div>
+      <div class="mode-pills txsegs" id="txSegs">
+        <button type="button" data-txf="all" class="on">All</button>
+        <button type="button" data-txf="in">➕ In</button>
+        <button type="button" data-txf="out">➖ Out</button>
+        <button type="button" data-txf="crew">🎬 Crew</button>
+        <button type="button" data-txf="exp">💸 Spend</button>
+      </div>
+      <div id="txBody"></div>
+    </div>
+
+    <!-- ANALYTICS has two views, both read-only: the money tables and Insights -->
+    <div class="fchips nofade" id="anBar" hidden>
+      <button type="button" data-an="money" class="on">💰 Money</button>
+      <button type="button" data-an="ins">📊 Insights</button>
+    </div>
+
+    <!-- EXPENSES and ANALYTICS are two views of the one Money Analytics body
+         (#finBody, drawn by renderFin): data-fv on this pane says which parts
+         of it are on show. Nothing is computed twice. -->
+    <div class="mpane" id="finModal" data-fv="an" aria-label="Money analytics">
+      <button class="pay-close" id="finClose" type="button" aria-label="Close" hidden>&times;</button>
+      <div class="txbar" data-fvshow="ex">
+        <span class="mny-t">What the studio spent, by financial year</span>
+        <button class="btn btn--primary" id="exAddBtn" type="button">＋ Expense</button>
+      </div>
+      <div class="who" id="finWho" data-fvshow="an"></div>
+      <div id="finBody"></div>
+    </div>
+
+    <div class="mpane" id="insModal" aria-label="Business insights">
+      <button class="pay-close" id="insClose" type="button" aria-label="Close" hidden>&times;</button>
+      <div class="who" id="insWho"></div>
+      <div id="insBody"></div>
     </div>
   </div>
 
@@ -757,56 +823,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button class="btn btn--sm btn--ghost" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
 </div>
 
+<!-- The three money sheets (Transactions, Money Analytics, Insights) are
+     PAGES of the Money view now — see #moneyView. Their backdrops stay here,
+     parked: nothing opens them, but the close handlers are still bound. -->
 <div class="pay-backdrop" id="insBackdrop"></div>
-<div class="pay-modal fin" id="insModal" role="dialog" aria-modal="true" aria-label="Business insights">
-  <button class="pay-close" id="insClose" type="button" aria-label="Close">&times;</button>
-  <h3>📊 Insights</h3>
-  <div class="who" id="insWho"></div>
-  <div id="insBody"></div>
-</div>
-
 <div class="pay-backdrop" id="finBackdrop"></div>
-<div class="pay-modal fin" id="finModal" role="dialog" aria-modal="true" aria-label="Money analytics">
-  <button class="pay-close" id="finClose" type="button" aria-label="Close">&times;</button>
-  <h3>💰 Money Analytics</h3>
-  <div class="who" id="finWho"></div>
-  <!-- The expense form used to sit here, inside the report. It is its own
-       sheet now (#expModal, below Transactions), so ＋ Add expense in this
-       list, a Transactions row and the ⚡ menu all open the same one. -->
-  <div id="finBody"></div>
-</div>
-
-<!-- Ledger — every rupee in and out as individual entries, newest first.
-     Money Analytics is the accounts book: totals per month, per quarter, per
-     year. It could never answer "what was that 7,000 I paid last Tuesday" —
-     the entries themselves were only reachable through the record they belong
-     to, three taps deep, and there was no one place to scan them all. This is
-     that place, and every row opens the sheet that owns it so it can be
-     corrected on the spot. -->
 <div class="pay-backdrop" id="txBackdrop"></div>
-<div class="pay-modal fin" id="txModal" role="dialog" aria-modal="true" aria-label="Transactions — every payment in and out">
-  <button class="pay-close" id="txClose" type="button" aria-label="Close">&times;</button>
-  <!-- "Transactions", the owner's own word (19 Sep 2026: "give a transaction
-       list option where I can see all transactions − + in one place"). It was
-       titled Ledger, and on a phone its only way in was an unlabelled 🧾 in
-       the header, so it went unfound. Same sheet, same #ledger hash. -->
-  <h3>🧾 Transactions</h3>
-  <div class="who" id="txWho">Every transaction — money in and money out</div>
-  <!-- filters and the search box sit OUTSIDE #txBody on purpose: that box is
-       rebuilt on every packages, assignments or expenses snapshot, which would
-       wipe a half-typed search from under the owner's thumb -->
-  <div class="mode-pills txsegs" id="txSegs">
-    <button type="button" data-txf="all" class="on">All</button>
-    <button type="button" data-txf="in">➕ In</button>
-    <button type="button" data-txf="out">➖ Out</button>
-    <button type="button" data-txf="crew">🎬 Crew</button>
-    <button type="button" data-txf="exp">💸 Spend</button>
-  </div>
-  <div class="txbar">
-    <input id="txSearch" type="search" autocomplete="off" placeholder="Name, note, quote # or amount…" aria-label="Search transactions" />
-  </div>
-  <div id="txBody"></div>
-</div>
 
 <!-- Expense — ONE sheet for every door: ⚡ Quick Actions, ＋ Add expense in
      Money Analytics, and an expense row in Transactions. Logging a ₹500 fuel
@@ -940,7 +962,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p2"></script>
+<script type="module" src="app.js?v=p3"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

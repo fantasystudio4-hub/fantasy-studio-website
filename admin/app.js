@@ -828,8 +828,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      names, one per section, so Back can return to the right one. 'team',
      'calendar' and 'editing' are the names older history entries carry. */
   const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig',
-                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', more:'tabMore' };
+                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', expenses:'tabMoney', analytics:'tabMoney', insights:'tabMoney', more:'tabMore' };
   const SEG_OF_VIEW = { crew:'work', editing:'edit', paytrack:'pay', members:'crew' };
+  /* Money's pages live in one view, the way the Team view's sections do: the
+     entry's name says which page of it to show. Analytics has two read-only
+     views, Money and Insights, and each has its own name and address so a
+     reload or Back lands on the one that was open. */
+  const PANE_OF_VIEW = { money:'tx', expenses:'ex', analytics:'an', insights:'an' };
+  /* Transactions, Money Analytics and Insights are PAGES of the Money view
+     when this page's markup has them inside #moneyView. A stale cached page
+     still has them as bottom sheets, and there every door keeps opening them
+     as sheets, exactly as before. */
+  const MONEY_PAGES = (()=>{
+    const v = $('#moneyView'), t = $('#txModal'), f = $('#finModal'), i = $('#insModal');
+    return !!(v && t && f && i && $('#anBar') && v.contains(t) && v.contains(f) && v.contains(i));
+  })();
+  /* which Money page is showing (tx | ex | an) and, on Analytics, which of its
+     two read-only views (money | ins) */
+  let _mnyPane = 'tx', _anView = 'money', _paneNext = '';
 
   /* ---------- the screens, as the owner sees them ----------
      Home | Leads | ＋ | Work | Money in the bar, More in the header.
@@ -844,8 +860,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     bookings: { tab:'tabPkgs',   view:'packages', hash:'#/work/bookings',  title:'Bookings',        sec:'work' },
     crew:     { tab:'tabTeam',   view:'crew',     hash:'#/work/crew',      title:'Crew',            sec:'work',  seg:'work' },
     editing:  { tab:'tabTeam',   view:'editing',  hash:'#/work/editing',   title:'Editing',         sec:'work',  seg:'edit' },
-    money:    { tab:'tabMoney',  view:'money',    hash:'#/money',          title:'Money',           sec:'money' },
+    money:    MONEY_PAGES
+            ? { tab:'tabMoney',  view:'money',    hash:'#/money/transactions', title:'Transactions', sec:'money', pane:'tx' }
+            : { tab:'tabMoney',  view:'money',    hash:'#/money',          title:'Money',           sec:'money' },
+    expenses: { tab:'tabMoney',  view:'expenses', hash:'#/money/expenses', title:'Expenses',        sec:'money', pane:'ex' },
     paytrack: { tab:'tabTeam',   view:'paytrack', hash:'#/money/crew-pay', title:'Crew pay',        sec:'money', seg:'pay' },
+    analytics:{ tab:'tabMoney',  view:'analytics',hash:'#/money/analytics',title:'Analytics',       sec:'money', pane:'an', an:'money' },
+    insights: { tab:'tabMoney',  view:'insights', hash:'#/money/insights', title:'Insights',        sec:'money', pane:'an', an:'ins' },
     more:     { tab:'tabMore',   view:'more',     hash:'#/more',           title:'More',            sec:'more' },
     studios:  { tab:'tabCal',    view:'b2b',      hash:'#/more/studios',   title:'Partner studios', sec:'more',  up:true },
     members:  { tab:'tabTeam',   view:'members',  hash:'#/more/team',      title:'Team',            sec:'more',  seg:'crew', up:true },
@@ -855,7 +876,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      existing badge the strip mirrors (still written by the Team renderers) */
   const STRIPS = {
     work:  [['bookings','📦 Bookings'], ['crew','🎬 Crew'], ['editing','✂️ Editing','#segEditB']],
-    money: [['money','💰 Overview'], ['paytrack','🎬 Crew pay','#segPayB']],
+    /* four across on a phone: words only, or the strip does not fit */
+    money: MONEY_PAGES
+      ? [['money','Transactions'], ['expenses','Expenses'], ['paytrack','Crew pay','#segPayB'], ['analytics','Analytics']]
+      : [['money','💰 Overview'], ['paytrack','🎬 Crew pay','#segPayB']],
   };
   const FULL_VIEWS = ['pkgedit','studio','ejob'];   /* a page opened ON a screen: editor, a studio, an editing job */
   /* `let _tSeg` is declared far below; anything that runs before that line
@@ -871,7 +895,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(viewShown('calView')) return 'studios';
     if(viewShown('teamView')){ const g = teamSeg(); return g === 'edit' ? 'editing' : g === 'pay' ? 'paytrack' : g === 'crew' ? 'members' : 'crew'; }
     if(viewShown('configView')) return 'settings';
-    if(viewShown('moneyView')) return 'money';
+    if(viewShown('moneyView')) return !MONEY_PAGES ? 'money' : _mnyPane === 'ex' ? 'expenses' : _mnyPane === 'an' ? (_anView === 'ins' ? 'insights' : 'analytics') : 'money';
     if(viewShown('moreView')) return 'more';
     return 'home';
   }
@@ -883,7 +907,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const p = String(h||'').replace(/^#\/?/, '').split('/').filter(Boolean);
     const a = p[0] || '', b = p[1] || '';
     if(a === 'work')  return b === 'crew' ? 'crew' : b === 'editing' ? 'editing' : 'bookings';
-    if(a === 'money') return b === 'crew-pay' ? 'paytrack' : 'money';
+    if(a === 'money'){
+      if(b === 'crew-pay') return 'paytrack';
+      if(!MONEY_PAGES) return 'money';   /* a stale page has one Money screen */
+      return b === 'expenses' ? 'expenses' : b === 'analytics' ? 'analytics' : b === 'insights' ? 'insights' : 'money';
+    }
     if(a === 'more')  return b === 'studios' ? 'studios' : b === 'team' ? 'members' : b === 'settings' ? 'settings' : 'more';
     const OLD = { home:'home', calendar:'home', leads:'leads', packages:'bookings', b2b:'studios', team:'crew', editing:'editing', config:'settings' };
     return Object.prototype.hasOwnProperty.call(OLD, a) ? OLD[a] : 'home';
@@ -896,6 +924,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _navFromPop = true;
       try{ setTeamSeg(r.seg); }finally{ _navFromPop = false; }
     }
+    if(r.pane && MONEY_PAGES){ _mnyPane = r.pane; if(r.an) _anView = r.an; }   /* showTab draws the page this names */
     showTab(r.tab);
     try{
       /* a reload keeps the "came from More" mark, so the back arrow still just goes back */
@@ -983,7 +1012,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const html = items.map(([k, label, badge])=>{
       const src = badge ? $(badge) : null;
       const n = (src && !src.hidden) ? src.textContent : '';
-      const on = ROUTES[k] === r;
+      const on = ROUTES[k] === r || (k === 'analytics' && r === ROUTES.insights);   /* Insights is a view of Analytics */
       return `<button type="button" role="tab" data-go="${k}" class="${on ? 'on' : ''}" aria-selected="${on}">${label}${n ? `<b class="segb" title="${esc(src.title||'')}">${esc(n)}</b>` : ''}</button>`;
     }).join('');
     if(strip.dataset.sig !== html){
@@ -993,12 +1022,49 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(had){ const b = strip.querySelector(`[data-go="${had}"]`); if(b) try{ b.focus({ preventScroll: true }); }catch(e){} }
     }
     strip.hidden = false;
+    /* Money's strip carries four: where it has to scroll (a narrow phone, a
+       count on a tab) the lit tab is never the one left off the edge */
+    if(strip.scrollWidth > strip.clientWidth + 1){
+      const lit = strip.querySelector('button.on');
+      if(lit){
+        const sr = strip.getBoundingClientRect(), br = lit.getBoundingClientRect();
+        if(br.left < sr.left) strip.scrollLeft += br.left - sr.left - 8;
+        else if(br.right > sr.right) strip.scrollLeft += br.right - sr.right + 8;
+      }
+    }
   }
   /* Go to a screen by name. For the Team view's four sections this picks the
      section first, so the entry that is pushed names the right one. `replace`
      = a move inside one section (the strip), which adds no Back step;
      `fromMore` marks the entry so the header's back arrow can simply go back. */
   let _navReplace = false, _moreNext = false;
+  /* Show the Money page that is current: 'open' goes on exactly the pane on
+     screen (and comes off all three when Money is not), and that pane is
+     drawn. The snapshot handlers redraw a pane only while it has 'open'. */
+  function syncMoneyPane(){
+    if(!MONEY_PAGES) return;
+    const on = viewShown('moneyView');
+    const tx  = on && _mnyPane === 'tx';
+    const fin = on && (_mnyPane === 'ex' || (_mnyPane === 'an' && _anView !== 'ins'));
+    const ins = on && _mnyPane === 'an' && _anView === 'ins';
+    $('#txModal').classList.toggle('open', tx);
+    $('#finModal').classList.toggle('open', fin);
+    $('#finModal').dataset.fv = _mnyPane === 'ex' ? 'ex' : 'an';
+    $('#insModal').classList.toggle('open', ins);
+    $('#anBar').hidden = !(on && _mnyPane === 'an');
+    $$('#anBar button').forEach(b=>b.classList.toggle('on', b.dataset.an === (_anView === 'ins' ? 'ins' : 'money')));
+    if(!on) return;
+    if(typeof loadExps === 'function') loadExps();   /* no-op when already listening; retries after an error */
+    if(tx) renderTx();
+    if(fin){ ensureFinYear(); renderFin(); }
+    if(ins) renderIns();
+  }
+  function setMoneyPane(p){
+    if(!MONEY_PAGES || !['tx','ex','an'].includes(p)) return;
+    _mnyPane = p;
+    syncMoneyPane();
+    syncRouteState();   /* the entry under this screen now names this page */
+  }
   function go(k, opts){
     const r = ROUTES[k]; if(!r) return;
     const o = opts || {};
@@ -1019,10 +1085,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       setTeamSeg(r.seg);   /* the view is hidden: this only records the section to open on */
     }
+    if(r.pane && MONEY_PAGES){
+      const an = r.an || _anView;
+      if(viewShown('moneyView')){
+        /* already on Money: another page of the same view */
+        if(_mnyPane !== r.pane || _anView !== an){
+          _anView = an;
+          setMoneyPane(r.pane); scrollTopNow();
+          /* reached from a sheet whose entry is still current: see the Team branch above */
+          if(MODAL_VIEWS.includes(history.state && history.state.view)) pushView(r.view, r.hash);
+        }
+        else window.scrollTo({ top: 0, behavior: 'smooth' });
+        syncShell();
+        return;
+      }
+      _anView = an;
+    }
     const was = _curTab;
     _navReplace = !!o.replace; _moreNext = !!o.fromMore;
+    _paneNext = (r.pane && MONEY_PAGES) ? r.pane : '';   /* the tab handler opens Money on this page */
     try{ const b = $('#' + r.tab); if(b) b.click(); }
-    finally{ _navReplace = false; _moreNext = false; }
+    finally{ _navReplace = false; _moreNext = false; _paneNext = ''; }
     if(r.seg && _curTab === r.tab && was !== r.tab) scrollTopNow();
   }
   /* One gate for "may I throw away what's in the builder?" — every caller that
@@ -1157,8 +1240,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Switching tabs kept the previous tab's scroll offset, so arriving at a tab
      part-way down the page was routine. Remember each tab's own position. */
   let _tabScroll = {}, _curTab = null;
+  /* Money is several pages behind one tab button: the offset remembered for
+     it belongs to the page that was left, and only that page gets it back.
+     Any other Money page opens at its top, with its main action in view. */
+  let _mnyScrollOf = '';
+  const mnyKey = () => _mnyPane + (_mnyPane === 'an' ? '/' + _anView : '');
   function showTab(id){
-    if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
+    if(_curTab && _curTab !== id){
+      _tabScroll[_curTab] = window.scrollY;
+      if(_curTab === 'tabMoney') _mnyScrollOf = mnyKey();   /* still names the page being left */
+    }
     Object.keys(TABS).forEach(t=>{
       /* a stale cached page may not have the newer buttons or views */
       const b = $('#'+t), v = $('#'+TABS[t]);
@@ -1171,6 +1262,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* selection is a Leads-tab mode — carrying it to another tab would leave a
        bulk bar on screen acting on a list that is no longer in front of you */
     if(id !== 'tabLeads' && typeof setBulk === 'function' && _bulkOn) setBulk(false);
+    syncMoneyPane();   /* draws the Money page on arrival, and takes 'open' off its panes on leaving */
     if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
@@ -1184,7 +1276,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          be undone by this restore firing a frame later, so those pages opened
          part-way down. A token lets the newer intent win. */
       const token = ++_scrollToken;
-      requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, _tabScroll[id] || 0); });
+      const y = (id === 'tabMoney' && MONEY_PAGES && _mnyScrollOf !== mnyKey()) ? 0 : (_tabScroll[id] || 0);
+      requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
     }
   }
   let _scrollToken = 0;
@@ -1217,11 +1310,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* re-tapping the tab you are on = back to its top — the pattern every
          phone app uses; there was no other way up a long list one-handed */
       if(id === _curTab && !leavingEditor && !leavingStudio && !leavingJob){
+        /* the bar's Money button always means Transactions, the page Money
+           opens on — as Work always means Bookings */
+        if(id === 'tabMoney' && MONEY_PAGES && _mnyPane !== 'tx'){ setMoneyPane('tx'); scrollTopNow(); syncShell(); return; }
         _tabScroll[id] = 0;
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
       const fromSec = ROUTES[curRoute()].sec;
+      if(id === 'tabMoney' && MONEY_PAGES) _mnyPane = _paneNext || 'tx';   /* before showTab draws it */
       showTab(id);
       /* the editor / studio detail we just closed owns the current history
          entry — REPLACE it, or the back button resurrects a closed page */
@@ -1298,6 +1395,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
       }else{
         const tab = tabOfView(v);
+        if(MONEY_PAGES && Object.prototype.hasOwnProperty.call(PANE_OF_VIEW, v)){   /* before showTab draws it */
+          _mnyPane = PANE_OF_VIEW[v];
+          if(ROUTES[v] && ROUTES[v].an) _anView = ROUTES[v].an;
+        }
         showTab(tab);
         /* The Team view is four screens now (Crew, Editing, Crew pay, Team):
            landing on the view is only half of it — Back has to arrive at the
@@ -1376,6 +1477,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         [renderStats, renderLeads, renderCalendar, renderHome, renderTrash].forEach(fn=>{
           try{ fn(); }catch(err){ console.error('[leads] ' + fn.name + ' failed', err); }
         });
+        /* Insights is a page now: a reload can land on it before the leads
+           have, so it is redrawn when they do (as a sheet it never needed to) */
+        try{ if(MONEY_PAGES && $('#insModal').classList.contains('open')) renderIns(); }
+        catch(err){ console.error('[leads] renderIns failed', err); }
       }, err=>{
         try{ if(_leadsUnsub) _leadsUnsub(); }catch(e){}
         _leadsUnsub = null; _leadsInit = false;   /* let ↻ Refresh resubscribe */
@@ -3074,6 +3179,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the tile is a money figure, so land on the money section — not whichever
        part of Team was open last */
     if(e.target.closest('[data-goteam]')){ go('paytrack'); return; }
+    if(e.target.closest('[data-goedit]')){ go('editing'); return; }
+    if(e.target.closest('[data-gotx]')){ go('money'); return; }
     const t = e.target.closest('[data-goto]'); if(!t) return;
     /* only block while the editor is genuinely ON SCREEN — it used to stay
        flagged open behind another tab and silently kill these taps */
@@ -3104,14 +3211,39 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* Compact on these tiles by necessity: they are a quarter of a phone wide
        and the full figure was being cut off mid-number. The exact rupees stay
        one long-press away in the title. */
-    el.innerHTML = `
+    const five = `
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(outstanding)} — open money analytics"><b>${inrShort(outstanding)}</b><span>left to collect</span></div>
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(bookedVal)} — open money analytics"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
-      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') + ' — open Crew pay' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>
+      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') + ' — open Crew pay' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>`;
+    /* a stale cached page: the block as it always was, long buttons and all */
+    if(!MONEY_PAGES){
+      el.innerHTML = five + `
       <div class="stat wide" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
       <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>
       <button class="upall insbtn" data-ins type="button">📊 Insights — what sells, what converts, when the season is</button>
       <button class="upall insbtn" data-tx type="button">🧾 Transactions — every payment in and out, ＋ and −</button>`;
+      return;
+    }
+    /* Two more counts, both read from figures the panel already works out:
+       - what is waiting on the owner in Editing: the Editing badge's own
+         number (edits past their deadline + prices an editor asked for);
+       - this month's money in and out: the same entries the Transactions list
+         shows, ALL of this month's, not just the page of them on screen.
+       The two long buttons that ended this block are gone: Insights and
+       Transactions are pages of Money, one tap away on the bar. */
+    const ej = _ejLoaded ? ejAllRows() : [];
+    const edits = ej.filter(r=>r.overdue).length + ej.reduce((n,r)=>n + r.asks, 0);
+    const ym = todayISO().slice(0, 7);
+    const mon = txRows().filter(r=>String(r.date||'').slice(0, 7) === ym);
+    const mIn  = mon.reduce((n,r)=>n + (r.dir > 0 ? r.amount : 0), 0);
+    const mOut = mon.reduce((n,r)=>n + (r.dir < 0 ? r.amount : 0), 0);
+    const monReady = _asgsLoaded && _expsLoaded;
+    const monName = new Date().toLocaleDateString('en-IN', { month:'long' });
+    el.innerHTML = five + `
+      <div class="stat" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
+      <div class="stat" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>
+      <div class="stat${edits ? ' warn' : ''}" data-goedit role="button" tabindex="0" title="Edits past their deadline, and prices an editor has asked for — open Editing"><b>${_ejLoaded ? edits : '…'}</b><span>edits need you</span></div>
+      <div class="stat full" data-gotx role="button" tabindex="0" title="${monReady ? inr(mIn) + ' in · ' + inr(mOut) + ' out — open Transactions' : 'Loading…'}"><b>${monReady ? `<i class="pos">＋${inrShort(mIn)}</i> <i class="neg">−${inrShort(mOut)}</i>` : '…'}</b><span>${esc(monName)} — money in · out</span></div>`;
   }
   /* one shoot at a time: the very next event as a single tappable card —
      tapping it opens the full event + package sheet, with ‹ › to browse
@@ -3200,7 +3332,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+  /* Waiting on you — only what needs an ANSWER, and nothing when nothing does:
+     partner booking requests (the same card, the same Accept / Decline, the
+     Partner studios page draws) and a line for crew join requests. The Home
+     button in the bar carries the count of requests, since this is where
+     they are answered from. */
+  function renderHomeWait(){
+    const sec = $('#homeWait'), box = $('#homeReqs'), join = $('#homeJoin');
+    if(!sec || !box || !join) return;
+    const fresh = SREQS.filter(r=>sreqStatus(r) === 'new');
+    /* a card prices itself from the studio's rate card and counts what is
+       already on that date: draw it only once all three lists have arrived */
+    const ready = _sreqsLoaded && _studiosLoaded && _pkgsLoaded;
+    box.innerHTML = ready ? fresh.map(sreqCardHTML).join('') : '';
+    const rq = reqCount();
+    join.hidden = !rq;
+    join.textContent = rq ? `🙋 ${rq} crew join request${rq === 1 ? '' : 's'} — open Team ›` : '';
+    sec.hidden = !((ready && fresh.length) || rq);
+    const hb = $('#homeBadge');
+    if(hb){ hb.hidden = !fresh.length; hb.textContent = fresh.length || ''; }
+  }
   function renderHome(){
+    renderHomeWait();
     renderPkgStats();
     renderUpcoming();
     renderHomeBooked();
@@ -3752,6 +3905,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(typeof renderB2B === 'function') renderB2B();   /* self-skips when the B2B tab is hidden */
     if($('#finModal').classList.contains('open')) renderFin();
     if($('#txModal').classList.contains('open')) renderTx();
+    if(MONEY_PAGES && $('#insModal').classList.contains('open')) renderIns();   /* the page fills in as bookings arrive */
     renderPkgListOnly();
   }
   on('#pkgList', 'click', e=>{
@@ -4245,7 +4399,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           _availCfgReady = snap.exists() || !snap.metadata.fromCache;
           _availCfgErr = '';
           renderAvailConfig();
-          if(!$('#homeView').hidden) renderCalDetail();   /* the day box shows the override */
+          if(!$('#homeView').hidden){ renderCalDetail(); renderHomeWait(); }   /* the day box shows the override, and a request card under it says "you blocked it" */
         }, err=>{
           try{ if(_availCfgUnsub) _availCfgUnsub(); }catch(e){} _availCfgUnsub = null;
           _availCfgErr = 'Could not read config/availability (' + (err.code||err.message) + ')';
@@ -4381,7 +4535,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(Object.keys(d).length) o[iso] = d; else delete o[iso];
       AVAIL_CFG = Object.assign({ full: AVAIL_FULL_DEFAULT }, AVAIL_CFG || {}, { override: o });
       AVAIL_MONTH = { month:'', days:{}, ready:false };   /* re-derived on the next paint */
-      renderCalendar(); renderAvailConfig();
+      renderCalendar(); renderAvailConfig(); renderHomeWait();
       toast(said + ' (demo — not saved)');
       return;
     }
@@ -4574,7 +4728,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _qeAnchor = (stu || (opts && opts.b2b)) ? 'b2b' : 'home';
     if(_qeAnchor === 'home'){
       if(!calSel){ toast('Tap a date first'); return; }
-      $('#homeView').insertBefore(node, $('#upcoming'));   /* directly under the day box */
+      /* directly under the day box, whatever follows it — the tiles on
+         today's page, the upcoming strip on a page loaded before they moved */
+      const box = $('#calDetail');
+      if(box && box.parentNode) box.parentNode.insertBefore(node, box.nextSibling);
+      else $('#homeView').insertBefore(node, $('#upcoming'));
     }else if(stu){
       /* a studio's own page: #studioDetailView is rebuilt on every snapshot,
          so the form sits after it, never inside it */
@@ -5924,6 +6082,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* visibility belongs to applyTeamSeg — this section lives under Crew */
     const badge = $('#teamBadge');
     if(badge){ badge.hidden = !pending.length; badge.textContent = pending.length; }
+    renderHomeWait();   /* its line on Home follows the count */
     if(_reqsErr){ el.innerHTML = errBox(_reqsErr, 'team'); return; }
     /* no early return on empty: mapping an empty list clears the rows, so an
        approved or dismissed request cannot linger in the DOM behind a hidden
@@ -6340,6 +6499,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         warnIfCapped('editing jobs', snap.size, EJOBS_CAP);
         _ejLoaded = true; _ejErr = '';
         renderEditTab();
+        renderPkgStats();   /* Home's "edits need you" tile reads these */
       }, err=>{
         try{ if(_ejUnsub) _ejUnsub(); }catch(e){} _ejUnsub = null;
         _ejErr = 'Could not load editing jobs (' + (err.code||err.message) + ')';
@@ -8958,6 +9118,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
         warnIfCapped('studios', snap.size, STUDIOS_CAP);
         _studiosLoaded = true;
+        renderHomeWait();   /* a request card on Home prices itself from the studio's rate card */
         /* one-time fix-up: studios saved before the partner portal existed
            carry no phone10 login key — derive it from the profile phone.
            Server snapshots only; a stale cache image must never write. */
@@ -9189,6 +9350,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const fresh = SREQS.filter(r=>sreqStatus(r) === 'new');
     const badge = $('#b2bBadge');
     if(badge){ badge.hidden = !fresh.length; badge.textContent = fresh.length || ''; }
+    renderHomeWait();   /* the same cards on Home — before the early returns below, which are about THIS page */
     const sec = $('#stuReqSec'), el = $('#stuReqs'); if(!sec || !el) return;
     /* an error has to show too, or the one thing that explains an empty
        inbox is hidden by the same rule that hides an empty inbox */
@@ -9408,7 +9570,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     finally{ _sreqBusy = ''; renderStuReqs(); }
   }
 
-  on('#stuReqs', 'click', e=>{
+  on('#stuReqs', 'click', stuReqClick);
+  /* bound to BOTH places a request card is drawn: the Partner studios inbox
+     and "Waiting on you" on Home */
+  function stuReqClick(e){
     if(e.target.closest('[data-retry]')) return;   /* the document-level retry handler takes it */
     if(e.target.closest('[data-rqans]')){ _sreqAnsOpen = !_sreqAnsOpen; renderStuReqs(); return; }
     const ok = e.target.closest('[data-rqok]');
@@ -9419,7 +9584,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(op){ openSreqJob(op.dataset.rqopen); return; }
     const del = e.target.closest('[data-rqdel]');
     if(del){ deleteStuReq(del.dataset.rqdel); }
-  });
+  }
 
   function renderB2B(){
     if($('#calView').hidden) return;
@@ -10392,7 +10557,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        end the keypress — one Escape, one sheet. */
     if($('#feeModal').classList.contains('open')){ closeFee(); return; }
     if($('#cpModal').classList.contains('open')){ closeCrewPay(); return; }
-    if($('#insModal').classList.contains('open')){ closeIns(); return; }
+    /* (as a page of Money, Insights is not a sheet: it must not end the
+       keypress, or Escape closes nothing that is open over it) */
+    if(!MONEY_PAGES && $('#insModal').classList.contains('open')){ closeIns(); return; }
     closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt(); closeTx();
   });
   /* Everything tappable here is a div — a calendar date, a shoot row, a stat
@@ -10630,6 +10797,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         _expsLoaded = true;
         if($('#finModal').classList.contains('open')) renderFin();
         if($('#txModal').classList.contains('open')) renderTx();
+        renderPkgStats();   /* Home's "this month in · out" counts expenses */
       }, err=>{
         try{ if(_expsUnsub) _expsUnsub(); }catch(e){}
         _expsUnsub = null;   /* reopening Money Analytics resubscribes */
@@ -10859,12 +11027,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   function openIns(){
+    /* a page of Money now: Analytics, on its Insights view */
+    if(MONEY_PAGES){ go('insights'); return; }
     renderIns();
     const wasOpen = $('#insModal').classList.contains('open');
     $('#insModal').classList.add('open'); $('#insBackdrop').classList.add('open');
     if(!wasOpen) pushView('ins', '#insights');
   }
-  function closeInsUI(){ $('#insModal').classList.remove('open'); $('#insBackdrop').classList.remove('open'); }
+  /* as a page there is nothing to close: Back, Escape and the popstate closers
+     all pass through here, and must not blank the page under the owner */
+  function closeInsUI(){ if(MONEY_PAGES) return; $('#insModal').classList.remove('open'); $('#insBackdrop').classList.remove('open'); }
   function closeIns(){ backFrom('ins', closeInsUI); }
 
   function renderIns(){
@@ -10990,18 +11162,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#insClose', 'click', closeIns);
   on('#insBackdrop', 'click', closeIns);
 
-  function openFin(){
-    loadExps();   /* no-op when already listening; retries after an error */
+  /* the financial year the money tables open on: the current one (Apr–Mar) */
+  function ensureFinYear(){
     if(finYear == null){
       const now = new Date();
       finYear = (now.getMonth()+1) >= 4 ? now.getFullYear() : now.getFullYear()-1;
     }
+  }
+  function openFin(){
+    /* a page of Money now: Analytics, on its money view */
+    if(MONEY_PAGES){ go('analytics'); return; }
+    loadExps();   /* no-op when already listening; retries after an error */
+    ensureFinYear();
     renderFin();
     const wasOpen = $('#finModal').classList.contains('open');
     $('#finModal').classList.add('open'); $('#finBackdrop').classList.add('open');
     if(!wasOpen) pushView('fin', '#money');
   }
-  function closeFinUI(){ $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); }
+  function closeFinUI(){ if(MONEY_PAGES) return; $('#finModal').classList.remove('open'); $('#finBackdrop').classList.remove('open'); }
   function closeFin(){
     backFrom('fin', closeFinUI);
   }
@@ -11096,7 +11274,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="ledrow finled ${cls}" ${attrs}><span class="l-ev">${label}</span><b>${amt(o.billed)}</b><b style="color:var(--ok)">${amt(o.recv)}</b><b class="${o.due>0?'neg':''}">${amt(o.due)}</b></div>`;
     const HD = '<div class="ledrow finled hd"><span class="l-ev">Period</span><b>Billed</b><b>Collected</b><b>Balance</b></div>';
     $('#finWho').textContent = 'Financial-year view (Apr–Mar) — billed / collected / balance per period, from confirmed bookings by event date';
+    /* data-fv marks which Money page a part belongs to: "an" = Analytics,
+       "ex" = Expenses; a part with neither shows on both (the year switch, the
+       category totals, a load error). Every figure and formula below is
+       untouched — as a sheet, on a stale page, the wrappers are plain blocks
+       and it reads exactly as it did. */
     $('#finBody').innerHTML = `
+      <div data-fv="an">
       <button class="upall" type="button" data-fintx style="margin:0 0 .7rem">🧾 See every transaction — in and out</button>
       <div class="fintiles">
         <div class="stat" title="${inr(outstanding)}"><b>${inrShort(outstanding)}</b><span>to collect</span></div>
@@ -11104,18 +11288,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="stat" title="${inr(allGot)}"><b>${inrShort(allGot)}</b><span>received · all time</span></div>
         <div class="stat money out" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>
       </div>
+      </div>
       <div class="finyr">
         <button data-fy="-1" type="button" aria-label="Previous financial year">‹</button>
         <b>${fyLabel(y)}</b>
         <button data-fy="1" type="button" aria-label="Next financial year">›</button>
       </div>
+      <div data-fv="an">
       <div class="finsplit"><span>💳 Online ${money(online)}</span><span>💵 Cash ${money(cash)}</span><span>🧾 <b>${inFy.length}</b> payment${inFy.length===1?'':'s'} this FY</span></div>
       <div class="finsplit out"><span>🎬 Crew paid ${money(crewPaidFy)}</span><span>💸 Expenses ${money(expFy)}</span><span>🔻 Total out ${money(outFy)}</span><span>💼 In hand ${money(got - outFy)}</span></div>
+      </div>
       ${catRow ? `<div class="finsplit out cats">${catRow}</div>` : ''}
+      <div data-fv="an">
       <div class="finsplit"><span>⏳ Crew still owed ${money(crewDue)}</span>${crewUp > 0 ? `<span>🗓 Crew upcoming ${inr(crewUp)}</span>` : ''}${expAll !== expFy ? `<span>🧾 ${inrShort(expAll)} spent all time</span>` : ''}</div>
       ${overpaid > 0 ? `<div class="finsplit out"><span>↩️ To refund clients ${money(overpaid)}</span><span>${overpaidJobs.length} booking${overpaidJobs.length===1?'':'s'} paid above the billed figure</span></div>
       <div class="finnote">Money you are holding rather than money you have earned — a package reduced after the client had paid. "Left to collect" stops at zero, so it cannot show this.</div>` : ''}
-      ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — the expense figures above are incomplete. Close and reopen this sheet to retry.</div>` : ''}
+      </div>
+      ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — the expense figures ${MONEY_PAGES ? 'here' : 'above'} are incomplete. ${MONEY_PAGES ? 'Open another Money page and come back to retry.' : 'Close and reopen this sheet to retry.'}</div>` : ''}
+      <div data-fv="an">
       ${crewPaidUndated > 0 ? `<div class="finnote">${inr(crewPaidUndated)} of crew pay was marked paid before payment dates were kept, so it sits outside every financial year — it is still counted in "still owed" having left, just not in this FY's crew-paid line.</div>` : ''}
       ${allRows < allGot ? `<div class="finnote">Online/cash covers itemised payments only — ${inr(allGot - allRows)} was entered straight as an advance in the builder, so it is counted as received but has no mode.</div>` : ''}
       ${(()=>{ const b = inFy.filter(p=>p.b2b).reduce((s,p)=>s+p.amt,0);
@@ -11143,21 +11333,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <div class="ledrow finled ${cls}"><span class="l-ev">${label}</span><b>${amt(m.crew)}</b><b>${amt(m.other)}</b><b class="${(m.crew+m.other)>0?'neg':''}">${amt(m.crew+m.other)}</b></div>`;
         return sp.map((m,i)=>line(FMN[i], m)).join('') + line('Total', tot, 'annual');
       })()}
+      ${MONEY_PAGES ? `<button class="upall" type="button" data-goexp style="margin:.9rem 0 0">💸 Expenses · ${fyLabel(y)} — ${expInFy.length} entr${expInFy.length === 1 ? 'y' : 'ies'}, ${inr(expFy)} ›</button>` : ''}
+      </div>
+      <div data-fv="ex">
       <div class="finh">Expenses · ${fyLabel(y)} <button class="btn btn--sm btn--ghost" type="button" id="expAdd">＋ Add expense</button></div>
-      ${expInFy.length ? expInFy.slice(0, _expAll ? 500 : 8).map(x=>`
+      ${expInFy.length ? expInFy.slice(0, (_expAll || MONEY_PAGES) ? 500 : 8).map(x=>`
         <div class="up-ev exprow">
           <span class="when">${esc(dmy(x.date))}</span>
           <span class="what" data-exp="${esc(x.id)}" role="button" tabindex="0">${esc(catName(x.cat))}${x.note ? ' · ' + esc(x.note) : ''}${x.mode ? `<span> · ${esc(x.mode)}</span>` : ''}</span>
           <b>${inr(expAmt(x))}</b>
           <button class="icon-btn icon-btn--danger" data-exdel="${esc(x.id)}" title="Delete this expense">✕</button>
         </div>`).join('')
-        + (expInFy.length > 8 ? `<button class="upall" type="button" id="expAll">${_expAll ? '− Show fewer' : `＋ See all ${expInFy.length}`}</button>` : '')
-      : `<div class="empty" style="padding:.5rem 0">${_expsLoaded ? 'Nothing recorded for this year yet — tap ＋ Add expense.' : 'Loading…'}</div>`}
+        + (expInFy.length > 8 && !MONEY_PAGES ? `<button class="upall" type="button" id="expAll">${_expAll ? '− Show fewer' : `＋ See all ${expInFy.length}`}</button>` : '')
+      : `<div class="empty" style="padding:.5rem 0">${_expsLoaded ? `Nothing recorded for this year yet — tap ${MONEY_PAGES ? '＋ Expense' : '＋ Add expense'}.` : 'Loading…'}</div>`}
+      </div>
+      <div data-fv="an">
       <div class="finh">Annual · financial years</div>
       ${fys.length ? HD + fys.map(fy=>row3(`${fy}-${String((fy+1)%100).padStart(2,'0')}`, byFy[fy], fy===y?'on':'', `data-fyr="${fy}" role="button" tabindex="0" title="Show ${fyLabel(fy)} quarter-wise"`)).join('')
-      : '<div class="empty" style="padding:.6rem 0">No confirmed bookings yet — this table fills in as packages are booked.</div>'}`;
+      : '<div class="empty" style="padding:.6rem 0">No confirmed bookings yet — this table fills in as packages are booked.</div>'}
+      </div>`;
   }
   on('#finBody', 'click', async e=>{
+    if(e.target.closest('[data-goexp]')){ go('expenses', { replace: true }); return; }
     const fy = e.target.closest('[data-fy]');
     if(fy){ finYear = Number(finYear) + Number(fy.dataset.fy); renderFin(); return; }
     /* pushView replaces a sheet's history entry with the next sheet's, so
@@ -11238,6 +11435,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function refreshMoneyLists(){
     if($('#finModal').classList.contains('open')) renderFin();
     if($('#txModal').classList.contains('open')) renderTx();
+    renderPkgStats();   /* Home's "this month in · out" counts expenses too */
   }
   /* Bumped on every open and every close, so a save that was still waiting on
      the network can tell whether the sheet on screen is still the one it was
@@ -11490,7 +11688,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span>💼 Net <b style="color:var(${net < 0 ? '--money-out' : '--ok'})">${net < 0 ? '−' : '+'}${inr(Math.abs(net))}</b></span>
       </div>
       ${!_asgsLoaded || !_expsLoaded ? '<div class="finnote">Still loading crew pay and expenses — the list fills in as they arrive.</div>' : ''}
-      ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — spending is missing from this list. Close and reopen it to retry.</div>` : ''}
+      ${_expsErr ? `<div class="finnote">${esc(_expsErr)} — spending is missing from this list. ${MONEY_PAGES ? 'Open another Money page and come back to retry.' : 'Close and reopen it to retry.'}</div>` : ''}
       ${all.length ? groups.map(g=>{
         const mi  = g.rows.reduce((n,r)=>n + (r.dir > 0 ? r.amount : 0), 0);
         const mo  = g.rows.reduce((n,r)=>n + (r.dir < 0 ? r.amount : 0), 0);
@@ -11507,13 +11705,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   function openTx(){
+    /* the page Money opens on now */
+    if(MONEY_PAGES){ go('money'); return; }
     loadExps();   /* expenses are only subscribed once a money screen asks for them */
     renderTx();
     const wasOpen = $('#txModal').classList.contains('open');
     $('#txModal').classList.add('open'); $('#txBackdrop').classList.add('open');
     if(!wasOpen) pushView('txns', '#ledger');
   }
-  function closeTxUI(){ $('#txModal').classList.remove('open'); $('#txBackdrop').classList.remove('open'); }
+  function closeTxUI(){ if(MONEY_PAGES) return; $('#txModal').classList.remove('open'); $('#txBackdrop').classList.remove('open'); }
   function closeTx(){ backFrom('txns', closeTxUI); }
   on('#hdrTxns', 'click', openTx);
   on('#txClose', 'click', closeTx);
@@ -11537,6 +11737,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(kind === 'in'){
       const x = PKGS.find(pk=>pk.id === id);
       if(!x){ toast('That package is no longer here — it may have been deleted'); return; }
+      /* as a page the list stays put: the sheet opens over it and its own
+         entry closes back onto it (closeTxUI is a no-op there) */
       closeTxUI(); openPay(x); enterPayEdit(pid);
     }else if(kind === 'crew'){
       const a = ASGS.find(v=>v.id === id);
@@ -11927,7 +12129,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0;
     });
 
-  function renderQaPay(){
+  /* `direct` = opened from ＋ Record payment on the Transactions page: there
+     is no menu behind the list, so its last row closes the sheet */
+  function renderQaPay(direct){
     _qaPayQ = ''; _qaPayAll = false;
     qaHead('💰 Record payment');
     $('#qaOpts').classList.remove('qa-form', 'qa-grid');
@@ -11940,7 +12144,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qaOpts').innerHTML = `
       ${n > 6 ? '<input class="input qapaysearch" id="qaPaySearch" type="search" autocomplete="off" placeholder="Search name, phone or quote #…" />' : ''}
       <div id="qaPayList"></div>
-      <button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>`;
+      ${direct === true
+        ? '<button type="button" data-qa-close style="justify-content:center;color:var(--mut)">Cancel</button>'
+        : '<button type="button" data-qa-back style="justify-content:center;color:var(--mut)">← Back</button>'}`;
     renderQaPayList();
   }
 
@@ -12075,11 +12281,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      All doors, no rooms: each of these opens a sheet or a screen that already
      existed, through the same function its old door called. */
   on('#leadAdd', 'click', openQaLead);   /* the Leads page's own main action */
+  /* Money's pages: each has ONE main action, and it opens the same sheet the ＋ menu does */
+  on('#txAddPay', 'click', ()=>{ openQa(); renderQaPay(true); });
+  on('#exAddBtn', 'click', ()=>openExpForm(null));
+  on('#anBar', 'click', e=>{
+    const b = e.target.closest('[data-an]'); if(!b) return;
+    go(b.dataset.an === 'ins' ? 'insights' : 'analytics', { replace: true });   /* two views of one page: no Back step */
+  });
+  /* Waiting on you, on Home */
+  on('#homeReqs', 'click', stuReqClick);
+  on('#homeJoin', 'click', ()=>go('members'));
   on('#navAdd', 'click', openQa);    /* phone: centre of the bottom bar */
   on('#hdrAdd', 'click', openQa);    /* desktop: in the header */
   on('#subnav', 'click', e=>{
     const b = e.target.closest('[data-go]'); if(!b) return;
-    go(b.dataset.go, { replace: true });   /* a move inside one section adds no Back step */
+    let k = b.dataset.go;
+    if(k === 'analytics' && curRoute() === 'insights') k = 'insights';   /* re-tapping the lit tab keeps its view */
+    go(k, { replace: true });   /* a move inside one section adds no Back step */
   });
   on('#moneyMenu', 'click', e=>{
     const b = e.target.closest('[data-mny]'); if(!b) return;
@@ -12131,7 +12349,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const n = el => (el && !el.hidden) ? (parseInt(el.textContent, 10) || 0) : 0;
     const put = (sel, v) => { const b = $(sel); if(!b) return; b.hidden = !v; b.textContent = v ? String(v) : ''; };
     const stu = n($('#b2bBadge')), team = n($('#teamBadge'));
-    put('#moreStuB', stu); put('#moreTeamB', team); put('#moreBadge', stu + team);
+    /* More's own count is join requests only once Home shows the partner
+       requests (and carries their count on its button in the bar) */
+    put('#moreStuB', stu); put('#moreTeamB', team); put('#moreBadge', $('#homeBadge') ? team : stu + team);
     const pay = $('#segPayB'), mp = $('#mnyPayB');
     if(pay && mp){ mp.hidden = pay.hidden; mp.textContent = pay.textContent; mp.title = pay.title || ''; }
   }

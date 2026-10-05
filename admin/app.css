@@ -2225,3 +2225,45 @@ html.shell #teamSegs{display:none}
    reads as the main action (＋ Lead now opens straight onto it) */
 #qaModal .who{padding-right:2.6rem}
 .st-opts.qa-form .qa-acts .btn--primary{background:var(--grad-gold);border-color:transparent;color:var(--white);font-weight:600}
+
+
+/* ==========================================================================
+   MONEY — four pages (Transactions | Expenses | Crew pay | Analytics)
+   The three panes are the elements that used to be bottom sheets, in the page
+   flow now. "open" = on screen.
+   ========================================================================== */
+.mpane{display:none}
+.mpane.open{display:block}
+.mpane .who{font-size:var(--fs-md);color:var(--mut);margin:.15rem 0 .7rem}
+/* the pinned row: search (where the page has one) + the page's ONE main action */
+.mpane .txbar{display:flex;gap:.5rem;align-items:center;margin:0 0 .6rem}
+.mpane .txbar input{flex:1 1 auto;width:auto;min-width:0;min-height:var(--tap)}
+.mpane .txbar .btn--primary{flex:0 0 auto;margin:0;min-height:var(--tap);border-radius:var(--r-sm);padding:.55em .9em;
+  background:var(--grad-gold);border-color:transparent;color:var(--white);font-weight:600;white-space:nowrap}
+.mny-t{flex:1 1 auto;min-width:0;color:var(--mut);font-size:var(--fs-md)}
+/* Expenses and Analytics are two views of ONE body: each part of it says which
+   view it belongs to, and the pane says which view is on */
+.mpane [data-fv]{display:contents}
+#finModal[data-fv="ex"] [data-fv="an"],#finModal[data-fv="an"] [data-fv="ex"],
+#finModal[data-fv="ex"] [data-fvshow="an"],#finModal[data-fv="an"] [data-fvshow="ex"]{display:none}
+/* on the pages these two are the tab beside this one, and the button above */
+.mpane [data-fintx],.mpane #expAdd{display:none}
+#anBar{margin:.1rem 0 .7rem}
+/* the strip carries four on Money: let it scroll rather than clip on a narrow phone */
+.subnav{overflow-x:auto;scrollbar-width:none}
+.subnav::-webkit-scrollbar{display:none}
+.subnav button{flex:1 0 auto;padding-inline:.7em}
+/* 320px: four tabs fit only with the padding trimmed; with a count on one of
+   them the strip scrolls, and syncShell keeps the lit tab in view */
+@media(max-width:359px){ .subnav{gap:.25rem} .subnav button{padding-inline:.42em} }
+
+/* ---- Home: the tile block, moved up under the day box ---- */
+#pkgStats .stat.full{grid-column:1 / -1}
+#pkgStats .stat.full b{white-space:normal;overflow:visible}
+#pkgStats .stat b i{font-style:normal}
+#pkgStats .stat b .pos{color:var(--ok)}
+#pkgStats .stat b .neg{color:var(--money-out)}
+#pkgStats .stat.warn b{color:var(--warn)}
+#pkgStats .stat[data-goedit],#pkgStats .stat[data-gotx]{cursor:pointer}
+#homeWait h3{margin-bottom:.55rem}
+#homeJoin{margin:.2rem 0 0}
