@@ -24,9 +24,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <!-- design tokens -> shared components -> screen styles. Order matters:
      tokens define the values, ui.css builds the components from them,
      app.css is per-screen and may only reference what those two publish. -->
-<link rel="stylesheet" href="tokens.css?v=p1b" />
-<link rel="stylesheet" href="ui.css?v=p1b" />
-<link rel="stylesheet" href="app.css?v=p1b" />
+<link rel="stylesheet" href="tokens.css?v=p2" />
+<link rel="stylesheet" href="ui.css?v=p2" />
+<link rel="stylesheet" href="app.css?v=p2" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -154,8 +154,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="stats" id="stats"></div>
     <div class="bar">
       <input id="leadSearch" type="search" placeholder="Name or phone" aria-label="Search leads by name or phone" />
-      <button id="leadPick" type="button" aria-pressed="false" title="Select several leads">☑</button>
-      <button id="refreshBtn">↻ Refresh</button>
+      <button id="leadPick" type="button" aria-pressed="false" title="Select several leads" aria-label="Select several leads">☑</button>
+      <!-- an icon now, as on Bookings: its word made room for ＋ Lead -->
+      <button id="refreshBtn" type="button" title="Refresh" aria-label="Refresh">↻</button>
+      <!-- a lead could only be added by hand from the ⚡ menu on Home -->
+      <button class="btn btn--primary" id="leadAdd" type="button">＋ Lead</button>
     </div>
     <div class="fchips" id="leadChips"></div>
     <div id="leadList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
@@ -368,6 +371,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <p class="sub">Admin-only — none of this reaches the website or a client page.</p>
         <div class="b2b-adds">
           <button class="addrow" id="b2bAddEv">＋ Add event</button>
+          <!-- was an unlabelled floating ＋ (#stuAddFab, parked below the bar) -->
+          <button class="addrow" id="stuAddBtn" type="button">＋ Add studio</button>
         </div>
         <div id="studioList"><div class="skeleton"></div></div>
       </div>
@@ -398,7 +403,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
           <div id="teamEvents"></div>
         </div>
         <div id="workEd" hidden>
-          <p class="sub">One row per person per job — for chasing somebody and paying them. The <b style="color:var(--gold-b)">✂️ Editing</b> section above is one row per booking, with its stage and notes. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event, including ones already shot and ones not yet on the editing desk. <span id="edCount"></span></p>
+          <p class="sub">One row per person per job — for chasing somebody and paying them. <b style="color:var(--gold-b)">Work → Editing</b> is one row per booking, with its stage and notes. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event, including ones already shot and ones not yet on the editing desk. <span id="edCount"></span></p>
           <div id="edList"></div>
           <button class="addrow" id="edAdd" style="margin-top:.6rem">＋ Assign editing</button>
         </div>
@@ -452,10 +457,13 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div id="ejListView">
       <div class="stats" id="ejStats"></div>
       <div class="bar">
-        <input id="ejSearch" type="search" placeholder="Search client or quote no…" />
+        <input id="ejSearch" type="search" placeholder="Search" aria-label="Search client or quote number" />
         <button id="ejSort" type="button" title="Change the order">↕ Deadline</button>
+        <!-- the same sheet ＋ Assign editing opens under the per-person list -->
+        <button class="btn btn--primary" id="ejAssign" type="button" title="Assign editing" aria-label="Assign editing">＋ Assign</button>
       </div>
       <div class="fchips" id="ejStageChips"></div>
+      <button class="upmore ejby" id="ejByEditor" type="button">Editor jobs — one row per person ›</button>
       <!-- One-time repair, and it shows itself only while there is something to
            repair. A job written before the crew side existed carries no
            editors list, so its editor cannot open it — this stamps them all
@@ -932,7 +940,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p1b"></script>
+<script type="module" src="app.js?v=p2"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

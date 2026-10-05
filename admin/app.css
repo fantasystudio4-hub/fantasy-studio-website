@@ -1424,9 +1424,10 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   /* --- reach --- */
   /* clearance under lists that end behind the stacked FAB pair (⚡ 54px + 🔍
      46px + gaps ≈ 176px of pinned UI above the tab bar) */
-  /* Home's 132px tail went with its floating ⚡ (＋ is in the bar now); the
-     B2B list keeps its own, for the ＋ Add studio button that still floats */
-  #studioListView{padding-bottom:132px}
+  /* Home's 132px tail went with its floating ⚡ (＋ is in the bar now), and the
+     B2B list's with its floating ＋ (a labelled ＋ Add studio sits above the
+     list). Only a stale page that still floats them keeps the room. */
+  html:not(.has-stuadd) #studioListView{padding-bottom:132px}
   /* select mode: the bulk bar wraps to two rows and is taller than the tab
      bar it replaces — room for the last lead to scroll clear of it */
   body.has-bulk #leadsView{padding-bottom:66px}
@@ -2142,6 +2143,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    Team section bar — it has nothing else to navigate with. */
 /* the floating ⚡ is retired: ＋ lives in the bar (phone) or the header (desktop) */
 html.shell #fabBtn{display:none}
+/* ...and the floating ＋ Add studio, on a page that has the labelled button */
+html.has-stuadd #stuAddFab{display:none}
 /* the Team view's own section bar: its four sections are screens of Work,
    Money and More now, switched from the strip under the header */
 html.shell #teamSegs{display:none}
@@ -2183,3 +2186,42 @@ html.shell #teamSegs{display:none}
   padding:.05em .5em;line-height:1.5;font-family:var(--sans)}
 .menu button em{order:1}                    /* the hint is a full-width second line (ui.css) */
 .menu .badge{margin-left:auto}             /* so the count rides the label line, right-aligned */
+
+/* ---- ＋ Quick Add: six big buttons, two across ---- */
+.st-opts.qa-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.st-opts.qa-grid button{flex-direction:column;flex-wrap:nowrap;align-items:flex-start;justify-content:center;gap:.2rem;
+  min-height:88px;padding:.75em .9em;text-align:left}
+.st-opts.qa-grid button i{font-style:normal;font-size:1.55rem;line-height:1.1}
+.st-opts.qa-grid button em{margin:0;text-align:left}
+
+/* ---- section headers: the page's main action sits in its bar ---- */
+/* ...and looks like the main action. .bar button out-ranked .btn--primary, so
+   ＋ New on Bookings read as one more grey button beside Refresh. */
+.bar .btn--primary{background:var(--grad-gold);border-color:transparent;color:var(--white);font-weight:600;letter-spacing:.02em;white-space:nowrap;flex:0 0 auto}
+/* the day box can carry two buttons beside a long date: let the row wrap
+   under the heading rather than squeeze the date to nothing */
+.cd-head{flex-wrap:wrap;row-gap:.45rem}
+.cd-head h3{flex:1 1 9rem}
+.cd-acts{display:flex;gap:.5rem;margin-left:auto;flex:0 0 auto}
+/* across from the Editing desk to the per-person list */
+.ejby{display:flex;align-items:center;margin:.1rem 0 .55rem;min-height:var(--tap);text-align:left;color:var(--gold-b)}
+
+/* the day box carries Crew AND ＋ Add event on a shoot day: on a phone the date
+   takes its own line rather than being squeezed to three */
+@media(max-width:699px){ .cd-head--2 h3{flex-basis:100%} }
+/* the shoot sheet has up to four buttons now: two across, never one stranded
+   full-width on a line of its own looking like the main action */
+#evBody .ev-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+#evBody .ev-acts .btn{min-width:0}
+#evBody .ev-acts .btn:first-child:nth-last-child(odd){grid-column:1 / -1}
+/* the narrowest phones: the search box takes its own row, the buttons the next */
+@media(max-width:359px){
+  #ejListView .bar,#leadsView .bar{flex-wrap:wrap}
+  #ejSearch,#leadSearch{flex:1 1 100%}
+  #ejSort{flex:1 1 auto}
+  #leadAdd{margin-left:auto}
+}
+/* the ＋ sheet: its subtitle clears the sticky ✕, and the lead form's Save
+   reads as the main action (＋ Lead now opens straight onto it) */
+#qaModal .who{padding-right:2.6rem}
+.st-opts.qa-form .qa-acts .btn--primary{background:var(--grad-gold);border-color:transparent;color:var(--white);font-weight:600}

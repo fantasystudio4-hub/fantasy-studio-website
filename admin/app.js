@@ -957,6 +957,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      are scoped to html.shell, so on such a page both stay where they were. */
   document.documentElement.classList.toggle('shell',
     !!($('#subnav') && $('#hdrTitle') && $('#hdrBack') && $('#tabMore') && $('#tabMoney') && $('#navAdd')));
+  /* the same care one phase on: a cached Phase 1 page has the chrome but not
+     the labelled ＋ Add studio, so it keeps its floating one */
+  document.documentElement.classList.toggle('has-stuadd', !!$('#stuAddBtn'));
   function syncShell(){
     const strip = $('#subnav'), ttl = $('#hdrTitle'), back = $('#hdrBack');
     if(!strip || !ttl || !back || !$('#tabMore') || !$('#tabMoney')) return;   /* a stale cached page: leave its own chrome alone */
@@ -1185,7 +1188,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
   let _scrollToken = 0;
-  const scrollTopNow = () => { _scrollToken++; window.scrollTo(0,0); };
+  /* _lockY too: when this is called with a sheet still closing, the page is
+     scroll-locked and scrollTo is a no-op — and the unlock then restored the
+     OLD screen's offset onto the new screen (＋ → Assign crew from the bottom
+     of Home opened the crew list 900px down). */
+  const scrollTopNow = () => { _scrollToken++; _lockY = 0; window.scrollTo(0,0); };
   Object.keys(TABS).forEach(id=>{
     const tabBtn = $('#'+id);
     if(!tabBtn){ console.warn('[wiring] no tab button', id); return; }
@@ -1282,9 +1289,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         showTab('tabCal');
         if(_stuDetailId){ $('#studioListView').hidden = true; $('#studioDetailView').hidden = false; syncFabs(); }
       }else if(v === 'ejob'){
+        /* the job this entry belonged to was closed under a sheet (＋ → Assign
+           crew, Search → a crew member): the entry is dead. Step over it to
+           the list below rather than spend a Back press on nothing. */
+        if(!_ejOpenId){ history.back(); return; }
         showTab('tabTeam');
         if(typeof setTeamSeg === 'function') setTeamSeg('edit');
-        if(_ejOpenId){ $('#ejListView').hidden = true; $('#ejDetailView').hidden = false; }
+        $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
       }else{
         const tab = tabOfView(v);
         showTab(tab);
@@ -1483,7 +1494,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `<div class="empty-state">
              <span class="empty-state__icon">👥</span>
              <p class="empty-state__title">No leads yet</p>
-             <p class="empty-state__text">Enquiries from the website arrive here on their own — there is nothing to add by hand.</p>
+             <p class="empty-state__text">Enquiries from the website arrive here on their own — or add one yourself with ＋ Lead.</p>
              <button type="button" class="btn btn--ghost" data-refresh-leads>↻ Check again</button>
            </div>`;
       return;
@@ -3706,7 +3717,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
         <button type="button" class="btn btn--sm btn--ghost" data-wapdf>Send ▷</button>
-        <button type="button" class="btn btn--sm btn--ghost" data-pay>＋ Pay</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-pay title="Record payment" aria-label="Record payment">＋ Pay</button>
         <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
       </div>
       ${track && open ? trackerHTML(x, { foldable: true }) : ''}
@@ -4073,8 +4084,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     const isToday = calSel === new Date().toLocaleDateString('en-CA');
     const fests = festivalsOn(calSel);
+    /* a booked shoot on this date: one tap to the crew list for it. The crew
+       list lost its own slot in the bar to Money; on a shoot day this puts it
+       back one tap from Home. */
+    const hasShoot = evs.some(e=>e.kind === 'pkg' && e.status === 'booked');
     box.innerHTML = `<div class="sec">
-      <div class="cd-head"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></div>`
+      <div class="cd-head${hasShoot ? ' cd-head--2' : ''}"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><span class="cd-acts">${hasShoot ? '<button class="btn btn--sm btn--ghost" type="button" data-daycrew>🎬 Crew</button>' : ''}<button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></span></div>`
       + (fests.length ? `<div class="festrow">${fests.map(f=>`<span class="fest">🪔 ${esc(f)}</span>`).join('')}</div>` : '')
       + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];
@@ -4123,6 +4138,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#calDetail', 'click', e=>{
     if(e.target.closest('[data-addev]')){ openCalAdd(); return; }
+    if(e.target.closest('[data-daycrew]')){
+      const t = todayISO(), day = calSel;
+      const k = day === t ? 'today' : day > t ? 'up' : 'past';
+      /* the list shows ten: a date further down than that would land on a list
+         without its own shoot. ANY row of the date — two functions on one day
+         can straddle the cap. */
+      if(teamEventsIn(k).some((r,i)=>i >= TEAM_EV_N && r.ev.date === day)) _teamEvAll = true;
+      setWorkTab(k);
+      go('crew');
+      /* go() put the page at its top; bring that date's first card under the thumb */
+      setTimeout(()=>{
+        const c = viewShown('teamView') && document.querySelector('#teamEvents [data-evdate="' + day + '"]');
+        if(c) c.scrollIntoView({ block:'center' });
+      }, 140);
+      return;
+    }
     const ov = e.target.closest('button[data-avov]');
     if(ov){ if(!ov.disabled) setAvailOverride(calSel, ov.dataset.avhalf, ov.dataset.avov); return; }
     const row = e.target.closest('.cal-ev'); if(!row || !e.target.closest('[data-openev]')) return;
@@ -5316,7 +5347,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          photographers and a cinematographer used to read as fully crewed. */
       const state = !crew.length ? 'none' : (needTotal && gap.length) ? 'part' : 'full';
       return `
-      <div class="tm-ev ${state}">
+      <div class="tm-ev ${state}" data-evdate="${esc(ev.date)}">
         <div class="tm-ev-h">
           <div class="tm-ev-t">
             <div class="l1">
@@ -5580,7 +5611,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asWho').textContent = asWhoText(_asCtx);
     renderAsPick(); syncAsUI(); refreshAsConflict();
   }
-  on('#edAdd', 'click', ()=>{
+  function openEdAssign(){
     _bookRows = bookingRows();
     if(!_bookRows.length){ toast('No booked events yet — book a package first, then assign its editing'); return; }
     $('#asWhole').checked = true;      /* per-quote picker: the whole booking is the default */
@@ -5588,7 +5619,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _bookRows.length && ($('#asBookWrap').hidden = false);
     fillBookings();
     openAs(ctxOfRow(_bookRows[0]), null, { pickBooking: true, forceEdit: true, whole: true });
-  });
+  }
+  on('#edAdd', 'click', openEdAssign);      /* under the per-person list, where it has always been */
+  on('#ejAssign', 'click', openEdAssign);   /* the Editing page's main action, in its bar */
+  /* across to the per-person list, which is the fourth chip of the crew list */
+  on('#ejByEditor', 'click', ()=>{ setWorkTab('edit'); go('crew', { replace: true }); });
   /* a different booking starts on its own last function, not the index the
      previous one happened to be on */
   on('#asBook', 'change', ()=>{ $('#asBookEv').value = ''; fillBookingEvents(); reBook(); });
@@ -5600,7 +5635,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Today first, because that is the question the Work section exists to
      answer when the owner opens it at 8am. Then what is coming, then what is
      already shot and still needs signing off or paying, then post-production. */
-  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Editing']];
+  /* "Editor jobs", not "Editing": Work → Editing is the per-booking desk, and
+     two things in one section answered to the same name */
+  const WORK_TABS = [['today','📍 Today'],['up','📅 Upcoming'],['past','✅ Done'],['edit','✂️ Editor jobs']];
   let _teamTab = viewGet('workTab','today');
   /* deliberately NOT persisted: a filter you did not set yourself, still on
      from yesterday, is how a list lies about being empty */
@@ -9522,6 +9559,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const onTeam = !$('#teamView').hidden;
     $('#fabBtn').hidden = !(onHome || onLeads || onPkgList || onTeam) || formOpen;
     $('#stuAddFab').hidden = !onStudioList || formOpen;
+    /* the labelled button stands down with it: a studio added while the
+       add-event form is open would not appear in that form's studio picker */
+    { const sb = $('#stuAddBtn'); if(sb) sb.hidden = formOpen; }
     if(!onStudioList) clearStuSearch();
     syncShell();   /* every view and full-page change passes through here */
   }
@@ -9535,6 +9575,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#stuSearch', 'input', debounce(renderStudioList));
   on('#stuSearch', 'keydown', e=>{ if(e.key === 'Escape') clearStuSearch(); });
   on('#stuAddFab', 'click', ()=>openStu(null));
+  on('#stuAddBtn', 'click', ()=>openStu(null));   /* the labelled button that replaced the floating ＋ */
   /* studio-detail controls. The page is rebuilt on every snapshot, so these
      are delegated from the container rather than bound to the buttons. */
   on('#studioDetailView', 'click', e=>{
@@ -11513,7 +11554,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- upcoming shoot sheet: full event + package detail ---------- */
   let _evIdx = 0, _evKey = null;
-  const evKeyOf = e => e ? `${e.kind}|${e.id}|${e.date}|${e.title}` : null;
+  /* the slot too: two functions of one booking can share a date AND a title
+     (Nikah, morning and evening), and a live snapshot must not move the open
+     sheet from one to the other */
+  const evKeyOf = e => e ? `${e.kind}|${e.id}|${e.date}|${e.title}|${e.slot||''}` : null;
   function openEv(i){
     if(!_upEvents.length) return;
     _evIdx = Math.max(0, Math.min(i, _upEvents.length-1));
@@ -11589,7 +11633,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         `<div class="ln2"><span>${esc(a.memberName||'—')}</span><span>${esc(a.role||'')}${a.callTime ? ' · ' + esc(a.callTime) : ''}</span></div>`).join('') : ''}
       ${pays}
       <div class="ev-acts">
-        ${bal > 0 ? `<button class="btn btn--sm btn--ghost" type="button" data-evpay>＋ Payment</button>` : ''}
+        <button class="btn btn--sm btn--ghost" type="button" data-evcrew>＋ Assign crew</button>
+        ${bal > 0 ? `<button class="btn btn--sm btn--ghost" type="button" data-evpay>＋ Record payment</button>` : ''}
         <button class="btn btn--sm btn--ghost" type="button" data-evopen>Open package</button>
         <button class="btn btn--sm btn--ghost" type="button" data-evcal>Calendar</button>
       </div>`;
@@ -11603,6 +11648,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-evpay]')){
       const pk = PKGS.find(p=>p.id===ev.id);
       if(pk){ closeEvUI(); openPay(pk); }
+      return;
+    }
+    /* the assign sheet the crew list opens, for THIS shoot: built from the
+       package's own event, exactly as the card's ＋ Assign builds it */
+    if(e.target.closest('[data-evcrew]')){
+      const pk = PKGS.find(p=>p.id===ev.id); if(!pk) return;
+      const dated = (pk.events||[]).filter(x=>x.date === ev.date);
+      /* calEvents prints 'Event' for an untitled function and carries its slot:
+         same title AND half-day first, then title alone, then the only one */
+      const sameT = x => String(x.title||'Event') === String(ev.title||'Event');
+      const e2 = dated.find(x=>sameT(x) && (x.slot||'') === (ev.slot||''))
+              || dated.find(sameT)
+              || (dated.length === 1 ? dated[0] : null);
+      if(!e2){ toast('That function is no longer on the package — open the package to check'); return; }
+      closeEvUI();
+      openAs({ pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+               eventTitle: e2.title||'', slot: e2.slot||'', date: e2.date||'', venue: e2.venue||'' }, null);
       return;
     }
     if(e.target.closest('[data-evopen]')){
@@ -11686,23 +11748,61 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        The others change screen, and a screen change from here either has to
        discard the quotation or strands its history entry — the floating
        button this replaced was simply not shown over the editor. */
+    /* Six, most-used first, two across: big enough to hit with a thumb, and
+       the whole menu fits in the reach of the hand that opened it. */
+    $('#qaOpts').classList.add('qa-grid');
+    qaHead('＋ Quick Add');
     if(viewShown('pkgView') && viewShown('pkgEditView')){
-      $('#qaWho').textContent = 'Close this quotation for bookings, payments and the calendar';
+      $('#qaWho').textContent = 'Close this quotation for bookings, payments and crew';
       $('#qaOpts').innerHTML = `
-      <button type="button" data-qa-exp>💸 New expense <em>amount first — travel, food, rent</em></button>
-      <button type="button" data-qa-lead>👤 New lead <em>name + number, that is all</em></button>`;
+      <button type="button" data-qa-exp><i>💸</i>Expense<em>amount first</em></button>
+      <button type="button" data-qa-lead><i>👤</i>New lead<em>name + number</em></button>`;
       return;
     }
     $('#qaWho').textContent = 'The things you do most — one tap away';
     $('#qaOpts').innerHTML = `
-      <button type="button" data-qa-exp>💸 New expense <em>amount first — travel, food, rent</em></button>
-      <button type="button" data-qa-lead>👤 New lead <em>name + number, that is all</em></button>
-      <button type="button" data-qa-book>📅 New booking <em>a date on the calendar</em></button>
-      <button type="button" data-qa-new>📦 New package / quotation</button>
-      <button type="button" data-qa-pay>💰 Record a payment</button>
-      <button type="button" data-qa-today>📅 Today's calendar</button>
-      <button type="button" data-qa-member>🎬 Add a team member</button>`;
+      <button type="button" data-qa-exp><i>💸</i>Expense<em>amount first</em></button>
+      <button type="button" data-qa-pay><i>💰</i>Record payment<em>from a client</em></button>
+      <button type="button" data-qa-lead><i>👤</i>New lead<em>name + number</em></button>
+      <button type="button" data-qa-book><i>📅</i>Quick booking<em>a date, quickly</em></button>
+      <button type="button" data-qa-quote><i>📦</i>Quotation<em>the full builder</em></button>
+      <button type="button" data-qa-crew><i>🎬</i>Assign crew<em>pick a shoot</em></button>`;
   }
+  /* ＋ Lead on the Leads page: the same sheet, opened straight on its form */
+  function openQaLead(){ openQa(); renderQaLead(true); }
+  /* pick a chip of the crew list (Today / Upcoming / Done / Editor jobs) the
+     way tapping it does */
+  function setWorkTab(k){
+    if(!WORK_TABS.some(([v])=>v === k)) return;
+    _teamTab = k; viewSet('workTab', k);
+    renderWorkTabs(); renderTeamEvents();
+    /* The chip strip scrolls, and the fourth chip starts past its right edge
+       on a phone. Callers go() to the list right after this, so wait a frame
+       (the list may still be hidden here), then move the STRIP — never the page. */
+    requestAnimationFrame(()=>{
+      const el = $('#workTabs'), c = el && el.querySelector('button.on');
+      if(c) el.scrollLeft = Math.max(0, c.offsetLeft + c.offsetWidth - el.clientWidth);
+    });
+  }
+  /* ＋ pressed on a plain Work screen, going to another Work screen: that is a
+     strip move, which adds no Back step. Navigating with the menu's entry
+     still on top turns THAT entry into the new screen's and strands the old
+     screen's under it; the next strip move back then names one screen twice
+     (a dead Back). So drop the menu's entry first and move on the pop.
+     Not over an editing job's page (its entry is a full page's and cannot be
+     renamed), and not while another Back is in flight (backFrom would do
+     nothing and the listener would fire on some later Back). */
+  function qaStripMove(fn){
+    if(_backPending || !(history.state && history.state.view === 'qa')) return false;
+    if(ROUTES[curRoute()].sec !== 'work') return false;
+    if(viewShown('teamView') && viewShown('editView') && viewShown('ejDetailView')) return false;
+    window.addEventListener('popstate', ()=>setTimeout(fn, 0), { once: true });
+    closeQaUI(); closeQa();
+    return true;
+  }
+  /* the sheet's heading says what it is showing: it is the ＋ menu, the lead
+     form (which ＋ Lead opens directly) and the payment picker in turn */
+  const qaHead = t => { const h = $('#qaModal h3'); if(h) h.textContent = t; };
 
   /* ---------------------------------------------------------- quick add lead
      Someone rings while the owner is standing at a venue. The full package
@@ -11717,8 +11817,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      the website's own shape exactly. It is filed as 'contact_form' because
      that is what the two permitted values mean here — an enquiry that came to
      us, as opposed to one built in the quote builder. */
-  function renderQaLead(){
+  /* `direct` = opened from ＋ Lead on the Leads page: there is no menu behind
+     the form, so its second button closes the sheet instead of going back */
+  function renderQaLead(direct){
     $('#qaWho').textContent = 'Name and number is enough — the rest can wait';
+    qaHead('👤 New lead');
+    $('#qaOpts').classList.remove('qa-grid');
     $('#qaOpts').classList.add('qa-form');
     $('#qaOpts').innerHTML = `
       <div class="field">
@@ -11737,7 +11841,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <input class="input" id="qlType" autocomplete="off" placeholder="e.g. Wedding, Reception" />
       </div>
       <div class="qa-acts">
-        <button type="button" class="btn btn--ghost" data-qa-back>← Back</button>
+        ${direct === true
+          ? '<button type="button" class="btn btn--ghost" data-qa-close>Cancel</button>'
+          : '<button type="button" class="btn btn--ghost" data-qa-back>← Back</button>'}
         <button type="button" class="btn btn--primary" id="qlSave">Save lead</button>
       </div>`;
     setTimeout(()=>{ const n = $('#qlName'); if(n) n.focus({ preventScroll:true }); }, 40);
@@ -11802,16 +11908,29 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      box (a name is faster to type than a long list is to scan), and a fold
      that says exactly how many it is holding back rather than hiding them. */
   let _qaPayQ = '', _qaPayAll = false;
+  /* a booking with a function dated today — the client most likely to be
+     handing over cash right now */
+  const shootsToday = x => {
+    if(!['booked','delivered'].includes(x.status||'draft')) return false;   /* not a quotation nobody answered */
+    const t = todayISO(); return (x.events||[]).some(e=>e.date === t);
+  };
   const qaPayable = () => livePkgs()
     .filter(x=>(x.status||'draft') !== 'draft' && Math.max(0,(x.totals||{}).balance||0) > 0)
-    /* oldest commitment first: nextShootDate() falls back to the LAST event,
-       so jobs already shot carry a past date and lead the list — which is the
-       money that has been owed longest */
-    .sort((a,b)=>{ const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0; });
+    /* TODAY'S shoot first: at a venue that is who is paying, and the list
+       used to put them last, behind every job still waiting on its delivery
+       balance. Then oldest commitment first, as before: nextShootDate() falls
+       back to the LAST event, so jobs already shot carry a past date and lead
+       — which is the money that has been owed longest. */
+    .sort((a,b)=>{
+      const ta = shootsToday(a) ? 0 : 1, tb = shootsToday(b) ? 0 : 1;
+      if(ta !== tb) return ta - tb;
+      const da = nextShootDate(a)||'9999', db2 = nextShootDate(b)||'9999'; return da<db2?-1:da>db2?1:0;
+    });
 
   function renderQaPay(){
     _qaPayQ = ''; _qaPayAll = false;
-    $('#qaOpts').classList.remove('qa-form');
+    qaHead('💰 Record payment');
+    $('#qaOpts').classList.remove('qa-form', 'qa-grid');
     const n = qaPayable().length;
     $('#qaWho').textContent = n
       ? `Who paid you? ${n} booking${n === 1 ? '' : 's'} with a balance`
@@ -11850,7 +11969,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* which job this is, for two clients with the same first name — and
          whether the shoot has happened, which is what decides how hard the
          money is to collect */
-      const when = d ? (d < today ? 'shot ' + stepDate(d) : stepDate(d)) : 'no date';
+      const when = shootsToday(x) ? 'shoot today'
+                 : d ? (d < today ? 'shot ' + stepDate(d) : stepDate(d)) : 'no date';
       /* Two explicit lines rather than relying on the inherited wrap: as bare
          children of .st-opts button the name grew to fill the row and pushed
          the amount onto a line of its own, making every row three deep. */
@@ -11897,26 +12017,41 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       setTimeout(()=>{ if(viewShown('homeView')) openCalAdd(); }, 220);
       return;
     }
-    if(e.target.closest('[data-qa-new]')){ closeQaUI(); openJobType(); return; }
+    /* Quotation: straight to the builder for a direct client — the chooser's
+       own Direct-client steps, minus the chooser. Studio jobs still start
+       from Work → ＋ New, or from the studio's page. */
+    if(e.target.closest('[data-qa-quote]')){
+      if(!canLeaveEditor()) return;
+      /* from Crew or Editing this is a move inside Work: see qaStripMove */
+      if($('#pkgView').hidden && qaStripMove(()=>{ go('bookings', { replace: true }); if(!$('#pkgView').hidden) openPkgEdit(null); })) return;
+      closeQaUI();
+      if($('#pkgView').hidden) $('#tabPkgs').click();
+      /* a leave-this-page question was answered Cancel: drop the menu's entry */
+      if($('#pkgView').hidden){ closeQa(); return; }
+      openPkgEdit(null);
+      return;
+    }
+    /* Assign crew: the crew list itself is the picker — every shoot card on it
+       has its own ＋ Assign. Today's shoots if there are any, else what is coming. */
+    if(e.target.closest('[data-qa-crew]')){
+      setWorkTab(teamEventsIn('today').length ? 'today' : 'up');
+      /* from Bookings or the Editing list this is a move inside Work: see qaStripMove */
+      if(qaStripMove(()=>{ go('crew', { replace: true }); scrollTopNow(); })) return;
+      closeQaUI();
+      go('crew');
+      scrollTopNow();   /* the chip may have changed under a list that was scrolled down */
+      if(history.state && history.state.view === 'qa') closeQa();   /* already on it: no screen change happened */
+      return;
+    }
+    if(e.target.closest('[data-qa-close]')){ closeQa(); return; }
     if(e.target.closest('[data-qa-pay]')){ renderQaPay(); return; }
     if(e.target.closest('[data-qa-back]')){ renderQaMain(); return; }
     if(e.target.closest('[data-qa-paymore]')){ _qaPayAll = true; renderQaPayList(); return; }
     const pick = e.target.closest('[data-qa-pick]');
     if(pick){ const x = PKGS.find(p=>p.id===pick.dataset.qaPick); closeQaUI(); if(x) openPay(x); return; }
-    if(e.target.closest('[data-qa-today]')){
-      closeQaUI();
-      gotoCalendar(new Date().toLocaleDateString('en-CA'));
-      if(history.state && history.state.view === 'qa') closeQa();   /* as above */
-      return;
-    }
-    if(e.target.closest('[data-qa-member]')){
-      /* the member list is one section of the Team view: name it, or this
-         opened over whichever section was used last */
-      closeQaUI(); go('members');
-      /* refused (dates banked on the add-event form): drop the menu's entry instead */
-      if(viewShown('teamView')) openTm(null); else closeQa();
-      return;
-    }
+    /* "Today's calendar" and "Add a team member" left this menu: the calendar
+       is the top of Home with its own Today button, and a member is added
+       from More → Team → ＋ Add team member. */
   });
   /* delegated: #qaPaySearch is created by renderQaPay, so a direct listener
      would bind to nothing at load and then to a replaced element after */
@@ -11939,6 +12074,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- the bar's ＋, the section strip, the Money and More menus ----------
      All doors, no rooms: each of these opens a sheet or a screen that already
      existed, through the same function its old door called. */
+  on('#leadAdd', 'click', openQaLead);   /* the Leads page's own main action */
   on('#navAdd', 'click', openQa);    /* phone: centre of the bottom bar */
   on('#hdrAdd', 'click', openQa);    /* desktop: in the header */
   on('#subnav', 'click', e=>{
@@ -12678,7 +12814,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* Don't offer to "add the missing payment" here: paySave INCREMENTS
          totals.advance, so recording it would double the money. Just say so —
          the money reports below already treat totals.advance as received. */
-      if(_gap > 0) toast(`Saved. Note: ${inr(_gap)} of the advance has no payment entry — add it via ＋ Payment for a receipt and the cash/online split.`);
+      if(_gap > 0) toast(`Saved. Note: ${inr(_gap)} of the advance has no payment entry — add it with ＋ Pay on the booking, for a receipt and the cash/online split.`);
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ btn.disabled = false; }
   });
