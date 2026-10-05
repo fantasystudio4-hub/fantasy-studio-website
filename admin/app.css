@@ -2308,6 +2308,10 @@ html.cfg-pages #configView[data-page="menu"]:not(.dirty){padding-bottom:0}
      error colour by the save code) always stays. */
   html.cfg-pages #configView.dirty .savebar .msg:not([style*="err"]){display:none}
   html.cfg-pages #configView.dirty .savebar .dirty{flex:1 1 auto}
+  /* ...and a warning gets a line of its own above the mark and the button,
+     instead of a 60px column beside them */
+  html.cfg-pages #configView.dirty .savebar .in{flex-wrap:wrap}
+  html.cfg-pages #configView.dirty .savebar .msg[style*="err"]{order:-1;flex:1 0 100%}
 }
 
 /* ---- section pages: the row with the page's main action comes first ---- */
@@ -2338,12 +2342,16 @@ html.shell .stu-hd #stuBack{display:none}
 #calAdd .qe-acts{position:sticky;bottom:0;z-index:var(--z-sticky);background:var(--panel);border-top:1px solid var(--line);
   margin:.9rem -1rem 0;padding:.7rem 1rem}
 #calAdd .qe-note{margin-top:.7rem}
+/* while Save is hidden (no phone number yet) the reason sits BESIDE Cancel,
+   not on a line above it: the strip that rides the keyboard stays one row */
+#calAdd .qe-acts .savenote{flex:1 1 0;min-width:0;margin:0}
 /* the new-lead form inside the ＋ sheet: same treatment as the expense sheet's foot */
 .st-opts.qa-form .qa-acts{position:sticky;bottom:-1.4rem;z-index:3;background:var(--panel);
   box-shadow:0 -14px 18px -8px var(--panel), 0 0 0 6px var(--panel)}
 @media(max-width:699px){
   /* same-property overrides must come last (see the note above the phone block) */
-  #calAdd .qe-acts{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom))}
+  /* a card's padding is .7rem on a phone: the row stays flush with it */
+  #calAdd .qe-acts{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom));margin-inline:-.7rem;padding-inline:.7rem}
   :root.kb-up #calAdd .qe-acts{bottom:var(--kb)}
   .st-opts.qa-form .qa-acts{bottom:calc(-1.4rem - env(safe-area-inset-bottom))}
 }

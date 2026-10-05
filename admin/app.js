@@ -862,7 +862,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* unsaved Settings edits: the flag Save All's guard has always read, and the
      groups that were touched (the menu marks them). Declared up here because
      the chrome reads them on the first paint. */
-  let _cfgTouched = false, _cfgSaving = false;
+  let _cfgTouched = false, _cfgSaving = false, _cfgEdits = 0;
   const _cfgDirtyGroups = new Set();
 
   /* ---------- the screens, as the owner sees them ----------
@@ -1577,8 +1577,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const sid = typed ? (want ? want.id : '') : ((typeof e.state.id === 'string' && SAFE_ID.test(e.state.id)) ? e.state.id : '');
       _bootFull = null;   /* the owner has moved: a page still waiting for its data must not open now */
       /* a question left on screen over a sheet that Back is about to close
-         would still act on Confirm — after the sheet's own fields were cleared */
-      if(_cfmResolve) closeConfirm(false);
+         would still act on Confirm — after the sheet's own fields were cleared.
+         Only the OWNER's Back: when the panel itself closes a sheet (Save
+         Payment does, then asks "Mark it as Booked?" / "Send a receipt?") the
+         pop that follows is backFrom's, and that question must stay up. */
+      if(_cfmResolve && !_backPending) closeConfirm(false);
       /* Sheets close FIRST and unconditionally — an early return further down
          used to leave a sheet on screen with its history entry already gone. */
       if(typeof closePayUI === 'function') closePayUI();
@@ -1617,9 +1620,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          sheet closing over it lands on that page's own entry. */
       if(!MODAL_VIEWS.includes(v) && _qeQueue.length && viewShown('calAdd')){
         const onStudio = viewShown('calView') && viewShown('studioDetailView');
+        /* a full page's entry is not in TAB_OF_VIEW (tabOfView would call it
+           Home): name the tab it lives on. A dead id-less job entry is stepped
+           over further down, and the entry under it asks then. */
+        const tv = v === 'pkgedit' ? 'tabPkgs' : v === 'studio' ? 'tabCal'
+                 : v === 'ejob' ? ((sid || _ejOpenId) ? 'tabTeam' : 'tabHome') : tabOfView(v);
         const stays = typed ? false
-                    : _qeAnchor === 'b2b' ? (onStudio ? (v === 'studio' && (!sid || sid === _stuDetailId)) : tabOfView(v) === 'tabCal')
-                                          : tabOfView(v) === 'tabHome';
+                    : _qeAnchor === 'b2b' ? (onStudio ? (v === 'studio' && (!sid || sid === _stuDetailId)) : (tv === 'tabCal' && v !== 'studio'))
+                                          : tv === 'tabHome';
         if(!stays && !confirm(`Leave this page? The ${_qeQueue.length} date${_qeQueue.length>1?'s':''} banked on the add-event form will be discarded.`)){
           try{
             if(onStudio) history.pushState({ view:'studio', id: _stuDetailId }, '', fullHash('studio', _stuDetailId));
@@ -2723,7 +2731,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        one save at a time (a second tap used to read the first one's pending
        write and report "changed on another device"), and no write at all from
        the demo — its forms hold sample values, and this is a full overwrite. */
-    if(_cfgSaving) return;
+    if(_cfgSaving){ toast('Still saving — one moment'); return; }
     if(DEMO){
       _cfgTouched = false; _cfgDirtyGroups.clear(); syncCfgDirty();
       $('#saveMsg').textContent = 'Demo — nothing was saved.';
@@ -2735,6 +2743,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     _cfgSaving = true;
+    /* every field is read below, before the first wait: an edit made while
+       the save is on its way is NOT in it, and must keep its mark */
+    const editsAtRead = _cfgEdits;
     try{
       const prices = {};
       $$('[data-price]').forEach(i=>{ prices[i.dataset.price] = Number(i.value)||0; });
@@ -2764,7 +2775,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           toast(`Package "${get('name').trim() || key}" has no services and no album — give it something to price, or remove it with ✕`);
           /* the package named may be on a page that is not on screen */
           if(CFG_PAGES && viewShown('configView') && _cfgPage !== 'prices'){
-            go('cfgPrices');
+            /* as a tap on the menu row would: from the menu a step below it;
+               from another group, in that group's place (keeping its mark) */
+            const st0 = history.state || {};
+            go('cfgPrices', _cfgPage === 'menu' ? { fromMore: true } : { replace: true, fromMore: !!st0.fromMore });
             setTimeout(()=>{ try{ row.scrollIntoView({ block:'center' }); }catch(e){} }, 120);
           }
           return;
@@ -2868,8 +2882,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ? 'Saved offline — it will publish the moment you are back online.'
         : 'Saved — the live site now uses these values.';
       toast(res === 'queued' ? 'Config saved offline — will publish when online' : 'Config published ✓');
-      _cfgTouched = false;
-      _cfgDirtyGroups.clear(); syncCfgDirty();
+      if(_cfgEdits === editsAtRead){ _cfgTouched = false; _cfgDirtyGroups.clear(); }
+      else $('#saveMsg').textContent = 'Saved — but something was changed while it was saving. Tap Save All again.';
+      syncCfgDirty();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
     finally{ _cfgSaving = false; }
   });
@@ -2889,7 +2904,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const sec = el.closest('#configView > .sec');
     const g = sec ? (sec.dataset.cfg || '') : '';
     if(g === 'trash' || g === 'backup') return;
-    _cfgTouched = true;
+    _cfgTouched = true; _cfgEdits++;
     if(g) _cfgDirtyGroups.add(g);
     /* "Saved — the live site now uses these values" is no longer true */
     const m = $('#saveMsg');
@@ -2900,12 +2915,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* The edits that are taps, not typing — removing a row, adding one, and
      everything inside a ready-made package card. None of them fired `input`,
      so a deleted testimonial left no mark and no "leave without saving?"
-     question. Bound here on the view, which hears the tap BEFORE the
-     document-level remover takes the row out of the page. */
+     question. Bound on the view in the CAPTURE phase, so it hears the tap
+     before any handler below takes the tapped control out of the page (then
+     its group could no longer be told). */
   on('#configView', 'click', e=>{
     const t = e.target.closest('[data-del],[data-addpev],[data-rmpev],[data-pevname],[data-addpsvc],[data-rmpsvc],[data-pqm],[data-pqp],#addPkg,#addRate,#addTerm,#addDstep,#addBstep,#addTesti,#addFaq');
     if(t) cfgTouch(t);
-  });
+  }, true);   /* capture: a package card's own handler removes or redraws the tapped control */
   function unsavedWork(){
     try{
       if(typeof pkgDirty === 'function' && pkgDirty()) return true;
@@ -9063,7 +9079,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(queued) toast(`${inr(amount)} (${mode}) saved — will sync when you're back online`);
       else toastUndo(`${inr(amount)} (${mode}) to ${a.memberName||'crew'} recorded — ${left > 0 ? inr(left) + ' still owed' : 'fully settled ✓'}`, async ()=>{
         try{
-          a.pay = await removeCrewPayment(a, entry.id);
+          const pay2 = await removeCrewPayment(a, entry.id);
+          a.pay = pay2;
+          /* the list may have been redrawn from a snapshot since: the live row */
+          const cur = ASGS.find(v=>v.id === id) || a; cur.pay = pay2;
+          if(_cpId === id && $('#cpModal').classList.contains('open')) openCrewPay(cur);
           renderTeam(); renderPkgStats();
           if($('#txModal').classList.contains('open')) renderTx();
           toast(`${inr(amount)} taken back off — nothing recorded`);
@@ -12599,7 +12619,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       /* the add-event form is the minimal booking path and already exists —
          it just needs a date chosen, so quick-add starts it on today */
-      const from = viewShown('homeView') ? '' : curRoute();
+      /* not from a full page: curRoute can only name its LIST, and going there
+         would close the page and leave its entry dead. There the booking
+         stays on Home and Back returns to the page, as before. */
+      const onFull = (viewShown('calView') && viewShown('studioDetailView')) || (viewShown('teamView') && viewShown('editView') && viewShown('ejDetailView'));
+      const from = (viewShown('homeView') || onFull) ? '' : curRoute();
       closeQaUI(); gotoCalendar(todayISO());
       /* already on Home: no screen change happened, so the menu's own entry
          is still on top — drop it, or the next Back is a dead press */
