@@ -24,9 +24,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <!-- design tokens -> shared components -> screen styles. Order matters:
      tokens define the values, ui.css builds the components from them,
      app.css is per-screen and may only reference what those two publish. -->
-<link rel="stylesheet" href="tokens.css?v=p1a" />
-<link rel="stylesheet" href="ui.css?v=p1a" />
-<link rel="stylesheet" href="app.css?v=p1a" />
+<link rel="stylesheet" href="tokens.css?v=p1b" />
+<link rel="stylesheet" href="ui.css?v=p1b" />
+<link rel="stylesheet" href="app.css?v=p1b" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -65,14 +65,26 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 
 <header hidden id="hdr">
   <div class="hd">
+    <!-- on a full page (quotation editor, a studio's page, an editing job) and
+         on the screens under More: one back control, in one place -->
+    <button class="out hback" id="hdrBack" type="button" hidden aria-label="Back" title="Back">←</button>
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="currentColor">FS</text></svg>
-    <div class="ttl"><b>Fantasy Studio</b><span>Admin Panel</span></div>
+    <!-- the name of the screen you are on; tap it to jump to the top -->
+    <div class="ttl" id="hdrTtl" role="button" tabindex="0" title="Back to the top"><b id="hdrTitle">Fantasy Studio</b><span>Admin Panel</span></div>
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
+    <!-- desktop only: the bar's ＋ is at the top of the page there and scrolls away -->
+    <button class="out add" id="hdrAdd" type="button" title="Add — expense, payment, lead, booking">＋ Add</button>
     <button class="out cfg" id="hdrSearch" title="Search everything (Ctrl+K)" aria-label="Search everything"><i>🔍</i><em>Search</em></button>
     <button class="out cfg" id="hdrTxns" title="Transactions — every payment in and out" aria-label="Transactions"><i>🧾</i><em>Transactions</em></button>
-    <button class="out cfg" id="tabConfig" title="Site Config" aria-label="Site Config"><i>⚙️</i><em>Config</em></button>
-    <button class="out" id="logoutBtn">Logout</button>
+    <!-- More keeps its WORD at every width: it took the place of the Logout
+         pill, which was the one header button that always had one -->
+    <button class="out more" id="tabMore" type="button" title="Partner studios, Team, Settings, Trash, Backup, Logout">More<b class="badge" id="moreBadge" hidden></b></button>
+    <!-- PARKED, not removed: the gear and Logout are reached from More now, but
+         the panel still presses these two buttons to do the work (TABS, the
+         logout handler), so they stay in the page, hidden -->
+    <button class="out cfg" id="tabConfig" hidden title="Site Config" aria-label="Site Config"><i>⚙️</i><em>Config</em></button>
+    <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
 </header>
 
@@ -112,13 +124,24 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 
 <!-- app -->
 <div class="wrap" id="appView" hidden>
+  <!-- Home | Leads | ＋ | Work | Money.
+       Work is the Packages button: it opens on Bookings (the Packages screen)
+       and lights up for Crew and Editing as well. ＋ is the Quick Actions
+       sheet, on every screen now instead of a floating ⚡ on Home only.
+       B2B and Team are PARKED, not removed — the panel still switches screens
+       by pressing them, and their badges are still written here and mirrored
+       onto More. -->
   <div class="tabs">
     <button id="tabHome" class="on"><i>🏠</i><span>Home</span></button>
-    <button id="tabCal"><i>🤝</i><span>B2B</span><b class="badge" id="b2bBadge" hidden></b></button>
-    <button id="tabPkgs"><i>📦</i><span>Packages</span></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
-    <button id="tabTeam"><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
+    <button id="navAdd" class="plus" type="button" aria-label="Add — expense, payment, lead, booking" title="Add"><i>＋</i><span>Add</span></button>
+    <button id="tabPkgs"><i>💼</i><span>Work</span></button>
+    <button id="tabMoney"><i>💰</i><span>Money</span></button>
+    <button id="tabCal" hidden><i>🤝</i><span>B2B</span><b class="badge" id="b2bBadge" hidden></b></button>
+    <button id="tabTeam" hidden><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
   </div>
+  <!-- the sections of Work and of Money; drawn by syncShell, sticky under the header -->
+  <div class="tsegs subnav" id="subnav" role="tablist" hidden></div>
   <!-- ONE floating button per screen. The search 🔍 that used to sit above
        these moved into the header: stacked pairs covered whatever was beneath
        them — a shoot row's Open on Home, the crew count on Team, the editor's
@@ -557,6 +580,31 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button class="gbtn" id="saveConfig">Save All</button>
     </div></div>
   </div>
+
+  <!-- MONEY — for now a short menu onto the money screens that already exist.
+       They become tabs of this page in a later phase; nothing here is a copy:
+       every row opens the same sheet or screen its old door opened. -->
+  <div id="moneyView" hidden>
+    <div class="st-opts menu" id="moneyMenu">
+      <button type="button" data-mny="exp">💸 New expense <em>amount first</em></button>
+      <button type="button" data-mny="tx">🧾 Transactions <em>every payment in and out</em></button>
+      <button type="button" data-mny="pay">🎬 Crew pay <em>who is owed</em><b class="badge" id="mnyPayB" hidden></b></button>
+      <button type="button" data-mny="fin">💰 Money Analytics <em>billed · collected · expenses</em></button>
+      <button type="button" data-mny="ins">📊 Insights <em>what sells, what converts</em></button>
+    </div>
+  </div>
+
+  <!-- MORE — the things that are opened weekly or less: opened from the top bar -->
+  <div id="moreView" hidden>
+    <div class="st-opts menu" id="moreMenu">
+      <button type="button" data-more="studios">🤝 Partner studios <em>B2B jobs and requests</em><b class="badge" id="moreStuB" hidden></b></button>
+      <button type="button" data-more="members">🎬 Team <em>crew members · leaderboard</em><b class="badge" id="moreTeamB" hidden></b></button>
+      <button type="button" data-more="settings">⚙️ Settings <em>prices, packages, terms</em></button>
+      <button type="button" data-more="trash">🗑 Trash <em>restore a deleted record</em></button>
+      <button type="button" data-more="backup">⬇ Backup &amp; export <em>backup and CSV files</em></button>
+      <button type="button" data-more="logout">↩ Logout</button>
+    </div>
+  </div>
 </div>
 
 <div class="pay-backdrop" id="payBackdrop"></div>
@@ -884,7 +932,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p1a"></script>
+<script type="module" src="app.js?v=p1b"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

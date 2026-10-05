@@ -759,14 +759,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       loadProfiles();   /* photos + details people added in the app, and account deletions */
       loadAvailability();   /* config/availability (created if missing) + the month the calendar shows */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
-      const rawHash = (location.hash||'').replace('#','').split('/')[0];
-      const fromHash = tabOfView(rawHash);
-      showTab(fromHash);
-      if(rawHash === 'editing') setTeamSeg('edit');   /* same on a cold open */
-      /* keep #editing in the bar rather than flattening it to #team, so a
-         reload lands back on the section the user actually had open */
-      const bootView = rawHash === 'editing' ? 'editing' : VIEW_OF_TAB[fromHash];
-      try{ history.replaceState({view: bootView}, '', '#' + bootView); }catch(e){}
+      /* a reload lands back on the screen — and the section of it — that the
+         address names; see routeOfHash */
+      bootRoute();
     }
   });
 
@@ -824,11 +819,91 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Editing is a SECTION of Team now, not a tab. Six across a 320px phone
      left every label at 9px, and the editing desk belongs with the people who
      do the editing — beside Work, Crew and Pay. */
-  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView' };
-  const VIEW_OF_TAB = { tabHome:'home', tabPkgs:'packages', tabLeads:'leads', tabCal:'b2b', tabTeam:'team', tabConfig:'config' };
-  /* #editing still resolves — an old link or a back-press lands on Team, and
-     setTeamSeg picks the section up from there */
-  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig' };
+  /* Eight views behind eight buttons. Five of the buttons are on screen (Home,
+     Leads, Work = tabPkgs, Money in the bar; More in the header). tabCal,
+     tabTeam and tabConfig are PARKED in the page, hidden: two dozen places in
+     this file change screen by pressing one of them, and they keep working. */
+  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView', tabMoney:'moneyView', tabMore:'moreView' };
+  /* view name -> the button that shows it. The Team view answers to four
+     names, one per section, so Back can return to the right one. 'team',
+     'calendar' and 'editing' are the names older history entries carry. */
+  const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig',
+                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', more:'tabMore' };
+  const SEG_OF_VIEW = { crew:'work', editing:'edit', paytrack:'pay', members:'crew' };
+
+  /* ---------- the screens, as the owner sees them ----------
+     Home | Leads | ＋ | Work | Money in the bar, More in the header.
+     Each screen: the legacy tab button that shows it (`tab`), the section of
+     the Team view it is (`seg`), the name its history entry carries (`view`),
+     its address (`hash`), its title, and the group that lights up in the bar
+     (`sec`). `up` = it hangs under More, so the header shows a back arrow.
+     NOTHING here draws a screen: every route is an existing view, shown whole. */
+  const ROUTES = {
+    home:     { tab:'tabHome',   view:'home',     hash:'#/home',           title:'Fantasy Studio',  sec:'home' },
+    leads:    { tab:'tabLeads',  view:'leads',    hash:'#/leads',          title:'Leads',           sec:'leads' },
+    bookings: { tab:'tabPkgs',   view:'packages', hash:'#/work/bookings',  title:'Bookings',        sec:'work' },
+    crew:     { tab:'tabTeam',   view:'crew',     hash:'#/work/crew',      title:'Crew',            sec:'work',  seg:'work' },
+    editing:  { tab:'tabTeam',   view:'editing',  hash:'#/work/editing',   title:'Editing',         sec:'work',  seg:'edit' },
+    money:    { tab:'tabMoney',  view:'money',    hash:'#/money',          title:'Money',           sec:'money' },
+    paytrack: { tab:'tabTeam',   view:'paytrack', hash:'#/money/crew-pay', title:'Crew pay',        sec:'money', seg:'pay' },
+    more:     { tab:'tabMore',   view:'more',     hash:'#/more',           title:'More',            sec:'more' },
+    studios:  { tab:'tabCal',    view:'b2b',      hash:'#/more/studios',   title:'Partner studios', sec:'more',  up:true },
+    members:  { tab:'tabTeam',   view:'members',  hash:'#/more/team',      title:'Team',            sec:'more',  seg:'crew', up:true },
+    settings: { tab:'tabConfig', view:'config',   hash:'#/more/settings',  title:'Settings',        sec:'more',  up:true },
+  };
+  /* the sections shown as a strip under the header; the third item is the
+     existing badge the strip mirrors (still written by the Team renderers) */
+  const STRIPS = {
+    work:  [['bookings','📦 Bookings'], ['crew','🎬 Crew'], ['editing','✂️ Editing','#segEditB']],
+    money: [['money','💰 Overview'], ['paytrack','🎬 Crew pay','#segPayB']],
+  };
+  const FULL_VIEWS = ['pkgedit','studio','ejob'];   /* a page opened ON a screen: editor, a studio, an editing job */
+  /* `let _tSeg` is declared far below; anything that runs before that line
+     must not die on it */
+  const teamSeg = () => { try{ return _tSeg; }catch(e){ return 'work'; } };
+  const viewShown = id => { const el = $('#'+id); return !!el && !el.hidden; };
+  /* Which screen is on the glass right now — read from the page, not from a
+     variable, because screens are also changed by pressing the old tab
+     buttons from all over this file. */
+  function curRoute(){
+    if(viewShown('leadsView')) return 'leads';
+    if(viewShown('pkgView')) return 'bookings';
+    if(viewShown('calView')) return 'studios';
+    if(viewShown('teamView')){ const g = teamSeg(); return g === 'edit' ? 'editing' : g === 'pay' ? 'paytrack' : g === 'crew' ? 'members' : 'crew'; }
+    if(viewShown('configView')) return 'settings';
+    if(viewShown('moneyView')) return 'money';
+    if(viewShown('moreView')) return 'more';
+    return 'home';
+  }
+  /* An address -> a screen. New addresses are #/section/screen; the old ones
+     (#packages, #b2b, #team, #editing, #config, #calendar) keep working, and a
+     full page's address (#/work/bookings/edit) lands on the list it belongs
+     to. Anything unknown is Home, as before. */
+  function routeOfHash(h){
+    const p = String(h||'').replace(/^#\/?/, '').split('/').filter(Boolean);
+    const a = p[0] || '', b = p[1] || '';
+    if(a === 'work')  return b === 'crew' ? 'crew' : b === 'editing' ? 'editing' : 'bookings';
+    if(a === 'money') return b === 'crew-pay' ? 'paytrack' : 'money';
+    if(a === 'more')  return b === 'studios' ? 'studios' : b === 'team' ? 'members' : b === 'settings' ? 'settings' : 'more';
+    const OLD = { home:'home', calendar:'home', leads:'leads', packages:'bookings', b2b:'studios', team:'crew', editing:'editing', config:'settings' };
+    return Object.prototype.hasOwnProperty.call(OLD, a) ? OLD[a] : 'home';
+  }
+  /* first paint: the screen the address names, and an entry that says so */
+  function bootRoute(){
+    const r = ROUTES[routeOfHash(location.hash)];
+    if(r.seg && typeof setTeamSeg === 'function'){
+      /* only records the section; the entry is written below, once */
+      _navFromPop = true;
+      try{ setTeamSeg(r.seg); }finally{ _navFromPop = false; }
+    }
+    showTab(r.tab);
+    try{
+      /* a reload keeps the "came from More" mark, so the back arrow still just goes back */
+      const keep = history.state && history.state.view === r.view && history.state.fromMore;
+      history.replaceState(keep ? { view: r.view, fromMore: true } : { view: r.view }, '', r.hash);
+    }catch(e){}
+    syncShell();
+  }
   /* The view name comes out of the address bar (/admin/#constructor), and a
      plain-object lookup answers for inherited keys too: TAB_OF_VIEW['constructor']
      is Object, not a tab id, and showTab(Object) blanked the whole panel. Own
@@ -843,14 +918,109 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      and closed through history.back(), but nothing here knew them, so the
      first ✕ or Back only dropped the entry and left the sheet on screen. */
   const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp'];
-  function pushView(view, hash, replace){
+  function pushView(view, hash, replace, extra){
     if(_navFromPop) return;
     try{
       const cur = history.state && history.state.view;
       if(cur === view) return;                       /* re-tapping the tab you're on must not stack dead entries */
-      if(replace || MODAL_VIEWS.includes(cur)) history.replaceState({view}, '', hash);
-      else history.pushState({view}, '', hash);
+      /* A sheet keeps the address of the screen it is over. It used to write
+         its own (#money, #ledger, #quick…), none of which could be opened
+         from the address bar, so a reload with a sheet up landed on Home. */
+      const h = MODAL_VIEWS.includes(view) ? (location.hash || '#/home') : hash;
+      const st = extra ? { view, ...extra } : { view };
+      if(replace || MODAL_VIEWS.includes(cur)) history.replaceState(st, '', h);
+      else history.pushState(st, '', h);
     }catch(e){}
+  }
+  /* The current entry names a screen: make it name THIS one. Used when the
+     section of the Team view changes under an entry that is already there
+     (Crew -> Editing in the strip, or a tab press followed by setTeamSeg).
+     Never while Back is being handled, and never over a sheet's or a full
+     page's entry. */
+  function syncRouteState(){
+    if(_navFromPop) return;
+    try{
+      const st = history.state && history.state.view;
+      if(!st || MODAL_VIEWS.includes(st) || FULL_VIEWS.includes(st)) return;
+      const r = ROUTES[curRoute()];
+      if(st !== r.view || location.hash !== r.hash) history.replaceState({ ...history.state, view: r.view }, '', r.hash);
+    }catch(e){}
+  }
+  /* ---------- the chrome follows the screen ----------
+     One function sets the lit bar item, the header title, the back arrow and
+     the section strip from what is actually on screen. It is called from
+     syncFabs (which every view and full-page change already calls), from the
+     Team section switch, and after Back — so the chrome cannot drift from the
+     screen, whoever changed it. */
+  /* A stale cached page (old markup) can meet this script and stylesheet on a
+     bad signal. The rules that hide the old ⚡ button and the Team section bar
+     are scoped to html.shell, so on such a page both stay where they were. */
+  document.documentElement.classList.toggle('shell',
+    !!($('#subnav') && $('#hdrTitle') && $('#hdrBack') && $('#tabMore') && $('#tabMoney') && $('#navAdd')));
+  function syncShell(){
+    const strip = $('#subnav'), ttl = $('#hdrTitle'), back = $('#hdrBack');
+    if(!strip || !ttl || !back || !$('#tabMore') || !$('#tabMoney')) return;   /* a stale cached page: leave its own chrome alone */
+    const r = ROUTES[curRoute()];
+    const full = (viewShown('pkgView') && viewShown('pkgEditView')) ? 'Quotation'
+               : (viewShown('calView') && viewShown('studioDetailView')) ? 'Partner studio'
+               : (viewShown('teamView') && viewShown('editView') && viewShown('ejDetailView')) ? 'Editing job' : '';
+    [['tabHome','home'],['tabLeads','leads'],['tabPkgs','work'],['tabMoney','money'],['tabMore','more']].forEach(([id, sec])=>{
+      const b = $('#'+id); if(!b) return;
+      const lit = r.sec === sec;
+      b.classList.toggle('on', lit);
+      if(lit) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    ttl.textContent = full || r.title;
+    const up = !!full || !!r.up;
+    back.hidden = !up;
+    $('#hdr').classList.toggle('has-back', up);
+    /* the strip: only on a section's own screens, never over a full page */
+    const items = full ? null : STRIPS[r.sec];
+    if(!items){ if(!strip.hidden){ strip.hidden = true; strip.innerHTML = ''; strip.dataset.sig = ''; } return; }
+    const html = items.map(([k, label, badge])=>{
+      const src = badge ? $(badge) : null;
+      const n = (src && !src.hidden) ? src.textContent : '';
+      const on = ROUTES[k] === r;
+      return `<button type="button" role="tab" data-go="${k}" class="${on ? 'on' : ''}" aria-selected="${on}">${label}${n ? `<b class="segb" title="${esc(src.title||'')}">${esc(n)}</b>` : ''}</button>`;
+    }).join('');
+    if(strip.dataset.sig !== html){
+      /* a keyboard user who just pressed a strip button keeps their place */
+      const had = strip.contains(document.activeElement) ? document.activeElement.dataset.go : '';
+      strip.innerHTML = html; strip.dataset.sig = html;
+      if(had){ const b = strip.querySelector(`[data-go="${had}"]`); if(b) try{ b.focus({ preventScroll: true }); }catch(e){} }
+    }
+    strip.hidden = false;
+  }
+  /* Go to a screen by name. For the Team view's four sections this picks the
+     section first, so the entry that is pushed names the right one. `replace`
+     = a move inside one section (the strip), which adds no Back step;
+     `fromMore` marks the entry so the header's back arrow can simply go back. */
+  let _navReplace = false, _moreNext = false;
+  function go(k, opts){
+    const r = ROUTES[k]; if(!r) return;
+    const o = opts || {};
+    if(r.seg){
+      if(viewShown('teamView')){
+        /* already on the Team view: another section of the same screen */
+        if(viewShown('ejDetailView') && typeof closeEjDetail === 'function') closeEjDetail();
+        if(teamSeg() !== r.seg){
+          setTeamSeg(r.seg); scrollTopNow();
+          /* reached from a sheet (＋ or Search) whose entry is still current:
+             setTeamSeg could not rename the screen under it, so the sheet's
+             dead entry becomes this screen's (pushView replaces a sheet entry) */
+          if(MODAL_VIEWS.includes(history.state && history.state.view)) pushView(r.view, r.hash);
+        }
+        else window.scrollTo({ top: 0, behavior: 'smooth' });
+        syncShell();
+        return;
+      }
+      setTeamSeg(r.seg);   /* the view is hidden: this only records the section to open on */
+    }
+    const was = _curTab;
+    _navReplace = !!o.replace; _moreNext = !!o.fromMore;
+    try{ const b = $('#' + r.tab); if(b) b.click(); }
+    finally{ _navReplace = false; _moreNext = false; }
+    if(r.seg && _curTab === r.tab && was !== r.tab) scrollTopNow();
   }
   /* One gate for "may I throw away what's in the builder?" — every caller that
      navigates away from an open editor must ask FIRST. Several of them used to
@@ -986,7 +1156,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _tabScroll = {}, _curTab = null;
   function showTab(id){
     if(_curTab && _curTab !== id) _tabScroll[_curTab] = window.scrollY;
-    Object.keys(TABS).forEach(t=>{ $('#'+t).classList.toggle('on', t===id); $('#'+TABS[t]).hidden = (t!==id); });
+    Object.keys(TABS).forEach(t=>{
+      /* a stale cached page may not have the newer buttons or views */
+      const b = $('#'+t), v = $('#'+TABS[t]);
+      if(b) b.classList.toggle('on', t===id);
+      if(v) v.hidden = (t!==id);
+    });
     /* the quick add-event form is MOVED between Home and the B2B page —
        leaving the page it is sitting on closes it rather than stranding it */
     if(typeof closeCalAdd === 'function' && id !== (_qeAnchor === 'b2b' ? 'tabCal' : 'tabHome')) closeCalAdd();
@@ -1012,7 +1187,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _scrollToken = 0;
   const scrollTopNow = () => { _scrollToken++; window.scrollTo(0,0); };
   Object.keys(TABS).forEach(id=>{
-    $('#'+id).addEventListener('click', ()=>{
+    const tabBtn = $('#'+id);
+    if(!tabBtn){ console.warn('[wiring] no tab button', id); return; }
+    tabBtn.addEventListener('click', ()=>{
       /* Tapping Packages while the editor was open just re-showed the editor,
          so there was no way back to the list from the bottom nav — the owner
          had to use the phone's back gesture. Tapping the tab you are already
@@ -1037,13 +1214,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
+      const fromSec = ROUTES[curRoute()].sec;
       showTab(id);
       /* the editor / studio detail we just closed owns the current history
          entry — REPLACE it, or the back button resurrects a closed page */
       const cur = history.state && history.state.view;
       const replace = (leavingEditor && cur === 'pkgedit') || (leavingStudio && cur === 'studio')
                    || (leavingJob && cur === 'ejob');
-      pushView(VIEW_OF_TAB[id], '#' + VIEW_OF_TAB[id], replace);
+      /* the entry names the SCREEN that is now showing — for the Team view
+         that depends on its section — not the button that was pressed */
+      const rt = ROUTES[curRoute()];
+      /* Inside Work and inside Money the strip REPLACES (a section change is
+         not a Back step). The bar's own button has to do the same when it
+         stays inside that section, or the two take turns stacking entries
+         that Back then has to walk through one dead press at a time. */
+      const sameSec = !!STRIPS[rt.sec] && rt.sec === fromSec;
+      pushView(rt.view, rt.hash, replace || _navReplace || sameSec, _moreNext ? { fromMore: true } : null);
     });
   });
   /* phone back button navigates within the app instead of exiting */
@@ -1076,7 +1262,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(v !== 'pkgedit' && !$('#pkgEditView').hidden){
         const onScreen = !$('#pkgView').hidden;
         if(onScreen && typeof pkgDirty === 'function' && pkgDirty() && !confirm('Discard unsaved changes?')){
-          try{ history.pushState({view:'pkgedit'}, '', '#packages/edit'); }catch(e2){}
+          try{ history.pushState({view:'pkgedit'}, '', '#/work/bookings/edit'); }catch(e2){}
           return;
         }
         closeEditorSilently();
@@ -1087,7 +1273,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(MODAL_VIEWS.includes(v)) return;
       if(v === 'pkgedit'){
         showTab('tabPkgs');
-        $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
+        /* only an editor that is still LIVE: one that was closed (its baseline
+           cleared) came back empty-handed and asked to discard nothing */
+        if(_pkgBaseline){ $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false; }
+        else{ try{ history.replaceState({view:'packages'}, '', ROUTES.bookings.hash); }catch(e2){} }
         syncFabs();
       }else if(v === 'studio'){
         showTab('tabCal');
@@ -1099,15 +1288,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }else{
         const tab = tabOfView(v);
         showTab(tab);
-        /* #editing is a Team section now, so landing on the tab is only half
-           of it — an old link or a back-press has to arrive at the section
-           too, not at whichever one was last open */
-        if(v === 'editing' && typeof setTeamSeg === 'function') setTeamSeg('edit');
+        /* The Team view is four screens now (Crew, Editing, Crew pay, Team):
+           landing on the view is only half of it — Back has to arrive at the
+           section the entry names, not at whichever one was last open. An
+           entry from before the split ('team') keeps the last section. */
+        if(Object.prototype.hasOwnProperty.call(SEG_OF_VIEW, v) && typeof setTeamSeg === 'function') setTeamSeg(SEG_OF_VIEW[v]);
         if(tab === 'tabPkgs'){ $('#pkgEditView').hidden = true; $('#pkgListView').hidden = false; syncFabs(); }
-        if(tab === 'tabCal' && typeof closeStudioDetail === 'function') closeStudioDetail();
+        /* only a studio page that is actually open: closeStudioDetail also
+           closes the add-event form, and Back onto the LIST (from any sheet
+           opened over it) used to throw away dates banked there */
+        if(tab === 'tabCal' && !$('#studioDetailView').hidden && typeof closeStudioDetail === 'function') closeStudioDetail();
         if(typeof closeEjDetail === 'function') closeEjDetail();
       }
-    }finally{ _navFromPop = false; }
+    }finally{
+      _navFromPop = false;
+      syncShell();   /* title, back arrow, strip and lit item for wherever Back landed */
+    }
   });
 
   /* ---------- leads ---------- */
@@ -2866,7 +3062,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-tx]')){ openTx(); return; }
     /* the tile is a money figure, so land on the money section — not whichever
        part of Team was open last */
-    if(e.target.closest('[data-goteam]')){ $('#tabTeam').click(); setTeamSeg('pay'); return; }
+    if(e.target.closest('[data-goteam]')){ go('paytrack'); return; }
     const t = e.target.closest('[data-goto]'); if(!t) return;
     /* only block while the editor is genuinely ON SCREEN — it used to stay
        flagged open behind another tab and silently kill these taps */
@@ -2900,7 +3096,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = `
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(outstanding)} — open money analytics"><b>${inrShort(outstanding)}</b><span>left to collect</span></div>
       <div class="stat money" data-fin role="button" tabindex="0" title="${inr(bookedVal)} — open money analytics"><b>${inrShort(bookedVal)}</b><span>booked value</span></div>
-      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') + ' — open the Team tab' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>
+      <div class="stat money out" data-goteam role="button" tabindex="0" title="${_asgsLoaded ? inr(crewDue) + (crewUp > 0 ? ' due now · ' + inr(crewUp) + ' upcoming' : '') + ' — open Crew pay' : 'Loading crew pay…'}"><b>${_asgsLoaded ? inrShort(crewDue) : '…'}</b><span>crew pay due</span>${_asgsLoaded && crewUp > 0 ? `<em class="st-up">Upcoming ${inr(crewUp)}</em>` : ''}</div>
       <div class="stat wide" data-goto="booked" role="button" tabindex="0"><b>${booked.length}</b><span>booked</span></div>
       <div class="stat wide" data-goto="" role="button" tabindex="0"><b>${newMonth}</b><span>new this month</span></div>
       <button class="upall insbtn" data-ins type="button">📊 Insights — what sells, what converts, when the season is</button>
@@ -4541,7 +4737,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }else if(_qeMode === 'studio'){
       const sel = $('#qeStudio');
       stu = sel ? studioById(sel.value) : null;
-      if(!stu){ toast('Pick a partner studio — add one in the B2B tab first'); return; }
+      if(!stu){ toast('Pick a partner studio — add one under More → Partner studios first'); return; }
       name = stu.name || 'Studio';
     }else{
       name = $('#qeName').value.trim();
@@ -5973,6 +6169,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          arrival rather than left holding whatever it drew last */
       if(_tSeg === 'edit' && typeof renderEditTab === 'function') renderEditTab();
     }
+    syncShell();   /* the section IS the screen now: title, strip and lit item follow it */
   }
   const reqCount = () => REQS.filter(r=>(r.status||'pending') === 'pending').length;
   function setTeamSeg(seg){
@@ -5980,12 +6177,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _tSeg = seg;
     try{ localStorage.setItem('fs_team_seg', seg); }catch(e){}
     applyTeamSeg();
+    syncRouteState();   /* the entry under this screen now names this section */
     /* Switching section should show that section from its start. The bar is
        sticky, so its own top never goes negative — measure against where it
        parks (just under the header) and scroll only when the page has moved
        past it. */
     const t = $('#teamSegs'), hdr = $('#hdr');
-    if(!t) return;
+    /* the old section bar is parked out of sight (the strip under the header
+       replaced it) and measures as zero — go() scrolls to the top instead */
+    if(!t || t.offsetParent === null) return;
     const parked = hdr ? hdr.getBoundingClientRect().height : 56;
     if(t.getBoundingClientRect().top <= parked + 1){
       const y = t.getBoundingClientRect().top + window.scrollY - parked;
@@ -6665,7 +6865,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span>${w ? 'They are' : 'They are each'} assigned to editing work${
             lost.length > 1 ? ` on ${lost.length} bookings` : ''}, and the crew page finds an editor by
             phone — so ${w ? 'that job cannot reach them' : 'those jobs cannot reach them'} until
-            ${w ? 'their number is' : 'the numbers are'} added. Team → Crew → tap the name.</span>`;
+            ${w ? 'their number is' : 'the numbers are'} added. More → Team → tap the name.</span>`;
       }else{ el.innerHTML = ''; }
       return;
     }
@@ -6689,8 +6889,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <b>${head}</b>
       <span>${body}</span>
       ${who.length ? `<span class="ejfix-x">${who.length === 1
-        ? `${esc(who[0])} has no phone number on file, so their work stays out of reach even after this — add it under Team → Crew.`
-        : `${who.length} editors have no phone number on file, so their work stays out of reach even after this — add them under Team → Crew.`}</span>` : ''}
+        ? `${esc(who[0])} has no phone number on file, so their work stays out of reach even after this — add it under More → Team.`
+        : `${who.length} editors have no phone number on file, so their work stays out of reach even after this — add them under More → Team.`}</span>` : ''}
       <button type="button" class="btn btn--sm btn--primary" data-ejfix>${
         shut ? `Let ${one?'the editor':'the editors'} in` : `Send the full scope`}</button>`;
   }
@@ -6811,7 +7011,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderEjDetail();
     $('#ejListView').hidden = true; $('#ejDetailView').hidden = false;
     scrollTopNow();
-    pushView('ejob', '#editing/job');
+    pushView('ejob', '#/work/editing/job');
+    syncShell();
   }
   function closeEjDetail(){
     if($('#ejDetailView').hidden) return;
@@ -6819,6 +7020,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _ejOpenId = null; _ejAuditOpen = false;
     const y = _ejListScrollY, token = ++_scrollToken;
     requestAnimationFrame(()=>{ if(token === _scrollToken) window.scrollTo(0, y); });
+    syncShell();
   }
 
   function renderEjDetail(){
@@ -7536,7 +7738,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + rows.map(r=>`<div class="amr"><span>${esc(r.name)}</span><em>${esc(roleLabel(r.role))}</em>`
           + `<b class="${r.rate?'':'zero'}">${r.rate ? inr(r.rate) : 'no rate'}</b></div>`).join('')
       + `<div class="amr tot"><span>Total</span><em></em><b>${inr(total)}</b></div>`
-      + (noRate ? `<div class="amn">${noRate === 1 ? 'One member has' : noRate + ' members have'} no pay per event set, so ${noRate === 1 ? 'they' : 'they'} will be saved at ₹0 — set it on their card in Crew, or assign them on their own to type a one-off amount.</div>` : '');
+      + (noRate ? `<div class="amn">${noRate === 1 ? 'One member has' : noRate + ' members have'} no pay per event set, so ${noRate === 1 ? 'they' : 'they'} will be saved at ₹0 — set it on their card under More → Team, or assign them on their own to type a one-off amount.</div>` : '');
   }
 
   function syncAsUI(){
@@ -7613,7 +7815,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return head + pickBtn(m);
     }).join('') || `<div class="empty" style="padding:.6rem 0">${fq
       ? 'Nobody matches “' + esc(fq) + '”.'
-      : 'No active team members — add one in the Squad list.'}</div>`;
+      : 'No active team members — add one under More → Team.'}</div>`;
 
     function pickBtn(m){
       const busy = busyOf(m);
@@ -7879,7 +8081,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(cs){
       const a = ASGS.find(v=>v.id===cs.dataset.callsheet); if(!a) return;
       const wa = crewWaNumber(a);
-      if(!wa){ toast('No phone number for this member — add one in the Crew list'); return; }
+      if(!wa){ toast('No phone number for this member — add one under More → Team'); return; }
       openWa('https://wa.me/' + wa + '?text=' + encodeURIComponent(callSheetText(a)));
       return;
     }
@@ -9152,7 +9354,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!await confirmDialog({
       title:'Delete this request?',
       body:`<b>${esc(name)}</b> · ${esc(sreqText(r.title, 80) || 'Event')} — it leaves your list and the studio's page.`
-         + (sreqStatus(r) === 'accepted' ? ' The job made from it stays in Packages.' : ''),
+         + (sreqStatus(r) === 'accepted' ? ' The job made from it stays in Bookings.' : ''),
       confirmText:'Delete' })) return;
     if(_sreqBusy) return;
     _sreqBusy = id; renderStuReqs();
@@ -9321,6 +9523,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#fabBtn').hidden = !(onHome || onLeads || onPkgList || onTeam) || formOpen;
     $('#stuAddFab').hidden = !onStudioList || formOpen;
     if(!onStudioList) clearStuSearch();
+    syncShell();   /* every view and full-page change passes through here */
   }
   /* The bar is always on screen now, so leaving the tab only needs to clear
      what was typed — not hide anything. */
@@ -9537,7 +9740,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#studioListView').hidden = true; $('#studioDetailView').hidden = false;
     syncFabs();
     scrollTopNow();
-    pushView('studio', '#b2b/studio');
+    pushView('studio', '#/more/studios/studio');
   }
   function closeStudioDetail(){
     $('#studioDetailView').hidden = true; $('#studioListView').hidden = false;
@@ -9934,7 +10137,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#jtWho').textContent = 'Who is this job for?';
     $('#jtOpts').innerHTML = `
       <button type="button" data-jt-direct>💍 Direct client<em>wedding / event</em></button>
-      <button type="button" data-jt-studio ${acts.length ? '' : 'disabled style="opacity:.5"'}>🏢 Studio job<em>${acts.length ? 'B2B — partner studio' : 'add a studio in B2B first'}</em></button>`;
+      <button type="button" data-jt-studio ${acts.length ? '' : 'disabled style="opacity:.5"'}>🏢 Studio job<em>${acts.length ? 'B2B — partner studio' : 'add a studio under More first'}</em></button>`;
   }
   function openJobType(){
     renderJtMain();
@@ -9950,6 +10153,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!canLeaveEditor()) return;
       closeJtUI();
       if($('#pkgView').hidden) $('#tabPkgs').click();
+      if($('#pkgView').hidden) return;   /* the leave-this-page question was answered Cancel */
       openPkgEdit(null);
       return;
     }
@@ -9969,6 +10173,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       closeJtUI();
       if(s){
         if($('#pkgView').hidden) $('#tabPkgs').click();
+        if($('#pkgView').hidden) return;   /* the leave-this-page question was answered Cancel */
         openPkgEdit(null, { studio: s });
       }
     }
@@ -11477,6 +11682,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function renderQaMain(){
     $('#qaOpts').classList.remove('qa-form');
+    /* Over the quotation editor only the rows that open a SHEET are offered.
+       The others change screen, and a screen change from here either has to
+       discard the quotation or strands its history entry — the floating
+       button this replaced was simply not shown over the editor. */
+    if(viewShown('pkgView') && viewShown('pkgEditView')){
+      $('#qaWho').textContent = 'Close this quotation for bookings, payments and the calendar';
+      $('#qaOpts').innerHTML = `
+      <button type="button" data-qa-exp>💸 New expense <em>amount first — travel, food, rent</em></button>
+      <button type="button" data-qa-lead>👤 New lead <em>name + number, that is all</em></button>`;
+      return;
+    }
     $('#qaWho').textContent = 'The things you do most — one tap away';
     $('#qaOpts').innerHTML = `
       <button type="button" data-qa-exp>💸 New expense <em>amount first — travel, food, rent</em></button>
@@ -11659,9 +11875,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-qa-lead]')){ renderQaLead(); return; }
     if(e.target.closest('#qlSave')){ saveQaLead(); return; }
     if(e.target.closest('[data-qa-book]')){
+      /* ＋ is on every screen now, including the one where this form is
+         already open with dates banked on it: opening it again would empty
+         them without asking. Show the form that is there instead. */
+      if(!$('#calAdd').hidden){
+        closeQa();
+        /* the page is scroll-locked until the sheet's Back has landed */
+        setTimeout(()=>{
+          const f = $('#calAdd');
+          if(f && !f.hidden) f.scrollIntoView({ behavior:'smooth', block:'start' });
+        }, 220);
+        return;
+      }
       /* the add-event form is the minimal booking path and already exists —
          it just needs a date chosen, so quick-add starts it on today */
-      closeQaUI(); gotoCalendar(todayISO()); setTimeout(()=>openCalAdd(), 180); return;
+      closeQaUI(); gotoCalendar(todayISO());
+      /* already on Home: no screen change happened, so the menu's own entry
+         is still on top — drop it, or the next Back is a dead press */
+      if(history.state && history.state.view === 'qa') closeQa();
+      /* only if Home really came up: a leave-this-page question can be refused */
+      setTimeout(()=>{ if(viewShown('homeView')) openCalAdd(); }, 220);
+      return;
     }
     if(e.target.closest('[data-qa-new]')){ closeQaUI(); openJobType(); return; }
     if(e.target.closest('[data-qa-pay]')){ renderQaPay(); return; }
@@ -11672,9 +11906,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-qa-today]')){
       closeQaUI();
       gotoCalendar(new Date().toLocaleDateString('en-CA'));
+      if(history.state && history.state.view === 'qa') closeQa();   /* as above */
       return;
     }
-    if(e.target.closest('[data-qa-member]')){ closeQaUI(); $('#tabTeam').click(); openTm(null); return; }
+    if(e.target.closest('[data-qa-member]')){
+      /* the member list is one section of the Team view: name it, or this
+         opened over whichever section was used last */
+      closeQaUI(); go('members');
+      /* refused (dates banked on the add-event form): drop the menu's entry instead */
+      if(viewShown('teamView')) openTm(null); else closeQa();
+      return;
+    }
   });
   /* delegated: #qaPaySearch is created by renderQaPay, so a direct listener
      would bind to nothing at load and then to a replaced element after */
@@ -11693,6 +11935,78 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#fabBtn', 'click', openQa);
   on('#qaClose', 'click', closeQa);
   on('#qaBackdrop', 'click', closeQa);
+
+  /* ---------- the bar's ＋, the section strip, the Money and More menus ----------
+     All doors, no rooms: each of these opens a sheet or a screen that already
+     existed, through the same function its old door called. */
+  on('#navAdd', 'click', openQa);    /* phone: centre of the bottom bar */
+  on('#hdrAdd', 'click', openQa);    /* desktop: in the header */
+  on('#subnav', 'click', e=>{
+    const b = e.target.closest('[data-go]'); if(!b) return;
+    go(b.dataset.go, { replace: true });   /* a move inside one section adds no Back step */
+  });
+  on('#moneyMenu', 'click', e=>{
+    const b = e.target.closest('[data-mny]'); if(!b) return;
+    switch(b.dataset.mny){
+      case 'exp': openExpForm(null); break;
+      case 'tx':  openTx(); break;
+      case 'fin': openFin(); break;
+      case 'ins': openIns(); break;
+      case 'pay': go('paytrack', { replace: true }); break;
+    }
+  });
+  on('#moreMenu', 'click', e=>{
+    const b = e.target.closest('[data-more]'); if(!b) return;
+    const k = b.dataset.more;
+    if(k === 'logout'){ $('#logoutBtn').click(); return; }   /* the same handler, the same questions */
+    if(k === 'trash' || k === 'backup'){
+      /* both are blocks of the Site Config page still: open it on that block */
+      go('settings', { fromMore: true });
+      if(!viewShown('configView')) return;
+      const sec = $$('#configView .sec')[k === 'trash' ? 0 : 1];
+      /* after showTab's own scroll restore, which runs a frame later */
+      if(sec) setTimeout(()=>sec.scrollIntoView({ block:'start' }), 80);
+      return;
+    }
+    go(k, { fromMore: true });
+  });
+  /* One back control, top left. On a full page it presses that page's OWN
+     Back, so the same "discard unsaved changes?" question is asked; on a
+     screen opened from More it returns to More. */
+  on('#hdrBack', 'click', ()=>{
+    if(viewShown('pkgView') && viewShown('pkgEditView')){ $('#pkgBack').click(); return; }
+    if(viewShown('calView') && viewShown('studioDetailView')){ const b = $('#stuBack'); if(b){ b.click(); return; } }
+    if(viewShown('teamView') && viewShown('editView') && viewShown('ejDetailView')){ backFrom('ejob', closeEjDetail); return; }
+    /* Straight back to More — unless dates are banked on the add-event form:
+       then leave through the More button, which asks before they are lost.
+       backFrom latches for 800ms, so a double tap cannot go back twice. */
+    if(history.state && history.state.fromMore && !_qeQueue.length){ backFrom(history.state.view); return; }
+    go('more');
+  });
+  /* tap the screen's name to jump to its top — More's screens have no lit
+     bar item to re-tap */
+  on('#hdrTtl', 'click', ()=>window.scrollTo({ top: 0, behavior: 'smooth' }));
+  /* The counts that used to sit on the B2B and Team tabs, and on the Team
+     section bar, are still WRITTEN there by the same renderers — those
+     buttons are only parked. Mirror them onto what is on screen now: More
+     (partner requests + join requests), its two rows, the Money menu's Crew
+     pay row, and the strip. */
+  function syncMoreBadges(){
+    const n = el => (el && !el.hidden) ? (parseInt(el.textContent, 10) || 0) : 0;
+    const put = (sel, v) => { const b = $(sel); if(!b) return; b.hidden = !v; b.textContent = v ? String(v) : ''; };
+    const stu = n($('#b2bBadge')), team = n($('#teamBadge'));
+    put('#moreStuB', stu); put('#moreTeamB', team); put('#moreBadge', stu + team);
+    const pay = $('#segPayB'), mp = $('#mnyPayB');
+    if(pay && mp){ mp.hidden = pay.hidden; mp.textContent = pay.textContent; mp.title = pay.title || ''; }
+  }
+  (function(){
+    const obs = new MutationObserver(()=>{ syncMoreBadges(); syncShell(); });
+    ['#b2bBadge','#teamBadge','#segPayB','#segEditB'].forEach(sel=>{
+      const el = $(sel);
+      if(el) obs.observe(el, { attributes:true, childList:true, characterData:true, subtree:true });
+    });
+    syncMoreBadges();
+  })();
 
   /* ---------- Global search — one box over every record type ----------
      Was a box that only existed on Home and only knew about packages, leads
@@ -11803,7 +12117,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       case 'crew': {
         const m = TEAM.find(v=>v.id===r.id); if(!m) return;
-        $('#tabTeam').click(); setTeamSeg('crew'); openTm(m);
+        go('members');
+        if(viewShown('teamView')) openTm(m);
         break;
       }
       case 'studio': $('#tabCal').click(); openStudioDetail(r.id); break;
@@ -11984,7 +12299,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#stuJobTerms').textContent = (stu.paymentTerms ? 'Terms: ' + stu.paymentTerms + ' · ' : '')
         + (stu.rateCard && Object.keys(stu.rateCard).length
             ? 'Services quote at this studio\'s negotiated rates.'
-            : 'No rate card saved yet — rates fall back to your normal ones (set the card in B2B → studio → Rate card).');
+            : 'No rate card saved yet — rates fall back to your normal ones (set the card in More → Partner studios → the studio → Rate card).');
       $('#pcEndClient').value = x ? (x.endClientName||'') : '';
       $('#pcWhiteLabel').checked = x ? !!x.whiteLabel : false;
     }else{
@@ -12039,7 +12354,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     syncFabs();
     computePkg();
     scrollTopNow();
-    pushView('pkgedit', '#packages/edit');
+    pushView('pkgedit', '#/work/bookings/edit');
     _pkgBaseline = JSON.stringify(readForm());
     /* last, not earlier: #pcPhone is filled in halfway down this function, so
        anywhere above here it is still holding the PREVIOUS package's number
@@ -12461,15 +12776,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         syncBars();
         /* honour the hash the way the signed-in boot does, so a deep link like
            #editing is testable here instead of always landing on Home */
-        const demoView = (location.hash||'').replace('#','').split('/')[0];
-        showTab(tabOfView(demoView));
-        if(demoView === 'editing') setTeamSeg('edit');
         /* and record it, as the signed-in boot does: without a state on this
            first entry, Back from anything opened on top of it read the
            popstate fallback, 'home', and dropped the demo onto Home */
-        const demoState = demoView === 'editing' ? 'editing'
-          : VIEW_OF_TAB[tabOfView(demoView)];
-        try{ history.replaceState({view: demoState}, '', '#' + demoState); }catch(e){}
+        bootRoute();
 
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */

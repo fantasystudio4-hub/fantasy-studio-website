@@ -1146,8 +1146,9 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
      instead, which is what the base rule does and what this override lost. */
   :root.kb-up .savebar{bottom:var(--kb)}
   /* the ⚡ FAB is fixed bottom-right and was covering the last stat tile
-     once Home is scrolled to the end — give the tile row room to clear it */
-  #homeView > .stats:last-child{margin-bottom:72px}
+     once Home is scrolled to the end — give the tile row room to clear it.
+     Only on a stale page that still shows it: the bar carries ＋ now. */
+  html:not(.shell) #homeView > .stats:last-child{margin-bottom:72px}
   /* offline chip + Install + Config + Logout together squeezed the studio
      name to nothing; drop the tagline first, then the install label */
   .hd .ttl{min-width:52px}
@@ -1423,11 +1424,14 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   /* --- reach --- */
   /* clearance under lists that end behind the stacked FAB pair (⚡ 54px + 🔍
      46px + gaps ≈ 176px of pinned UI above the tab bar) */
-  #homeView > .stats:last-child{margin-bottom:132px}
+  /* Home's 132px tail went with its floating ⚡ (＋ is in the bar now); the
+     B2B list keeps its own, for the ＋ Add studio button that still floats */
   #studioListView{padding-bottom:132px}
-  /* ⚡ now floats over these three lists as well: room for the last record's
-     own buttons to scroll clear of it (54px button + 12px gap) */
-  #leadsView,#pkgListView,#teamView{padding-bottom:66px}
+  /* select mode: the bulk bar wraps to two rows and is taller than the tab
+     bar it replaces — room for the last lead to scroll clear of it */
+  body.has-bulk #leadsView{padding-bottom:66px}
+  /* a stale page still floats ⚡ over the three lists */
+  html:not(.shell) #leadsView,html:not(.shell) #pkgListView,html:not(.shell) #teamView{padding-bottom:66px}
 }
 
 /* The chevron again, at component specificity: .fld/.bar/.itemrow
@@ -2125,3 +2129,57 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .modal__text .rq-note{display:block;margin:.9rem 0 .3rem;font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b)}
 .modal__text .rq-note em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut)}
 .modal__text textarea.input{display:block;white-space:pre-wrap}
+
+
+/* ==========================================================================
+   NAVIGATION SHELL — Home | Leads | ＋ | Work | Money, More in the header
+   The screens are the ones that were always here, shown whole; this block
+   only styles the doors. Last in the file on purpose: it overrides earlier
+   .tabs / .hd rules at equal specificity.
+   ========================================================================== */
+/* html.shell is set by app.js only when THIS page has the new chrome. A stale
+   cached page (old markup) meeting this stylesheet keeps its ⚡ button and its
+   Team section bar — it has nothing else to navigate with. */
+/* the floating ⚡ is retired: ＋ lives in the bar (phone) or the header (desktop) */
+html.shell #fabBtn{display:none}
+/* the Team view's own section bar: its four sections are screens of Work,
+   Money and More now, switched from the strip under the header */
+html.shell #teamSegs{display:none}
+
+/* ---- header: back arrow, screen title, More ---- */
+.hd .ttl{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hd .hback{padding:0;width:var(--tap);font-size:var(--fs-2xl);line-height:1;color:var(--gold-b);border-color:var(--line-3)}
+.hd .more{position:relative;color:var(--text)}
+.hd .more.on{border-color:var(--gold);color:var(--gold-b);background:var(--gold-t3)}
+.hd .more .badge{position:absolute;top:-5px;right:-4px;background:var(--err);color:var(--ink-0);font-size:var(--fs-xs);font-weight:600;
+  border-radius:var(--r-md);padding:.05em .45em;line-height:1.5;font-family:var(--sans)}
+.hd .add{border-color:var(--gold);color:var(--gold-b)}
+@media(max-width:699px){
+  .hd .add{display:none}                    /* the bar has it */
+  #hdr.has-back .hd > svg{display:none}     /* the arrow takes the mark's place; the title keeps its room */
+}
+
+/* ---- bottom bar: the ＋ ---- */
+@media(max-width:699px){
+  .tabs .plus{flex:0 0 auto;width:64px;padding:0;justify-content:center}
+  .tabs .plus i{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--grad-gold);
+    color:var(--ink-0);font-size:1.7rem;line-height:1;font-weight:600;filter:none;opacity:1;box-shadow:0 4px 12px rgba(var(--gold-d-rgb),.4)}
+  .tabs .plus span{display:none}            /* the gold disc says it; aria-label carries the words */
+  .tabs .plus:active i{transform:scale(.93)}
+}
+@media(min-width:700px){
+  .tabs .plus{display:none}                 /* desktop: ＋ Add sits in the sticky header instead */
+}
+
+/* ---- the section strip (Work: Bookings | Crew | Editing · Money: Overview | Crew pay) ----
+   Reuses .tsegs — the same sticky bar the Team view used for its sections. */
+.subnav{margin-top:0}
+@media(min-width:700px){ .subnav{margin-top:-.4rem} }
+
+/* ---- Money and More: a short list of doors ---- */
+.menu{margin:1rem 0 .5rem}
+.menu button{min-height:56px}
+.menu .badge{flex:0 0 auto;background:var(--err);color:var(--ink-0);font-size:var(--fs-xs);font-weight:600;border-radius:var(--r-md);
+  padding:.05em .5em;line-height:1.5;font-family:var(--sans)}
+.menu button em{order:1}                    /* the hint is a full-width second line (ui.css) */
+.menu .badge{margin-left:auto}             /* so the count rides the label line, right-aligned */
