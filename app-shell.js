@@ -140,6 +140,8 @@
     });
     st.nav = nav;
     document.body.appendChild(nav);
+    /* the Portfolio page switches screenshot blocking on; any other page of the app has it off */
+    if(st.portal !== 'portfolio'){ try{ var PS = FSApp.native.plugin('PrivacyScreen'); if(PS) PS.disable().catch(function(){}); }catch(e){} }
 
     evalHidden();
     var saved = null;

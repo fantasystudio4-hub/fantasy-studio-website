@@ -190,7 +190,7 @@ if(FS.DEMO_VIEW){
   onSnapshot(rq, s => {
     const st = s.exists() ? (s.data().status || 'pending') : null;
     if(s.exists()){ const d = s.data(); WHO = ((d.name || 'Guest') + ' · ' + String(d.phone10 || '').replace(/\d(?=\d{4})/g, '•')).trim(); }
-    if(st === 'approved'){ view('vGal'); setMark(); if(!galOn){ galOn = true; startGallery(); } }
+    if(st === 'approved'){ view('vGal'); privacy(true); if(!galOn){ galOn = true; startGallery(); } }
     else if(st === 'pending') view('vWait');
     else if(st === 'declined') view('vNo');
     else view('vAsk');
@@ -227,6 +227,17 @@ document.addEventListener('keydown', e => {
   if(k === 'printscreen'){ try{ navigator.clipboard.writeText(''); }catch(x){} }
 });
 document.addEventListener('visibilitychange', () => { const v = document.querySelector('#lbStage video'); if(document.hidden && v) v.pause(); });
+
+/* Store app: block screenshots and screen recording while the gallery is on screen
+   (Android FLAG_SECURE, iOS secure view). The plugin ships in app build 1.2; older builds
+   have no PrivacyScreen and this does nothing. Off again the moment the page is left. */
+function privacy(on){
+  try{
+    const P = window.FSApp && FSApp.native && FSApp.native.plugin('PrivacyScreen'); if(!P) return;
+    (on ? P.enable() : P.disable()).catch(() => {});
+  }catch(e){}
+}
+addEventListener('pagehide', () => privacy(false));
 /* ---------- gallery ---------- */
 let ITEMS = [], FILTER = 'all', SHOWN = [], IDX = 0;
 const TABS = [['all', 'All'], ['video', 'Films'], ['reel', 'Reels'], ['photo', 'Photos']];
