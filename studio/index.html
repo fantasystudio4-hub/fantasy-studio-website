@@ -337,6 +337,23 @@ textarea.rq-in{resize:vertical;min-height:84px}
   font-size:.9rem;font-weight:600;color:var(--mut);text-align:center}
 .rq-seg input:checked + span{background:linear-gradient(135deg,var(--gold),var(--gold-b));color:var(--ink)}
 .rq-seg input:focus-visible + span{outline:2px solid var(--gold-b);outline-offset:2px}
+.rq-top{position:sticky;top:-1rem;z-index:3;background:#1c1710;margin:-.2rem -1.2rem 0;padding:.2rem 1.2rem .1rem}
+.rq-foot{position:sticky;bottom:calc(-1.2rem - max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));z-index:3;background:#1c1710;
+  margin:1rem -1.2rem calc(-1.2rem - max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));
+  padding:.7rem 1.2rem calc(.7rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));border-top:1px solid var(--line);box-shadow:0 -10px 18px rgba(0,0,0,.35)}
+.rq-foot .rq-send{margin-top:0}
+.rq-tot{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-bottom:.5rem;font-size:.84rem;color:var(--mut)}
+.rq-tot b{color:var(--gold-b);font-size:1.05rem;font-variant-numeric:tabular-nums}
+.rq-chips{display:flex;gap:.4rem;overflow-x:auto;margin-top:.5rem;padding-bottom:.15rem;scrollbar-width:none}
+.rq-chips::-webkit-scrollbar{display:none}
+.rq-chips button{flex:none;min-height:36px;padding:0 .8rem;border:1px solid var(--line);border-radius:999px;background:none;color:var(--text);font:inherit;font-size:.82rem;cursor:pointer}
+.rq-chips button:active,.rq-chips button.on{background:rgba(184,144,43,.18);border-color:var(--gold-b);color:var(--gold-b)}
+.rq-more-h{cursor:pointer;min-height:44px;gap:.5rem}
+.rq-more-h .mf-t{flex:1;min-width:0;line-height:1.35}
+.rq-chev{flex:none;font-style:normal;color:var(--gold-b);transition:transform .2s}
+.rq-more.shut .rq-chev{transform:rotate(180deg)}
+.rq-more.shut > :not(.rq-more-h){display:none}
+.rq-more.shut .rq-more-h{margin-bottom:0}
 .rq-more{margin-top:.7rem;padding:.7rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
 .rq-more-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
 .rq-more-h .rq-l{margin:0}
@@ -637,6 +654,12 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <select class="rq-in" id="reqStu"></select>
     </div>
     <div class="rq-f">
+      <label class="rq-l" for="reqEnd">Your client's name <small>(optional)</small></label>
+      <input class="rq-in" id="reqEnd" type="text" maxlength="120" autocapitalize="words" enterkeyhint="next" placeholder="e.g. Ayesha &amp; Farhan" />
+    </div>
+    <div class="rq-more" id="reqCard1">
+    <div class="rq-more-h" role="button" tabindex="0" aria-expanded="true"><span class="rq-l mf-t">Function 1</span><i class="rq-chev" aria-hidden="true">⌃</i></div>
+    <div class="rq-f">
       <label class="rq-l" for="reqDate">Date</label>
       <!-- an empty date input is a blank box on an iPhone: .rq-ph says what
            goes in it until a date is set (reqDateCue) -->
@@ -666,15 +689,12 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
         <option value="Wedding"></option><option value="Ruksati"></option><option value="Valima / Reception"></option>
         <option value="Engagement"></option><option value="Birthday"></option>
       </datalist>
+      <div class="rq-chips" aria-label="Quick pick"></div>
       <div class="rq-err" id="reqFnErr" role="alert" hidden></div>
     </div>
     <div class="rq-f">
       <label class="rq-l" for="reqVenue">Venue</label>
-      <input class="rq-in" id="reqVenue" type="text" maxlength="160" placeholder="Hall or address" autocapitalize="words" enterkeyhint="next" />
-    </div>
-    <div class="rq-f">
-      <label class="rq-l" for="reqEnd">Your client's name <small>(optional)</small></label>
-      <input class="rq-in" id="reqEnd" type="text" maxlength="120" autocapitalize="words" enterkeyhint="done" />
+      <input class="rq-in" id="reqVenue" type="text" maxlength="160" placeholder="Hall or address" autocapitalize="words" enterkeyhint="done" />
     </div>
     <div class="rq-f">
       <span class="rq-l" id="reqCovL">Coverage <small>at your agreed rates</small></span>
@@ -687,6 +707,7 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <label class="rq-l" for="reqNotes">Notes <small>(optional)</small></label>
       <textarea class="rq-in" id="reqNotes" rows="3" maxlength="1000" placeholder="Timings, special shots, anything we should know"></textarea>
     </div>
+    </div>
     <!-- more functions on other dates (a wedding and a reception): each is a
          full card of its own — date, slot, function, venue, coverage, notes —
          and goes as its own request -->
@@ -694,9 +715,12 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <button class="rq-add" type="button" id="reqAddFn">＋ Add another function on a different date</button>
     <div class="rq-err" id="reqMoreErr" role="alert" hidden></div>
     <div class="err" id="reqErr" role="alert" hidden></div>
-    <button class="reqbtn rq-send" type="submit" id="reqSend">Send request</button>
-    <p class="note" id="reqSlow" style="margin-top:.5rem" hidden>Taking longer than usual. Your request sends as soon as the connection is back — you can close this.</p>
-    <a class="rq-wa" id="reqWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">or message us on WhatsApp</a>
+    <div class="rq-foot">
+      <div class="rq-tot" id="reqTotRow" hidden><span id="reqTotN"></span><b id="reqTot"></b></div>
+      <button class="reqbtn rq-send" type="submit" id="reqSend">Send request</button>
+      <p class="note" id="reqSlow" style="margin-top:.5rem" hidden>Taking longer than usual. Your request sends as soon as the connection is back — you can close this.</p>
+      <a class="rq-wa" id="reqWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">or message us on WhatsApp</a>
+    </div>
   </form>
 </div>
 
@@ -2260,17 +2284,38 @@ function reqDateCue(){
   d.classList.toggle('rq-nodate', !d.value && !(d.validity && d.validity.badInput));   /* not .empty: that is the page's empty-state panel */
 }
 const REQ_MAX_FN = 6;
+const REQ_CHIPS = ['Nikah','Mehndi','Haldi','Sangeet','Reception','Engagement','Ruksati','Birthday'];
+const chipsHTML = () => REQ_CHIPS.map(c=>`<button type="button" data-chip="${c}">${c}</button>`).join('');
+document.querySelectorAll('#reqCard1 .rq-chips').forEach(e=>{ e.innerHTML = chipsHTML(); });
+const estOf = q => _reqRows.reduce((t, [svc, rate])=>t + ((q && q.get(svc)) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
+const slotWord = v => v === 'morning' ? 'Morning' : v === 'evening' ? 'Evening' : v === 'full' ? 'Full day' : '';
+function reqTotal(){
+  const cards = [{ q:_reqQty }, ...mfCards().map(c=>({ q:c._qty }))];
+  const n = cards.length, tot = cards.reduce((t, c)=>t + estOf(c.q), 0);
+  const any = _reqRows.length && (reqItems().length || mfCards().some(c=>mfItems(c).length));
+  $('#reqTotRow').hidden = !any;
+  $('#reqTotN').textContent = n > 1 ? n + ' functions · estimate' : 'Estimate';
+  $('#reqTot').textContent = inr(tot);
+}
+function mfSummary(label, date, slot, fn, est){
+  return label + (fn || isDate(date) ? ' — ' + [fn, isDate(date) ? availWhen(date) : '', slotWord(slot), est ? inr(est) : ''].filter(Boolean).join(' · ') : '');
+}
+function mfSetShut(c, shut){
+  c.classList.toggle('shut', shut);
+  const h = c.querySelector('.rq-more-h'); if(h) h.setAttribute('aria-expanded', shut ? 'false' : 'true');
+}
 let _mfN = 0;   /* card numbering for unique radio names */
 const mfCards = () => [...document.querySelectorAll('#reqMore .rq-more')];
 const mfLine = (v, n) => String(v||'').replace(/\s+/g, ' ').trim().slice(0, n);
 /* every card's heading follows its own date and function, and the numbers
    close up when one is removed */
 function mfHeads(){
+  $('#reqCard1 .mf-t').textContent = mfSummary('Function 1', $('#reqDate').value, reqSlot(), mfLine($('#reqFn').value, 40), estOf(_reqQty));
   mfCards().forEach((c, i)=>{
-    const d = c.querySelector('.mf-date').value, fn = mfLine(c.querySelector('.mf-fn').value, 40);
-    const when = isDate(d) ? availWhen(d) : '';
-    c.querySelector('.mf-t').textContent = 'Function ' + (i + 2) + (fn || when ? ' — ' + [fn, when].filter(Boolean).join(' · ') : '');
+    const sl = (c.querySelector('input[type=radio]:checked') || {}).value || '';
+    c.querySelector('.mf-t').textContent = mfSummary('Function ' + (i + 2), c.querySelector('.mf-date').value, sl, mfLine(c.querySelector('.mf-fn').value, 40), estOf(c._qty));
   });
+  reqTotal();
   const n = mfCards().length + 1;
   $('#reqAddFn').textContent = n === 1 ? '＋ Add another function on a different date' : '＋ Add another function (' + n + ' so far)';
   reqBusyPaint();
@@ -2296,6 +2341,7 @@ function mfEst(c){
   const q = c._qty || new Map();
   const est = _reqRows.reduce((t, [svc, rate])=>t + (q.get(svc) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
   c.querySelector('.mf-est').textContent = mfItems(c).length ? inr(est) : '—';
+  mfHeads();
 }
 async function mfAvail(c){
   const el = c.querySelector('.rq-av'), date = c.querySelector('.mf-date').value;
@@ -2321,7 +2367,7 @@ function reqAddFn(){
   c._qty = new Map();
   /* the first function's venue and coverage are the likeliest answer here too */
   _reqQty.forEach((v, k)=>c._qty.set(k, v));
-  c.innerHTML = `<div class="rq-more-h"><span class="rq-l mf-t">Function</span><button class="rq-rm" type="button">Remove</button></div>
+  c.innerHTML = `<div class="rq-more-h" role="button" tabindex="0" aria-expanded="true"><span class="rq-l mf-t">Function</span><button class="rq-rm" type="button">Remove</button><i class="rq-chev" aria-hidden="true">⌃</i></div>
     <div class="rq-f"><label class="rq-l" for="mfd${n}">Date</label>
       <div class="rq-date"><input class="rq-in rq-nodate mf-date" id="mfd${n}" type="date" min="${todayISO()}" />
       <span class="rq-ph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2zM5 10v10h14V10H5z"/></svg>Choose a date</span></div></div>
@@ -2332,7 +2378,8 @@ function reqAddFn(){
         <label><input type="radio" name="mfSlot${n}" value="full" /><span>Full day</span></label>
       </div><div class="rq-av" aria-live="polite"></div></div>
     <div class="rq-f"><label class="rq-l" for="mff${n}">Function</label>
-      <input class="rq-in mf-fn" id="mff${n}" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" /></div>
+      <input class="rq-in mf-fn" id="mff${n}" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" />
+      <div class="rq-chips" aria-label="Quick pick">${chipsHTML()}</div></div>
     <div class="rq-f"><label class="rq-l" for="mfv${n}">Venue</label>
       <input class="rq-in mf-venue" id="mfv${n}" type="text" maxlength="160" placeholder="Hall or address" autocapitalize="words" /></div>
     <div class="rq-f"><span class="rq-l">Coverage <small>at your agreed rates</small></span>
@@ -2342,6 +2389,7 @@ function reqAddFn(){
       <textarea class="rq-in mf-notes" id="mfn${n}" rows="2" maxlength="1000" placeholder="Timings, special shots, anything we should know"></textarea></div>
     <div class="rq-err mf-err" role="alert" hidden></div>`;
   c.querySelector('.mf-venue').value = $('#reqVenue').value;
+  [$('#reqCard1'), ...mfCards()].forEach(x=>mfSetShut(x, true));
   box.appendChild(c);
   mfPaintCov(c); mfHeads();
   try{ c.scrollIntoView({ block:'nearest' }); c.querySelector('.mf-date').focus({ preventScroll:true }); }catch(e){}
@@ -2357,6 +2405,21 @@ function reqMoreRows(){
     items:mfItems(c) }));
 }
 $('#reqAddFn').addEventListener('click', reqAddFn);
+/* tap a card's heading to fold or open it; a chip fills the function */
+function mfToggle(e){
+  const h = e.target.closest('.rq-more-h'); if(!h || e.target.closest('.rq-rm')) return;
+  if(e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+  if(e.type === 'keydown') e.preventDefault();
+  const c = h.closest('.rq-more'); mfSetShut(c, !c.classList.contains('shut'));
+}
+$('#reqForm').addEventListener('click', e=>{
+  mfToggle(e);
+  const b = e.target.closest('[data-chip]'); if(!b) return;
+  const inp = b.closest('.rq-more').querySelector('input[list="reqFnList"]');
+  inp.value = b.dataset.chip; inp.dispatchEvent(new Event('input', { bubbles:true }));
+  b.closest('.rq-chips').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x === b));
+});
+$('#reqForm').addEventListener('keydown', mfToggle);
 $('#reqMore').addEventListener('click', e=>{
   const c = e.target.closest('.rq-more'); if(!c) return;
   if(e.target.classList.contains('rq-rm')){ c.remove(); $('#reqMoreErr').hidden = true; mfHeads(); return; }
@@ -2383,7 +2446,8 @@ $('#reqMore').addEventListener('input', e=>{
    sheet keeps what was typed, so a stray Back loses nothing. */
 function reqReset(){
   $('#reqForm').reset();
-  $('#reqMore').textContent = ''; $('#reqMoreErr').hidden = true;
+  $('#reqMore').textContent = ''; $('#reqMoreErr').hidden = true; mfSetShut($('#reqCard1'), false);
+  document.querySelectorAll('#reqCard1 .rq-chips .on').forEach(x=>x.classList.remove('on'));
   reqDateCue();
   _reqQty = new Map(); _reqStuId = '';
   _reqBusy = false; reqBusyPaint();
@@ -2402,6 +2466,7 @@ function reqPaintStu(){
 function reqPaintEst(){
   const est = _reqRows.reduce((s, [svc, rate])=>s + (_reqQty.get(svc) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
   $('#reqEst').textContent = reqItems().length ? inr(est) : '—';
+  if(typeof mfHeads === 'function') mfHeads();
 }
 function reqPaintCov(){
   _reqRows = rateRows(reqStu());
@@ -2591,13 +2656,13 @@ $('#reqForm').addEventListener('input', e=>{
   }
   if(e.target.name === 'reqSlot'){ reqFieldErr('Slot', ''); reqPaintAvail(); }
   if(id === 'reqFn' && e.target.value.trim()) reqFieldErr('Fn', '');
-  reqWaHref();
+  reqWaHref(); mfHeads();
 });
 $('#reqDate').addEventListener('blur', reqDateCue);
 /* The keyboard's action key never sends the request: in a one-line field it
    moves on (Function → Venue → your client's name, which puts the keyboard
    away), and on the date or a slot it does nothing. Only Send sends. */
-const REQ_NEXT = { reqFn:'reqVenue', reqVenue:'reqEnd' };
+const REQ_NEXT = { reqEnd:'reqDate', reqFn:'reqVenue' };
 $('#reqForm').addEventListener('keydown', e=>{
   if(e.key !== 'Enter' || e.isComposing) return;
   const el = e.target;
@@ -2605,7 +2670,7 @@ $('#reqForm').addEventListener('keydown', e=>{
   e.preventDefault();
   const next = REQ_NEXT[el.id] ? $('#' + REQ_NEXT[el.id]) : null;
   if(next) next.focus();
-  else if(el.id === 'reqEnd'){
+  else if(el.id === 'reqVenue'){
     /* the keyboard goes; the focus stays in the dialog, not on the page under it */
     el.blur();
     try{ $('#reqSheet').focus({ preventScroll:true }); }catch(err){}
@@ -2692,11 +2757,12 @@ $('#reqForm').addEventListener('submit', async e=>{
     else if(!m.title){ msg = 'Tell us the function, for example Reception.'; at = '.mf-fn'; }
     else if(seen.has(m.date + '|' + m.slot)){ msg = 'Two functions share the same date and slot — change one.'; }
     else if(m.items.length > REQ_MAX_ITEMS){ msg = 'A request takes up to ' + REQ_MAX_ITEMS + ' services — put the rest in the notes.'; at = '.mf-cov button'; }
-    if(msg){ const er = m.el.querySelector('.mf-err'); er.textContent = msg; er.hidden = false; if(!bad) bad = m.el.querySelector(at); continue; }
+    if(msg){ mfSetShut(m.el, false); const er = m.el.querySelector('.mf-err'); er.textContent = msg; er.hidden = false; if(!bad) bad = m.el.querySelector(at); continue; }
     seen.add(m.date + '|' + m.slot);
   }
   if(items.length > REQ_MAX_ITEMS) fail('Cov', 'A request takes up to ' + REQ_MAX_ITEMS + ' services — put the rest in the notes.', $('#reqCov button'));
   if(bad){
+    const bc = bad.closest('.rq-more'); if(bc) mfSetShut(bc, false);
     try{ bad.focus({ preventScroll:true }); (bad.closest('.rq-f') || bad).scrollIntoView({ block:'nearest' }); }catch(err){}
     return;
   }
