@@ -3,7 +3,8 @@
    cache is the offline fallback), network-first-with-timeout for ALL
    executable code (see isCode below), and stale-while-revalidate for the
    remaining assets (images, fonts, manifest). */
-const CACHE = 'fs-cache-v19';   // v19: executable code is never cache-first — firebase-config.js,
+const CACHE = 'fs-cache-v20';   // v20: the Portfolio admin script is app code (network-first, below)
+                                // v19: executable code is never cache-first — firebase-config.js,
                                 //      pdf-template.js, the Firebase SDK modules and jsPDF
                                 //      joined the app code below; opaque responses are kept
                                 //      for the font hosts only
@@ -24,7 +25,7 @@ const PREFIX = 'fs-cache-';
 // later has to be chosen for the network-first branch, not swept into it by
 // accident. (admin/_demo-data.js is the one script left out: it is imported
 // with a Date.now() query, so no two loads share a cache key.)
-const APP_CODE = /\/(app|app-shell|tokens|ui|catalog|fs-auth|avail|firebase-config|pdf-template)\.(js|css)$/;
+const APP_CODE = /\/(app|app-shell|tokens|ui|catalog|fs-auth|avail|firebase-config|pdf-template|portfolio)\.(js|css)$/;
 // Only the public shell. The admin and client apps used to be precached here,
 // which cost every first-time visitor ~133 KB for two pages they will never
 // open; both are cached on their own first visit by the asset path below.

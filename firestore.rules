@@ -783,7 +783,8 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 80
         && request.resource.data.phoneFull is string
-        && request.resource.data.phoneFull.size() <= 20;
+        && request.resource.data.phoneFull.size() <= 20
+        && request.resource.data.phoneFull == request.auth.token.phone_number;
       allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow list, update, delete: if isAdmin();
     }

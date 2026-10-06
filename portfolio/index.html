@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <script>if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');</script>
 <link rel="stylesheet" href="../app-shell.css" />
 <script src="../app-shell.js"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Our Portfolio — Fantasy Studio</title>
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#14110a" />
@@ -17,7 +17,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--ink);color:var(--paper);font-family:'Jost',sans-serif;line-height:1.6;padding:calc(16px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 16px calc(40px + env(safe-area-inset-bottom))}
-main{max-width:980px;margin:0 auto}
+main{max-width:980px;margin:0 auto;padding-bottom:28px}
 .top{display:flex;align-items:center;gap:.8rem;margin-bottom:1.4rem}
 .back{background:none;border:1px solid var(--line);color:var(--paper);border-radius:999px;padding:.45rem 1rem;font:inherit;font-size:.88rem;cursor:pointer;min-height:40px}
 .brand{font-family:'Playfair Display',serif;font-weight:700;letter-spacing:.02em}
@@ -41,12 +41,12 @@ h1 em{font-style:normal;color:var(--gold-b)}
 .tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:1.2rem 0}
 .tabs button{font:inherit;font-size:.88rem;background:none;color:var(--paper);border:1px solid var(--line);border-radius:999px;padding:.4rem 1rem;min-height:40px;cursor:pointer}
 .tabs button[aria-pressed=true]{background:rgba(184,144,43,.25);border-color:var(--gold)}
-.grid{columns:2;column-gap:.6rem}
-@media(min-width:700px){.grid{columns:3}}
-.tile{break-inside:avoid;margin-bottom:.6rem;position:relative;border-radius:12px;overflow:hidden;background:#0f0d08;border:1px solid var(--line);cursor:pointer;display:block;width:100%;padding:0;color:inherit;font:inherit;text-align:left}
-.tile img{display:block;width:100%;height:auto}
-.tile .ph{aspect-ratio:16/10;background:#0f0d08}
-.tile.reel .ph,.tile.reel img{aspect-ratio:9/16;object-fit:cover}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;align-items:start}
+.tile.video{grid-column:1/-1}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tile.video{grid-column:span 2}}
+.tile{position:relative;border-radius:12px;overflow:hidden;background:#0f0d08;border:1px solid var(--line);cursor:pointer;display:block;width:100%;padding:0;color:inherit;font:inherit;text-align:left}
+.tile img{display:block;width:100%;height:100%;object-fit:cover}
+.tile .ph{width:100%;height:100%;background:#0f0d08}
 .tile .play{position:absolute;inset:0;display:grid;place-items:center;font-size:2.2rem;background:linear-gradient(transparent 55%,rgba(0,0,0,.55));text-shadow:0 2px 8px #000}
 .tile .cap{position:absolute;left:.6rem;right:.6rem;bottom:.5rem;font-size:.8rem;color:#fff;text-shadow:0 1px 6px #000}
 .empty{color:var(--mut);padding:2rem 0}
@@ -56,7 +56,7 @@ h1 em{font-style:normal;color:var(--gold-b)}
 .lb button{position:absolute;background:rgba(0,0,0,.55);color:#fff;border:1px solid var(--line);border-radius:50%;width:46px;height:46px;font-size:1.3rem;cursor:pointer}
 .lb .x{top:calc(12px + env(safe-area-inset-top));right:12px}
 .lb .p{left:10px;top:50%}.lb .n{right:10px;top:50%}
-.lb .t{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center;font-size:.9rem;color:#fff;text-shadow:0 1px 6px #000;padding:0 70px}
+.lb .t{pointer-events:none;position:absolute;left:0;right:0;top:calc(20px + env(safe-area-inset-top));text-align:center;font-size:.9rem;color:#fff;text-shadow:0 1px 6px #000;padding:0 70px}
 /* Pardah: no saving, no selecting, no printing, and every viewer's name over the work */
 #vGal,.lb{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #vGal img,.lb img,.lb video{-webkit-user-drag:none;user-drag:none}
@@ -187,13 +187,19 @@ if(FS.DEMO_VIEW){
 }else{
   const rq = doc(FS.db, 'portfolioRequests', user.uid);
   let galOn = false;
-  onSnapshot(rq, s => {
+  onSnapshot(rq, { includeMetadataChanges: true }, s => {
+    /* no answer from the server yet and nothing cached: keep "Loading" rather than offer the
+       form to someone who may already have asked */
+    if(!s.exists() && s.metadata.fromCache){ view('load'); $('#load').textContent = 'Connecting…'; return; }
     const st = s.exists() ? (s.data().status || 'pending') : null;
     if(s.exists()){ const d = s.data(); WHO = ((d.name || 'Guest') + ' · ' + String(d.phone10 || '').replace(/\d(?=\d{4})/g, '•')).trim(); }
     if(st === 'approved'){ view('vGal'); privacy(true); if(!galOn){ galOn = true; startGallery(); } }
-    else if(st === 'pending') view('vWait');
-    else if(st === 'declined') view('vNo');
-    else view('vAsk');
+    else{
+      /* access taken away (or never given): stop listening, empty the gallery, close the viewer */
+      privacy(false);
+      if(galOn){ galOn = false; if(galUnsub){ galUnsub(); galUnsub = null; } ITEMS = []; SHOWN = []; $('#grid').innerHTML = ''; closeLb(); }
+      view(st === 'pending' ? 'vWait' : st === 'declined' ? 'vNo' : 'vAsk');
+    }
   }, () => { $('#load').hidden = false; $('#load').textContent = 'Could not load. Please check your connection and try again.'; });
 
   $('#askForm').addEventListener('submit', async e => {
@@ -241,24 +247,27 @@ addEventListener('pagehide', () => privacy(false));
 /* ---------- gallery ---------- */
 let ITEMS = [], FILTER = 'all', SHOWN = [], IDX = 0;
 const TABS = [['all', 'All'], ['video', 'Films'], ['reel', 'Reels'], ['photo', 'Photos']];
+let galUnsub = null;
 function startGallery(){
-  onSnapshot(query(collection(FS.db, 'portfolio'), orderBy('order')), s => {
+  galUnsub = onSnapshot(query(collection(FS.db, 'portfolio'), orderBy('order')), s => {
     ITEMS = s.docs.map(d => ({ id: d.id, ...d.data() }));
     drawTabs(); drawGrid();
   }, () => { $('#none').hidden = false; $('#none').textContent = 'The portfolio could not load. Please try again.'; });
 }
 function drawTabs(){
   const have = k => k === 'all' || ITEMS.some(i => i.kind === k);
-  $('#tabs').innerHTML = TABS.filter(t => have(t[0])).map(t => `<button type="button" data-k="${t[0]}" aria-pressed="${t[0] === FILTER}">${t[1]}</button>`).join('');
   if(!have(FILTER)) FILTER = 'all';
+  $('#tabs').innerHTML = TABS.filter(t => have(t[0])).map(t => `<button type="button" data-k="${t[0]}" aria-pressed="${t[0] === FILTER}">${t[1]}</button>`).join('');
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if(!b) return; FILTER = b.dataset.k; drawTabs(); drawGrid(); });
 function drawGrid(){
   SHOWN = ITEMS.filter(i => FILTER === 'all' || i.kind === FILTER);
+  if(!$('#lb').hidden){ const k = SHOWN.findIndex(x => x.id === CUR); if(k < 0) closeLb(); else IDX = k; }
   $('#none').hidden = SHOWN.length > 0;
   $('#grid').innerHTML = SHOWN.map((it, i) => {
     const poster = it.thumb || (it.kind === 'photo' ? it.url : '');
-    return `<button class="tile ${it.kind === 'reel' ? 'reel' : ''}" type="button" data-i="${i}" aria-label="${esc(it.title || 'Open')}">`
+    const ar = it.w > 0 && it.h > 0 ? it.w + '/' + it.h : it.kind === 'reel' ? '9/16' : it.kind === 'video' ? '16/9' : '4/5';
+    return `<button class="tile ${esc(it.kind)}" style="aspect-ratio:${ar}" type="button" data-i="${i}" aria-label="${esc(it.title || 'Open')}">`
       + (poster ? `<img src="${esc(poster)}" loading="lazy" alt="${esc(it.title || '')}" />` : '<div class="ph"></div>')
       + (it.kind !== 'photo' ? '<span class="play" aria-hidden="true">▶</span>' : '')
       + (it.title ? `<span class="cap">${esc(it.title)}</span>` : '') + '</button>';
@@ -267,9 +276,17 @@ function drawGrid(){
 $('#grid').addEventListener('click', e => { const b = e.target.closest('.tile'); if(b) openLb(+b.dataset.i); });
 
 /* ---------- viewer ---------- */
+let CUR = '', LB_PUSHED = false;
 function openLb(i){
   IDX = (i + SHOWN.length) % SHOWN.length;
   const it = SHOWN[IDX]; if(!it) return;
+  CUR = it.id;
+  if($('#lb').hidden){
+    /* the viewer gets its own history entry, so the phone's Back closes it instead of leaving the page */
+    try{ history.pushState(Object.assign({}, history.state, { lb: 1 }), ''); LB_PUSHED = true; }catch(e){}
+    /* the app's tab bar would sit on top of the video controls */
+    try{ if(window.FSApp) FSApp.hide(); }catch(e){}
+  }
   const st = $('#lbStage');
   st.innerHTML = it.kind === 'photo'
     ? `<img src="${esc(it.url)}" alt="${esc(it.title || '')}" />`
@@ -278,8 +295,14 @@ function openLb(i){
   $('#lb').hidden = false; document.body.style.overflow = 'hidden';
   const one = SHOWN.length < 2; $('#lbP').hidden = $('#lbN').hidden = one;
 }
-function closeLb(){ $('#lb').hidden = true; $('#lbStage').innerHTML = ''; document.body.style.overflow = ''; }
-$('#lbX').addEventListener('click', closeLb);
+function closeLb(fromPop){
+  const was = !$('#lb').hidden;
+  $('#lb').hidden = true; $('#lbStage').innerHTML = ''; document.body.style.overflow = '';
+  try{ if(was && window.FSApp) FSApp.show(); }catch(e){}
+  if(LB_PUSHED){ LB_PUSHED = false; if(fromPop !== true){ try{ history.back(); }catch(e){} } }
+}
+addEventListener('popstate', () => { if(!$('#lb').hidden){ LB_PUSHED = false; closeLb(true); } });
+$('#lbX').addEventListener('click', () => closeLb());
 $('#lbP').addEventListener('click', () => openLb(IDX - 1));
 $('#lbN').addEventListener('click', () => openLb(IDX + 1));
 $('#lb').addEventListener('click', e => { if(e.target === $('#lb') || e.target === $('#lbStage')) closeLb(); });

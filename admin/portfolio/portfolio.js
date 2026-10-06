@@ -101,7 +101,14 @@ function put(path, blob, type, onProg){
     task.on('state_changed', s => onProg && onProg(s.bytesTransferred / s.totalBytes), no, async () => ok({ url: await getDownloadURL(task.snapshot.ref), path }));
   });
 }
+/* leaving mid-upload kills it: ask first */
+let UPLOADING = 0;
+addEventListener('beforeunload', e => { if(UPLOADING > 0){ e.preventDefault(); e.returnValue = ''; } });
 async function uploadAll(files){
+  UPLOADING++;
+  try{ await uploadBatch(files); } finally{ UPLOADING--; }
+}
+async function uploadBatch(files){
   const kind = document.querySelector('input[name=kind]:checked').value;
   const title = $('#title').value.trim().slice(0, 80);
   $('#upErr').hidden = true;
@@ -114,6 +121,7 @@ async function uploadAll(files){
     try{
       const isImg = kind === 'photo';
       if(isImg !== file.type.startsWith('image/') || (!isImg && !file.type.startsWith('video/'))) throw new Error(isImg ? 'not a photo' : 'not a video');
+      if(!isImg && file.size >= 500 * 1048576) throw new Error('too big (' + Math.round(file.size / 1048576) + ' MB, the limit is 500 MB). Export it at 6-8 Mbps first.');
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       let main, thumb = null, w = 0, h = 0;
       if(isImg){
@@ -126,6 +134,7 @@ async function uploadAll(files){
         if(p){ thumb = p.blob; w = p.vw; h = p.vh; }
         /* a heavy file stalls on a phone: ~8 Mbps (1080p, H.264) plays smoothly on mobile data */
         const mbps = p && p.dur > 1 ? file.size * 8 / p.dur / 1e6 : 0;
+        if(!p && file.size > 150 * 1048576 && !confirm('This video is ' + Math.round(file.size / 1048576) + ' MB and I could not read its length or make a preview. On a phone it may pause to load.\n\nUpload it anyway?')){ row.remove(); continue; }
         if(mbps > 10 && !confirm(`This video is very heavy (about ${mbps.toFixed(0)} Mbps, ${(file.size / 1048576).toFixed(0)} MB for ${Math.round(p.dur)} s). On a phone it will pause to load.\n\nFor smooth playback export it as 1080p H.264 at about 6-8 Mbps (a 1-minute film is then ~50 MB).\n\nUpload it anyway?`)){ row.remove(); continue; }
         main = { blob: file, type: file.type, ext: (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4' };
       }
@@ -140,21 +149,24 @@ async function uploadAll(files){
       bar.style.width = '100%'; note.textContent = 'Done ✓';
       setTimeout(() => row.remove(), 2500);
     }catch(err){
-      note.textContent = 'Failed — ' + (err.code === 'storage/unauthorized' ? 'Storage rules not published yet' : err.message || err.code);
+      note.textContent = 'Failed — ' + (err.code === 'storage/unauthorized' ? 'Storage refused it (sign in to the admin again, or the Storage rules are not published)' : err.message || err.code);
       note.style.color = 'var(--err)';
     }
   }
+  $('#title').value = '';   /* the next batch starts with its own title */
 }
 
 /* ---------- library ---------- */
 const KIND = { photo: '📷 Photo', video: '🎬 Film', reel: '📱 Reel' };
+let REFOCUS = null;
 function renderLib(){
   $('#itCount').textContent = ITEMS.length + ' item' + (ITEMS.length === 1 ? '' : 's');
   if(!ITEMS.length){ $('#lib').innerHTML = '<p class="sub">Nothing uploaded yet.</p>'; return; }
   $('#lib').innerHTML = ITEMS.map((it, i) => `<div class="it">
     <div class="th" style="${it.thumb || it.kind === 'photo' ? `background-image:url('${esc(it.thumb || it.url)}')` : ''}"><span>${KIND[it.kind] || it.kind}</span></div>
     <div class="nm">${esc(it.title || '—')}</div>
-    <div class="ac"><button data-m="up" data-id="${esc(it.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button data-m="dn" data-id="${esc(it.id)}" ${i === ITEMS.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button class="x" data-m="del" data-id="${esc(it.id)}" aria-label="Delete">🗑</button></div></div>`).join('');
+    <div class="ac"><button data-m="up" data-id="${esc(it.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(it.title || KIND[it.kind])} up">↑</button><button data-m="dn" data-id="${esc(it.id)}" ${i === ITEMS.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(it.title || KIND[it.kind])} down">↓</button><button class="x" data-m="del" data-id="${esc(it.id)}" aria-label="Delete ${esc(it.title || KIND[it.kind])}">🗑</button></div></div>`).join('');
+  if(REFOCUS){ const b = $(`#lib button[data-m="${REFOCUS.m}"][data-id="${REFOCUS.id}"]`); REFOCUS = null; if(b && !b.disabled) b.focus(); }
 }
 $('#lib').addEventListener('click', async e => {
   const b = e.target.closest('button[data-m]'); if(!b) return;
@@ -168,9 +180,15 @@ $('#lib').addEventListener('click', async e => {
       return;
     }
     const j = b.dataset.m === 'up' ? i - 1 : i + 1, o = ITEMS[j]; if(!o) return;
+    REFOCUS = { m: b.dataset.m, id: it.id };
     const bt = writeBatch(db);
     bt.update(doc(db, 'portfolio', it.id), { order: o.order });
     bt.update(doc(db, 'portfolio', o.id), { order: it.order });
     await bt.commit();
   }catch(err){ alert('Could not do that (' + (err.code || err.message) + ')'); }
+});
+
+/* '← More' is a link forward; when we came from the admin, go back instead, so Back does not loop */
+document.querySelector('.top .back').addEventListener('click', e => {
+  try{ const r = new URL(document.referrer); if(r.origin === location.origin && /^\/admin\/?$/.test(r.pathname) && history.length > 1){ e.preventDefault(); history.back(); } }catch(x){}
 });

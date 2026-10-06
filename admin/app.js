@@ -9674,7 +9674,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _portUnsub = onSnapshot(collection(db,'portfolioRequests'), snap=>{
         const n = snap.docs.filter(d=>(d.data().status || 'pending') === 'pending').length;
         const b = $('#morePortB'); if(b){ b.hidden = !n; b.textContent = n ? String(n) : ''; }
-        _portN = n; syncMoreBadges();
+        _portN = n; syncMoreBadges(); try{ syncShell(); }catch(e){}
       }, ()=>{ try{ if(_portUnsub) _portUnsub(); }catch(e){} _portUnsub = null; });
     }catch(e){}
   }

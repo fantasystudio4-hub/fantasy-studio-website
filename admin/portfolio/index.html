@@ -30,6 +30,10 @@ h2{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--gold-b);ma
 .seg{display:flex;gap:.4rem;flex-wrap:wrap}
 .seg label{border:1px solid var(--line);border-radius:999px;padding:.4rem .9rem;cursor:pointer;font-size:.88rem}
 .seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:focus-within{outline:2px solid var(--gold-b);outline-offset:2px}
+.upi>span,.req b,.req small,.it .nm{overflow-wrap:anywhere}
+.req>div:first-child{min-width:0}
+.grid>*{min-width:0}
 .seg input:checked+span,.seg label:has(input:checked){background:rgba(184,144,43,.25);border-color:var(--gold)}
 input[type=text]{font:inherit;background:#0f0d08;color:var(--paper);border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem;min-height:44px;width:100%}
 .req{display:flex;justify-content:space-between;gap:.8rem;flex-wrap:wrap;align-items:center;padding:.75rem 0;border-bottom:1px solid var(--line)}
@@ -76,7 +80,7 @@ input[type=text]{font:inherit;background:#0f0d08;color:var(--paper);border:1px s
         <span class="sub" id="pickHint">Photos up to 15 MB · videos up to 500 MB</span>
       </div>
       <input type="file" id="file" multiple hidden />
-      <div class="up" id="queue"></div>
+      <div class="up" id="queue" aria-live="polite"></div>
       <p class="err" id="upErr" hidden></p>
     </div>
 

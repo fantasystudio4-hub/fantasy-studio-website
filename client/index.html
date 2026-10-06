@@ -644,7 +644,7 @@ if(window.FSApp) FSApp.mount({
     { id:'payments', label:'Payments', icon:'<svg viewBox="0 0 24 24"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>' },
     { id:'portfolio', label:'Portfolio', icon:'<svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg>',
       /* the gallery is its own page, which mounts this same bar; coming back, the client opens on Booking */
-      onTap: () => { try{ sessionStorage.setItem('fs_tab_client', 'booking'); }catch(e){} location.href = '../portfolio/' + (DEMO_VIEW ? '?demo' : ''); } },
+      onTap: () => { try{ sessionStorage.setItem('fs_tab_client', 'booking'); sessionStorage.setItem('fs_lock_hop', String(Date.now())); }catch(e){} location.href = '../portfolio/' + (DEMO_VIEW ? '?demo' : ''); } },
     { id:'me',       label:'Me',       icon:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>' },
   ],
   visibleWhen: () => !$('#dashView').hidden,
@@ -1212,8 +1212,16 @@ function lockScreen(my){
   });
 }
 /* on the way in: the prompt over the skeleton, the lock screen only if it fails */
+/* coming back from the Portfolio page, which this page left while unlocked: within RELOCK_MIN
+   minutes that is not a new entry, so no second Face ID prompt (spent by the first read) */
+function hopFresh(){
+  try{
+    const t = +sessionStorage.getItem('fs_lock_hop'); sessionStorage.removeItem('fs_lock_hop');
+    return t > 0 && Date.now() - t < RELOCK_MIN * 60000;
+  }catch(e){ return false; }
+}
 function lockGate(){
-  const fresh = _otpFresh; _otpFresh = false;
+  const fresh = _otpFresh || hopFresh(); _otpFresh = false;
   if(!lockOn()) return;
   _lockHeld = true;
   const my = ++_lockSeq;
