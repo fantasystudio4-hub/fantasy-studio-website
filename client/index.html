@@ -295,6 +295,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .empty .ic{font-size:2.2rem;display:block;margin-bottom:.5rem}
 /* the not-found screen: its heading, the other pages this number has, and
    the way out */
+.portlink{display:flex;align-items:center;gap:.8rem;text-decoration:none;color:inherit;border:1px solid var(--line,rgba(184,144,43,.3));border-radius:14px;padding:.8rem 1rem;margin:.9rem 0;background:rgba(184,144,43,.08);font-size:1.4rem;text-align:left}
+.portlink span{flex:1;font-size:.95rem;line-height:1.3}.portlink b{display:block}.portlink em{display:block;font-style:normal;font-size:.8rem;opacity:.7}.portlink i{font-style:normal;opacity:.6}
 #emptyView > .pkg,#errorView > .pkg{margin-top:1rem}   /* not flush against the header */
 .empty .nf-h{display:block;font-family:var(--serif);color:#fff;font-size:1.1rem;margin-bottom:.4rem}
 #emptyPhone{white-space:nowrap}
@@ -474,6 +476,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
          ignores it (see the tab rules at the end of the stylesheet) -->
     <h1 class="hello" id="hello" data-tab="booking">Hi!</h1>
     <p id="helloSub" data-tab="booking"></p>
+    <a class="portlink" href="../portfolio/" data-tab="booking">🎞 <span><b>Our portfolio</b><em>Photos, films and reels from our weddings</em></span><i aria-hidden="true">→</i></a>
     <!-- the studio's availability, month by month: colours only, never who
          or what (availSync mounts ../avail.js here once the booking is in);
          first on the Schedule tab (owner, 1 Oct 2026) -->
@@ -532,6 +535,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
         <a id="emptyWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
       </div>
       <!-- the booking list is live, so this is true -->
+      <a class="portlink" href="../portfolio/" style="margin:1rem 0 0">🎞 <span><b>See our portfolio</b><em>Photos, films and reels from our weddings</em></span><i aria-hidden="true">→</i></a>
       <p class="nf-note">The moment the studio adds this number to a booking, this page opens by itself.</p>
       <!-- the same number set up as crew or a partner studio: their page -->
       <div class="nf-roles" id="emptyRoles" hidden></div>

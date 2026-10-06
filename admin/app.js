@@ -1160,7 +1160,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     'Money',
     ['money','🧾','Transactions'], ['expenses','💸','Expenses'], ['paytrack','💰','Crew pay','#segPayB'], ['analytics','📊','Analytics'],
     'More',
-    ['studios','🤝','Partner studios','#b2bBadge'], ['members','👤','Team','#teamBadge'], ['settings','⚙️','Settings'],
+    ['portfolio','🖼','Portfolio','#morePortB'],     ['studios','🤝','Partner studios','#b2bBadge'], ['members','👤','Team','#teamBadge'], ['settings','⚙️','Settings'],
     ['trash','🗑','Trash'], ['backup','⬇','Backup & export'], ['logout','↩','Logout'],
   ];
   function syncSide(r){
@@ -9620,6 +9620,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function loadStudioReqs(){
     loadPartnerReqs();
     loadSignups();
+    loadPortfolioReqs();
     if(DEMO) return;   /* the fixtures own the list; a listener would overwrite them */
     if(_sreqsUnsub){ renderStuReqs(); return; }
     _sreqsErr = '';
@@ -9662,6 +9663,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }catch(err){ _preqsErr = 'Could not load partner requests (' + (err.code||err.message) + ')'; renderPartnerReqs(); }
   }
   const preqPending = () => PREQS.filter(r=>(r.status||'pending') === 'pending');
+
+  /* ---- Portfolio access requests: portfolioRequests/{uid} ----
+     Only a count for the Portfolio row in More; the page itself is
+     admin/portfolio/ (approve, decline, upload). */
+  let _portUnsub = null;
+  function loadPortfolioReqs(){
+    if(DEMO || _portUnsub) return;
+    try{
+      _portUnsub = onSnapshot(collection(db,'portfolioRequests'), snap=>{
+        const n = snap.docs.filter(d=>(d.data().status || 'pending') === 'pending').length;
+        const b = $('#morePortB'); if(b){ b.hidden = !n; b.textContent = n ? String(n) : ''; }
+        _portN = n; syncMoreBadges();
+      }, ()=>{ try{ if(_portUnsub) _portUnsub(); }catch(e){} _portUnsub = null; });
+    }catch(e){}
+  }
+  let _portN = 0;
 
   /* ---- new sign-ups: signups/{uid} (written by /start/'s Welcome screen) ----
      Everyone who signed in with a number you have not set up. A number that is
@@ -12954,7 +12971,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   if($('#sideNav')) on('#sideNav', 'click', e=>{
     const b = e.target.closest('[data-go]'); if(!b) return;
     let k = b.dataset.go;
-    if(k === 'logout' || k === 'trash' || k === 'backup'){ moreGo(k); return; }
+    if(k === 'logout' || k === 'trash' || k === 'backup' || k === 'portfolio'){ moreGo(k); return; }
     if(k === 'analytics' && curRoute() === 'insights') k = 'insights';   /* re-pressing the lit item keeps its view */
     const r = ROUTES[k]; if(!r) return;
     /* a full page is open on the screen being asked for: this is its Back */
@@ -12986,6 +13003,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* One function behind every door to the More screens — the rows of More
      and the desktop sidebar. */
   function moreGo(k, opts){
+    if(k === 'portfolio'){
+      if(DEMO){ toast('Demo — the Portfolio page needs a real sign-in'); return; }
+      location.href = 'portfolio/';
+      return;
+    }
     if(k === 'logout'){
       if(DEMO){ toast('Demo — nobody is signed in here'); return; }
       $('#logoutBtn').click();   /* the same handler, the same questions */
@@ -13041,7 +13063,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const stu = n($('#b2bBadge')), team = n($('#teamBadge'));
     /* More's own count is join requests only once Home shows the partner
        requests (and carries their count on its button in the bar) */
-    put('#moreStuB', stu); put('#moreTeamB', team); put('#moreBadge', $('#homeBadge') ? team : stu + team);
+    put('#moreStuB', stu); put('#moreTeamB', team); put('#moreBadge', ($('#homeBadge') ? team : stu + team) + (_portN || 0));
     const pay = $('#segPayB'), mp = $('#mnyPayB');
     if(pay && mp){ mp.hidden = pay.hidden; mp.textContent = pay.textContent; mp.title = pay.title || ''; }
   }

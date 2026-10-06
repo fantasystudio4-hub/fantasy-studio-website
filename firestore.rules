@@ -762,6 +762,45 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
     }
 
+    // PORTFOLIO (6 Oct 2026). The owner uploads photos, videos and reels from
+    // admin/portfolio/; every login he approves sees the same set.
+    //
+    // portfolioRequests/{uid} — one ask per login (the doc id IS the uid),
+    // pending only, bounded. It grants nothing by itself: the owner flips
+    // status to 'approved' (or 'declined'), and only an approved doc opens
+    // portfolio/. The person may read their own request (to see the answer)
+    // but never change it, so nobody can approve themselves.
+    match /portfolioRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(
+             ['name','phone10','phoneFull','status','createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.phoneFull is string
+        && request.resource.data.phoneFull.size() <= 20;
+      allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow list, update, delete: if isAdmin();
+    }
+
+    // portfolio/{id} — the showcase items. Read: the owner, or a login whose
+    // own request is approved. The condition depends on the caller only, not
+    // on a field of the queried docs, so a plain ordered list query proves it.
+    // Write: the owner alone. kind is photo | video | reel; url / thumb are
+    // Firebase Storage download links written by the admin page.
+    match /portfolio/{itemId} {
+      allow read: if isAdmin()
+        || (request.auth != null
+            && exists(/databases/$(database)/documents/portfolioRequests/$(request.auth.uid))
+            && get(/databases/$(database)/documents/portfolioRequests/$(request.auth.uid)).data.status == 'approved');
+      allow write: if isAdmin();
+    }
+
     // everything else (incl. legacy lenscal_* data): admin only — default deny
     match /{document=**} {
       allow read, write: if isAdmin();
