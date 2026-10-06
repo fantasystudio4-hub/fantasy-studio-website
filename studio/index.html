@@ -359,6 +359,8 @@ textarea.rq-in{resize:vertical;min-height:84px}
 .rq-more-h .rq-l{margin:0}
 .rq-more .rq-in+.rq-in,.rq-more select.rq-in{margin-top:.5rem}
 .rq-rm{border:0;background:none;color:var(--mut);font-size:.8rem;min-height:44px;padding:0 .4rem;cursor:pointer}
+.rqr-fns{margin-top:.5rem;padding-left:.7rem;border-left:2px solid var(--line)}
+.rqr-fns .rqr-t{padding:.35rem 0}
 .rq-add{display:block;width:100%;margin-top:.7rem;min-height:44px;border:1px dashed var(--gold-b);border-radius:10px;background:none;color:var(--gold-b);font:inherit;font-size:.85rem;cursor:pointer}
 .rq-av{font-size:.8rem;margin-top:.45rem;color:var(--mut)}
 .rq-av:empty{display:none}
@@ -1509,8 +1511,7 @@ function availSync(jobs){
       db,
       sample: DEMO_VIEW || FS.isSample(auth.currentUser),
       mine: availMine,
-      onAsk: reqFromCal,
-      askLabels: { m:'Request the morning', e:'Request the evening' },
+      onAsk: null,   /* owner, 6 Oct 2026: no per-day Request buttons; the Request a booking sheet has the date and slot */
       monthsAhead: 12,
       heading: 'Fantasy Studio availability',
     });
@@ -2177,13 +2178,35 @@ function reqVisible(){
     return !at || now - at < REQ_KEEP_MS;
   }).sort((a,b)=>reqMs(b.createdAt) - reqMs(a.createdAt));
 }
-function reqRowHTML(r, jobIds){
-  const id = esc(r.id);
+/* several functions sent together are several docs sharing a groupId: the
+   list shows them as ONE request, answered once */
+function reqUnits(list){
+  const out = [], byG = new Map();
+  list.forEach(r=>{
+    if(typeof r.groupId !== 'string' || !r.groupId){ out.push({ lead:r, members:[r] }); return; }
+    let u = byG.get(r.groupId);
+    if(!u){ u = { lead:r, members:[] }; byG.set(r.groupId, u); out.push(u); }
+    u.members.push(r);
+  });
+  out.forEach(u=>{
+    u.members.sort((a,b)=>(a.groupI||0) - (b.groupI||0) || (isDate(a.date) && isDate(b.date) ? (a.date < b.date ? -1 : 1) : 0));
+    u.lead = u.members[0];
+  });
+  return out;
+}
+function reqFnHTML(r){
   const items = (Array.isArray(r.items) ? r.items : []).filter(it=>it && it.service);
   const cov = items.map(it=>esc(it.service) + (Number(it.qty) > 1 ? ' × ' + Number(it.qty) : '')).join(', ');
   const head = [isDate(r.date) ? availWhen(r.date) : '', SLOT_LABEL[String(r.slot||'')] || '', String(r.title||'') || 'Event']
     .filter(Boolean).map(esc).join(' · ');
-  const pill = r.status === 'new' ? ['pending', r._pending ? 'Sending…' : 'Pending']
+  return `<div class="rqr-t"><b>${head}</b>
+        <div class="evm">${cov || 'Coverage to be discussed'}</div>
+      </div>`;
+}
+function reqRowHTML(u, jobIds){
+  const r = u.lead, id = esc(r.id);
+  const many = u.members.length > 1;
+  const pill = r.status === 'new' ? ['pending', u.members.some(m=>m._pending) ? 'Sending…' : 'Pending']
     : r.status === 'accepted' ? ['accepted','Accepted'] : ['declined','Declined'];
   let foot;
   if(r.status === 'new'){
@@ -2205,34 +2228,35 @@ function reqRowHTML(r, jobIds){
   }
   return `<div class="rqr">
     <div class="rqr-h">
-      <div class="rqr-t"><b>${head}</b>
-        <div class="evm">${cov || 'Coverage to be discussed'}</div>
-      </div>
+      ${many ? `<div class="rqr-t"><b>${u.members.length} functions</b>${r.endClientName ? ` <span class="evm">· ${esc(r.endClientName)}</span>` : ''}</div>` : reqFnHTML(r)}
       <span class="chip ${pill[0]}">${pill[1]}</span>
     </div>
+    ${many ? `<div class="rqr-fns">${u.members.map(reqFnHTML).join('')}</div>` : ''}
     ${foot}
   </div>`;
 }
 function renderRequests(){
   const box = $('#requestsBox'); if(!box) return;
-  const list = reqVisible();
-  if(_reqAsk && !list.some(r=>r.id === _reqAsk && r.status === 'new')) _reqAsk = '';
+  const list = reqVisible(), units = reqUnits(list);
+  if(_reqAsk && !units.some(u=>u.lead.id === _reqAsk && u.lead.status === 'new')) _reqAsk = '';
   const jobIds = new Set(allJobs().map(x=>x.id));   /* render() calls this, so a job going live redraws the row */
-  const sig = JSON.stringify(list.map(r=>[r.id, r.status, !!r._pending, r.date, r.slot, r.title, r.items, r.adminNote,
+  const sig = JSON.stringify(list.map(r=>[r.id, r.groupId || '', r.groupI || 0, r.status, !!r._pending, r.date, r.slot, r.title, r.items, r.adminNote,
     r.status === 'accepted' && !!r.pkgId && jobIds.has(r.pkgId)])) + '|' + _reqAsk;
   if(sig === _reqSig) return;
   _reqSig = sig;
   /* nothing to show: no heading either, the box is simply not there */
   box.innerHTML = list.length
-    ? `<h2 class="secl">Your requests <small>${list.length}</small></h2><div class="ledger">${list.map(r=>reqRowHTML(r, jobIds)).join('')}</div>`
+    ? `<h2 class="secl">Your requests <small>${units.length}</small></h2><div class="ledger">${units.map(u=>reqRowHTML(u, jobIds)).join('')}</div>`
     : '';
 }
 function cancelReq(id){
   const r = _reqs.find(x=>x.id === id);
   if(!r || r.status !== 'new') return;
   _reqAsk = '';
+  /* one request may be several functions: they all go, or none does */
+  const gone = r.groupId ? _reqs.filter(x=>x.groupId === r.groupId && x.status === 'new') : [r];
   if(reqSample()){
-    _reqs = _reqs.filter(x=>x.id !== id);
+    _reqs = _reqs.filter(x=>!gone.includes(x));
     renderRequests(); toast('Request cancelled');
     return;
   }
@@ -2241,7 +2265,9 @@ function cancelReq(id){
      answer only decides what the toast says. Refused means the studio
      answered it first, and the row comes back with that answer. */
   const gen = _reqGen;
-  deleteDoc(doc(db,'studioRequests', id)).then(
+  const b = writeBatch(db);
+  gone.forEach(x=>b.delete(doc(db,'studioRequests', x.id)));
+  b.commit().then(
     ()=>{ if(gen === _reqGen) toast('Request cancelled'); },
     ()=>{ if(gen === _reqGen) toast('Could not cancel that request — it may already have been answered'); });
 }
@@ -2774,8 +2800,13 @@ $('#reqForm').addEventListener('submit', async e=>{
   };
   /* the sample account: into memory, and not one write */
   const all = [data, ...more.map(m=>({ ...data, date:m.date, slot:m.slot, title:m.title, venue:m.venue, items:m.items, notes:m.notes }))];
+  /* several functions: one doc each, linked by a shared groupId, so the studio
+     answers them as ONE request (the doc ids are Firestore auto-ids, which the
+     rules ask the groupId to be) */
+  const link = (i)=> all.length > 1 ? { groupId: gid, groupN: all.length, groupI: i } : {};
+  const gid = all.length > 1 ? (reqSample() ? 'sample-g' + (_reqN++) : doc(collection(db,'studioRequests')).id) : '';
   if(reqSample()){
-    _reqs = [...all.map(d=>({ ...d, id:'sample-' + (_reqN++), createdAt: Date.now() })), ..._reqs];
+    _reqs = [...all.map((d,i)=>({ ...d, ...link(i), id:'sample-' + (_reqN++), createdAt: Date.now() })), ..._reqs];
     reqDone('Sample account — nothing was sent', true);
     return;
   }
@@ -2790,7 +2821,7 @@ $('#reqForm').addEventListener('submit', async e=>{
   const ref = refs[0];
   try{
     const b = writeBatch(db);
-    all.forEach((d,i)=>b.set(refs[i], { ...d, createdAt: serverTimestamp() }));
+    all.forEach((d,i)=>b.set(refs[i], { ...d, ...link(i), createdAt: serverTimestamp() }));
     await b.commit();
   }
   catch(e2){ err = e2; }

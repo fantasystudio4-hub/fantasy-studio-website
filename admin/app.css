@@ -2104,6 +2104,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .rq-items .nil{color:var(--mut)}
 /* how full that half already is — the same three colours as the public
    calendar: free, filling up, full or blocked */
+.rq-fnb{margin-top:.7rem;padding:.7rem .8rem .8rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025)}
+.rq-fnh{font-size:var(--fs-sm,.72rem);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.35rem}
 .rq-busy{display:flex;align-items:flex-start;gap:.5rem;margin-top:.55rem;font-size:var(--fs-md);line-height:1.45;color:var(--text);overflow-wrap:anywhere}
 .rq-busy i{flex:0 0 auto;width:10px;height:10px;border-radius:3px;margin-top:.3em;background:var(--state-confirmed)}
 .rq-busy span{min-width:0}

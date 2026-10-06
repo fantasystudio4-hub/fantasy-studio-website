@@ -321,6 +321,21 @@ service cloud.firestore {
           && i['qty'] is int
           && string(i['qty']).matches('^([1-9]|10)$');
       }
+      // several functions sent as ONE request (a wedding and its reception):
+      // one doc per function, linked by groupId. All three keys or none; the
+      // id is a Firestore auto-id, n is 2..6 and i is this doc's place in it.
+      function reqGroupOk() {
+        return !request.resource.data.keys().hasAny(['groupId','groupN','groupI'])
+          || (request.resource.data.keys().hasAll(['groupId','groupN','groupI'])
+              && request.resource.data.groupId is string
+              && request.resource.data.groupId.matches('^[A-Za-z0-9]{20}$')
+              && request.resource.data.groupN is int
+              && request.resource.data.groupN >= 2
+              && request.resource.data.groupN <= 6
+              && request.resource.data.groupI is int
+              && request.resource.data.groupI >= 0
+              && request.resource.data.groupI < request.resource.data.groupN);
+      }
       // entry n of list l, if there is one — a shorter list passes
       function reqItemAt(l, n) {
         return l.size() <= n || reqItemOk(l[n]);
@@ -344,7 +359,9 @@ service cloud.firestore {
         && clientPhone10() != '__none__'
         && request.resource.data.keys().hasOnly(
              ['studioId','phone10','studioName','date','slot','title','venue',
-              'endClientName','items','notes','status','createdAt'])
+              'endClientName','items','notes','status','createdAt',
+              'groupId','groupN','groupI'])
+        && reqGroupOk()
         && request.resource.data.status == 'new'
         && request.resource.data.createdAt == request.time
         && request.resource.data.phone10 == clientPhone10()

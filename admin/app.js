@@ -3721,7 +3721,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderHomeWait(){
     const sec = $('#homeWait'), box = $('#homeReqs'), join = $('#homeJoin');
     if(!sec || !box || !join) return;
-    const fresh = SREQS.filter(r=>sreqStatus(r) === 'new');
+    const fresh = sreqUnits(SREQS.filter(r=>sreqStatus(r) === 'new'));
     /* a card prices itself from the studio's rate card and counts what is
        already on that date: draw it only once all three lists have arrived */
     const ready = _sreqsLoaded && _studiosLoaded && _pkgsLoaded;
@@ -9699,37 +9699,59 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return { st: (load.past || load.full || load.blocked) ? 'r' : load.n ? 'y' : 'free', text: bits.join(' · ') };
   }
 
-  function sreqCardHTML(r){
-    const stu = studioById(r.studioId);
-    const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'Unknown studio';
+  /* Several functions sent as one request (a wedding and its reception) are
+     several docs sharing a groupId. The panel shows them as ONE card, and
+     Accept / Decline / Delete act on all of them together. `r` anywhere below
+     is the first of the group (the lead); sreqMembers(r) is every one. */
+  const sreqMembers = r => {
+    if(!r || typeof r.groupId !== 'string' || !r.groupId) return [r];
+    const st = sreqStatus(r);
+    const m = SREQS.filter(v=>v.groupId === r.groupId && v.phone10 === r.phone10 && sreqStatus(v) === st)
+      .sort((a,b)=>(Number(a.groupI)||0) - (Number(b.groupI)||0) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    return m.length ? m : [r];
+  };
+  const sreqUnits = list => list.filter(r=>sreqMembers(r)[0].id === r.id);
+  /* one function's date, facts, coverage and how busy that day is */
+  function sreqFnHTML(r, stu){
     const items = sreqLines(r, stu);
     const gross = itemsGross(items);
     const unpriced = items.filter(it=>!it.rate).length;
     const line = sreqLoadLine(r, sreqLoad(r));
-    const asked = pfDate(pfMs(r.createdAt));
-    const flag = !stu ? '<span class="chip-status no-dot" data-state="overdue">not in your list</span>'
-      : stu.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : '';
     const fact = (k, v) => v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '';
     const facts = fact('Venue', sreqText(r.venue, 160)) + fact('End client', sreqText(r.endClientName, 120))
                 + fact('Notes', sreqText(r.notes, 1000));
-    const dis = _sreqBusy ? ' disabled' : '';
-    const tel = stu && stu.phone ? telOf(stu.phone) : '';
     return `
-    <article class="rq" data-rq="${esc(r.id)}">
-      <div class="rq-top">
-        <b class="rq-stu">${esc(name)}</b>${flag}
-        ${asked ? `<span class="rq-age">asked ${esc(asked)}</span>` : ''}
-      </div>
       <div class="rq-what"><b>${esc(sreqDay(r.date))}</b>${slotTag(sreqSlot(r))}<span class="rq-fn">${esc(sreqText(r.title, 80) || 'Event')}</span></div>
       ${facts ? `<dl class="rq-facts">${facts}</dl>` : ''}
       <div class="rq-items">${items.length
         ? items.map(it=>`<div><span>${esc(it.service)} <em>×${it.qty}</em></span><b${it.rate ? '' : ' class="none"'}>${it.rate ? esc(inr(it.qty * it.rate)) : 'no rate'}</b></div>`).join('')
           + `<div class="tot"><span>Estimate at their rate card${unpriced ? ` <em>· ${unpriced} without a rate</em>` : ''}</span><b>${esc(inr(gross))}</b></div>`
         : '<div class="nil">No coverage listed — price it in the draft job.</div>'}</div>
-      <div class="rq-busy" data-st="${line.st}"><i></i><span>${esc(line.text)}</span></div>
+      <div class="rq-busy" data-st="${line.st}"><i></i><span>${esc(line.text)}</span></div>`;
+  }
+  function sreqCardHTML(r){
+    const stu = studioById(r.studioId);
+    const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'Unknown studio';
+    const members = sreqMembers(r), many = members.length > 1;
+    const asked = pfDate(pfMs(r.createdAt));
+    const flag = !stu ? '<span class="chip-status no-dot" data-state="overdue">not in your list</span>'
+      : stu.active === false ? '<span class="chip-status no-dot" data-state="neutral">inactive</span>' : '';
+    const dis = _sreqBusy ? ' disabled' : '';
+    const tel = stu && stu.phone ? telOf(stu.phone) : '';
+    const total = many ? members.reduce((t, m)=>t + itemsGross(sreqLines(m, stu)), 0) : 0;
+    return `
+    <article class="rq" data-rq="${esc(r.id)}">
+      <div class="rq-top">
+        <b class="rq-stu">${esc(name)}</b>${flag}${many ? `<span class="chip-status no-dot" data-state="confirmed">${members.length} functions</span>` : ''}
+        ${asked ? `<span class="rq-age">asked ${esc(asked)}</span>` : ''}
+      </div>
+      ${many
+        ? members.map((m, i)=>`<section class="rq-fnb"><div class="rq-fnh">Function ${i + 1} of ${members.length}</div>${sreqFnHTML(m, stu)}</section>`).join('')
+          + `<div class="rq-items"><div class="tot"><span>All ${members.length} functions, estimate</span><b>${esc(inr(total))}</b></div></div>`
+        : sreqFnHTML(r, stu)}
       <div class="rq-acts">
-        <button type="button" class="btn btn--sm btn--primary" data-rqok="${esc(r.id)}"${dis}>${_sreqBusy === r.id ? 'Working…' : 'Accept → draft job'}</button>
-        <button type="button" class="btn btn--sm btn--danger" data-rqno="${esc(r.id)}"${dis}>Decline</button>
+        <button type="button" class="btn btn--sm btn--primary" data-rqok="${esc(r.id)}"${dis}>${_sreqBusy === r.id ? 'Working…' : many ? `Accept all ${members.length} → one draft job` : 'Accept → draft job'}</button>
+        <button type="button" class="btn btn--sm btn--danger" data-rqno="${esc(r.id)}"${dis}>${many ? 'Decline all' : 'Decline'}</button>
         ${tel ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(tel)}" aria-label="Call ${esc(name)}" title="Call ${esc(name)}">📞</a>` : ''}
       </div>
     </article>`;
@@ -9745,9 +9767,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        an accepted request's notes exist nowhere else, the draft job does not
        carry them */
     const asked = sreqText(r.notes, 1000);
-    const cover = sreqLines(r, stu).map(it=>`${it.service} ×${it.qty}`).join(' · ');
+    const members = sreqMembers(r), many = members.length > 1;
+    const cover = many ? '' : sreqLines(r, stu).map(it=>`${it.service} ×${it.qty}`).join(' · ');
     const pk = st === 'accepted' && r.pkgId ? PKGS.find(p=>p.id === r.pkgId && !p.deleted) : null;
-    const what = [sreqText(r.title, 80) || 'Event', sreqISO(r.date) ? dmy(r.date) : '', slotName(sreqSlot(r))].filter(Boolean).join(' · ');
+    const whatOf = m => [sreqText(m.title, 80) || 'Event', sreqISO(m.date) ? dmy(m.date) : '', slotName(sreqSlot(m))].filter(Boolean).join(' · ');
+    const what = many ? members.map(whatOf).join(' + ') : whatOf(r);
     const dis = _sreqBusy ? ' disabled' : '';
     return `
     <div class="rq-ans">
@@ -9764,7 +9788,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      The rows are drawn only while the B2B page is on screen (showTab redraws
      on arrival): each one walks the calendar for its date. */
   function renderStuReqs(){
-    const fresh = SREQS.filter(r=>sreqStatus(r) === 'new');
+    const fresh = sreqUnits(SREQS.filter(r=>sreqStatus(r) === 'new'));
     const badge = $('#b2bBadge');
     if(badge){ badge.hidden = !fresh.length; badge.textContent = fresh.length || ''; }
     renderHomeWait();   /* the same cards on Home — before the early returns below, which are about THIS page */
@@ -9778,7 +9802,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(cnt){ cnt.hidden = !fresh.length; cnt.textContent = fresh.length || ''; }
     if(sec.hidden){ el.innerHTML = ''; return; }
     if($('#calView').hidden) return;
-    const done = SREQS.filter(r=>sreqStatus(r) !== 'new').sort((a,b)=>pfMs(b.answeredAt) - pfMs(a.answeredAt));
+    const done = sreqUnits(SREQS.filter(r=>sreqStatus(r) !== 'new')).sort((a,b)=>pfMs(b.answeredAt) - pfMs(a.answeredAt));
     const shown = done.slice(0, SREQ_ANS_SHOWN);
     el.innerHTML = (_sreqsErr ? errBox(_sreqsErr, 'sreqs') : '')
       + fresh.map(sreqCardHTML).join('')
@@ -9804,40 +9828,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   async function acceptStuReq(id){
-    const r = sreqById(id);
-    if(!r || sreqStatus(r) !== 'new' || _sreqBusy) return;
+    const r0 = sreqById(id);
+    if(!r0 || sreqStatus(r0) !== 'new' || _sreqBusy) return;
+    /* several functions sent as one request: the first is the lead, and its id
+       becomes the job's; the job gets one event per function */
+    const mem = sreqMembers(r0), r = mem[0], many = mem.length > 1;
     /* the request's id becomes the package's id ('rq_' + id); the partner picked it */
-    if(!SAFE_ID.test(r.id)){ toast('Cannot accept — this request has an unusual ID. Decline or delete it.'); return; }
+    if(mem.some(m=>!SAFE_ID.test(m.id))){ toast('Cannot accept — this request has an unusual ID. Decline or delete it.'); return; }
     const stu = studioById(r.studioId);
     if(!stu){ toast('Cannot accept — this studio is not in your Partner studios list. Add the studio first, or decline the request.'); return; }
     if(stu.active === false){ toast(`Cannot accept — ${stu.name || 'this studio'} is marked inactive. Reactivate the studio first, or decline the request.`); return; }
-    if(!sreqISO(r.date)){ toast('Cannot accept — this request has no valid date. Decline it and ask them to send it again.'); return; }
+    if(mem.some(m=>!sreqISO(m.date))){ toast('Cannot accept — this request has no valid date. Decline it and ask them to send it again.'); return; }
     _sreqBusy = id; renderStuReqs();
     try{
       /* A red half may still be asked for — the partner was warned, and the
          owner decides. Say what is already there before the studio is told
          "accepted", the same check Booked runs for a heavy day. */
-      const load = sreqLoad(r);
-      if((load.past || load.full || load.blocked) && !await confirmDialog({
-        title: load.past ? 'This date has passed' : load.blocked ? 'You blocked this date' : 'Heavy day',
-        body: `<p>${esc(sreqLoadLine(r, load).text)}.</p><p>Accepting tells <b>${esc(stu.name || 'the studio')}</b> the request went through.</p>`,
-        confirmText:'Accept anyway', danger:false })) return;
+      const heavy = mem.map(m=>({ m, load: sreqLoad(m) })).filter(x=>x.load.past || x.load.full || x.load.blocked);
+      if(heavy.length){
+        const h0 = heavy[0];
+        if(!await confirmDialog({
+          title: many ? (heavy.length === 1 ? 'One day needs a look' : heavy.length + ' days need a look')
+            : h0.load.past ? 'This date has passed' : h0.load.blocked ? 'You blocked this date' : 'Heavy day',
+          body: heavy.map(x=>`<p>${many ? '<b>' + esc(sreqText(x.m.title, 80) || 'Event') + ' · ' + esc(sreqDay(x.m.date)) + '</b><br>' : ''}${esc(sreqLoadLine(x.m, x.load).text)}.</p>`).join('')
+            + `<p>Accepting tells <b>${esc(stu.name || 'the studio')}</b> the request went through.</p>`,
+          confirmText:'Accept anyway', danger:false })) return;
+      }
       /* the draft opens in the editor — whatever is in there now goes first */
       if(!canLeaveEditor()) return;
       /* the confirm above was open for a while: the studio may have withdrawn
          the request, or another device answered it */
       const live = sreqById(id);
-      if(!live || sreqStatus(live) !== 'new'){ toast('That request is no longer waiting — it was answered or withdrawn'); return; }
-      const items = sreqLines(r, stu);
-      const gross = itemsGross(items);
+      if(!live || sreqStatus(live) !== 'new' || sreqMembers(live).length !== mem.length){ toast('That request is no longer waiting — it was answered or withdrawn'); return; }
+      const evs = mem.map(m=>({ title: sreqText(m.title, 80) || 'Event', date: m.date, slot: sreqSlot(m),
+                                venue: sreqText(m.venue, 160), items: sreqLines(m, stu) }));
+      const gross = evs.reduce((t, e)=>t + itemsGross(e.items), 0);
       const d = {
         clientName: stu.name || 'Studio',
         careOf: '',
         clientPhone: '',
         clientPhoneFull: '',
         quoteDate: todayISO(),
-        events: [{ title: sreqText(r.title, 80) || 'Event', date: r.date, slot: sreqSlot(r),
-                   venue: sreqText(r.venue, 160), items }],
+        events: evs,
         album: { sheets:0, perSheet:0, price:0 },
         addons: [],
         pdfTerms: [],
@@ -9850,8 +9882,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const pk = { id: 'rq_' + r.id, ...d, quoteNo: nextQuoteNo(), status:'draft',
                      createdAt: sreqNow(), updatedAt: sreqNow() };
         PKGS.unshift(pk);
-        Object.assign(live, { status:'accepted', pkgId: pk.id, answeredAt: sreqNow() });
-        toast('Draft job created — check the price, then mark it Booked (demo — not saved)');
+        mem.forEach(m=>Object.assign(m, { status:'accepted', pkgId: pk.id, answeredAt: sreqNow() }));
+        toast((many ? 'Draft job with ' + mem.length + ' events created' : 'Draft job created') + ' — check the price, then mark it Booked (demo — not saved)');
         renderPkgList(); renderCalendar(); renderStuReqs();
         openSreqJob(pk.id);
         return;
@@ -9869,14 +9901,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const adopted = !!pk;
       let res;
       if(pk){
-        res = await settle(updateDoc(doc(db,'studioRequests',r.id),
-          { status:'accepted', pkgId: pk.id, answeredAt: serverTimestamp() }));
+        const ab = writeBatch(db);
+        mem.forEach(m=>ab.update(doc(db,'studioRequests',m.id), { status:'accepted', pkgId: pk.id, answeredAt: serverTimestamp() }));
+        res = await settle(ab.commit());
       }else{
         const quoteNo = await allocQuoteNo();
         /* the quote number is a server round trip — another device may have
            answered the request (or the studio withdrawn it) meanwhile */
         const still = sreqById(id);
-        if(!still || sreqStatus(still) !== 'new'){
+        if(!still || sreqStatus(still) !== 'new' || sreqMembers(still).length !== mem.length){
           toast(still ? 'Already answered on another device — nothing was created here'
                       : 'That request was withdrawn — nothing was created');
           return;
@@ -9884,7 +9917,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const ref = doc(db,'packages',jobId);
         const batch = writeBatch(db);
         batch.set(ref, { ...d, quoteNo, status:'draft', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-        batch.update(doc(db,'studioRequests',r.id), { status:'accepted', pkgId: ref.id, answeredAt: serverTimestamp() });
+        mem.forEach(m=>batch.update(doc(db,'studioRequests',m.id), { status:'accepted', pkgId: ref.id, answeredAt: serverTimestamp() }));
         res = await settle(batch.commit());
         if(res !== 'denied'){
           /* the packages listener has usually delivered it already; this is
@@ -9915,8 +9948,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           + '; check your connection and sign-in, then try again.');
         return;
       }
-      const cur = sreqById(id);   /* a snapshot may have swapped the object while we waited */
-      if(cur) Object.assign(cur, { status:'accepted', pkgId: pk.id, answeredAt: cur.answeredAt || sreqNow() });
+      mem.forEach(m=>{   /* a snapshot may have swapped the object while we waited */
+        const cur = sreqById(m.id);
+        if(cur) Object.assign(cur, { status:'accepted', pkgId: pk.id, answeredAt: cur.answeredAt || sreqNow() });
+      });
       toast(res === 'queued'
         ? 'Draft job saved offline — it will sync. Check the price, then mark it Booked'
         : 'Draft job created — check the price, then mark it Booked');
@@ -9928,15 +9963,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   async function declineStuReq(id){
-    const r = sreqById(id);
-    if(!r || sreqStatus(r) !== 'new' || _sreqBusy) return;
+    const r0 = sreqById(id);
+    if(!r0 || sreqStatus(r0) !== 'new' || _sreqBusy) return;
+    const mem = sreqMembers(r0), r = mem[0], many = mem.length > 1;
     const stu = studioById(r.studioId);
     const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'This studio';
     /* the note rides in the confirm sheet itself: one sheet, one decision.
        Optional — the studio is told "declined" with or without it. */
     const ok = await confirmDialog({
-      title:'Decline this request?',
-      body:`<b>${esc(name)}</b> asked for ${esc(sreqText(r.title, 80) || 'an event')} on ${esc(sreqDay(r.date))}${esc(slotSuffix(sreqSlot(r)))}. They are told it was declined.`
+      title: many ? `Decline all ${mem.length} functions?` : 'Decline this request?',
+      body:(many
+        ? `<b>${esc(name)}</b> asked for ${mem.map(m=>esc(sreqText(m.title, 80) || 'an event') + ' on ' + esc(sreqDay(m.date)) + esc(slotSuffix(sreqSlot(m)))).join('; ')}. They are told it was declined.`
+        : `<b>${esc(name)}</b> asked for ${esc(sreqText(r.title, 80) || 'an event')} on ${esc(sreqDay(r.date))}${esc(slotSuffix(sreqSlot(r)))}. They are told it was declined.`)
          + `<label class="rq-note" for="rqDeclineNote">Note to the studio <em>(optional)</em></label>`
          + `<textarea class="input" id="rqDeclineNote" rows="2" maxlength="300" placeholder="e.g. Fully booked that evening — the 15th is open"></textarea>`,
       confirmText:'Decline' });
@@ -9949,40 +9987,44 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _sreqBusy = id; renderStuReqs();
     try{
       if(DEMO){
-        Object.assign(cur, { status:'declined', adminNote, answeredAt: sreqNow() });
+        mem.forEach(m=>Object.assign(m, { status:'declined', adminNote, answeredAt: sreqNow() }));
         toast('Request declined (demo — not saved)');
         return;
       }
-      const res = await settle(updateDoc(doc(db,'studioRequests',id),
-        { status:'declined', adminNote, answeredAt: serverTimestamp() }));
+      const db2 = writeBatch(db);
+      mem.forEach(m=>db2.update(doc(db,'studioRequests',m.id), { status:'declined', adminNote, answeredAt: serverTimestamp() }));
+      const res = await settle(db2.commit());
       const sm = settleMsg(res, 'Request declined — the studio is told', 'Declined offline — will sync');
       toast(sm.msg);
-      if(sm.ok) Object.assign(cur, { status:'declined', adminNote, answeredAt: cur.answeredAt || sreqNow() });
+      if(sm.ok) mem.forEach(m=>{ const c = sreqById(m.id); if(c) Object.assign(c, { status:'declined', adminNote, answeredAt: c.answeredAt || sreqNow() }); });
     }catch(err){ toast('Could not decline: ' + (err.code||err.message)); }
     finally{ _sreqBusy = ''; renderStuReqs(); }
   }
 
   async function deleteStuReq(id){
-    const r = sreqById(id);
-    if(!r || _sreqBusy) return;
+    const r0 = sreqById(id);
+    if(!r0 || _sreqBusy) return;
+    const mem = sreqMembers(r0), r = mem[0];
     const stu = studioById(r.studioId);
     const name = (stu && stu.name) || sreqText(r.studioName, 120) || 'This studio';
     if(!await confirmDialog({
       title:'Delete this request?',
-      body:`<b>${esc(name)}</b> · ${esc(sreqText(r.title, 80) || 'Event')} — it leaves your list and the studio's page.`
+      body:`<b>${esc(name)}</b> · ${esc(mem.map(m=>sreqText(m.title, 80) || 'Event').join(' + '))} — it leaves your list and the studio's page.`
          + (sreqStatus(r) === 'accepted' ? ' The job made from it stays in Bookings.' : ''),
       confirmText:'Delete' })) return;
     if(_sreqBusy) return;
     _sreqBusy = id; renderStuReqs();
     try{
       if(DEMO){
-        SREQS = SREQS.filter(v=>v.id !== id);
+        SREQS = SREQS.filter(v=>!mem.includes(v));
         toast('Request deleted (demo — not saved)');
         return;
       }
-      const sm = settleMsg(await settle(deleteDoc(doc(db,'studioRequests',id))), 'Request deleted', 'Deleted offline — will sync');
+      const dbt = writeBatch(db);
+      mem.forEach(m=>dbt.delete(doc(db,'studioRequests',m.id)));
+      const sm = settleMsg(await settle(dbt.commit()), 'Request deleted', 'Deleted offline — will sync');
       toast(sm.msg);
-      if(sm.ok) SREQS = SREQS.filter(v=>v.id !== id);
+      if(sm.ok) SREQS = SREQS.filter(v=>!mem.includes(v));
     }catch(err){ toast('Could not delete: ' + (err.code||err.message)); }
     finally{ _sreqBusy = ''; renderStuReqs(); }
   }
