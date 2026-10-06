@@ -163,9 +163,10 @@ try{
 const { doc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp } = window._fsm;
 
 const user = await FS.ready();
-if(FS.DEMO_VIEW || (user && FS.isSample(user))){
-  /* review / local test login: the same request screen, but nothing is written
-     (the sample login can never be approved, so it stops at "Request sent") */
+if(FS.DEMO_VIEW){
+  /* the local ?demo hook has no sign-in at all: the same request screen, nothing written.
+     The review number (9000000001) is a real Firebase login, so it takes the real path
+     below and the owner approves it in the admin like anyone else. */
   view('vAsk');
   $('#askForm').addEventListener('submit', e => {
     e.preventDefault();
