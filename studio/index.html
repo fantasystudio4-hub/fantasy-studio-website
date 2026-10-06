@@ -656,10 +656,6 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <div class="rq-err" id="reqSlotErr" role="alert" hidden></div>
       <!-- what Fantasy Studio's calendar says about that date and slot -->
       <div class="rq-av" id="reqAvailNote" aria-live="polite"></div>
-      <!-- more functions on other dates (a wedding and a reception): one request each, same venue, coverage and notes -->
-      <div id="reqMore"></div>
-      <button class="rq-add" type="button" id="reqAddFn">＋ Add another function on a different date</button>
-      <div class="rq-err" id="reqMoreErr" role="alert" hidden></div>
     </div>
     <div class="rq-f">
       <label class="rq-l" for="reqFn">Function</label>
@@ -691,6 +687,12 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <label class="rq-l" for="reqNotes">Notes <small>(optional)</small></label>
       <textarea class="rq-in" id="reqNotes" rows="3" maxlength="1000" placeholder="Timings, special shots, anything we should know"></textarea>
     </div>
+    <!-- more functions on other dates (a wedding and a reception): each is a
+         full card of its own — date, slot, function, venue, coverage, notes —
+         and goes as its own request -->
+    <div id="reqMore"></div>
+    <button class="rq-add" type="button" id="reqAddFn">＋ Add another function on a different date</button>
+    <div class="rq-err" id="reqMoreErr" role="alert" hidden></div>
     <div class="err" id="reqErr" role="alert" hidden></div>
     <button class="reqbtn rq-send" type="submit" id="reqSend">Send request</button>
     <p class="note" id="reqSlow" style="margin-top:.5rem" hidden>Taking longer than usual. Your request sends as soon as the connection is back — you can close this.</p>
@@ -2241,11 +2243,13 @@ function reqFieldErr(name, msg){
 function reqClearErrs(){
   ['Date','Slot','Fn','Cov'].forEach(n=>reqFieldErr(n, ''));
   $('#reqMoreErr').hidden = true;
+  document.querySelectorAll('#reqMore .mf-err').forEach(e=>{ e.hidden = true; });
   $('#reqErr').hidden = true;
 }
 function reqBusyPaint(){
   $('#reqSend').disabled = _reqBusy;
-  $('#reqSend').textContent = _reqBusy ? 'Sending…' : 'Send request';
+  const nf = $('#reqMore') ? $('#reqMore').children.length + 1 : 1;
+  $('#reqSend').textContent = _reqBusy ? 'Sending…' : nf > 1 ? 'Send ' + nf + ' requests' : 'Send request';
   if(!_reqBusy){ clearTimeout(_reqSlowT); $('#reqSlow').hidden = true; }
 }
 /* the empty date's cue (.rq-ph), shown while no date is set. A half-typed
@@ -2256,29 +2260,124 @@ function reqDateCue(){
   d.classList.toggle('rq-nodate', !d.value && !(d.validity && d.validity.badInput));   /* not .empty: that is the page's empty-state panel */
 }
 const REQ_MAX_FN = 6;
+let _mfN = 0;   /* card numbering for unique radio names */
+const mfCards = () => [...document.querySelectorAll('#reqMore .rq-more')];
+const mfLine = (v, n) => String(v||'').replace(/\s+/g, ' ').trim().slice(0, n);
+/* every card's heading follows its own date and function, and the numbers
+   close up when one is removed */
+function mfHeads(){
+  mfCards().forEach((c, i)=>{
+    const d = c.querySelector('.mf-date').value, fn = mfLine(c.querySelector('.mf-fn').value, 40);
+    const when = isDate(d) ? availWhen(d) : '';
+    c.querySelector('.mf-t').textContent = 'Function ' + (i + 2) + (fn || when ? ' — ' + [fn, when].filter(Boolean).join(' · ') : '');
+  });
+  const n = mfCards().length + 1;
+  $('#reqAddFn').textContent = n === 1 ? '＋ Add another function on a different date' : '＋ Add another function (' + n + ' so far)';
+  reqBusyPaint();
+}
+function mfPaintCov(c){
+  const q = c._qty || (c._qty = new Map());
+  [...q.keys()].forEach(k=>{ if(!_reqRows.some(r=>r[0] === k)) q.delete(k); });
+  c.querySelector('.mf-cov').innerHTML = _reqRows.length ? _reqRows.map(([svc, rate], i)=>{
+    const n = q.get(svc) || 0;
+    return `<div class="rq-row${n ? ' on' : ''}" data-i="${i}">
+      <span class="rq-svc">${esc(svc)}<small>${Number(rate) > 0 ? inr(rate) + ' each' : 'Rate to be agreed'}</small></span>
+      <span class="rq-step">
+        <button type="button" data-step="-1" aria-label="One less: ${esc(svc)}"${n <= 0 ? ' disabled' : ''}>−</button>
+        <b aria-live="polite" aria-atomic="true">${n}</b>
+        <button type="button" data-step="1" aria-label="One more: ${esc(svc)}"${n >= REQ_MAX_QTY ? ' disabled' : ''}>+</button>
+      </span>
+    </div>`;
+  }).join('') : '<div class="rq-none">Tell us the coverage you need in the notes and we will quote it.</div>';
+  mfEst(c);
+}
+const mfItems = c => _reqRows.map(([service]) => ({ service, qty: (c._qty && c._qty.get(service)) || 0 })).filter(it=>it.qty > 0);
+function mfEst(c){
+  const q = c._qty || new Map();
+  const est = _reqRows.reduce((t, [svc, rate])=>t + (q.get(svc) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
+  c.querySelector('.mf-est').textContent = mfItems(c).length ? inr(est) : '—';
+}
+async function mfAvail(c){
+  const el = c.querySelector('.rq-av'), date = c.querySelector('.mf-date').value;
+  const slot = (c.querySelector('input[type=radio]:checked') || {}).value || '';
+  const say = (cls, text)=>{ el.className = 'rq-av' + (cls ? ' ' + cls : ''); el.textContent = text; };
+  const seq = c._seq = (c._seq || 0) + 1;
+  if(!isDate(date) || date < todayISO() || !slot){ say('', ''); return; }
+  const days = await reqAvailDays(date.slice(0, 7));
+  if(seq !== c._seq) return;
+  if(!days){ say('', ''); return; }
+  const rec = days[date.slice(8)], f = v => (v === 'r' || v === 'y') ? v : '';
+  const m = f(rec && rec.m), ev = f(rec && rec.e);
+  const v = slot === 'full' ? (m === 'r' || ev === 'r' ? 'r' : (m || ev)) : (slot === 'morning' ? m : ev);
+  if(v === 'r') say('r', 'This slot looks fully booked — you can still ask');
+  else if(v === 'y') say('y', 'Filling up');
+  else say('ok', 'Looks free on our calendar');
+}
 function reqAddFn(){
   const box = $('#reqMore');
   if(box.children.length + 1 >= REQ_MAX_FN){ $('#reqMoreErr').textContent = 'Up to ' + REQ_MAX_FN + ' functions in one go — send these, then add more.'; $('#reqMoreErr').hidden = false; return; }
   $('#reqMoreErr').hidden = true;
-  const d = document.createElement('div'); d.className = 'rq-more';
-  d.innerHTML = '<div class="rq-more-h"><span class="rq-l">Another function</span><button class="rq-rm" type="button">Remove</button></div>'
-    + '<input class="rq-in mf-date" type="date" aria-label="Date of this function">'
-    + '<select class="rq-in mf-slot" aria-label="Slot"><option value="morning">Morning</option><option value="evening">Evening</option><option value="full">Full day</option></select>'
-    + '<input class="rq-in mf-fn" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" aria-label="Function">';
-  d.querySelector('.mf-date').min = todayISO();
-  box.appendChild(d);
-  d.querySelector('.mf-date').focus();
+  const n = ++_mfN, c = document.createElement('div'); c.className = 'rq-more';
+  c._qty = new Map();
+  /* the first function's venue and coverage are the likeliest answer here too */
+  _reqQty.forEach((v, k)=>c._qty.set(k, v));
+  c.innerHTML = `<div class="rq-more-h"><span class="rq-l mf-t">Function</span><button class="rq-rm" type="button">Remove</button></div>
+    <div class="rq-f"><label class="rq-l" for="mfd${n}">Date</label>
+      <div class="rq-date"><input class="rq-in rq-nodate mf-date" id="mfd${n}" type="date" min="${todayISO()}" />
+      <span class="rq-ph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2zM5 10v10h14V10H5z"/></svg>Choose a date</span></div></div>
+    <div class="rq-f"><span class="rq-l">Slot</span>
+      <div class="rq-seg" role="radiogroup" aria-label="Slot">
+        <label><input type="radio" name="mfSlot${n}" value="morning" /><span>Morning</span></label>
+        <label><input type="radio" name="mfSlot${n}" value="evening" /><span>Evening</span></label>
+        <label><input type="radio" name="mfSlot${n}" value="full" /><span>Full day</span></label>
+      </div><div class="rq-av" aria-live="polite"></div></div>
+    <div class="rq-f"><label class="rq-l" for="mff${n}">Function</label>
+      <input class="rq-in mf-fn" id="mff${n}" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" /></div>
+    <div class="rq-f"><label class="rq-l" for="mfv${n}">Venue</label>
+      <input class="rq-in mf-venue" id="mfv${n}" type="text" maxlength="160" placeholder="Hall or address" autocapitalize="words" /></div>
+    <div class="rq-f"><span class="rq-l">Coverage <small>at your agreed rates</small></span>
+      <div class="rq-cov mf-cov" role="group"></div>
+      <div class="rq-est"><span>Estimate</span><b class="mf-est">—</b></div></div>
+    <div class="rq-f"><label class="rq-l" for="mfn${n}">Notes <small>(optional)</small></label>
+      <textarea class="rq-in mf-notes" id="mfn${n}" rows="2" maxlength="1000" placeholder="Timings, special shots, anything we should know"></textarea></div>
+    <div class="rq-err mf-err" role="alert" hidden></div>`;
+  c.querySelector('.mf-venue').value = $('#reqVenue').value;
+  box.appendChild(c);
+  mfPaintCov(c); mfHeads();
+  try{ c.scrollIntoView({ block:'nearest' }); c.querySelector('.mf-date').focus({ preventScroll:true }); }catch(e){}
 }
-/* [{ date, slot, title }] for the extra rows; bad = the first row that is not complete */
+/* one entry per card; the first card's own fields are read by the submit */
 function reqMoreRows(){
-  const rows = [...document.querySelectorAll('#reqMore .rq-more')].map(r=>({
-    el:r, date:r.querySelector('.mf-date').value, slot:r.querySelector('.mf-slot').value,
-    title:r.querySelector('.mf-fn').value.replace(/\s+/g,' ').trim().slice(0,80) }));
-  return rows;
+  return mfCards().map(c=>({
+    el:c, date:c.querySelector('.mf-date').value,
+    slot:(c.querySelector('input[type=radio]:checked') || {}).value || '',
+    title:mfLine(c.querySelector('.mf-fn').value, 80),
+    venue:mfLine(c.querySelector('.mf-venue').value, 160),
+    notes:String(c.querySelector('.mf-notes').value || '').trim().slice(0, 1000),
+    items:mfItems(c) }));
 }
 $('#reqAddFn').addEventListener('click', reqAddFn);
 $('#reqMore').addEventListener('click', e=>{
-  if(e.target.classList.contains('rq-rm')){ e.target.closest('.rq-more').remove(); $('#reqMoreErr').hidden = true; }
+  const c = e.target.closest('.rq-more'); if(!c) return;
+  if(e.target.classList.contains('rq-rm')){ c.remove(); $('#reqMoreErr').hidden = true; mfHeads(); return; }
+  const b = e.target.closest('[data-step]'); if(!b) return;
+  const row = b.closest('.rq-row'), r = _reqRows[Number(row.dataset.i)]; if(!r) return;
+  const q = Math.max(0, Math.min(REQ_MAX_QTY, (c._qty.get(r[0]) || 0) + (b.dataset.step === '1' ? 1 : -1)));
+  if(q) c._qty.set(r[0], q); else c._qty.delete(r[0]);
+  row.classList.toggle('on', q > 0);
+  row.querySelector('.rq-step b').textContent = q;
+  const [less, more] = row.querySelectorAll('[data-step]');
+  less.disabled = q <= 0; more.disabled = q >= REQ_MAX_QTY;
+  if(b.disabled) (b === less ? more : less).focus();
+  c.querySelector('.mf-err').hidden = true;
+  mfEst(c);
+});
+$('#reqMore').addEventListener('input', e=>{
+  const c = e.target.closest('.rq-more'); if(!c) return;
+  if(e.target.classList.contains('mf-date')) e.target.classList.toggle('rq-nodate', !e.target.value && !(e.target.validity && e.target.validity.badInput));
+  c.querySelector('.mf-err').hidden = true;
+  $('#reqMoreErr').hidden = true;
+  mfHeads(); mfAvail(c);
 });
 /* an emptied form: after a request has gone, and on sign-out. Closing the
    sheet keeps what was typed, so a stray Back loses nothing. */
@@ -2517,6 +2616,7 @@ $('#reqStu').addEventListener('change', e=>{
   _reqStuId = e.target.value; _reqQty = new Map();
   reqFieldErr('Cov', '');
   reqPaintCov(); reqWaHref();
+  mfCards().forEach(c=>{ c._qty = new Map(); mfPaintCov(c); });
 });
 
 /* show: the sheet was still open, so the partner is waiting on it: take
@@ -2585,12 +2685,14 @@ $('#reqForm').addEventListener('submit', async e=>{
   const more = reqMoreRows();
   const seen = new Set([date + '|' + slot]);
   for(const m of more){
-    let msg = '';
-    if(!isDate(m.date)) msg = 'Choose the date of each extra function.';
-    else if(m.date < todayISO()) msg = 'An extra function\'s date has passed — choose today or later.';
-    else if(!m.title) msg = 'Tell us each extra function, for example Reception.';
-    else if(seen.has(m.date + '|' + m.slot)) msg = 'Two functions share the same date and slot — change one.';
-    if(msg){ const er = $('#reqMoreErr'); er.textContent = msg; er.hidden = false; if(!bad) bad = m.el.querySelector(!isDate(m.date) || m.date < todayISO() ? '.mf-date' : '.mf-fn'); break; }
+    let msg = '', at = '.mf-date';
+    if(!isDate(m.date)){ msg = 'Choose the date of this function.'; }
+    else if(m.date < todayISO()){ msg = 'That date has passed — choose today or a later date.'; }
+    else if(!m.slot){ msg = 'Choose morning, evening or full day.'; at = 'input[type=radio]'; }
+    else if(!m.title){ msg = 'Tell us the function, for example Reception.'; at = '.mf-fn'; }
+    else if(seen.has(m.date + '|' + m.slot)){ msg = 'Two functions share the same date and slot — change one.'; }
+    else if(m.items.length > REQ_MAX_ITEMS){ msg = 'A request takes up to ' + REQ_MAX_ITEMS + ' services — put the rest in the notes.'; at = '.mf-cov button'; }
+    if(msg){ const er = m.el.querySelector('.mf-err'); er.textContent = msg; er.hidden = false; if(!bad) bad = m.el.querySelector(at); continue; }
     seen.add(m.date + '|' + m.slot);
   }
   if(items.length > REQ_MAX_ITEMS) fail('Cov', 'A request takes up to ' + REQ_MAX_ITEMS + ' services — put the rest in the notes.', $('#reqCov button'));
@@ -2605,7 +2707,7 @@ $('#reqForm').addEventListener('submit', async e=>{
     items, notes: String($('#reqNotes').value||'').trim().slice(0, 1000), status:'new',
   };
   /* the sample account: into memory, and not one write */
-  const all = [data, ...more.map(m=>({ ...data, date:m.date, slot:m.slot, title:m.title }))];
+  const all = [data, ...more.map(m=>({ ...data, date:m.date, slot:m.slot, title:m.title, venue:m.venue, items:m.items, notes:m.notes }))];
   if(reqSample()){
     _reqs = [...all.map(d=>({ ...d, id:'sample-' + (_reqN++), createdAt: Date.now() })), ..._reqs];
     reqDone('Sample account — nothing was sent', true);
