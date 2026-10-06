@@ -12981,6 +12981,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   /* The header 🔍 is the only way in on a phone — there is no Ctrl+K there. */
   on('#hdrSearch', 'click', openGs);
+  /* Refresh: a reload keeps the address (#/work/bookings, ?demo), so you land on the same page with fresh data */
+  on('#hdrRefresh', 'click', ()=>{
+    const b = $('#hdrRefresh'); if(b){ b.disabled = true; b.style.opacity = '.6'; }
+    location.reload();
+  });
   on('#gsClose', 'click', closeGs);
   on('#gsBackdrop', 'click', closeGs);
   /* ⌘K on a Mac, Ctrl+K everywhere else. Ignored while a text field already
