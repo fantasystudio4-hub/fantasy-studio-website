@@ -237,7 +237,7 @@ function openLb(i){
   const st = $('#lbStage');
   st.innerHTML = it.kind === 'photo'
     ? `<img src="${esc(it.url)}" alt="${esc(it.title || '')}" />`
-    : `<video src="${esc(it.url)}" ${it.thumb ? `poster="${esc(it.thumb)}"` : ''} controls autoplay playsinline controlsList="nodownload" style="${it.kind === 'reel' ? 'height:100%' : 'width:100%'}"></video>`;
+    : `<video src="${esc(it.url)}" ${it.thumb ? `poster="${esc(it.thumb)}"` : ''} controls autoplay playsinline preload="auto" controlsList="nodownload" style="${it.kind === 'reel' ? 'height:100%' : 'width:100%'}"></video>`;
   $('#lbT').textContent = it.title || '';
   $('#lb').hidden = false; document.body.style.overflow = 'hidden';
   const one = SHOWN.length < 2; $('#lbP').hidden = $('#lbN').hidden = one;

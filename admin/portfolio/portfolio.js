@@ -91,7 +91,7 @@ function videoPoster(file){
     const t = setTimeout(() => done(null), 8000);
     v.muted = true; v.playsInline = true; v.preload = 'metadata'; v.src = u;
     v.onloadeddata = () => { try{ v.currentTime = Math.min(1, (v.duration || 2) / 2); }catch(e){ clearTimeout(t); done(null); } };
-    v.onseeked = async () => { clearTimeout(t); try{ const r = await toJpeg(v, v.videoWidth, v.videoHeight, 720, .8); done({ ...r, vw: v.videoWidth, vh: v.videoHeight }); }catch(e){ done(null); } };
+    v.onseeked = async () => { clearTimeout(t); try{ const r = await toJpeg(v, v.videoWidth, v.videoHeight, 720, .8); done({ ...r, vw: v.videoWidth, vh: v.videoHeight, dur: v.duration }); }catch(e){ done(null); } };
     v.onerror = () => { clearTimeout(t); done(null); };
   });
 }
@@ -124,6 +124,9 @@ async function uploadAll(files){
       }else{
         const p = await videoPoster(file);
         if(p){ thumb = p.blob; w = p.vw; h = p.vh; }
+        /* a heavy file stalls on a phone: ~8 Mbps (1080p, H.264) plays smoothly on mobile data */
+        const mbps = p && p.dur > 1 ? file.size * 8 / p.dur / 1e6 : 0;
+        if(mbps > 10 && !confirm(`This video is very heavy (about ${mbps.toFixed(0)} Mbps, ${(file.size / 1048576).toFixed(0)} MB for ${Math.round(p.dur)} s). On a phone it will pause to load.\n\nFor smooth playback export it as 1080p H.264 at about 6-8 Mbps (a 1-minute film is then ~50 MB).\n\nUpload it anyway?`)){ row.remove(); continue; }
         main = { blob: file, type: file.type, ext: (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4' };
       }
       note.textContent = 'Uploading…';
