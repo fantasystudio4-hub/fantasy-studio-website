@@ -4219,6 +4219,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           ${(() => {
             const why = (at.score >= PKG_ATTN_MIN && at.why)
               ? `<span class="pk-why ${at.sev}">${esc(at.why)}</span>` : '';
+            /* owner, 6 Oct 2026: no waiting / idle / reason pills on a booked or delivered card */
+            if(track) return '';
             return (nowLine || idlePill || why)
               ? `<span class="pk-state">${nowLine}${idlePill}${why}</span>` : '';
           })()}
