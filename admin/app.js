@@ -4619,6 +4619,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const humanShort = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
     const isToday = calSel === new Date().toLocaleDateString('en-CA');
     const fests = festivalsOn(calSel);
     /* a booked shoot on this date: one tap to the crew list for it. The crew
@@ -4626,7 +4627,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        back one tap from Home. */
     const hasShoot = evs.some(e=>e.kind === 'pkg' && e.status === 'booked');
     box.innerHTML = `<div class="sec">
-      <div class="cd-head${hasShoot ? ' cd-head--2' : ''}"><h3>${human}${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><span class="cd-acts">${hasShoot ? '<button class="btn btn--sm btn--ghost" type="button" data-daycrew>🎬 Crew</button>' : ''}<button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></span></div>`
+      <div class="cd-head${hasShoot ? ' cd-head--2' : ''}"><h3><span class="dl">${human}</span><span class="ds">${humanShort}</span>${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><span class="cd-acts">${hasShoot ? '<button class="btn btn--sm btn--ghost" type="button" data-daycrew>🎬 Crew</button>' : ''}<button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></span></div>`
       + (fests.length ? `<div class="festrow">${fests.map(f=>`<span class="fest">🪔 ${esc(f)}</span>`).join('')}</div>` : '')
       + (evs.length ? evs.map(e=>{
       const crew = e.kind === 'pkg' ? evCrew(e.id, e.date, e.title) : [];

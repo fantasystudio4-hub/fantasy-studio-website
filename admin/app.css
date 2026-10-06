@@ -2208,7 +2208,16 @@ html.shell #teamSegs{display:none}
 
 /* the day box carries Crew AND ＋ Add event on a shoot day: on a phone the date
    takes its own line rather than being squeezed to three */
-@media(max-width:699px){ .cd-head--2 h3{flex-basis:100%} }
+/* owner, 6 Oct 2026: one line on a phone — short date, smaller buttons, no wrap */
+.cd-head h3 .ds{display:none}
+@media(max-width:699px){
+  .cd-head{flex-wrap:nowrap}
+  .cd-head h3{flex:1 1 auto;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cd-head h3 .dl{display:none}
+  .cd-head h3 .ds{display:inline}
+  .cd-head .btn{padding-inline:.7em}
+  .cd-acts{gap:.35rem}
+}
 /* the shoot sheet has up to four buttons now: two across, never one stranded
    full-width on a line of its own looking like the main action */
 #evBody .ev-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
