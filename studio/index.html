@@ -337,6 +337,12 @@ textarea.rq-in{resize:vertical;min-height:84px}
   font-size:.9rem;font-weight:600;color:var(--mut);text-align:center}
 .rq-seg input:checked + span{background:linear-gradient(135deg,var(--gold),var(--gold-b));color:var(--ink)}
 .rq-seg input:focus-visible + span{outline:2px solid var(--gold-b);outline-offset:2px}
+.rq-more{margin-top:.7rem;padding:.7rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.rq-more-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
+.rq-more-h .rq-l{margin:0}
+.rq-more .rq-in+.rq-in,.rq-more select.rq-in{margin-top:.5rem}
+.rq-rm{border:0;background:none;color:var(--mut);font-size:.8rem;min-height:44px;padding:0 .4rem;cursor:pointer}
+.rq-add{display:block;width:100%;margin-top:.7rem;min-height:44px;border:1px dashed var(--gold-b);border-radius:10px;background:none;color:var(--gold-b);font:inherit;font-size:.85rem;cursor:pointer}
 .rq-av{font-size:.8rem;margin-top:.45rem;color:var(--mut)}
 .rq-av:empty{display:none}
 .rq-av.r{color:#ec8f82}
@@ -650,6 +656,10 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <div class="rq-err" id="reqSlotErr" role="alert" hidden></div>
       <!-- what Fantasy Studio's calendar says about that date and slot -->
       <div class="rq-av" id="reqAvailNote" aria-live="polite"></div>
+      <!-- more functions on other dates (a wedding and a reception): one request each, same venue, coverage and notes -->
+      <div id="reqMore"></div>
+      <button class="rq-add" type="button" id="reqAddFn">＋ Add another function on a different date</button>
+      <div class="rq-err" id="reqMoreErr" role="alert" hidden></div>
     </div>
     <div class="rq-f">
       <label class="rq-l" for="reqFn">Function</label>
@@ -717,11 +727,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
    fs-auth.js is the one session every page shares; the SDK functions come
    from the SAME URLs it imports, so they work with its auth and db. */
 let FS, onAuthStateChanged;
-let collection, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, query, where, onSnapshot;
+let collection, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, query, where, onSnapshot;
 try{
   FS = await import('../fs-auth.js');
   ({ onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ collection, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } =
+  ({ collection, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, query, where, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   $('#errMsg').textContent = 'Could not reach the sign-in service — check your connection and try again.';
@@ -2230,6 +2240,7 @@ function reqFieldErr(name, msg){
 }
 function reqClearErrs(){
   ['Date','Slot','Fn','Cov'].forEach(n=>reqFieldErr(n, ''));
+  $('#reqMoreErr').hidden = true;
   $('#reqErr').hidden = true;
 }
 function reqBusyPaint(){
@@ -2244,10 +2255,36 @@ function reqDateCue(){
   const d = $('#reqDate');
   d.classList.toggle('rq-nodate', !d.value && !(d.validity && d.validity.badInput));   /* not .empty: that is the page's empty-state panel */
 }
+const REQ_MAX_FN = 6;
+function reqAddFn(){
+  const box = $('#reqMore');
+  if(box.children.length + 1 >= REQ_MAX_FN){ $('#reqMoreErr').textContent = 'Up to ' + REQ_MAX_FN + ' functions in one go — send these, then add more.'; $('#reqMoreErr').hidden = false; return; }
+  $('#reqMoreErr').hidden = true;
+  const d = document.createElement('div'); d.className = 'rq-more';
+  d.innerHTML = '<div class="rq-more-h"><span class="rq-l">Another function</span><button class="rq-rm" type="button">Remove</button></div>'
+    + '<input class="rq-in mf-date" type="date" aria-label="Date of this function">'
+    + '<select class="rq-in mf-slot" aria-label="Slot"><option value="morning">Morning</option><option value="evening">Evening</option><option value="full">Full day</option></select>'
+    + '<input class="rq-in mf-fn" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" aria-label="Function">';
+  d.querySelector('.mf-date').min = todayISO();
+  box.appendChild(d);
+  d.querySelector('.mf-date').focus();
+}
+/* [{ date, slot, title }] for the extra rows; bad = the first row that is not complete */
+function reqMoreRows(){
+  const rows = [...document.querySelectorAll('#reqMore .rq-more')].map(r=>({
+    el:r, date:r.querySelector('.mf-date').value, slot:r.querySelector('.mf-slot').value,
+    title:r.querySelector('.mf-fn').value.replace(/\s+/g,' ').trim().slice(0,80) }));
+  return rows;
+}
+$('#reqAddFn').addEventListener('click', reqAddFn);
+$('#reqMore').addEventListener('click', e=>{
+  if(e.target.classList.contains('rq-rm')){ e.target.closest('.rq-more').remove(); $('#reqMoreErr').hidden = true; }
+});
 /* an emptied form: after a request has gone, and on sign-out. Closing the
    sheet keeps what was typed, so a stray Back loses nothing. */
 function reqReset(){
   $('#reqForm').reset();
+  $('#reqMore').textContent = ''; $('#reqMoreErr').hidden = true;
   reqDateCue();
   _reqQty = new Map(); _reqStuId = '';
   _reqBusy = false; reqBusyPaint();
@@ -2545,6 +2582,17 @@ $('#reqForm').addEventListener('submit', async e=>{
   else if(date < todayISO()) fail('Date', 'That date has passed — choose today or a later date.', $('#reqDate'));
   if(!slot) fail('Slot', 'Choose morning, evening or full day.', document.querySelector('#reqForm input[name="reqSlot"]'));
   if(!title) fail('Fn', 'Tell us the function, for example Nikah or Reception.', $('#reqFn'));
+  const more = reqMoreRows();
+  const seen = new Set([date + '|' + slot]);
+  for(const m of more){
+    let msg = '';
+    if(!isDate(m.date)) msg = 'Choose the date of each extra function.';
+    else if(m.date < todayISO()) msg = 'An extra function\'s date has passed — choose today or later.';
+    else if(!m.title) msg = 'Tell us each extra function, for example Reception.';
+    else if(seen.has(m.date + '|' + m.slot)) msg = 'Two functions share the same date and slot — change one.';
+    if(msg){ const er = $('#reqMoreErr'); er.textContent = msg; er.hidden = false; if(!bad) bad = m.el.querySelector(!isDate(m.date) || m.date < todayISO() ? '.mf-date' : '.mf-fn'); break; }
+    seen.add(m.date + '|' + m.slot);
+  }
   if(items.length > REQ_MAX_ITEMS) fail('Cov', 'A request takes up to ' + REQ_MAX_ITEMS + ' services — put the rest in the notes.', $('#reqCov button'));
   if(bad){
     try{ bad.focus({ preventScroll:true }); (bad.closest('.rq-f') || bad).scrollIntoView({ block:'nearest' }); }catch(err){}
@@ -2557,8 +2605,9 @@ $('#reqForm').addEventListener('submit', async e=>{
     items, notes: String($('#reqNotes').value||'').trim().slice(0, 1000), status:'new',
   };
   /* the sample account: into memory, and not one write */
+  const all = [data, ...more.map(m=>({ ...data, date:m.date, slot:m.slot, title:m.title }))];
   if(reqSample()){
-    _reqs = [{ ...data, id:'sample-' + (_reqN++), createdAt: Date.now() }, ..._reqs];
+    _reqs = [...all.map(d=>({ ...d, id:'sample-' + (_reqN++), createdAt: Date.now() })), ..._reqs];
     reqDone('Sample account — nothing was sent', true);
     return;
   }
@@ -2569,8 +2618,13 @@ $('#reqForm').addEventListener('submit', async e=>{
   let err = null;
   /* the id is known before the write, so a Cancel tapped while it is on
      its way up can be told apart from a request that arrived */
-  const ref = doc(collection(db,'studioRequests'));
-  try{ await setDoc(ref, { ...data, createdAt: serverTimestamp() }); }
+  const refs = all.map(()=>doc(collection(db,'studioRequests')));
+  const ref = refs[0];
+  try{
+    const b = writeBatch(db);
+    all.forEach((d,i)=>b.set(refs[i], { ...d, createdAt: serverTimestamp() }));
+    await b.commit();
+  }
   catch(e2){ err = e2; }
   if(gen !== _reqGen) return;   /* signed out meanwhile: stopData emptied the form */
   _reqBusy = false; reqBusyPaint();
@@ -2590,7 +2644,7 @@ $('#reqForm').addEventListener('submit', async e=>{
      it. Read before reqSync, which starts a list that has not loaded yet. */
   const listed = !_reqUnsub || _reqErr || _reqs.some(r=>r.id === ref.id);
   reqSync(true);   /* a list that could not load before gets another go */
-  reqDone(listed ? 'Request sent — see it under Your requests' : '', listed && reqOpen());
+  reqDone(listed ? (all.length > 1 ? all.length + ' requests sent — see them under Your requests' : 'Request sent — see it under Your requests') : '', listed && reqOpen());
 });
 
 /* signed out (stopData): the listener, the list and anything typed all go */
