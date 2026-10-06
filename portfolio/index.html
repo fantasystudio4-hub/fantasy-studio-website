@@ -164,8 +164,15 @@ const { doc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp } =
 
 const user = await FS.ready();
 if(FS.DEMO_VIEW || (user && FS.isSample(user))){
-  /* review / local test login: sample mode, no writes, nothing to read */
-  view('vGal'); $('#none').hidden = false; $('#tabs').hidden = true;
+  /* review / local test login: the same request screen, but nothing is written
+     (the sample login can never be approved, so it stops at "Request sent") */
+  view('vAsk');
+  $('#askForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const err = $('#askErr'); err.hidden = true;
+    if(!$('#askName').value.trim()){ err.textContent = 'Please type your name.'; err.hidden = false; return; }
+    view('vWait');
+  });
 }else if(!user){
   view('vOut');
 }else{
