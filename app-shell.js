@@ -8,7 +8,7 @@
    its existing sections under it, so renderers, timers and onSnapshot
    listeners keep running exactly as on the website.
 
-   FSApp.mount({ portal, tabs:[{id,label,icon,hiddenWhen?}], visibleWhen, onChange? })
+   FSApp.mount({ portal, tabs:[{id,label,icon,hiddenWhen?,onTap?}], visibleWhen, onChange? })
    FSApp.setTab(id)  FSApp.current()  FSApp.hide()  FSApp.show()
    FSApp.refresh()   FSApp.exitToStart()
 
@@ -132,6 +132,7 @@
       var t = { id: d.id, hiddenWhen: d.hiddenWhen, btn: b, hidden: false };
       b.addEventListener('click', function(){
         haptic();
+        if(d.onTap){ try{ d.onTap(); }catch(e){} return; }   /* a tab that leaves for another page */
         if(t.id === st.id) apply(t.id, 'none');   /* same tab: just back to the top */
         else apply(t.id, 'push');
       });
