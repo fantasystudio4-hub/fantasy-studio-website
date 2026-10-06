@@ -57,6 +57,13 @@ h1 em{font-style:normal;color:var(--gold-b)}
 .lb .x{top:calc(12px + env(safe-area-inset-top));right:12px}
 .lb .p{left:10px;top:50%}.lb .n{right:10px;top:50%}
 .lb .t{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center;font-size:.9rem;color:#fff;text-shadow:0 1px 6px #000;padding:0 70px}
+/* Pardah: no saving, no selecting, no printing, and every viewer's name over the work */
+#vGal,.lb{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#vGal img,.lb img,.lb video{-webkit-user-drag:none;user-drag:none}
+.mark{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden;display:none}
+body.guard .mark{display:block}
+.mark i{position:absolute;left:-30%;width:160%;font:600 .95rem 'Jost',sans-serif;color:rgba(255,255,255,.2);text-shadow:0 0 2px rgba(0,0,0,.45);transform:rotate(-24deg);white-space:nowrap;letter-spacing:.05em}
+@media print{body{display:none!important}}
 html.fs-app .back{display:none}
 [hidden]{display:none!important}
 </style>
@@ -114,6 +121,7 @@ html.fs-app .back{display:none}
   </section>
 </main>
 
+<div class="mark" id="mark" aria-hidden="true"></div>
 <div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Portfolio viewer">
   <button class="x" id="lbX" type="button" aria-label="Close">✕</button>
   <button class="p" id="lbP" type="button" aria-label="Previous">‹</button>
@@ -181,7 +189,8 @@ if(FS.DEMO_VIEW){
   let galOn = false;
   onSnapshot(rq, s => {
     const st = s.exists() ? (s.data().status || 'pending') : null;
-    if(st === 'approved'){ view('vGal'); if(!galOn){ galOn = true; startGallery(); } }
+    if(s.exists()){ const d = s.data(); WHO = ((d.name || 'Guest') + ' · ' + String(d.phone10 || '').replace(/\d(?=\d{4})/g, '•')).trim(); }
+    if(st === 'approved'){ view('vGal'); setMark(); if(!galOn){ galOn = true; startGallery(); } }
     else if(st === 'pending') view('vWait');
     else if(st === 'declined') view('vNo');
     else view('vAsk');
@@ -202,6 +211,22 @@ if(FS.DEMO_VIEW){
   });
 }
 
+
+/* ---------- guard: the gallery is for the person approved, not to be kept ---------- */
+let WHO = '';
+function setMark(){
+  const m = $('#mark'); if(!m || !WHO) return;
+  m.innerHTML = Array.from({ length: 9 }, (_, i) => `<i style="top:${i * 13 - 4}%">${esc((WHO + '   ·   ').repeat(8))}</i>`).join('');
+  document.body.classList.add('guard');
+}
+document.addEventListener('contextmenu', e => { if(document.body.classList.contains('guard') || e.target.closest('#vGal,.lb')) e.preventDefault(); });
+document.addEventListener('dragstart', e => { if(e.target.closest('#vGal,.lb')) e.preventDefault(); });
+document.addEventListener('keydown', e => {
+  const k = (e.key || '').toLowerCase();
+  if((e.ctrlKey || e.metaKey) && ['s', 'p', 'u'].includes(k)) e.preventDefault();
+  if(k === 'printscreen'){ try{ navigator.clipboard.writeText(''); }catch(x){} }
+});
+document.addEventListener('visibilitychange', () => { const v = document.querySelector('#lbStage video'); if(document.hidden && v) v.pause(); });
 /* ---------- gallery ---------- */
 let ITEMS = [], FILTER = 'all', SHOWN = [], IDX = 0;
 const TABS = [['all', 'All'], ['video', 'Films'], ['reel', 'Reels'], ['photo', 'Photos']];
@@ -237,7 +262,7 @@ function openLb(i){
   const st = $('#lbStage');
   st.innerHTML = it.kind === 'photo'
     ? `<img src="${esc(it.url)}" alt="${esc(it.title || '')}" />`
-    : `<video src="${esc(it.url)}" ${it.thumb ? `poster="${esc(it.thumb)}"` : ''} controls autoplay playsinline preload="auto" controlsList="nodownload" style="${it.kind === 'reel' ? 'height:100%' : 'width:100%'}"></video>`;
+    : `<video src="${esc(it.url)}" ${it.thumb ? `poster="${esc(it.thumb)}"` : ''} controls autoplay playsinline preload="auto" controlsList="nodownload noremoteplayback" disablePictureInPicture disableRemotePlayback oncontextmenu="return false" style="${it.kind === 'reel' ? 'height:100%' : 'width:100%'}"></video>`;
   $('#lbT').textContent = it.title || '';
   $('#lb').hidden = false; document.body.style.overflow = 'hidden';
   const one = SHOWN.length < 2; $('#lbP').hidden = $('#lbN').hidden = one;
