@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4b" />
-<link rel="stylesheet" href="app.css?v=p4f" />
+<link rel="stylesheet" href="app.css?v=p4i" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -160,6 +160,13 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button class="fab" id="stuAddFab" hidden aria-label="Add partner studio" title="Add partner studio">＋</button>
 
   <div id="leadsView">
+    <!-- people who signed in on the app or the website but are not set up as a
+         client, crew or partner (6 Oct 2026): follow up from here -->
+    <div class="sec" id="suSec" hidden>
+      <h3>👋 New sign-ups<b class="rq-count" id="suCount" hidden></b></h3>
+      <p class="sub">Signed in with their number but you have not set them up. Say hello, or make them a lead.</p>
+      <div id="suList"></div>
+    </div>
     <!-- every section page reads the same way: the row with the page's main
          action, then the filters, then the list. The tiles sat above the row. -->
     <div class="bar">
@@ -264,6 +271,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <h3>⏳ Waiting on you</h3>
       <div id="homeReqs"></div>
       <button class="upall" id="homeJoin" type="button" hidden></button>
+      <button class="upall" id="homePreq" type="button" hidden></button>
+      <button class="upall" id="homeSu" type="button" hidden></button>
     </div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" id="bookingsSec">
@@ -385,6 +394,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <h3>📥 Booking requests<b class="rq-count" id="stuReqCount" hidden></b></h3>
         <p class="sub">Sent from the partner page. Accept opens a draft job for you to price; the studio is told either way.</p>
         <div id="stuReqs"></div>
+      </div>
+      <!-- partner studios that signed in and asked to be added (6 Oct 2026) -->
+      <div class="sec" id="stuPreqSec" hidden>
+        <h3>🙋 Partner requests<b class="rq-count" id="stuPreqCount" hidden></b></h3>
+        <p class="sub">Signed in with their number and asked to be added. Approve opens the studio form, filled in; their partner page opens when you save.</p>
+        <div id="stuPreqs"></div>
       </div>
       <div class="stats" id="b2bStats"></div>
       <div class="sec">
@@ -993,7 +1008,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p4f"></script>
+<script type="module" src="app.js?v=p4i"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

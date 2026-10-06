@@ -1854,6 +1854,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function renderLeads(){
     renderLeadChips();
+    try{ renderSignups(); }catch(e){}   /* the sign-ups box on top follows the bookings, crew and studios that now set them up */
     /* Live snapshots re-render this list at any moment — a new lead arriving
        must not collapse the card the owner is reading or erase a half-typed
        note. Capture open cards, unsaved note drafts and the caret; restore
@@ -3726,10 +3727,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        already on that date: draw it only once all three lists have arrived */
     const ready = _sreqsLoaded && _studiosLoaded && _pkgsLoaded;
     box.innerHTML = ready ? fresh.map(sreqCardHTML).join('') : '';
+    const suN = suOpen().filter(u=>u.action === 'seen' || u.action === 'lead').length;
+    const pq = preqPending().length, pj = $('#homePreq');
+    if(pj){ pj.hidden = !pq; pj.textContent = pq ? `🏢 ${pq} partner studio request${pq === 1 ? '' : 's'} — open Partner studios ›` : ''; }
     const rq = reqCount();
     join.hidden = !rq;
     join.textContent = rq ? `🙋 ${rq} crew join request${rq === 1 ? '' : 's'} — open Team ›` : '';
-    sec.hidden = !((ready && fresh.length) || rq);
+    sec.hidden = !((ready && fresh.length) || rq || pq || suN);
     const hb = $('#homeBadge');
     if(hb){ hb.hidden = !fresh.length; hb.textContent = fresh.length || ''; }
   }
@@ -9580,6 +9584,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      ============================================================ */
   let SREQS = [];
   let _sreqsUnsub = null, _sreqsLoaded = false, _sreqsErr = '';
+  /* Partner studios that signed in without being set up and asked to be added
+     (partnerRequests/{uid}); the crew's twin is REQS / teamRequests. Approve =
+     the studio form, prefilled; saving it clears the request. */
+  let PREQS = [], _preqsUnsub = null, _preqsErr = '', _stuFromReq = '';
   /* the request being answered right now — its buttons (and every other
      request's) stand down until the write settles, so a double tap cannot
      open two draft jobs for one request */
@@ -9610,6 +9618,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     : 'No date';
 
   function loadStudioReqs(){
+    loadPartnerReqs();
+    loadSignups();
     if(DEMO) return;   /* the fixtures own the list; a listener would overwrite them */
     if(_sreqsUnsub){ renderStuReqs(); return; }
     _sreqsErr = '';
@@ -9636,7 +9646,159 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     }catch(err){ _sreqsErr = 'Could not load booking requests (' + (err.code||err.message) + ')'; renderStuReqs(); }
   }
+  function loadPartnerReqs(){
+    if(DEMO || _preqsUnsub) return;
+    _preqsErr = '';
+    try{
+      _preqsUnsub = onSnapshot(query(collection(db,'partnerRequests'), orderBy('createdAt','desc'), limit(100)), snap=>{
+        PREQS = snap.docs.map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
+        _preqsErr = ''; renderPartnerReqs();
+      }, err=>{
+        try{ if(_preqsUnsub) _preqsUnsub(); }catch(e){} _preqsUnsub = null;
+        _preqsErr = 'Could not load partner requests (' + (err.code||err.message) + ')'
+          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules first.' : '');
+        renderPartnerReqs();
+      });
+    }catch(err){ _preqsErr = 'Could not load partner requests (' + (err.code||err.message) + ')'; renderPartnerReqs(); }
+  }
+  const preqPending = () => PREQS.filter(r=>(r.status||'pending') === 'pending');
+
+  /* ---- new sign-ups: signups/{uid} (written by /start/'s Welcome screen) ----
+     Everyone who signed in with a number you have not set up. A number that is
+     a client, crew member or partner studio now is not listed (it is set up),
+     and Crew / Partner requests keep their own inboxes, so this is the
+     "looked around" and "asked for a call" people to say hello to. */
+  let SUPS = [], _supsUnsub = null, _supsErr = '';
+  const SU_TAG = { seen:'Looked around', lead:'Asked for a call', crew:'Crew request', partner:'Partner request' };
+  function suKnown(p10){
+    if(!p10) return false;
+    return PKGS.some(x=>phone10Of(x.clientPhone) === p10)
+      || TEAM.some(m=>memberPhone10(m) === p10)
+      || STUDIOS.some(s=>s.phone10 === p10);
+  }
+  const suOpen = () => SUPS.filter(u=>!suKnown(String(u.phone10||'').replace(/\D/g,'').slice(-10)));
+  const suMs = t => t && typeof t.toMillis === 'function' ? t.toMillis() : (t && typeof t.seconds === 'number' ? t.seconds * 1000 : (typeof t === 'number' ? t : 0));
+  function suAgo(ms){
+    if(!ms) return '';
+    const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  }
+  function loadSignups(){
+    if(DEMO || _supsUnsub) return;
+    _supsErr = '';
+    try{
+      _supsUnsub = onSnapshot(query(collection(db,'signups'), orderBy('lastAt','desc'), limit(200)), snap=>{
+        SUPS = snap.docs.map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
+        _supsErr = ''; renderSignups();
+      }, err=>{
+        try{ if(_supsUnsub) _supsUnsub(); }catch(e){} _supsUnsub = null;
+        _supsErr = 'Could not load new sign-ups (' + (err.code||err.message) + ')'
+          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules first.' : '');
+        renderSignups();
+      });
+    }catch(err){ _supsErr = 'Could not load new sign-ups (' + (err.code||err.message) + ')'; renderSignups(); }
+  }
+  function renderSignups(){
+    const list = suOpen();
+    const fresh = list.filter(u=>u.action === 'seen' || u.action === 'lead');
+    const hs = $('#homeSu');
+    if(hs){ hs.hidden = !fresh.length; hs.textContent = fresh.length ? `👋 ${fresh.length} new sign-up${fresh.length === 1 ? '' : 's'} — open Leads ›` : ''; }
+    renderHomeWait();
+    const sec = $('#suSec'), el = $('#suList'); if(!sec || !el) return;
+    sec.hidden = !list.length && !_supsErr;
+    const cnt = $('#suCount'); if(cnt){ cnt.hidden = !list.length; cnt.textContent = list.length || ''; }
+    el.innerHTML = (_supsErr ? errBox(_supsErr, 'signups') : '') + list.map(u=>{
+      const p10 = String(u.phone10||'').replace(/\D/g,'').slice(-10);
+      const full = String(u.phoneFull||'').replace(/\D/g,'') || ('91' + p10);
+      const tag = SU_TAG[u.action] || SU_TAG.seen;
+      const hello = 'Hi, this is Fantasy Studio. We saw you signed in to our app — how can we help you?';
+      return `<div class="up-ev" style="cursor:default">
+        <span class="what"><b>+${esc(full.slice(0, -10) || '91')} ${esc(p10.slice(0,5))} ${esc(p10.slice(5))}</b> <span>${esc(tag)} · ${esc(suAgo(suMs(u.lastAt)))}</span></span>
+        <a class="icon-btn icon-btn--ring" href="tel:+${esc(full)}" title="Call" aria-label="Call">📞</a>
+        <a class="icon-btn icon-btn--ring" href="https://wa.me/${esc(full)}?text=${encodeURIComponent(hello)}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">💬</a>
+        ${u.action === 'seen' ? `<button class="btn btn--sm btn--ghost" data-sulead="${esc(u.id)}">＋ Lead</button>` : ''}
+        <button class="icon-btn icon-btn--danger" data-sudone="${esc(u.id)}" title="Done — clear" aria-label="Clear">✕</button>
+      </div>`; }).join('');
+  }
+  on('#suList', 'click', async e=>{
+    const ld = e.target.closest('[data-sulead]'), dn = e.target.closest('[data-sudone]');
+    const u = SUPS.find(v=>v.id === ((ld && ld.dataset.sulead) || (dn && dn.dataset.sudone)));
+    if(!u) return;
+    if(dn){
+      if(DEMO){ SUPS = SUPS.filter(v=>v.id !== u.id); renderSignups(); toast('Cleared (demo — not saved)'); return; }
+      try{ toast(settleMsg(await settle(deleteDoc(doc(db,'signups',u.id))), 'Cleared').msg); }catch(err){ toast('Could not clear'); }
+      return;
+    }
+    /* ＋ Lead: they did not leave a name, so the lead carries the number and
+       says where it came from */
+    const p10 = String(u.phone10||'').replace(/\D/g,'').slice(-10);
+    const data = { name: 'New sign-up', phone: p10, phoneFull: String(u.phoneFull||'').replace(/\D/g,'').slice(0, 20), eventType:'', weddingDate:'',
+      message: 'Signed in on the app or website and has not been set up yet. Say hello.', quote: null, grandTotal: null,
+      source: 'contact_form', createdAt: new Date(), status: 'new', notes: '' };
+    if(DEMO){ toast('Lead added (demo — not saved)'); return; }
+    try{
+      const res = await settle(setDoc(doc(collection(db,'leads')), data));
+      const sm = settleMsg(res, 'Lead added ✓ — it is in Leads');
+      toast(sm.msg);
+      /* the lead stands for them now */
+      if(sm.ok) await settle(deleteDoc(doc(db,'signups',u.id)));
+    }catch(err){ toast('Could not add the lead: ' + (err.code||err.message)); }
+  });
+  function renderPartnerReqs(){
+    const pend = preqPending();
+    renderHomeWait();
+    const sec = $('#stuPreqSec'), el = $('#stuPreqs'); if(!sec || !el) return;
+    sec.hidden = !pend.length && !_preqsErr;
+    const cnt = $('#stuPreqCount'); if(cnt){ cnt.hidden = !pend.length; cnt.textContent = pend.length || ''; }
+    el.innerHTML = (_preqsErr ? errBox(_preqsErr, 'preqs') : '') + pend.map(r=>`
+      <div class="up-ev" style="cursor:default">
+        <span class="what"><b>${esc(sreqText(r.studioName, 120) || '—')}</b> <span>${[sreqText(r.ownerName, 80), sreqText(r.city, 60)].filter(Boolean).map(esc).join(' · ')}</span></span>
+        ${reqDial(r) ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(reqDial(r))}" title="${esc(reqDial(r))}" aria-label="Call ${esc(sreqText(r.studioName, 120) || 'this studio')}">📞</a>` : ''}
+        <button class="btn btn--sm btn--ghost" data-preqok="${esc(r.id)}">Approve</button>
+        <button class="icon-btn icon-btn--danger" data-preqno="${esc(r.id)}" title="Dismiss">✕</button>
+      </div>`).join('');
+  }
+  on('#stuPreqs', 'click', async e=>{
+    const ok = e.target.closest('[data-preqok]'), no = e.target.closest('[data-preqno]');
+    if(ok){
+      const r = PREQS.find(v=>v.id === ok.dataset.preqok); if(!r) return;
+      const p10 = String(r.phone10 || '').replace(/\D/g, '').slice(-10);
+      const existing = STUDIOS.find(s=>p10 && s.phone10 === p10);
+      if(existing){
+        if(await confirmDialog({
+          title:'Remove this request?',
+          body:`<p><b>${esc(existing.name || 'A studio')}</b> already has this number, so this request is a duplicate.</p>`,
+          confirmText:'Remove request' })){
+          try{ toast(settleMsg(await settle(deleteDoc(doc(db,'partnerRequests',r.id))), 'Duplicate request removed').msg); }
+          catch(err){ toast('Could not remove the request'); }
+        }
+        return;
+      }
+      openStu(null);
+      _stuFromReq = r.id;
+      $('#stuTitle').textContent = 'Approve — Add Partner Studio';
+      $('#stuName').value = sreqText(r.studioName, 120);
+      $('#stuOwner').value = sreqText(r.ownerName, 80);
+      $('#stuCity').value = sreqText(r.city, 60);
+      $('#stuPhone').value = reqDial(r);
+      return;
+    }
+    if(no){
+      const r = PREQS.find(v=>v.id === no.dataset.preqno); if(!r) return;
+      if(!await confirmDialog({
+        title:'Dismiss this request?',
+        body:`<b>${esc(sreqText(r.studioName, 120) || 'This studio')}</b> can ask again — dismissing only clears it from your list.`,
+        confirmText:'Dismiss' })) return;
+      if(DEMO){ PREQS = PREQS.filter(v=>v.id !== r.id); renderPartnerReqs(); toast('Request dismissed (demo — not saved)'); return; }
+      try{ toast(settleMsg(await settle(deleteDoc(doc(db,'partnerRequests',r.id))), 'Request dismissed').msg); }
+      catch(err){ toast('Could not dismiss'); }
+    }
+  });
   function stopStudioReqs(){
+    if(_supsUnsub){ try{ _supsUnsub(); }catch(e){} _supsUnsub = null; }
+    SUPS = []; _supsErr = '';
+    if(_preqsUnsub){ try{ _preqsUnsub(); }catch(e){} _preqsUnsub = null; }
+    PREQS = []; _preqsErr = ''; _stuFromReq = '';
     if(_sreqsUnsub){ try{ _sreqsUnsub(); }catch(e){} _sreqsUnsub = null; }
     SREQS = []; _sreqsLoaded = false; _sreqsErr = ''; _sreqBusy = '';
     renderStuReqs();   /* clears the badge with the list */
@@ -10048,6 +10210,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function renderB2B(){
     if($('#calView').hidden) return;
     renderStuReqs();
+    renderPartnerReqs();
     renderB2BStats();
     renderStudioList();
     if(!$('#studioDetailView').hidden) renderStudioDetail();
@@ -10290,6 +10453,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- add / edit studio sheet ---------- */
   function openStu(s){
     _stuEditId = s ? s.id : null;
+    _stuFromReq = '';
     $('#stuTitle').textContent = s ? 'Edit Studio' : 'Add Partner Studio';
     $('#stuName').value  = s ? (s.name||'') : '';
     $('#stuOwner').value = s ? (s.ownerName||'') : '';
@@ -10309,7 +10473,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     setTimeout(()=>$('#stuName').focus(), 80);
     pushView('stusheet', '#b2b/studio-edit');
   }
-  function closeStuUI(){ $('#stuModal').classList.remove('open'); $('#stuBackdrop').classList.remove('open'); _stuEditId = null; }
+  function closeStuUI(){ $('#stuModal').classList.remove('open'); $('#stuBackdrop').classList.remove('open'); _stuEditId = null; _stuFromReq = ''; }
   function closeStu(){
     backFrom('stusheet', closeStuUI);
   }
@@ -10357,6 +10521,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the partner portal checks this hashed index before sending an OTP —
          same index the client portal uses, so one write serves both */
       if(data.phone10) ensurePhoneIndex(data.phone10);
+      /* saving a studio from a partner request = approving it: the request
+         leaves the inbox, and their partner page opens by itself */
+      const fromReq = _stuFromReq;
+      if(fromReq){
+        if(DEMO) PREQS = PREQS.filter(v=>v.id !== fromReq);
+        else try{
+          const rq = await settle(deleteDoc(doc(db,'partnerRequests',fromReq)));
+          toast(rq === 'denied' ? 'Studio saved — but the request could not be cleared. Dismiss it by hand.'
+            : rq === 'queued' ? 'Studio saved — the request clears when you are back online'
+            : 'Approved ✓ — their partner page is now unlocked');
+        }catch(err){ toast('Studio saved — but the request could not be cleared'); }
+        renderPartnerReqs();
+      }
       renderB2B(); renderPkgList();
       closeStu();
     }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
@@ -12765,6 +12942,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Waiting on you, on Home */
   on('#homeReqs', 'click', stuReqClick);
   on('#homeJoin', 'click', ()=>go('members'));
+  on('#homePreq', 'click', ()=>go('studios'));
+  on('#homeSu', 'click', ()=>go('leads'));
   on('#navAdd', 'click', openQa);    /* phone: centre of the bottom bar */
   on('#hdrAdd', 'click', openQa);    /* desktop: in the header */
   /* The desktop sidebar. Unlike the strip, EVERY move from here is a step:
@@ -13636,6 +13815,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         EXPS    = d.expenses.slice();
         EJOBS   = (d.editingJobs || []).slice();
         REQS    = [];
+        PREQS   = (d.partnerRequests || []).map(r=>({ ...r }));
+        SUPS    = (d.signups || []).map(r=>({ ...r }));
         CFG     = d.config;
         /* no fixture file for the availability config: the default threshold
            and one blocked evening ten days out, so the day box and the

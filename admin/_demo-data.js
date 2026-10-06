@@ -527,6 +527,20 @@ export const studioRequests = [
     answeredAt: ts(2), createdAt: ts(4) },
 ];
 
+/* ------------------------------------------------------- partnerRequests
+   A studio that signed in without being set up and asked to be added. */
+export const partnerRequests = [
+  { id: 'pr01', studioName: 'Nova Weddings', ownerName: 'Imran Qureshi', city: 'Warangal', note: '',
+    phone10: '9876500011', phoneFull: '+919876500011', status: 'pending', createdAt: ts(1) },
+];
+
+/* ----------------------------------------------------------------- signups
+   Signed in on the Welcome screen without being set up. */
+export const signups = [
+  { id: 'su01', phone10: '9440011223', phoneFull: '+919440011223', action: 'seen', createdAt: ts(0), lastAt: ts(0) },
+  { id: 'su02', phone10: '9701055667', phoneFull: '+919701055667', action: 'lead', createdAt: ts(1), lastAt: ts(1) },
+];
+
 /* --------------------------------------------------------------- expenses */
 export const expenses = [
   { id: 'ex01', date: iso(-2),  cat: 'travel',    amount: 4200,  mode: 'UPI',  note: 'Cab to Falaknuma recce' },

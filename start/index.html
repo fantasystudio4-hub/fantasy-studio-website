@@ -16,6 +16,7 @@
      until the first listener takes it; that must be the portal this page
      hands over to (FSApp.onWidgetTap), not this page on its way out. -->
 <meta name="robots" content="noindex, nofollow" />
+<link rel="stylesheet" href="../avail.css" />
 <script>
 /* app mode: the Capacitor webview carries this marker; browsers never do */
 if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.documentElement.classList.add('fs-app');
@@ -142,7 +143,20 @@ html.fs-app .home{display:none}
 h1{font-family:var(--serif);font-weight:600;font-size:1.65rem;line-height:1.15;color:#fff;margin-bottom:.35rem}
 .sub{color:var(--mut);font-size:.92rem;margin-bottom:1.5rem}
 .sub b{color:var(--text);font-weight:500;white-space:nowrap}
-#vNone h1{font-size:1.4rem}   /* a sentence, not a title */
+#vNone .wel{font:inherit;cursor:pointer;text-align:left;border-color:rgba(226,194,117,.6);background:rgba(184,144,43,.12)}
+#vNone .wel .t b{color:var(--gold-b)}
+.welbox{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem 1rem .9rem;margin:-.2rem 0 .8rem}
+.welbox label{display:block;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin:.7rem 0 .3rem}
+.welbox label:first-child{margin-top:0}
+.welbox label em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut)}
+.welbox input{display:block;width:100%;min-height:48px;background:#14110a;border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;color:var(--text);font-family:inherit;font-size:16px}
+.welbox input:focus{outline:none;border-color:var(--gold-b)}
+.welbox .btn{margin-top:.9rem}
+.welfoot{margin:1rem 0 .6rem;font-size:.84rem}
+.welpend{text-align:center;border-color:rgba(226,194,117,.5)}
+.welpend b{display:block;font-family:var(--serif);font-size:1.1rem;color:var(--gold-b);margin-bottom:.3rem}
+.welpend p{color:var(--mut);font-size:.88rem}
+.welpend .pair{margin:.6rem 0 0}
 
 /* One screen at a time: html[data-view] is set by the head script (wait or
    signin, once it has looked for a saved session) and then by the module.
@@ -182,7 +196,7 @@ html.fs-checking .view{display:none}
 .tag{display:inline-block;vertical-align:2px;margin-left:.45em;padding:.05em .55em;border:1px solid rgba(226,194,117,.5);border-radius:20px;font-family:var(--sans);font-size:.62rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-b)}
 /* the one signed-out path that needs no account: a quote, for anyone */
 .plan{display:none;margin-top:.5rem;background:none;border-style:dashed}
-html[data-view="signin"] .plan, html[data-view="none"] .plan, html[data-view="error"] .plan{display:flex}
+html[data-view="signin"] .plan, html[data-view="error"] .plan{display:flex}
 html.fs-checking .plan{display:none}
 .plan .t b{font-family:var(--sans);font-weight:500;font-size:1rem}
 
@@ -243,9 +257,76 @@ footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.
     <button class="mini" type="button" data-signout>Sign out</button>
   </section>
 
+  <!-- A number the studio has not set up (owner, 6 Oct 2026): anyone may sign
+       in now, and lands here instead of being turned away at the OTP. Phase 1:
+       plan a shoot, see our free dates, ask us to call (a lead the owner sees
+       in Leads), or ask to be added as crew / partner on WhatsApp. -->
   <section class="view" id="vNone">
-    <h1>This number isn't set up with Fantasy Studio yet</h1>
-    <p class="sub">You're signed in as <b id="noneWho"></b>. If the studio has a different number for you, sign out and use that one, or reach us and we'll help you right away.</p>
+    <h1>Welcome to Fantasy Studio</h1>
+    <p class="sub">You're signed in as <b id="noneWho"></b>. What would you like to do?</p>
+    <a class="opt wel" href="../builder/">
+      <span class="ic" aria-hidden="true">✨</span>
+      <span class="t"><b>Plan your shoot</b><em>Build a package and see the price live</em></span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
+    <button class="opt wel" type="button" id="welDatesBtn" aria-expanded="false" aria-controls="welDates">
+      <span class="ic" aria-hidden="true">📅</span>
+      <span class="t"><b>Check our dates</b><em>See which days are free</em></span>
+      <span class="go" aria-hidden="true">▾</span>
+    </button>
+    <div class="welbox" id="welDates" hidden><div id="welAvail"></div></div>
+    <button class="opt wel" type="button" id="welCallBtn" aria-expanded="false" aria-controls="welCall">
+      <span class="ic" aria-hidden="true">📞</span>
+      <span class="t"><b>Have us call you</b><em>Tell us about your event, we'll ring this number</em></span>
+      <span class="go" aria-hidden="true">▾</span>
+    </button>
+    <form class="welbox" id="welCall" hidden novalidate autocomplete="off">
+      <label for="welName">Your name</label>
+      <input id="welName" type="text" maxlength="120" autocomplete="name" autocapitalize="words" />
+      <label for="welType">What is the event?</label>
+      <input id="welType" type="text" maxlength="120" list="welTypes" placeholder="e.g. Wedding, Engagement" />
+      <datalist id="welTypes"><option value="Wedding"></option><option value="Engagement"></option><option value="Nikah"></option><option value="Reception"></option><option value="Birthday"></option><option value="Corporate event"></option></datalist>
+      <label for="welDate">Date <em>(if you know it)</em></label>
+      <input id="welDate" type="date" />
+      <p class="err" id="welErr" role="alert" hidden></p>
+      <button class="btn" type="submit" id="welSend">Ask us to call</button>
+      <p class="done" id="welDone" role="status" hidden></p>
+    </form>
+    <button class="opt wel" type="button" id="welCrewBtn" aria-expanded="false" aria-controls="welCrew">
+      <span class="ic" aria-hidden="true">🎬</span>
+      <span class="t"><b>I'm part of the crew</b><em>Ask to be added to the Fantasy Studio crew</em></span>
+      <span class="go" aria-hidden="true">▾</span>
+    </button>
+    <form class="welbox" id="welCrew" hidden novalidate autocomplete="off">
+      <label for="wcName">Your name</label>
+      <input id="wcName" type="text" maxlength="80" autocomplete="name" autocapitalize="words" />
+      <label for="wcNote">What do you do? <em>(optional)</em></label>
+      <input id="wcNote" type="text" maxlength="300" placeholder="e.g. Photographer, editor, drone pilot" />
+      <p class="err" id="wcErr" role="alert" hidden></p>
+      <button class="btn" type="submit" id="wcSend">Send request</button>
+    </form>
+    <button class="opt wel" type="button" id="welStuBtn" aria-expanded="false" aria-controls="welStu">
+      <span class="ic" aria-hidden="true">🏢</span>
+      <span class="t"><b>I'm a partner studio</b><em>Ask to be added as a partner studio</em></span>
+      <span class="go" aria-hidden="true">▾</span>
+    </button>
+    <form class="welbox" id="welStu" hidden novalidate autocomplete="off">
+      <label for="wsName">Studio name</label>
+      <input id="wsName" type="text" maxlength="120" autocapitalize="words" />
+      <label for="wsOwner">Owner name <em>(optional)</em></label>
+      <input id="wsOwner" type="text" maxlength="80" autocomplete="name" autocapitalize="words" />
+      <label for="wsCity">City <em>(optional)</em></label>
+      <input id="wsCity" type="text" maxlength="60" autocapitalize="words" />
+      <p class="err" id="wsErr" role="alert" hidden></p>
+      <button class="btn" type="submit" id="wsSend">Send request</button>
+    </form>
+    <!-- a request already sent from this login: shown in place of the two forms -->
+    <div class="welbox welpend" id="welPending" hidden>
+      <b id="wpTitle"></b>
+      <p id="wpText"></p>
+      <div class="pair"><button class="mini" type="button" id="wpCheck">Check again</button><button class="mini" type="button" id="wpWithdraw">Withdraw request</button></div>
+    </div>
+    <p class="sub welfoot">Questions? Reach us:</p>
     <div class="pair"><a id="noneCall" href="tel:+918686868803">📞 Call</a><a id="noneWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a></div>
     <button class="mini" type="button" data-signout>Sign out</button>
   </section>
@@ -316,12 +397,12 @@ const ROW = {
   pair:   { ic: '🎬', name: 'Crew / Partner', em: i => [i.crew && i.crew.name, i.studio && i.studio.studioName].filter(Boolean).join(' · ') || 'Your crew page and partner studio' },
 };
 const OPENING = { client: 'Opening your booking…', crew: 'Opening your crew page…', studio: 'Opening your studio page…' };
-/* Only numbers the studio has set up get an OTP: the pre-check reads the
-   hashed phone index before any SMS is sent. Crew numbers were once missing
-   from it; the admin panel now writes them, and its first open after the
-   Phase 3.5 deploy backfilled every active member (49 of 49, checked
-   29 Sep 2026). A check that fails or hangs still fails open (fs-auth.js). */
-const PRECHECK = true;
+/* Anyone may sign in now (owner, 6 Oct 2026). Until then only numbers the
+   studio had set up got an OTP: the pre-check read the hashed phone index
+   before any SMS was sent (it stays in fs-auth.js, switched off here). A
+   number the studio has not set up lands on the Welcome screen below.
+   Cost guard: the SMS country allowlist and reCAPTCHA stay on. */
+const PRECHECK = false;
 
 let FS = null, box = null, me = null, routing = 0, deleting = false;
 const show = v => { html.setAttribute('data-view', v); html.classList.remove('fs-checking'); $('#outErr').hidden = true; $('#delDone').hidden = true; askDelete(false); };
@@ -434,10 +515,207 @@ function drawPick(roles, info, user, last){
   show('pick');
 }
 
+/* ---- the Welcome screen's three actions ---- */
+let _welAvail = null, _welBusy = false;
+function welFold(btn, box, open){
+  box.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+  const go = btn.querySelector('.go'); if(go) go.textContent = open ? '▴' : '▾';
+}
+const WEL = [['#welDatesBtn', '#welDates'], ['#welCallBtn', '#welCall'], ['#welCrewBtn', '#welCrew'], ['#welStuBtn', '#welStu']];
+/* one box open at a time; tapping the open one shuts it. Returns whether `i` is now open. */
+function welOnly(i){
+  const open = $(WEL[i][1]).hidden;
+  WEL.forEach(([b, x], k) => welFold($(b), $(x), k === i && open));
+  return open;
+}
+let _welWatch = null;
+function welReset(){
+  if(_welAvail){ try{ _welAvail.destroy(); }catch(e){} _welAvail = null; }
+  if(_welWatch){ try{ _welWatch(); }catch(e){} _welWatch = null; }
+  $('#welAvail').textContent = '';
+  WEL.forEach(([b, x]) => welFold($(b), $(x), false));
+  ['welErr', 'welDone', 'wcErr', 'wsErr'].forEach(id => { $('#' + id).hidden = true; });
+  $('#welSend').disabled = false; $('#welSend').textContent = 'Ask us to call';
+  ['#wcSend', '#wsSend'].forEach(q => { $(q).disabled = false; $(q).textContent = 'Send request'; });
+  $('#welCall').querySelectorAll('input').forEach(i => { i.disabled = false; });
+  $('#welPending').hidden = true;
+  [WEL[2][0], WEL[3][0]].forEach(b => { $(b).hidden = false; });
+}
+$('#welDatesBtn').addEventListener('click', async () => {
+  const open = welOnly(0);
+  if(!open || _welAvail || !FS || !me) return;
+  try{
+    const m = await import('../avail.js');
+    if(_welAvail || $('#welDates').hidden) return;
+    const c = await FS.getContact();
+    _welAvail = m.mountAvailability($('#welAvail'), {
+      db: FS.db, sample: FS.DEMO_VIEW || FS.isSample(me), mine: () => [],
+      onAsk: (iso, slot) => {
+        const when = new Date(iso + 'T00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' }).replace(/,/g, '');
+        window.open(c.wa + '?text=' + encodeURIComponent('Hi Fantasy Studio, is ' + when + ' (' + (slot === 'm' ? 'morning' : 'evening') + ') available for our event?'), '_blank', 'noopener');
+      },
+      monthsAhead: 12, heading: 'Studio availability',
+    });
+  }catch(e){ console.warn('[start] availability did not load', e); $('#welAvail').textContent = 'The calendar could not load. Message us on WhatsApp to ask about a date.'; }
+});
+$('#welCallBtn').addEventListener('click', () => {
+  const open = welOnly(1);
+  if(open) setTimeout(() => { try{ $('#welName').focus({ preventScroll:true }); }catch(e){} }, 50);
+});
+/* Have us call you: one lead in Leads, from this verified number. Sent only
+   when the person taps it, never just for signing in. */
+$('#welCall').addEventListener('submit', async e => {
+  e.preventDefault();
+  if(_welBusy || !me) return;
+  const line = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const name = line($('#welName').value, 120), type = line($('#welType').value, 120), date = $('#welDate').value;
+  const err = $('#welErr'); err.hidden = true;
+  if(!name){ err.textContent = 'Tell us your name so we know who to ask for.'; err.hidden = false; $('#welName').focus(); return; }
+  if(date && !/^\d{4}-\d{2}-\d{2}$/.test(date)){ err.textContent = 'That date does not look right.'; err.hidden = false; return; }
+  if(FS.isSample(me)){ $('#welDone').textContent = 'Sample account — nothing was sent.'; $('#welDone').hidden = false; return; }
+  _welBusy = true; $('#welSend').disabled = true; $('#welSend').textContent = 'Sending…';
+  try{
+    const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const p10 = FS.phone10(me), full = String(me.phoneNumber || '').replace(/\D/g, '');
+    await addDoc(collection(FS.db, 'leads'), {
+      name, phone: p10, phoneFull: full, eventType: type, weddingDate: date || '',
+      message: 'Signed in with this verified number and asked for a call.',
+      quote: null, grandTotal: null, source: 'contact_form', createdAt: new Date(), status: 'new', notes: ''
+    });
+    $('#welCall').querySelectorAll('input').forEach(i => { i.disabled = true; });
+    $('#welSend').textContent = 'Sent ✓';
+    welMark('lead');
+    $('#welDone').textContent = 'Thank you, ' + name + ' — we will call ' + pretty(me.phoneNumber) + ' shortly.';
+    $('#welDone').hidden = false;
+  }catch(e2){
+    console.warn('[start] lead', e2 && (e2.code || e2.message));
+    err.textContent = 'We could not send that just now. Please try again, or message us on WhatsApp below.'; err.hidden = false;
+    $('#welSend').disabled = false; $('#welSend').textContent = 'Ask us to call';
+  }finally{ _welBusy = false; }
+});
+
+/* ---- ask to join as crew / as a partner studio ----
+   One request per login (the doc id is the uid): teamRequests/{uid} lands in
+   the admin's Crew tab, partnerRequests/{uid} in Partner studios. Neither
+   grants anything — the owner approves by adding the person, and this page,
+   watching the request, sends them on the moment it is answered. */
+const KINDS = {
+  crew: { col: 'teamRequests', what: 'crew request', btn: 2 },
+  studio: { col: 'partnerRequests', what: 'partner studio request', btn: 3 },
+};
+$('#welCrewBtn').addEventListener('click', () => { if(welOnly(2)) setTimeout(() => { try{ $('#wcName').focus({ preventScroll:true }); }catch(e){} }, 50); });
+$('#welStuBtn').addEventListener('click', () => { if(welOnly(3)) setTimeout(() => { try{ $('#wsName').focus({ preventScroll:true }); }catch(e){} }, 50); });
+async function welSend(kind, data, errEl, btn){
+  const err = $(errEl); err.hidden = true;
+  if(FS.isSample(me)){ err.textContent = 'Sample account — nothing was sent.'; err.hidden = false; return; }
+  if(_welBusy) return;
+  _welBusy = true; $(btn).disabled = true; $(btn).textContent = 'Sending…';
+  try{
+    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    await setDoc(doc(FS.db, KINDS[kind].col, me.uid), {
+      ...data, phone10: FS.phone10(me), phoneFull: String(me.phoneNumber || '').slice(0, 20),
+      status: 'pending', createdAt: serverTimestamp() });
+    welMark(kind);
+    welPending(kind);
+  }catch(e){
+    console.warn('[start] ' + kind + ' request', e && (e.code || e.message));
+    err.textContent = 'We could not send that just now. Please try again, or message us on WhatsApp below.'; err.hidden = false;
+    $(btn).disabled = false; $(btn).textContent = 'Send request';
+  }finally{ _welBusy = false; }
+}
+$('#welCrew').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('#wcName').value.replace(/\s+/g, ' ').trim().slice(0, 80);
+  if(!name){ $('#wcErr').textContent = 'Tell us your name.'; $('#wcErr').hidden = false; $('#wcName').focus(); return; }
+  welSend('crew', { name, note: $('#wcNote').value.replace(/\s+/g, ' ').trim().slice(0, 300) }, '#wcErr', '#wcSend');
+});
+$('#welStu').addEventListener('submit', e => {
+  e.preventDefault();
+  const studioName = $('#wsName').value.replace(/\s+/g, ' ').trim().slice(0, 120);
+  if(!studioName){ $('#wsErr').textContent = 'Tell us the studio name.'; $('#wsErr').hidden = false; $('#wsName').focus(); return; }
+  welSend('studio', { studioName, ownerName: $('#wsOwner').value.replace(/\s+/g, ' ').trim().slice(0, 80),
+    city: $('#wsCity').value.replace(/\s+/g, ' ').trim().slice(0, 60), note: '' }, '#wsErr', '#wsSend');
+});
+/* the waiting state, live: when the owner answers (approves = their page now
+   opens; dismisses = the request is gone) this page asks again where the
+   number goes */
+function welPending(kind){
+  if(_welWatch){ try{ _welWatch(); }catch(e){} _welWatch = null; }
+  WEL.forEach(([b, x]) => welFold($(b), $(x), false));
+  [2, 3].forEach(i => { $(WEL[i][0]).hidden = true; });
+  $('#wpTitle').textContent = kind === 'crew' ? 'Your crew request is with us' : 'Your partner request is with us';
+  $('#wpText').textContent = 'We will check it and add you. This page opens your ' + (kind === 'crew' ? 'crew' : 'partner studio') + ' page as soon as that is done — you can close this and come back.';
+  $('#welPending').dataset.kind = kind;
+  $('#welPending').hidden = false;
+  if(FS.isSample(me)) return;
+  import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js').then(({ doc, onSnapshot }) => {
+    if(!me) return;
+    let seen = false;
+    _welWatch = onSnapshot(doc(FS.db, KINDS[kind].col, me.uid), snap => {
+      if(snap.exists()){ seen = true; return; }
+      if(seen && me) welAnswered();
+    }, () => {});
+  }).catch(() => {});
+}
+async function welAnswered(){
+  if(!me) return;
+  try{ const r = await FS.detectRoles(me); if(ORDER.some(k => r[k])){ route(me, true); return; } }catch(e){}
+  /* answered without a page: the owner dismissed it. Say so; they may ask again. */
+  welReset();
+  $('#wpTitle').textContent = '';
+  $('#welDone').textContent = 'The studio looked at your request and could not add you yet. You can ask again, or message us on WhatsApp.';
+  $('#welDone').hidden = false;
+}
+$('#wpCheck').addEventListener('click', () => { if(me) welAnswered(); });
+$('#wpWithdraw').addEventListener('click', async () => {
+  const kind = $('#welPending').dataset.kind; if(!kind || !me) return;
+  if(!FS.isSample(me)){
+    try{ const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'); await deleteDoc(doc(FS.db, KINDS[kind].col, me.uid)); }
+    catch(e){ $('#welDone').textContent = 'We could not withdraw it just now — it is still with us.'; $('#welDone').hidden = false; return; }
+  }
+  welReset(); showNoneRows();
+});
+function showNoneRows(){ $('#welDone').hidden = true; }
+/* The owner's list of people who signed in but are not set up (signups/{uid},
+   read only by the admin): written when this screen opens, and raised to
+   'lead' / 'crew' / 'partner' when they ask for something. Best effort: a
+   failure here never shows. */
+const SU_RANK = { seen: 0, lead: 1, crew: 2, partner: 2 };
+async function welMark(action){
+  if(!me || FS.isSample(me)) return;
+  try{
+    const { doc, getDoc, setDoc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const ref = doc(FS.db, 'signups', me.uid);
+    const cur = await getDoc(ref).catch(() => null);
+    if(!cur || !cur.exists()){
+      await setDoc(ref, { phone10: FS.phone10(me), phoneFull: String(me.phoneNumber || '').slice(0, 20),
+        action, createdAt: serverTimestamp(), lastAt: serverTimestamp() });
+    }else{
+      const was = cur.data().action;
+      await updateDoc(ref, { action: (SU_RANK[action] || 0) > (SU_RANK[was] || 0) ? action : was, lastAt: serverTimestamp() });
+    }
+  }catch(e){ console.warn('[start] signup note', e && (e.code || e.message)); }
+}
+/* a request this login already sent: the waiting state instead of the forms */
+async function welLookup(user){
+  if(FS.isSample(user)) return;
+  try{
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const got = await Promise.race([
+      Promise.all(['crew', 'studio'].map(k => getDoc(doc(FS.db, KINDS[k].col, user.uid)).then(s => s.exists()))),
+      new Promise(r => setTimeout(() => r(null), 4000))]);
+    if(!got || me !== user || html.getAttribute('data-view') !== 'none') return;
+    if(got[0]) welPending('crew'); else if(got[1]) welPending('studio');
+  }catch(e){}
+}
+
 async function showNone(user){
   const who = pretty(user.phoneNumber);
   $('#noneWho').textContent = who;
+  welReset();
   show('none');
+  welLookup(user);
+  welMark('seen');
   const c = await FS.getContact();   /* never rejects; the default number until it answers */
   $('#noneCall').href = c.tel;
   $('#noneWa').href = c.wa + '?text=' + encodeURIComponent('Salaam! I tried to sign in to Fantasy Studio but my number ' + who + ' is not set up. Can you help?');
@@ -457,6 +735,7 @@ function signedIn(user){
 
 function signedOut(){
   me = null; routing++;
+  welReset();
   if(!box){
     $('#box').textContent = '';   /* the placeholder */
     box = FS.mountPhoneSignIn($('#box'), { precheck: PRECHECK, onSignedIn: signedIn });

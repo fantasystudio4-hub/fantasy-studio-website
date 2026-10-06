@@ -551,10 +551,83 @@ service cloud.firestore {
     // re-read their own request to see it pending.
     // (If a join form ever comes back, this is the rule to reopen — with the
     // fields pinned and capped, status 'pending', phone10 == clientPhone10().)
+    //
+    // Re-opened 6 Oct 2026 with the open sign-in: a signed-in number the studio
+    // has not set up may ask to join the crew. One request per login (the doc
+    // id IS the uid), pending only, bounded fields. It grants nothing: the
+    // owner approves it by creating the team doc, and only then does the crew
+    // page open for that number.
     match /teamRequests/{uid} {
-      allow create: if false;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(
+             ['name','note','phone10','phoneFull','status','createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.phoneFull is string
+        && request.resource.data.phoneFull.size() <= 20;
       allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow list, update, delete: if isAdmin();
+    }
+
+    // who has signed in without being set up (6 Oct 2026, open sign-in): one
+    // doc per login, keyed by the uid, written by the person from the Welcome
+    // screen so the owner can see them and follow up. Nothing here grants
+    // anything — it is a list for the admin. `action` only records what they
+    // did there. The person may not read or delete it; deleteMyAccount clears it.
+    match /signups/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(['phone10','phoneFull','action','createdAt','lastAt'])
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.phoneFull is string
+        && request.resource.data.phoneFull.size() <= 20
+        && request.resource.data.action in ['seen','lead','crew','partner']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.lastAt == request.time;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['action','lastAt'])
+        && request.resource.data.action in ['seen','lead','crew','partner']
+        && request.resource.data.lastAt == request.time;
+      allow read, delete: if isAdmin();
+    }
+
+    // a partner studio asking to be added (6 Oct 2026): the same shape of
+    // rule — one per login, pending only, bounded. Approving it means the
+    // owner adds the studio (studios/{id} with this phone10); only then does
+    // the partner page open. The person may withdraw their own request.
+    match /partnerRequests/{uid} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && clientPhone10() != '__none__'
+        && request.resource.data.keys().hasOnly(
+             ['studioName','ownerName','city','note','phone10','phoneFull','status','createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.phone10 == clientPhone10()
+        && request.resource.data.studioName is string
+        && request.resource.data.studioName.size() > 0
+        && request.resource.data.studioName.size() <= 120
+        && request.resource.data.ownerName is string
+        && request.resource.data.ownerName.size() <= 80
+        && request.resource.data.city is string
+        && request.resource.data.city.size() <= 60
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.phoneFull is string
+        && request.resource.data.phoneFull.size() <= 20;
+      allow get: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow list, update: if isAdmin();
+      allow delete: if isAdmin() || (request.auth != null && request.auth.uid == uid);
     }
 
     // push-notification tokens from the store app. The doc id IS the FCM
