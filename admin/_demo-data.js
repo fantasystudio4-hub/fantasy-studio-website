@@ -579,6 +579,88 @@ export const pushTokens = [
   { phone10: '9000012345', platform: 'android', updatedAt: ts(5)  },   /* on nobody's record */
 ];
 
+/* ------------------------------------------------- the server's numbers
+   What More > Apps & website reads from documents only the studio's server and the
+   owner touch. All invented, all relative to today. The shapes are exactly what the
+   real documents hold (appDaily/{day}_{bucket}, stats/latest, stats/push-YYYY-MM,
+   stats/web, config/appStore), so the page draws the same here as it will live. */
+const ago = n => Date.now() - n * DAY;
+const dayStr = n => new Date(Date.now() + 330 * 60000 - n * DAY).toISOString().slice(0, 10);   /* India's day, n days ago */
+const pick = (i, k, lo, hi) => lo + ((i * 37 + k * 11 + 5) % (hi - lo + 1));   /* the same "random" every load */
+
+/* appDaily: 21 days of the anonymous head-count. The first build (g10) is fading out, the
+   1.1 build (g11) carries most, the newest (g12) has just started to appear. */
+export const appDaily = [];
+for (let i = 0; i <= 20; i++) {
+  const day = dayStr(i), age = 20 - i;           /* age 0 = the first day counted */
+  const row = (bucket, n) => { if (n > 0) appDaily.push({ day, bucket, n }); };
+  const ios = pick(i, 1, 2, 6), and = pick(i, 2, 4, 9), web = pick(i, 3, 1, 5);
+  row('app_ios', ios); row('app_android', and); row('web', web);
+  row('r_client', pick(i, 4, 2, 7)); row('r_crew', pick(i, 5, 2, 5)); row('r_studio', pick(i, 6, 0, 2)); row('r_none', pick(i, 7, 0, 3));
+  row('g10', Math.max(0, pick(i, 8, 0, 2) - (age > 10 ? 0 : 1)));
+  row('g11', Math.max(0, ios + and - pick(i, 9, 1, 3) - (i < 4 ? 3 : 0)));
+  row('g12', i < 4 ? pick(i, 10, 1, 3) : 0);
+}
+
+/* stats/latest: what the adminStats function counted from Firebase Auth */
+const newByDay = Array.from({ length: 90 }, (_, k) => {
+  const i = 89 - k, d = dayStr(i);
+  return { d, n: d < '2026-10-06' ? pick(i, 12, 0, 1) : pick(i, 13, 1, 4) };
+});
+export const authStats = {
+  atMs: ago(0.12), total: 64, excluded: { noPhone: 1, review: 1 }, since: dayStr(88),
+  newByDay, new7: newByDay.slice(-7).reduce((s, x) => s + x.n, 0), new30: newByDay.slice(-30).reduce((s, x) => s + x.n, 0),
+  byCountry: [{ c: 'India', n: 51 }, { c: 'UAE', n: 7 }, { c: 'UK', n: 3 }, { c: 'US / Canada', n: 2 }, { c: 'Other', n: 1 }],
+  providers: { phone: 64, google: 0, password: 0, other: 0 },
+  active7: 22, active30: 41,
+  tripwire: { today: newByDay[89].n, avg7: 2.3, threshold: 10, flag: false },
+};
+/* who has an account, for the numbers the panel asks about (3C). Arun Teja signs in on the website only;
+   Sunitha Rao and Aperture Films have never signed in at all. */
+export const authMatched = {
+  '9848001122': { created: ago(60), last: ago(1) },  '9701002233': { created: ago(50), last: ago(0.2) },
+  '9885003344': { created: ago(20), last: ago(6) },  '9963004455': { created: ago(40), last: ago(10) },
+  '9032005566': { created: ago(45), last: ago(40) }, '9440006677': { created: ago(30), last: ago(12) },
+  '9848111222': { created: ago(35), last: ago(3) },
+  '9876543210': { created: ago(70), last: ago(2) },  '9848012345': { created: ago(80), last: ago(60) }, '9701122334': { created: ago(66), last: ago(5) },
+};
+
+/* stats/push-YYYY-MM: the alert tallies, this month and last */
+export const pushStats = {
+  [dayStr(0).slice(0, 7)]: { alerts: 31, sent: 44, failed: 4, removed: 2, nodevice: 6, badphone: 1 },
+  [dayStr(35).slice(0, 7)]: { alerts: 58, sent: 79, failed: 7, removed: 3, nodevice: 11, badphone: 0 },
+};
+
+/* stats/web: Google Analytics, as the webStats function folds it */
+const gaDaily = Array.from({ length: 28 }, (_, k) => { const i = 27 - k; return { d: dayStr(i), u: pick(i, 14, 6, 26), s: pick(i, 15, 8, 32) }; });
+export const webStats = {
+  atMs: ago(0.02), propertyId: '123456789', rangeDays: 28, errors: {},
+  totals: { now: { u: 412, newU: 331, sessions: 538, views: 1490, engaged: 301 }, before: { u: 365, newU: 290, sessions: 470, views: 1302, engaged: 260 } },
+  daily: gaDaily,
+  channels: [{ k: 'Direct', s: 211, u: 160 }, { k: 'Organic Social', s: 140, u: 118 }, { k: 'Organic Search', s: 96, u: 82 }, { k: 'Referral', s: 55, u: 40 }, { k: 'Paid Search', s: 36, u: 31 }],
+  devices: [{ k: 'mobile', u: 331 }, { k: 'desktop', u: 72 }, { k: 'tablet', u: 9 }],
+  cities: [{ k: 'Hyderabad', u: 188 }, { k: 'Secunderabad', u: 41 }, { k: 'Bengaluru', u: 28 }, { k: 'Mumbai', u: 19 }, { k: 'Dubai', u: 12 }, { k: 'Warangal', u: 9 }],
+  pages: [{ k: '/', v: 702, u: 351 }, { k: '/builder/', v: 488, u: 214 }, { k: '/privacy/', v: 22, u: 17 }],
+  browsers: [{ k: 'Chrome', u: 276 }, { k: 'Safari', u: 78 }, { k: 'Android Webview', u: 24 }, { k: 'Safari (in-app)', u: 11 }, { k: 'Samsung Internet', u: 9 }],
+  events: {
+    builder_page_view: { n: 520, u: 230 }, builder_started: { n: 201, u: 140 }, functions_chosen: { n: 118, u: 91 }, promo_applied: { n: 14, u: 12 },
+    quote_whatsapp_sent: { n: 36, u: 31 }, pdf_downloaded: { n: 19, u: 17 }, quote_link_shared: { n: 9, u: 8 }, quote_link_opened: { n: 6, u: 5 }, compare_opened: { n: 44, u: 38 },
+    enquiry_sent: { n: 8, u: 8 }, whatsapp_tap: { n: 67, u: 54 }, call_tap: { n: 21, u: 18 },
+  },
+};
+/* the property ids the demo treats as "Google said no", to see each message on screen */
+export const gaDemoFailures = {
+  '111111111': { ok: false, state: 'api-disabled', url: 'https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=107642644095', serviceAccount: '107642644095-compute@developer.gserviceaccount.com', project: 'fantasy-studio-web-f7813' },
+  '222222222': { ok: false, state: 'no-access', serviceAccount: '107642644095-compute@developer.gserviceaccount.com', project: 'fantasy-studio-web-f7813' },
+  '333333333': { ok: false, state: 'scope', message: 'Request had insufficient authentication scopes.', serviceAccount: '107642644095-compute@developer.gserviceaccount.com', project: 'fantasy-studio-web-f7813' },
+};
+/* config/appStore: what the owner typed */
+export const appStore = {
+  android: { version: '1.1.0', status: 'Live', installs: 128 },
+  ios: { version: '1.1', status: 'In review', installs: 41 },
+  typedAt: { toMillis: () => ago(3) },
+};
+
 /* --------------------------------------------------------------- expenses */
 export const expenses = [
   { id: 'ex01', date: iso(-2),  cat: 'travel',    amount: 4200,  mode: 'UPI',  note: 'Cab to Falaknuma recce' },

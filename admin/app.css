@@ -2429,3 +2429,25 @@ html.shell .stu-hd #stuBack{display:none}
 #appsView .stat .st-up{font-size:var(--fs-xs)}
 /* the "may miss alerts" chip scrolls here: clear of the sticky header */
 #apNudge{scroll-margin-top:calc(var(--hdr-h,56px) + .5rem)}
+
+/* ---- Apps & website: charts, setup steps, small forms ---- */
+.aps-cols{display:flex;align-items:flex-end;gap:2px;height:84px;margin:.35rem 0 .1rem}
+.aps-cols span{flex:1 1 0;min-width:2px;height:100%;display:flex;align-items:flex-end}
+.aps-cols i{display:block;width:100%;min-height:2px;border-radius:2px 2px 0 0;background:var(--state-info)}
+.aps-cols span.mark i{background:linear-gradient(180deg,var(--gold-b),var(--gold-d))}
+.aps-colsub{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:.5rem}
+.aps-warn{color:var(--text)}
+.aps-warn b{color:var(--warn)}
+.aps-steps{margin:.2rem 0 .8rem;padding-left:1.25rem;font-size:var(--fs-base);line-height:1.5;color:var(--text)}
+.aps-steps li{margin:.45rem 0;overflow-wrap:anywhere}
+.aps-steps li b{color:var(--gold-b);font-weight:600}
+.aps-steps a,.aps-warn a{color:var(--gold-b)}
+.aps-form{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.4rem 0 .8rem}
+.aps-form label{flex:0 0 100%;font-size:var(--fs-sm);color:var(--mut)}
+.aps-form .input{flex:1 1 11rem;min-height:var(--tap);min-width:0}
+.aps-form .btn{flex:0 0 auto}
+.aps-form--row{display:grid;grid-template-columns:minmax(5.5rem,auto) 1fr;gap:.4rem .6rem;align-items:center}
+.aps-form--row b{grid-column:1 / -1;color:var(--gold-b)}
+.aps-form--row .aps-lab{flex:none}
+details.aps-more{margin:.4rem 0 .8rem}
+details.aps-more summary{min-height:var(--tap);display:flex;align-items:center;cursor:pointer;color:var(--gold-b);font-size:var(--fs-base)}
