@@ -16,7 +16,8 @@
    ============================================================ */
 import { initializeApp, getApps, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged, updateCurrentUser, signOut,
-         RecaptchaVerifier, signInWithPhoneNumber } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+         RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
          collection, doc, getDoc, getDocs, query, where, setDoc, serverTimestamp,
          terminate, clearIndexedDbPersistence }
@@ -32,6 +33,17 @@ if(!CONFIG || !CONFIG.apiKey) throw new Error('fs-auth: window.FIREBASE_CONFIG i
 export const DEMO_PHONE = '+919000000001';
 /* the store app, and nothing else: set by each page's <head> script */
 export const inApp = document.documentElement.classList.contains('fs-app');
+/* The store app's own phone check: Firebase's native phone auth, present only
+   in app builds that ship the FirebaseAuthentication plugin. null in every
+   browser and in older app builds, which keep using reCAPTCHA. */
+function nativePhoneAuth(){
+  try{
+    const C = window.Capacitor;
+    if(!inApp || !C || !C.Plugins || !C.Plugins.FirebaseAuthentication) return null;
+    if(C.isPluginAvailable && !C.isPluginAvailable('FirebaseAuthentication')) return null;
+    return C.Plugins.FirebaseAuthentication;
+  }catch(e){ return null; }
+}
 /* Local test hook, the portals' two locks: served from localhost AND ?demo
    in the URL. Samples everywhere, no sign-in, no SMS, no Firestore writes.
    On fantasystudio.in the first lock can never hold. */
@@ -803,6 +815,48 @@ export function mountPhoneSignIn(rootEl, opts = {}){
     try{ return new RecaptchaVerifier(auth, el, { size: 'invisible' }); }
     finally{ auth.settings.appVerificationDisabledForTesting = false; }
   }
+  /* ---- the app's own phone check ----
+     In the store app the code is requested through Firebase's native SDK,
+     which proves the request comes from this installed app (Play Integrity on
+     Android, a silent push on iOS), so there is no reCAPTCHA and no picture
+     puzzle. The SMS, the OTP boxes and the session are the same: the plugin
+     runs with skipNativeAuth, and confirming the code signs in this page's
+     own auth. Any native failure drops back to the reCAPTCHA path in doSend,
+     so a build without the plugin, or a check that cannot run on one device,
+     behaves exactly as it did before. */
+  let nativeOff = null;
+  function dropNative(){ if(nativeOff){ const f = nativeOff; nativeOff = null; f(); } }
+  /* resolves with the verification id once the SMS is on its way; rejects
+     when the native check cannot send it */
+  function nativeSend(NA, fullPhone, my){
+    dropNative();
+    return new Promise((resolve, reject) => {
+      let vid = '', settled = false;
+      const handles = [];
+      const fail = e => { if(!settled){ settled = true; reject(e); } };
+      nativeOff = () => { handles.forEach(p => p.then(h => h.remove()).catch(() => {})); fail(new Error('superseded')); };
+      const on = (name, fn) => handles.push(Promise.resolve(NA.addListener(name, fn)));
+      try{
+        on('phoneCodeSent', e => {
+          vid = (e && e.verificationId) || '';
+          if(!vid) return fail(new Error('no verification id'));
+          if(!settled){ settled = true; resolve(vid); }
+        });
+        on('phoneVerificationFailed', e => fail(new Error((e && e.message) || 'native phone check failed')));
+        on('phoneVerificationCompleted', e => {
+          /* Android can read the SMS by itself: type the code in for the person.
+             No code at all is "instant verification", which this page's own
+             session cannot use, so that send goes the reCAPTCHA way. */
+          const code = String((e && e.verificationCode) || '').replace(/\D/g, '');
+          if(!vid) return fail(new Error('instant verification'));
+          if(my !== sendSeq || code.length !== otpInputs.length || $('[data-step="otp"]').hidden) return;
+          otpInputs.forEach((x, j) => x.value = code[j]);
+          onFull();
+        });
+        Promise.resolve(NA.signInWithPhoneNumber({ phoneNumber: fullPhone })).catch(fail);
+      }catch(e){ fail(e); }
+    });
+  }
   /* A picture puzzle that is closed leaves verify() pending forever. The
      button comes back after STALL_MS so a new tap can take over, and sendSeq
      makes that tap win over a late older answer. Until then `sending`
@@ -812,7 +866,7 @@ export function mountPhoneSignIn(rootEl, opts = {}){
   let sendSeq = 0, sending = false;
   function sendIdle(){ sending = false; const b = $('[data-send]'); b.disabled = false; b.classList.remove('busy'); b.textContent = 'Get OTP'; }
   /* signed in: forget any send in flight and take the badge off the screen */
-  function endSend(){ sendSeq++; sendIdle(); dropRecaptcha(verifier); verifier = null; }
+  function endSend(){ sendSeq++; sendIdle(); dropRecaptcha(verifier); verifier = null; dropNative(); }
   function toOtp(pretty){
     hideErr();
     $('[data-otp-to]').textContent = pretty;
@@ -843,6 +897,19 @@ export function mountPhoneSignIn(rootEl, opts = {}){
     btn.textContent = 'Sending OTP…';
     const stall = setTimeout(() => { if(my === sendSeq){ sendIdle(); showErr(STALL_MSG); } }, STALL_MS);
     try{
+      const NA = ph.full === DEMO_PHONE ? null : nativePhoneAuth();
+      if(NA){
+        try{
+          const vid = await nativeSend(NA, ph.full, my);
+          if(my !== sendSeq) return;
+          confirmation = { confirm: code => signInWithCredential(auth, PhoneAuthProvider.credential(vid, code)) };
+          toOtp(ph.pretty);
+          return;
+        }catch(err){
+          if(my !== sendSeq) return;
+          console.warn('[sign-in] app phone check failed, using the web check:', err && err.message);
+        }
+      }
       const c = await signInWithPhoneNumber(auth, ph.full, verifier = freshVerifier(verifier, ph.full));
       if(my !== sendSeq) return;
       confirmation = c;
@@ -875,8 +942,8 @@ export function mountPhoneSignIn(rootEl, opts = {}){
 
   return {
     el: wrap,
-    reset(){ sendSeq++; sendIdle(); confirmation = null; clearBoxes(); hideErr(); $('[data-nobook]').hidden = true; setStep('phone'); },
+    reset(){ sendSeq++; sendIdle(); dropNative(); confirmation = null; clearBoxes(); hideErr(); $('[data-nobook]').hidden = true; setStep('phone'); },
     focus(){ $('[data-phone]').focus(); },
-    destroy(){ sendSeq++; clearInterval(coolIv); dropRecaptcha(verifier); verifier = null; rcBox.remove(); wrap.remove(); },
+    destroy(){ sendSeq++; clearInterval(coolIv); dropRecaptcha(verifier); verifier = null; dropNative(); rcBox.remove(); wrap.remove(); },
   };
 }
