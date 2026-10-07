@@ -325,7 +325,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
   const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
           collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField,
-          query, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, writeBatch, arrayUnion, increment, getDocsFromServer,
+          query, where, orderBy, limit, serverTimestamp, onSnapshot, runTransaction, writeBatch, arrayUnion, increment, getDocsFromServer,
           terminate, clearIndexedDbPersistence, waitForPendingWrites } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
@@ -877,6 +877,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _apTab = ['app','people','web'].includes(viewGet('apTab')) ? viewGet('apTab') : 'app';
   let _apTok = [], _apTokState = 'idle', _apTokAt = 0, _apTokErr = '', _apTokPartial = false, _apTokCapped = false, _apTokSkipped = 0;
   let _apTimer = 0, _apReq = 0;
+  /* _apReq belongs to the phone read (loadApps starts a new one each time it runs); _apGen changes ONLY when the page is
+     reset (sign-out), so every other read and call can tell "the admin left" from "the phone list was just re-read" */
+  let _apGen = 0;
   let _profLoaded = false, _supsLoaded = false;   /* the two lists the page reads that had no "has it arrived" flag */
   /* Phase 2 + 3 — the server's numbers. Each is read once when the page opens (and on ↻ Re-check), each on
      its own, so one that is not published yet never blanks the others:
@@ -892,6 +895,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _apWeb = null, _apWebState = 'idle', _apWebInfo = null, _apGaId = '';
   let _apStore = null, _apStoreState = 'idle';
   let _apBusy = '', _apDeferred = false, _apDemo = null;   /* _apDemo: the fixtures, so the demo's buttons can answer */
+  let _apDraft = {}, _apStoreOpen = false;   /* what is typed in the page's fields, so a redraw never loses it */
+  let _apDailyFirst = '';
 
   /* ---------- the screens, as the owner sees them ----------
      Home | Leads | ＋ | Work | Money in the bar, More in the header.
@@ -13071,11 +13076,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      APPS & WEBSITE — More › Apps & website (7 Oct 2026)
      ------------------------------------------------------------
      The owner's question: how many people use the app, and what else about
-     the app and the website the panel never said. Read-only — nothing here
-     writes, and nothing here is a new field, rule or function. Every number
-     but one is arithmetic over lists the panel already holds (leads, bookings,
-     crew, partner studios, requests, profiles, assignments). The one new read
-     is pushTokens: the phones that have the store app AND allowed alerts. It
+     the app and the website the panel never said. Read-only, except two things
+     the owner saves here (the Google Analytics property id in config/analytics
+     and the release notes in config/appStore). Most numbers are arithmetic over
+     lists the panel already holds (leads, bookings, crew, partner studios,
+     requests, profiles, assignments); the rest are read once from documents only
+     the studio's server writes (appDaily, stats/*) or from Firebase Auth through
+     the adminStats function. The first new read was pushTokens: the phones that have the store app AND allowed alerts. It
      is the only per-device record there is, so "app users" is always "at
      least", never "installs" (only Play Console and App Store Connect know
      installs).
@@ -13150,11 +13157,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderApps();
   }
   function resetApps(){
-    _apReq++; clearTimeout(_apTimer);
+    _apReq++; _apGen++; clearTimeout(_apTimer);
     _apTok = []; _apTokState = 'idle'; _apTokAt = 0; _apTokErr = ''; _apTokPartial = false; _apTokCapped = false; _apTokSkipped = 0;
     _apDaily = []; _apDailyState = 'idle'; _apStats = null; _apStatsState = 'idle'; _apStatsMsg = ''; _apAuth = null;
     _apPush = {}; _apPushState = 'idle'; _apWeb = null; _apWebState = 'idle'; _apWebInfo = null; _apGaId = ''; _apStore = null; _apStoreState = 'idle';
-    _apBusy = ''; _apDeferred = false; _apMoreAt = 0;
+    _apBusy = ''; _apDeferred = false; _apMoreAt = 0; _apDraft = {}; _apStoreOpen = false; _apDailyFirst = '';
     const b = $('#appsBody'); if(b){ b.innerHTML = ''; b.dataset.sig = ''; }
   }
   /* the page opens with one read of the phones; it is read again only when
@@ -13177,7 +13184,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---- the server's numbers (Phase 2 + 3) ---- */
   let _apMoreAt = 0, _apFns = null;
-  const AP_DAILY_CAP = 600;
+  const AP_DAILY_CAP = 700;   /* 45 days × the dozen or so buckets a day, with room */
   const AP_SIGNIN_OPENED = '2026-10-06';   /* sign-in opened to everyone: account counts before it are a different crowd */
   const istDayAt = ms => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
   const apDayShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(d + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
@@ -13191,7 +13198,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Each document is read on its own: one that is missing, not published yet or failing never blanks another. */
   async function loadAppsMore(){
     if(DEMO){ renderApps(); return; }   /* the fixtures own all of it */
-    const req = _apReq;
+    const gen = _apGen, live = () => gen === _apGen;
     _apMoreAt = Date.now();
     const ist = new Date(Date.now() + 330 * 60000);
     const ymNow = ist.toISOString().slice(0, 7);
@@ -13202,38 +13209,48 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     await Promise.all([
       (async()=>{
         try{
-          const snap = await getDocs(query(collection(db, 'appDaily'), orderBy('day', 'desc'), limit(AP_DAILY_CAP)));
-          if(req !== _apReq) return;
+          /* the last 45 days, and the very first day ever counted (for "counting since") */
+          const since = istDayAt(Date.now() - 45 * 864e5);
+          const [snap, first] = await Promise.all([
+            getDocs(query(collection(db, 'appDaily'), where('day', '>=', since), orderBy('day', 'desc'), limit(AP_DAILY_CAP))),
+            getDocs(query(collection(db, 'appDaily'), orderBy('day', 'asc'), limit(1))),
+          ]);
+          if(!live()) return;
+          /* offline with nothing saved answers "empty" from the cache — which is not "nothing counted" */
+          const cached = r => !!(r.metadata && r.metadata.fromCache);
+          if((cached(snap) && snap.empty) || (cached(first) && first.empty)){ _apDailyState = 'offline'; return; }
           _apDaily = snap.docs.map(d=>{ const x = d.data() || {}; return { day: String(x.day || ''), bucket: String(x.bucket || ''), n: Number(x.n) || 0 }; })
             .filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.day) && x.bucket);
+          const f = first.docs[0] && (first.docs[0].data() || {});
+          _apDailyFirst = f && /^\d{4}-\d{2}-\d{2}$/.test(String(f.day || '')) ? String(f.day) : '';
           _apDailyState = 'ok';
-        }catch(e){ if(req === _apReq) _apDailyState = 'err'; }
+        }catch(e){ if(live()) _apDailyState = 'err'; }
       })(),
       (async()=>{
-        try{ const d = await one('stats', 'latest'); if(req !== _apReq) return; _apStats = d; _apStatsState = d ? 'ok' : 'none'; }
-        catch(e){ if(req === _apReq && !_apStats) _apStatsState = 'err'; }
+        try{ const d = await one('stats', 'latest'); if(!live()) return; _apStats = d; _apStatsState = d ? 'ok' : 'none'; }
+        catch(e){ if(live() && !_apStats) _apStatsState = 'err'; }
       })(),
       (async()=>{
         try{
           const [a, b] = await Promise.all([one('stats', 'push-' + ymNow), one('stats', 'push-' + ymPrev)]);
-          if(req !== _apReq) return;
+          if(!live()) return;
           _apPush = { [ymNow]: a, [ymPrev]: b }; _apPushState = 'ok';
-        }catch(e){ if(req === _apReq) _apPushState = 'err'; }
+        }catch(e){ if(live()) _apPushState = 'err'; }
       })(),
       (async()=>{
-        try{ const d = await one('stats', 'web'); if(req !== _apReq) return; _apWeb = d && d.atMs ? d : null; _apWebState = _apWeb ? 'ok' : 'none'; }
-        catch(e){ if(req === _apReq && !_apWeb) _apWebState = 'err'; }
+        try{ const d = await one('stats', 'web'); if(!live()) return; _apWeb = d && d.atMs ? d : null; _apWebState = _apWeb ? 'ok' : 'none'; }
+        catch(e){ if(live() && !_apWeb) _apWebState = 'err'; }
       })(),
       (async()=>{
-        try{ const d = await one('config', 'analytics'); if(req !== _apReq) return; _apGaId = apPropertyId(d && d.propertyId); }
+        try{ const d = await one('config', 'analytics'); if(!live()) return; _apGaId = apPropertyId(d && d.propertyId); }
         catch(e){}
       })(),
       (async()=>{
-        try{ const d = await one('config', 'appStore'); if(req !== _apReq) return; _apStore = d; _apStoreState = 'ok'; }
-        catch(e){ if(req === _apReq) _apStoreState = 'err'; }
+        try{ const d = await one('config', 'appStore'); if(!live()) return; _apStore = d; _apStoreState = 'ok'; }
+        catch(e){ if(live()) _apStoreState = 'err'; }
       })(),
     ]);
-    if(req === _apReq) renderApps();
+    if(live()) renderApps();
   }
   /* The studio's own server functions (Firebase Auth totals, Google Analytics): the admin's session goes with the call. */
   async function apCallable(name, data){
@@ -13248,67 +13265,102 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(c === 'not-found') return 'This needs the studio’s server function, which has not been published yet.';
     if(c === 'permission-denied') return 'Only the studio admin login can read this.';
     if(c === 'unauthenticated') return 'Please sign in again, then try once more.';
-    if(c === 'internal' || c === 'unknown') return String((e && e.message) || 'The studio’s server could not answer.').slice(0, 220);
+    if(c === 'internal' || c === 'unknown'){
+      /* the Functions SDK answers a bare "internal" when the request never got a reply at all: no signal, or a function
+         that is not published yet. A message of the function's own is passed on. */
+      const msg = String((e && e.message) || '').trim();
+      if(!msg || msg === 'internal' || msg === 'unknown') return 'Could not reach the studio’s server — it may not be published yet, or this phone is offline.';
+      return msg.slice(0, 220);
+    }
     return 'Could not reach the studio’s server. Check your connection and try again.';
   }
+  /* what Google last said about the Analytics connection, in words for the owner; null when it was fine */
+  function apGaSay(info){
+    if(!info || info.ok !== false) return null;
+    const cfg = window.FIREBASE_CONFIG || {};
+    const sa = info.serviceAccount || (cfg.messagingSenderId ? cfg.messagingSenderId + '-compute@developer.gserviceaccount.com' : '');
+    return ({
+      'api-disabled': ()=>'⚠ Step 2 is not done yet: the Google Analytics Data API is switched off for this project.',
+      'no-access': ()=>`⚠ Step 3 is not done yet: Google Analytics says <b>${esc(sa || 'the studio’s server account')}</b> cannot read property ${esc(_apGaId)}. Add it there as a Viewer.`,
+      'scope': ()=>'⚠ Google would not let the studio’s server read Analytics even though the account is on the property — its sign-in carries no Analytics permission. That needs a developer to fix on the server.' + (info.message ? ' (' + esc(info.message) + ')' : ''),
+      'bad-property': ()=>'⚠ Google does not know that Property ID. Check the number in Analytics → Admin → Property settings.',
+      'quota': ()=>'Google Analytics is busy right now. Try again in a few minutes.',
+      'call-failed': ()=>'⚠ ' + esc(info.message || 'The studio’s server could not be reached.'),
+      'error': ()=>'⚠ Google answered: ' + esc(info.message || 'an error') + '.',
+    }[info.state] || (()=>'⚠ Google Analytics did not answer.'))();
+  }
+  const AP_GA_SHORT = { 'api-disabled': 'the Data API is switched off', 'no-access': 'the studio’s server is not on the property yet', 'scope': 'Google refused the server’s permission',
+    'bad-property': 'that Property ID is not known', 'quota': 'Google is busy, try again in a few minutes', 'call-failed': 'the studio’s server could not be reached' };
   /* everyone logged in: totals from Firebase Auth. The numbers the panel already holds (crew, partner studios, current
-     clients) go along so the server can say who has an account — it answers for those alone and keeps none of it. */
+     clients) go along so the server can say who has an account — it answers for those alone and keeps none of it. The
+     page remembers WHICH numbers it asked about: a number it did not ask about is "unknown", never "no account". */
   async function refreshPeople(){
     if(DEMO){
-      if(_apDemo){ _apAuth = { at: Date.now(), matched: { ...(_apDemo.authMatched || {}) } }; _apStatsMsg = ''; renderApps(); }
+      if(_apDemo){ _apAuth = { at: Date.now(), asked: new Set(apModel().phones), matched: { ...(_apDemo.authMatched || {}) } }; _apStatsMsg = ''; renderApps(); }
       toast('Demo — sample numbers, nothing was asked of Firebase'); return;
     }
     if(_apBusy) return;
-    const req = _apReq;
+    const gen = _apGen;
     _apBusy = 'stats'; _apStatsMsg = ''; renderApps();
+    let say = '';
     try{
-      const out = await apCallable('adminStats', { phones: apModel().phones });
-      if(req !== _apReq) return;
+      const phones = apModel().phones;
+      const out = await apCallable('adminStats', { phones });
+      if(gen !== _apGen) return;   /* signed out meanwhile: the reset already cleared the busy flag */
       const { matched, ...counts } = out || {};
       _apStats = counts; _apStatsState = 'ok';
-      _apAuth = { at: Date.now(), matched: matched && typeof matched === 'object' ? matched : {} };
+      _apAuth = { at: Date.now(), asked: new Set(phones), matched: matched && typeof matched === 'object' ? matched : {} };
+      say = 'People numbers updated ✓';
     }catch(e){
-      if(req !== _apReq) return;
+      if(gen !== _apGen) return;
       _apStatsMsg = apWhy(e); if(!_apStats) _apStatsState = 'err';
     }
-    _apBusy = ''; renderApps();
+    _apBusy = ''; renderApps(); if(say) toast(say);
   }
-  /* the website's numbers from Google Analytics (the server keeps a copy for an hour) */
+  /* the website's numbers from Google Analytics (the server keeps a copy for a few minutes to an hour) */
   async function refreshWeb(force){
     if(DEMO){
-      if(_apDemo && _apGaId){ const f = (_apDemo.gaDemoFailures || {})[_apGaId]; if(f){ _apWebInfo = f; _apWeb = null; } else { _apWeb = { ..._apDemo.webStats, propertyId: _apGaId }; _apWebState = 'ok'; _apWebInfo = null; } renderApps(); }
+      if(_apDemo && _apGaId){ const f = (_apDemo.gaDemoFailures || {})[_apGaId]; if(f){ _apWebInfo = f; if(!_apWeb) _apWebState = 'none'; } else { _apWeb = { ..._apDemo.webStats, propertyId: _apGaId }; _apWebState = 'ok'; _apWebInfo = null; } renderApps(); }
       toast('Demo — sample numbers, nothing was asked of Google'); return;
     }
     if(_apBusy) return;
-    const req = _apReq;
+    const gen = _apGen;
     _apBusy = 'web'; renderApps();
+    let say = '';
     try{
       const out = await apCallable('webStats', { force: !!force });
-      if(req !== _apReq) return;
+      if(gen !== _apGen) return;
       _apWebInfo = out || { ok: false, state: 'error' };
-      if(out && out.ok && out.data){ _apWeb = out.data; _apWebState = 'ok'; }
+      if(out && out.ok && out.data){
+        _apWeb = out.data; _apWebState = 'ok';
+        say = out.cached ? 'Already up to date — Google is only asked every few minutes.' : 'Google Analytics numbers updated ✓';
+      }else say = 'Google Analytics: ' + (AP_GA_SHORT[_apWebInfo.state] || 'it did not answer') + '.';
     }catch(e){
-      if(req !== _apReq) return;
-      _apWebInfo = { ok: false, state: 'call-failed', message: apWhy(e) };
+      if(gen !== _apGen) return;
+      _apWebInfo = { ok: false, state: 'call-failed', message: apWhy(e) }; say = _apWebInfo.message;
     }
-    _apBusy = ''; renderApps();
+    _apBusy = ''; renderApps(); if(say) toast(say);
   }
   async function saveGaProperty(raw){
     const id = apPropertyId(raw);
     if(!id){ toast('That is not a Property ID — it is a number of about 9 digits, not the G- code.'); return; }
-    if(DEMO){ _apGaId = id; _apWeb = null; _apWebInfo = null; refreshWeb(true); return; }
+    if(DEMO){ _apGaId = id; delete _apDraft.apGaId; if(_apWeb && _apWeb.propertyId !== id) _apWeb = null; _apWebInfo = null; refreshWeb(true); return; }
+    const gen = _apGen;
     try{
       const sm = settleMsg(await settle(setDoc(doc(db, 'config', 'analytics'), { propertyId: id, updatedAt: serverTimestamp() }, { merge: true })), 'Saved ✓ — testing the connection…');
+      if(gen !== _apGen) return;
       toast(sm.msg);
       if(!sm.ok) return;
       if(_apGaId !== id){ _apWeb = null; _apWebState = 'none'; }
-      _apGaId = id; _apWebInfo = null;
+      _apGaId = id; _apWebInfo = null; delete _apDraft.apGaId;
       refreshWeb(true);
     }catch(err){ toast('Could not save: ' + (err.code || err.message)); }
   }
   /* What the owner types about the store releases — a separate admin-only document, because Settings › Save all
-     overwrites config/internal whole and would erase anything else kept there. */
+     overwrites config/internal whole and would erase anything else kept there. The form only appears once the saved
+     copy has been read, so a Save can never overwrite notes that were not on screen. */
   async function saveStoreBoard(){
+    if(_apStoreState !== 'ok'){ toast('The saved notes have not been read yet — wait a moment.'); return; }
     const val = id => String((($('#' + id)) || {}).value || '').trim();
     const side = (v, s, n)=>{
       const version = val(v), status = val(s), installs = val(n).replace(/[\s,]/g, '');
@@ -13319,11 +13371,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
     const android = side('apAv', 'apAs', 'apAn'), ios = side('apIv', 'apIs', 'apIn');
     if(!android || !ios){ toast('Check the version (short, no odd characters) and that installs is a whole number.'); return; }
-    if(DEMO){ _apStore = { android, ios, typedAt: { toMillis: ()=>Date.now() } }; _apStoreState = 'ok'; toast('Saved (demo — not kept)'); renderApps(); return; }
+    const done = ()=>{ _apStore = { android, ios, typedAt: { toMillis: ()=>Date.now() } }; _apStoreState = 'ok'; ['apAv', 'apAs', 'apAn', 'apIv', 'apIs', 'apIn'].forEach(k=>{ delete _apDraft[k]; }); _apStoreOpen = false; renderApps(); };
+    if(DEMO){ toast('Saved (demo — not kept)'); done(); return; }
+    const gen = _apGen;
     try{
       const sm = settleMsg(await settle(setDoc(doc(db, 'config', 'appStore'), { android, ios, typedAt: serverTimestamp() })), 'Saved ✓');
+      if(gen !== _apGen) return;
       toast(sm.msg);
-      if(sm.ok){ _apStore = { android, ios, typedAt: { toMillis: ()=>Date.now() } }; _apStoreState = 'ok'; renderApps(); }
+      if(sm.ok) done();
     }catch(err){ toast('Could not save: ' + (err.code || err.message)); }
   }
 
@@ -13386,21 +13441,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const ready = _leadsLoaded && _pkgsLoaded && _teamLoaded && _asgsLoaded && _studiosLoaded && _sreqsLoaded && _supsLoaded && _profLoaded;
     /* when the server has said who has an account (↻ Refresh people numbers), "no app seen" says more: they have
        never signed in at all, or they sign in on the website only */
-    const acct = _apAuth && _apAuth.matched;
+    /* The server answers only for the numbers the page sent it, so a number it was NOT asked about (added to the books
+       afterwards, or not loaded yet when it asked) is unknown — never "no account". */
+    const acct = _apAuth && _apAuth.matched, asked = _apAuth && _apAuth.asked;
+    const checked = k => !!acct && !!asked && asked.has(k);
     const nudge = [];
     if(ready) [...crew, ...partners].forEach(p=>{
       if(p.p10.length !== 10) nudge.push({ ...p, reason: 'No phone number saved', wa: '', never: false });
       else if(tokOK && !used(p.p10)){
-        const a = acct ? acct[p.p10] : null;
-        nudge.push({ ...p, never: !!acct && !a, wa: String(normPhoneFull(p.phone || p.p10)).replace(/\D/g, ''),
-          reason: !acct ? 'No app seen on this number'
+        const known = checked(p.p10), a = known ? acct[p.p10] : null;
+        nudge.push({ ...p, never: known && !a, wa: String(normPhoneFull(p.phone || p.p10)).replace(/\D/g, ''),
+          reason: !known ? 'No app seen on this number'
                 : a ? 'Has an account' + (a.last ? ' (last active ' + apDayShort(istDayAt(a.last)) + ')' : '') + ' — no app seen'
                 : 'Never signed in — no account yet' });
       }
     });
-    /* how many of each group have never signed in anywhere (counts only, for clients) */
-    const noAcct = list => { const withNum = list.filter(p=>p.p10.length === 10); return [withNum.filter(p=>!acct[p.p10]).length, withNum.length]; };
-    const auth = acct ? { at: _apAuth.at, crew: noAcct(crew), studios: noAcct(partners), clients: noAcct(clientsNow) } : null;
+    /* how many of each group have never signed in anywhere, among the numbers that were checked (counts only, for clients) */
+    const noAcct = list => { const c = list.filter(p=>p.p10.length === 10 && checked(p.p10)); return [c.filter(p=>!acct[p.p10]).length, c.length]; };
+    const auth = (acct && asked) ? { at: _apAuth.at, crew: noAcct(crew), studios: noAcct(partners), clients: noAcct(clientsNow) } : null;
     const phones = [...new Set([...crew, ...partners, ...clientsNow].map(p=>p.p10).filter(k=>k.length === 10))];
 
     /* ---- what is waiting ---- */
@@ -13491,7 +13549,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ios7: sum7('app_ios'), and7: sum7('app_android'), web7: sum7('web'),
       roles7: { client: sum7('r_client'), crew: sum7('r_crew'), studio: sum7('r_studio'), none: sum7('r_none') },
       gens: Object.entries(gens).sort((a, b)=>b[0].localeCompare(a[0])),
-      first: _apDaily.reduce((mn, x)=>(!mn || x.day < mn) ? x.day : mn, '') };
+      first: _apDailyFirst || _apDaily.reduce((mn, x)=>(!mn || x.day < mn) ? x.day : mn, '') };
     /* ---- alert tallies, this month and last (India's calendar) ---- */
     const ist = new Date(now + 330 * 60000);
     const ymNow = ist.toISOString().slice(0, 7);
@@ -13526,7 +13584,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const apBar = (label, right, frac, cls) => `<div class="ins-bar${cls ? ' ' + cls : ''}"><span class="ib-l">${label}</span><span class="ib-t"><i style="width:${Math.max(2, Math.round(100 * (frac || 0)))}%"></i></span><b class="ib-r">${right}</b></div>`;
   const apH = t => `<div class="finh">${t}</div>`;
   const apNote = t => `<div class="insnote">${t}</div>`;
-  const apLink = (href, label) => `<a class="btn btn--ghost" href="${esc(href)}" target="_blank" rel="noopener">${label} ↗</a>`;
+  const apLink = (href, label) => /^https:\/\//i.test(String(href || '')) ? `<a class="btn btn--ghost" href="${esc(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
   /* a section that throws must not take the page with it */
   const apSafe = (name, fn) => { try{ return fn(); }catch(err){ console.error('[apps] ' + name + ' failed', err); return apNote('⚠ This part could not be drawn.'); } };
 
@@ -13555,6 +13613,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function apDailyHTML(m){
     const d = m.daily;
     if(_apDailyState === 'err') return apNote('⚠ Could not read the daily head-count. It needs the updated rules published first.');
+    if(_apDailyState === 'offline') return apNote('⚠ Could not read the daily head-count — this phone looks offline. Tap ↻ Re-check when you are back online.');
     if(_apDailyState !== 'ok') return apNote('Reading the daily head-count…');
     if(!d.any) return apNote('Nothing is counted yet. It starts the day the update that adds it goes live: from then on each signed-in phone or browser adds one a day.');
     const t = d.today, n7 = d.ios7 + d.and7 + d.web7, mx7 = Math.max(1, d.ios7, d.and7, d.web7);
@@ -13598,7 +13657,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     </div>`;
     if((c || {}).nodevice) h += apWarn(`⚠ <b>${apPlural(c.nodevice, 'alert')}</b> this month had <b>nobody to receive them</b> — the person has not installed the app or said No to notifications. Who to nudge is listed above.`);
     if((c || {}).badphone) h += apWarn(`⚠ <b>${apPlural(c.badphone, 'alert')}</b> this month went to a record with <b>no usable phone number</b> — check the crew member's or client's number.`);
-    if(p) h += apNote(`Last month (${esc(monthName(m.ymPrev))}): ${prev('alerts')} alerts · ${prev('sent')} phones reached · ${prev('failed')} failed · ${prev('nodevice')} with nobody to receive them.`);
+    if(p) h += apNote(`Last month (${esc(monthName(m.ymPrev))}): ${apPlural((p || {}).alerts || 0, 'alert')} · ${apPlural((p || {}).sent || 0, 'phone')} reached · ${apN((p || {}).failed || 0)} failed · ${apN((p || {}).nodevice || 0)} with nobody to receive them.`);
     h += apNote('“Reached” means the phone accepted the alert, not that the person read it, and “failed” does not always mean they missed it. Counted from the day this started; earlier months are not in it.');
     return h;
   }
@@ -13615,19 +13674,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return h;
     }
     const t = s.tripwire || {};
-    h += `<div class="aps-row"><span class="what">${apN(s.total)} accounts<span>as of ${esc(apDateTime(s.atMs))}</span></span>${btn}</div>`;
+    h += `<div class="aps-row"><span class="what">${apPlural(s.total, 'account')}<span>as of ${esc(apDateTime(s.atMs))}</span></span>${btn}</div>`;
+    /* "today" is the day the figures were counted: say so when they are older than that, and only warn while they are recent */
+    const statDay = s.atMs ? istDayAt(s.atMs) : '', isToday = statDay === istDayAt(Date.now());
+    const recent = !!s.atMs && Date.now() - s.atMs < 12 * 3600e3;
     h += `<div class="fintiles">
       ${apTile(apN(s.total), 'people have logged in', s.since ? 'since ' + esc(apDayShort(s.since)) : '')}
       ${apTile(apN(s.new7), 'new in 7 days', `${apN(s.new30)} in 30 days`)}
       ${apTile(apN(s.active30), 'sessions refreshed in 30 days', `${apN(s.active7)} in the last 7 days`)}
-      ${apTile(apN(t.today || 0), 'new accounts today', t.avg7 !== undefined ? `usually about ${esc(String(t.avg7))} a day` : '', t.flag ? 'warn' : '')}
+      ${apTile(apN(t.today || 0), isToday ? 'new accounts today' : 'new accounts on ' + esc(apDayShort(statDay)), t.avg7 !== undefined ? `usually about ${esc(String(t.avg7))} a day` : '', (t.flag && recent) ? 'warn' : '')}
     </div>`;
-    if(t.flag) h += apWarn(`⚠ <b>${apPlural(t.today, 'new account')} today</b> against about ${esc(String(t.avg7))} a day. A jump like this can be someone running up the sign-in SMS bill — open Authentication usage below and check.`);
+    if(t.flag && recent) h += apWarn(`⚠ <b>${apPlural(t.today, 'new account')} today</b> against about ${esc(String(t.avg7))} a day. A jump like this can be someone running up the sign-in SMS bill — open Authentication usage below and check.`);
     const days = (s.newByDay || []).slice(-30);
     if(days.length){
       const hasMark = days.some(x=>x.d === AP_SIGNIN_OPENED);
       h += `<div class="finh" style="margin-top:.7rem">New accounts per day — last 30 days</div>`
-         + apCols(days.map(x=>({ n: x.n, mark: x.d === AP_SIGNIN_OPENED, t: `${apDayShort(x.d)}: ${x.n}` })), 'New accounts per day, last 30 days', apDayShort(days[0].d), 'today')
+         + apCols(days.map(x=>({ n: x.n, mark: x.d === AP_SIGNIN_OPENED, t: `${apDayShort(x.d)}: ${x.n}` })), 'New accounts per day, last 30 days', apDayShort(days[0].d), apDayShort(days[days.length - 1].d))
          + apNote(hasMark ? 'The gold column is <b>6 Oct</b>, when sign-in opened to everyone. Before it only numbers you had set up could log in, so earlier days are not comparable.'
                           : 'Sign-in opened to everyone on <b>6 Oct 2026</b>; before that only numbers you had set up could log in.');
     }
@@ -13651,13 +13713,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     quote_link_opened: 'Opened a shared quote link', promo_applied: 'Used a promo code', compare_opened: 'Opened Compare packages',
     enquiry_sent: 'Sent the enquiry form', whatsapp_tap: 'Tapped a WhatsApp button', call_tap: 'Tapped a Call button',
   };
-  const AP_BUILDER_STEPS = ['builder_page_view', 'builder_started', 'functions_chosen', 'quote_whatsapp_sent', 'pdf_downloaded', 'quote_link_shared', 'promo_applied', 'compare_opened'];
+  const AP_BUILDER_STEPS = ['builder_page_view', 'builder_started', 'functions_chosen', 'quote_whatsapp_sent', 'pdf_downloaded', 'quote_link_shared', 'quote_link_opened', 'promo_applied', 'compare_opened'];
   const AP_CONTACT_STEPS = ['enquiry_sent', 'whatsapp_tap', 'call_tap'];
+  const AP_GA_SEES = '<b>What Google Analytics sees:</b> the home page and the package builder only, and the builder is also what the app opens as “Plan a shoot”, so some app sessions are in there. Nothing on the sign-in pages or inside the client, crew and partner areas is measured — the privacy page promises that. Visitors who block tracking are missing, so every number is a minimum.';
 
   function apGaData(w){
     const T = w.totals || null, now = T && T.now, bef = T && T.before, busy = _apBusy === 'web';
     let h = `<div class="aps-row"><span class="what">Last ${apN(w.rangeDays || 28)} days · property ${esc(w.propertyId || _apGaId)}<span>as of ${esc(apDateTime(w.atMs))}</span></span>
       <button type="button" class="btn btn--sm btn--ghost" data-apweb${busy ? ' disabled' : ''}>${busy ? 'Reading…' : '↻ Refresh'}</button></div>`;
+    /* the last time Google was asked and said no (a revoked permission, a busy moment): the figures below are then older */
+    const said = apGaSay(_apWebInfo);
+    if(said) h += apWarn(said + ' The figures below are from ' + esc(apDateTime(w.atMs)) + '.');
     const bad = Object.keys(w.errors || {});
     if(bad.length) h += apWarn('⚠ Google would not give: ' + esc(bad.join(', ')) + '. The rest is below.');
     if(now){
@@ -13669,7 +13735,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
     }
     const dly = Array.isArray(w.daily) ? w.daily : [];
-    if(dly.length) h += apCols(dly.map(x=>({ n: x.u, t: `${apDayShort(x.d)}: ${x.u} visitors, ${x.s} visits` })), 'Visitors per day', apDayShort(dly[0].d), 'today');
+    if(dly.length) h += apCols(dly.map(x=>({ n: x.u, t: `${apDayShort(x.d)}: ${x.u} visitors, ${x.s} visits` })), 'Visitors per day', apDayShort(dly[0].d), apDayShort(dly[dly.length - 1].d));
     const bars = (title, rows, label, right, key) => {
       if(!Array.isArray(rows) || !rows.length) return '';
       const mx = Math.max(1, ...rows.map(r=>r[key]));
@@ -13688,7 +13754,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     h += `<div class="finh" style="margin-top:.7rem">In the package builder</div>` + bs.map(stepBar).join('')
        + `<div class="finh" style="margin-top:.7rem">Getting in touch from the website</div>` + cs.map(stepBar).join('')
        + apNote('These count actions, not people: one person can do the same thing twice. “Tapped a WhatsApp / Call button” and “Sent the enquiry form” count from the day the website update that adds them goes live; before that they read zero.');
-    h += apNote('<b>What Google Analytics sees:</b> the home page and the package builder only, and the builder is also what the app opens as “Plan a shoot”, so some app sessions are in here. Nothing on the sign-in pages or inside the client, crew and partner areas is measured — the privacy page promises that. Visitors who block tracking are missing, so every number is a minimum.');
+    h += apNote(AP_GA_SEES);
     return h;
   }
 
@@ -13699,17 +13765,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const sa = info.serviceAccount || (cfg.messagingSenderId ? cfg.messagingSenderId + '-compute@developer.gserviceaccount.com' : '');
     const project = info.project || cfg.projectId || 'fantasy-studio-web-f7813';
     const busy = _apBusy === 'web';
-    const say = {
-      'api-disabled': ()=>'⚠ Step 2 is not done yet: the Google Analytics Data API is switched off for this project.',
-      'no-access': ()=>`⚠ Step 3 is not done yet: Google Analytics says <b>${esc(sa || 'the studio’s server account')}</b> cannot read property ${esc(_apGaId)}. Add it there as a Viewer.`,
-      'scope': ()=>'⚠ Google would not let the studio’s server read Analytics even though the account is on the property — its sign-in carries no Analytics permission. That needs a developer to fix on the server.' + (info.message ? ' (' + esc(info.message) + ')' : ''),
-      'bad-property': ()=>'⚠ Google does not know that Property ID. Check the number in Analytics → Admin → Property settings.',
-      'quota': ()=>'Google Analytics is busy right now. Try again in a few minutes.',
-      'call-failed': ()=>'⚠ ' + esc(info.message || 'The studio’s server could not be reached.'),
-      'error': ()=>'⚠ Google answered: ' + esc(info.message || 'an error') + '.',
-    }[info.state];
+    const draft = _apDraft.apGaId !== undefined ? _apDraft.apGaId : _apGaId;
+    const said = apGaSay(_apWebInfo);
     let h = apNote('To show your website’s visitors here, the panel needs read access to your Google Analytics. It takes about five minutes, once.');
-    if(say) h += apWarn(say());
+    if(said) h += apWarn(said);
     h += `<ol class="aps-steps">
       <li><b>Find the Property ID.</b> In Google Analytics open Admin › Property settings › <i>Property ID</i>: a number of about 9 digits, not the “G-…” code. Pick the property that owns the tag <b>G-X5VJYY7NP9</b> — the one on your website.</li>
       <li><b>Switch on the data connection.</b> In Google Cloud, turn on “Google Analytics Data API” for the project <b>${esc(project)}</b>.</li>
@@ -13720,34 +13779,42 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${apLink(info.url || 'https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com?project=' + encodeURIComponent(project), 'Turn on the Data API')}
     </div>
     <div class="aps-form"><label for="apGaId">Property ID</label>
-      <input id="apGaId" class="input" inputmode="numeric" autocomplete="off" placeholder="e.g. 123456789" value="${esc(_apGaId)}" />
+      <input id="apGaId" class="input" inputmode="numeric" autocomplete="off" placeholder="e.g. 123456789" value="${esc(draft)}" />
       <button type="button" class="btn btn--primary" data-apgasave${busy ? ' disabled' : ''}>${busy ? 'Testing…' : 'Save and test'}</button></div>`;
     if(_apGaId) h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${busy ? ' disabled' : ''}>Test the connection again</button></div>`;
-    return h;
+    return h + apNote(AP_GA_SEES);
   }
   function apGaHTML(m){
     if(_apWeb) return apSafe('ga', ()=>apGaData(_apWeb));
-    if(_apWebState === 'idle') return apNote('Reading…');
+    if(_apWebState === 'idle' || _apWebState === 'loading') return apNote('Reading…');
+    if(_apWebState === 'err' && _apGaId && !_apWebInfo){
+      return apWarn('⚠ Could not read the saved Google Analytics numbers just now — this phone may be offline.')
+        + `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${_apBusy === 'web' ? ' disabled' : ''}>${_apBusy === 'web' ? 'Asking…' : '↻ Ask Google again'}</button></div>`;
+    }
     return apSafe('gasetup', apGaSetup);
   }
 
-  /* what the owner types about the store releases (config/appStore) */
+  /* what the owner types about the store releases (config/appStore). The form only appears once the saved copy has been
+     read — a Save from a blank form would overwrite notes that were never on screen. What is typed is kept in _apDraft so
+     a redraw (a new enquiry arriving, say) never loses it, and the section stays open while it is being edited. */
   function apStoreHTML(){
-    if(_apStoreState === 'err') return apNote('⚠ Could not read the release notes you typed.');
+    if(_apStoreState === 'err') return apNote('⚠ Could not read the release notes you typed. Tap ↻ Re-check when you are back online.');
+    if(_apStoreState !== 'ok') return apNote('Reading…');
     const s = _apStore || {}, a = s.android || {}, i = s.ios || {};
     const typed = apMs(s.typedAt);
     const line = (name, o)=>{
       const bits = [o.version ? 'version ' + esc(o.version) : '', o.status ? esc(o.status) : '', (o.installs !== undefined && o.installs !== null && o.installs !== '') ? apN(o.installs) + ' installs' : ''].filter(Boolean);
       return bits.length ? `<div class="aps-row"><span class="what"><b>${name}</b><span>${bits.join(' · ')}</span></span></div>` : '';
     };
-    const opt = cur => AP_STORE_STATUS.map(v=>`<option value="${esc(v)}"${v === (cur || '') ? ' selected' : ''}>${v ? esc(v) : '— status —'}</option>`).join('');
+    const dv = (id, saved) => _apDraft[id] !== undefined ? _apDraft[id] : saved;
+    const opt = (id, cur) => AP_STORE_STATUS.map(v=>`<option value="${esc(v)}"${v === dv(id, cur || '') ? ' selected' : ''}>${v ? esc(v) : '— status —'}</option>`).join('');
     const side = (id, label, o)=>`<div class="aps-form aps-form--row"><b>${label}</b>
-      <label class="aps-lab" for="${id}v">Version</label><input id="${id}v" class="input" maxlength="20" placeholder="e.g. 1.1.0" value="${esc(o.version || '')}" />
-      <label class="aps-lab" for="${id}s">Status</label><select id="${id}s" class="input">${opt(o.status)}</select>
-      <label class="aps-lab" for="${id}n">Installs so far</label><input id="${id}n" class="input" inputmode="numeric" placeholder="from the store" value="${o.installs === null || o.installs === undefined ? '' : esc(String(o.installs))}" /></div>`;
+      <label class="aps-lab" for="${id}v">Version</label><input id="${id}v" class="input" maxlength="20" placeholder="e.g. 1.1.0" value="${esc(dv(id + 'v', o.version || ''))}" />
+      <label class="aps-lab" for="${id}s">Status</label><select id="${id}s" class="input">${opt(id + 's', o.status)}</select>
+      <label class="aps-lab" for="${id}n">Installs so far</label><input id="${id}n" class="input" inputmode="numeric" placeholder="from the store" value="${esc(String(dv(id + 'n', o.installs === null || o.installs === undefined ? '' : o.installs)))}" /></div>`;
     return (line('Android — Google Play', a) + line('iPhone — App Store', i) || apNote('Nothing typed yet.'))
       + (typed ? apNote(`Typed by you on ${esc(apDateTime(typed))}. These are not read from the stores: update them when you look at the consoles.`) : '')
-      + `<details class="aps-more"><summary>${typed ? 'Edit what I typed' : 'Type the version and install count'}</summary>
+      + `<details class="aps-more"${_apStoreOpen ? ' open' : ''}><summary>${typed ? 'Edit what I typed' : 'Type the version and install count'}</summary>
           ${side('apA', 'Android', a)}${side('apI', 'iPhone', i)}
           <div class="aps-links"><button type="button" class="btn btn--primary" data-apstore>Save</button></div></details>`;
   }
@@ -13778,7 +13845,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ['👤 Clients with a booked job', m.coverCl, 'booked, or delivered in the last 90 days'],
     ].map(([lab, c, what])=>apBar(`${lab} <em>${esc(what)}</em>`, (m.tokOK && m.ready) ? `${apN(c.has)} of ${apN(c.total)}` : '—', frac(c.has, c.total), 'gold')).join('')
       + apNote('Matched by phone number. “Has the app” also counts anyone who reached the app’s profile step, even if they tapped Later. Each role is shown against its own total — they are not added together.')
-      + (m.auth ? apNote(`From the login list (${esc(apDateTime(m.auth.at))}) — <b>never signed in anywhere:</b> crew ${apN(m.auth.crew[0])} of ${apN(m.auth.crew[1])} with a number, partner studios ${apN(m.auth.studios[0])} of ${apN(m.auth.studios[1])}, clients ${apN(m.auth.clients[0])} of ${apN(m.auth.clients[1])}.`) : ''));
+      + ((m.auth && m.ready) ? apNote(`From the login list (${esc(apDateTime(m.auth.at))}) — <b>never signed in anywhere:</b> crew ${apN(m.auth.crew[0])} of ${apN(m.auth.crew[1])} checked, partner studios ${apN(m.auth.studios[0])} of ${apN(m.auth.studios[1])}, clients ${apN(m.auth.clients[0])} of ${apN(m.auth.clients[1])}. Anyone added since was not asked about.`) : ''));
 
     h += apH('When they last opened it');
     h += m.tokOK ? apSafe('recency', ()=>{
@@ -13914,12 +13981,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     });
     h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apgo="insights">Where the work comes from — Insights ›</button></div>`;
 
-    h += apH('Website visitors — open the tools');
+    h += apH('More website tools');
     h += `<div class="aps-links">
       ${apLink('https://analytics.google.com/analytics/web/', 'Google Analytics')}
       ${apLink('https://search.google.com/search-console', 'Search Console')}
       ${apLink('https://business.google.com/', 'Google Business')}
-    </div>` + apNote('<b>What Google Analytics sees:</b> the home page and the package builder, and the builder is also what the app opens as “Plan a shoot”, so some app sessions are in there. Nothing on the sign-in pages or inside the client, crew and partner areas is measured — that is promised on the privacy page. Visits, sources, devices, cities and where people leave the builder live only in Analytics; the panel does not show them yet.');
+    </div>` + apNote('Search Console shows what people searched to find you; Google Business shows calls, directions and views from Google Maps. Neither is in the panel.');
     return h;
   }
 
@@ -13933,7 +14000,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(other > 0) chips.push(`<button type="button" class="aps-chip" data-apgo="people"><b>${apN(other)}</b> request${other === 1 ? '' : 's'} waiting — see People<i>›</i></button>`);
     if(chips.length) return chips.join('');
     /* "all clear" is only true once the lists behind it have arrived */
-    return m.ready ? '<div class="aps-chip ok">✓ Nothing here needs you right now</div>'
+    const age = _apStats && _apStats.atMs ? Date.now() - _apStats.atMs : Infinity;
+    const spike = age > 12 * 3600e3 ? ` <small>· sign-up spike check ${isFinite(age) ? 'last ran ' + esc(apDateTime(_apStats.atMs)) : 'has not run yet'}</small>` : '';
+    return m.ready ? `<div class="aps-chip ok">✓ Nothing here needs you right now${spike}</div>`
                    : `<div class="aps-chip ok">${m.errs.length ? '⚠ Some records could not be loaded — see the note below' : '… Loading your records'}</div>`;
   }
 
@@ -13999,8 +14068,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }else go(k, (ROUTES[k] && ROUTES[k].up) ? { fromMore: true } : undefined);   /* a screen under More: its arrow comes back here */
   });
   if($('#appsView')){
+    /* what is typed in the page's own fields is kept in _apDraft, so a redraw that lands later never loses it */
+    const DRAFT_IDS = ['apGaId', 'apAv', 'apAs', 'apAn', 'apIv', 'apIs', 'apIn'];
+    const keep = e => { const t = e.target; if(t && DRAFT_IDS.includes(t.id)) _apDraft[t.id] = t.value; };
+    on('#appsView', 'input', keep);
+    on('#appsView', 'change', keep);
+    /* `toggle` does not bubble: captured, so the release-notes section stays open through a redraw */
+    on('#appsView', 'toggle', e=>{ if(e.target && e.target.matches && e.target.matches('details.aps-more')) _apStoreOpen = !!e.target.open; }, true);
     on('#appsView', 'keydown', e=>{
-      if(e.key === 'Enter' && e.target && e.target.id === 'apGaId'){ e.preventDefault(); saveGaProperty(e.target.value); }
+      if(e.key === 'Enter' && e.target && e.target.id === 'apGaId'){
+        e.preventDefault();
+        const v = e.target.value;
+        e.target.blur();   /* the box lets go, so "Testing…" and the answer can be drawn */
+        saveGaProperty(v);
+      }
     });
     on('#appsView', 'focusout', ()=>{
       if(!_apDeferred) return;

@@ -249,7 +249,7 @@ function fmtDate(d){
    custom dimension in Analytics. */
 window.dataLayer = window.dataLayer || [];
 function trackSurface(){
-  try{ return document.documentElement.classList.contains('fs-app') ? 'app' : 'web'; }catch(e){ return 'web'; }
+  try{ return (document.documentElement.classList.contains('fs-app') || /FantasyStudioApp/.test(navigator.userAgent)) ? 'app' : 'web'; }catch(e){ return 'web'; }
 }
 function track(ev, data){
   try{

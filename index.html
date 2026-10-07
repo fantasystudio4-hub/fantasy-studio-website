@@ -1464,7 +1464,7 @@ $('#enquiryForm').addEventListener('submit', async e=>{
     await saveLeadReliably({ name, phone: p10, phoneFull: ph.e164, eventType: type||'',
       weddingDate: date||'', message: msg||'', quote: null, grandTotal: null, source: 'contact_form' });
     fireAdsConversion('contact');
-    track('enquiry_sent');   /* the enquiry form, counted for the owner's Analytics */
+    track('enquiry_sent');   /* a form sent (the lead is saved now, or parked and saved moments later), counted for the owner's Analytics */
     const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t)}`;
     let opened = true;
     if(waWin && !waWin.closed){ waWin.location.href = url; }

@@ -2451,3 +2451,4 @@ html.shell .stu-hd #stuBack{display:none}
 .aps-form--row .aps-lab{flex:none}
 details.aps-more{margin:.4rem 0 .8rem}
 details.aps-more summary{min-height:var(--tap);display:flex;align-items:center;cursor:pointer;color:var(--gold-b);font-size:var(--fs-base)}
+#apAuth{scroll-margin-top:calc(var(--hdr-h,56px) + .5rem)}

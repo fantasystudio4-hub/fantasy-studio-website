@@ -153,7 +153,10 @@ export function touchDaily(role){
     ].filter(b => !done.has(b));
     if(!buckets.length) return;
     buckets.forEach(b => done.add(b));
-    lsSet(DAILY_KEY, JSON.stringify({ d: day, b: [...done] }));   /* before the write: undercount, never overcount */
+    const note = JSON.stringify({ d: day, b: [...done] });
+    lsSet(DAILY_KEY, note);   /* before the write: undercount, never overcount */
+    /* blocked or full storage swallows that write: with no note that sticks, every page load would add again */
+    if(lsGet(DAILY_KEY) !== note) return;
     buckets.forEach(bucket => {
       try{
         setDoc(doc(db, 'appDaily', day + '_' + bucket),
