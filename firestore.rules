@@ -648,6 +648,51 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // DAILY COUNTERS behind More › Apps & website (Oct 2026): how many
+    // signed-in devices opened the site or the app today, by surface (iPhone
+    // app, Android app, website), by role and by app build. One doc per IST
+    // day and bucket — "<YYYY-MM-DD>_<bucket>" — holding a count and nothing
+    // else: no uid, no phone, no token, so there is nothing personal here.
+    //
+    // A signed-in phone may only START today's counter at 1 or raise it by
+    // exactly 1. The day is worked out from the SERVER clock (request.time,
+    // moved to India time), never from the phone, so a wrong phone clock
+    // cannot file counts under another day and an old day can never be
+    // changed. The bucket is a fixed list plus g10..g99 for app builds, so a
+    // new build needs no rule change and nobody can mint endless buckets.
+    // Only the admin reads or deletes them. Anyone with a verified phone can
+    // still inflate today's number by writing again and again — a known and
+    // accepted limit for an aggregate count that no money or access rides on.
+    //
+    // The id is passed in rather than read from the enclosing match, as in
+    // profiles/{uid}, so nothing leans on how function scope sees wildcards.
+    match /appDaily/{dayBucket} {
+      function dayIst() {
+        let t = request.time + duration.value(330, 'm');
+        return string(t.year()) + '-' + (t.month() < 10 ? '0' : '') + string(t.month())
+             + '-' + (t.day() < 10 ? '0' : '') + string(t.day());
+      }
+      function dailyOk(id) {
+        let d = request.resource.data;
+        return request.auth != null
+          && clientPhone10() != '__none__'
+          && d.keys().hasOnly(['day','bucket','n','updatedAt'])
+          && d.keys().hasAll(['day','bucket','n','updatedAt'])
+          && d.day is string
+          && d.bucket is string
+          && d.bucket.matches('^(app_ios|app_android|web|r_client|r_crew|r_studio|r_none|g[0-9]{2})$')
+          && d.day == dayIst()
+          && id == d.day + '_' + d.bucket
+          && d.updatedAt == request.time;
+      }
+      allow read, delete: if isAdmin();
+      allow create: if dailyOk(dayBucket)
+        && request.resource.data.n == 1;
+      allow update: if dailyOk(dayBucket)
+        && resource.data.n is int
+        && request.resource.data.n == resource.data.n + 1;
+    }
+
     // the person's own profile (one sign-in, Sep 2026): name, photo, and a
     // few details for the roles the admin set their number up as — crew: an
     // emergency contact; client: an email; partner: studio name, owner name,

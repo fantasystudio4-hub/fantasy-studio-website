@@ -1318,6 +1318,8 @@ function route(){
   render();
   /* only a number the server has confirmed as an active partner */
   registerPush();
+  /* the owner's daily head-count (anonymous; see fs-auth.js touchDaily) */
+  try{ if(!DEMO_VIEW && FS.touchDaily) FS.touchDaily('studio'); }catch(e){}
   reqSync();   /* its booking requests, live (never the sample account) */
 }
 

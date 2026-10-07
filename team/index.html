@@ -1143,7 +1143,10 @@ if(!CONFIGURED){
          than raising the prompt itself. */
       if(!lockPassed()){ if(!FSApp.lock.shown()){ show('loadingView'); lockGate(); } return; }
       if(inApp()) loadProfile();   /* for Me, once per sign-in; renderMe paints it when it lands */
-      show('appView'); render(); refreshInstall(); registerPush(); return;
+      show('appView'); render(); refreshInstall(); registerPush();
+      /* the owner's daily head-count (anonymous; see fs-auth.js touchDaily) */
+      try{ if(FS.touchDaily) FS.touchDaily('crew'); }catch(e){}
+      return;
     }
     /* a listener ERROR is a server/connection problem, not "you're not on the
        team" — telling a real member they are not on the list misled them */

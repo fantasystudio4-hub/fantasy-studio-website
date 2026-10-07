@@ -19,7 +19,7 @@ import { getAuth, onAuthStateChanged, updateCurrentUser, signOut,
          RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         collection, doc, getDoc, getDocs, query, where, setDoc, serverTimestamp,
+         collection, doc, getDoc, getDocs, query, where, setDoc, serverTimestamp, increment,
          terminate, clearIndexedDbPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -97,6 +97,71 @@ export const phone10 = user => String((user && user.phoneNumber) || '').replace(
 export const isDemo = user => !!user && user.phoneNumber === DEMO_PHONE;
 /* sample data instead of Firestore: the review number, or the local test hook */
 export const isSample = (user = auth.currentUser) => DEMO_VIEW || isDemo(user);
+
+/* ---------- the owner's daily counters (appDaily) ----------
+   More › Apps & website in the admin panel draws, per day: how many signed-in
+   devices opened the iPhone app, the Android app, or the website; which role
+   page they opened; and which build of the app they run. Each is a counter
+   that goes up by one — no uid, no phone, no token — so there is nothing
+   personal in it (firestore.rules, appDaily/{IST day}_{bucket}).
+
+   A device adds 1 to a bucket at most ONCE a day: the bucket is written down
+   in localStorage BEFORE the write goes out, so a failed or slow write leaves
+   a missing count rather than a double one (the page says "approximate").
+   The day is India's, the same one the rule works out from the server clock.
+   The review number and ?demo write nothing, and nothing here can ever
+   delay or break a page: no await on the page's path, every failure silent.
+
+   role: 'client' | 'crew' | 'studio' | 'none' (signed in, not set up). */
+const DAILY_KEY = 'fs_daily';
+const istDayOf = (ms = Date.now()) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+const _dailySeen = new Set();   /* role+day pairs this page load has already handled */
+function dailyPlatform(){
+  try{ const C = window.Capacitor; return C && C.getPlatform ? String(C.getPlatform()) : ''; }catch(e){ return ''; }
+}
+/* The build, told by which native plugins it brought along (the site is the
+   same for every build, so this is the only way to know). g10 = the first
+   builds, g11 = Face ID / calendar / widget (1.1), g12 = screenshot blocking
+   and native phone sign-in (the build after 1.1). A later build adds g13 and
+   so on: the rule allows g10..g99 and the admin names the ones it knows. */
+function dailyGeneration(){
+  try{
+    const C = window.Capacitor;
+    const has = n => !!(C && C.Plugins && C.Plugins[n] && (!C.isPluginAvailable || C.isPluginAvailable(n)));
+    return (has('PrivacyScreen') || has('FirebaseAuthentication')) ? 'g12'
+         : (has('BiometricAuthNative') || has('CapacitorCalendar')) ? 'g11' : 'g10';
+  }catch(e){ return 'g10'; }
+}
+export function touchDaily(role){
+  try{
+    if(!['client', 'crew', 'studio', 'none'].includes(role)) return;
+    const user = auth.currentUser;
+    if(isSample(user) || !user || !user.phoneNumber) return;   /* the rule wants a verified phone */
+    const day = istDayOf();
+    const memo = role + '|' + day;
+    if(_dailySeen.has(memo)) return;
+    _dailySeen.add(memo);
+    let saved = {};
+    try{ saved = JSON.parse(lsGet(DAILY_KEY) || '{}') || {}; }catch(e){ saved = {}; }
+    if(saved.d !== day) saved = { d: day, b: [] };
+    const done = new Set(Array.isArray(saved.b) ? saved.b : []);
+    const plat = dailyPlatform();
+    const buckets = [
+      inApp && plat === 'ios' ? 'app_ios' : inApp && plat === 'android' ? 'app_android' : 'web',
+      'r_' + role,
+      ...(inApp && (plat === 'ios' || plat === 'android') ? [dailyGeneration()] : []),
+    ].filter(b => !done.has(b));
+    if(!buckets.length) return;
+    buckets.forEach(b => done.add(b));
+    lsSet(DAILY_KEY, JSON.stringify({ d: day, b: [...done] }));   /* before the write: undercount, never overcount */
+    buckets.forEach(bucket => {
+      try{
+        setDoc(doc(db, 'appDaily', day + '_' + bucket),
+          { day, bucket, n: increment(1), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      }catch(e){}
+    });
+  }catch(e){}
+}
 
 /* the auth SDK's first answer (it reads the saved session from IndexedDB) */
 let _first = null;

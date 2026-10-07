@@ -1539,6 +1539,8 @@ function renderPackages(snap, user){
   availSync(user, pkgs);   /* the studio's calendar, with these bookings' days ringed */
   /* the Me tab's Notifications row reads the token registerPush leaves */
   if(_pkgFirst){ _pkgFirst = false; if(!DEMO_VIEW) registerPush(user).then(()=>fillMe(user, pkgs)); }
+  /* the owner's daily head-count (anonymous; see fs-auth.js touchDaily): never delays or breaks this page */
+  try{ if(!DEMO_VIEW && FS.touchDaily) FS.touchDaily('client'); }catch(e){}
 }
 
 /* ---------- the studio's availability calendar (../avail.js) ----------

@@ -721,6 +721,8 @@ async function showNone(user){
   show('none');
   welLookup(user);
   welMark('seen');
+  /* the owner's daily head-count (anonymous; see fs-auth.js touchDaily): signed in, not set up */
+  try{ if(FS.touchDaily) FS.touchDaily('none'); }catch(e){}
   const c = await FS.getContact();   /* never rejects; the default number until it answers */
   $('#noneCall').href = c.tel;
   $('#noneWa').href = c.wa + '?text=' + encodeURIComponent('Salaam! I tried to sign in to Fantasy Studio but my number ' + who + ' is not set up. Can you help?');
