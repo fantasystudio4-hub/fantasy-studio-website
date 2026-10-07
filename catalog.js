@@ -240,14 +240,36 @@ function fmtDate(d){
   return d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'Date TBD';
 }
 
-/* ---- light anonymous analytics (GTM-ready, no cookies) ---- */
+/* ---- light anonymous analytics (GTM-ready) ----
+   Counts and button names only, never a name or a phone. When a GA4 id is set
+   below, Google keeps its own random visitor id on the device (the privacy
+   page says so). Every event carries `surface`: 'app' when the page is the
+   store app's webview (the builder is what "Plan a shoot" opens), else 'web',
+   so the studio can tell the two apart once `surface` is registered as a
+   custom dimension in Analytics. */
 window.dataLayer = window.dataLayer || [];
+function trackSurface(){
+  try{ return document.documentElement.classList.contains('fs-app') ? 'app' : 'web'; }catch(e){ return 'web'; }
+}
 function track(ev, data){
   try{
-    window.dataLayer.push(Object.assign({event:ev}, data||{}));
-    if(typeof window.gtag === 'function') window.gtag('event', ev, data||{});
+    var d = Object.assign({ surface: trackSurface() }, data||{});
+    window.dataLayer.push(Object.assign({event:ev}, d));
+    if(typeof window.gtag === 'function') window.gtag('event', ev, d);
   }catch(e){}
 }
+/* The two ways to reach the studio that skip the form: a WhatsApp button and a
+   Call button, on the home page and in the builder. Counted when tapped;
+   the click itself is never touched or delayed. */
+document.addEventListener('click', function(e){
+  try{
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if(!a) return;
+    var h = a.getAttribute('href') || '';
+    if(/^https:\/\/wa\.me\//i.test(h)) track('whatsapp_tap');
+    else if(/^tel:/i.test(h)) track('call_tap');
+  }catch(err){}
+}, true);
 /* GA4 loads only when a Measurement ID is configured */
 if(typeof GA_MEASUREMENT_ID === 'string' && /^G-[A-Z0-9]+$/.test(GA_MEASUREMENT_ID)){
   (function(){
