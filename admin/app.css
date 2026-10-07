@@ -2401,3 +2401,31 @@ html.shell .stu-hd #stuBack{display:none}
   html.has-side #hdr.up-more #hdrBack{display:none}
 }
 @media(min-width:1000px) and (hover:hover){ #sideNav button:hover{background:var(--white-t4)} }
+
+/* ---- Apps & website (More) ------------------------------------------------
+   A read-only page of tiles, labelled bars and short lists. Everything it draws
+   with is defined above (.fintiles/.stat, .ins-bar, .insnote, .finh,
+   .mode-pills); only what is new is here. */
+#appsView .who{font-size:var(--fs-md);color:var(--mut);margin:.15rem 0 .7rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+#appsView .who span{flex:1 1 12rem;min-width:0;line-height:1.4}
+.aps-attn{display:flex;flex-direction:column;gap:.45rem;margin:0 0 .9rem}
+.aps-chip{display:flex;align-items:center;gap:.6rem;min-height:var(--tap);padding:.45rem .8rem;text-align:left;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:var(--r-md);font-family:var(--sans);font-size:var(--fs-base);line-height:1.3;cursor:pointer;-webkit-appearance:none;appearance:none}
+.aps-chip b{font-family:var(--serif);font-size:var(--fs-lg);color:var(--gold-b);min-width:1.4em;text-align:center}
+.aps-chip i{margin-left:auto;font-style:normal;color:var(--mut)}
+.aps-chip.warn{border-color:var(--state-pending-ln)}
+.aps-chip.warn b{color:var(--warn)}
+.aps-chip.ok{cursor:default;color:var(--mut)}
+.aps-chip:active:not(.ok){background:var(--gold-t2);border-color:var(--gold)}
+.aps-tabs{margin-bottom:.5rem}
+.aps-tabs button{min-height:var(--tap)}
+.aps-row{display:flex;align-items:center;gap:.6rem;min-height:var(--tap);padding:.45rem 0;border-bottom:1px dashed var(--line)}
+.aps-row:last-child{border-bottom:0}
+.aps-row .what{flex:1;min-width:0;font-size:var(--fs-base);color:var(--text);overflow-wrap:anywhere;line-height:1.3}
+.aps-row .what span{display:block;color:var(--mut);font-size:var(--fs-sm)}
+.aps-links{display:flex;flex-wrap:wrap;gap:.5rem;margin:.3rem 0 .8rem}
+.aps-links .btn{flex:1 1 9rem;text-decoration:none;text-align:center}
+#appsBody .fintiles .stat:last-child:nth-child(odd){grid-column:1 / -1}
+/* the tile sub-lines carry the caveats ("alerts on", "profile only"), so they sit one step above the 10.4px floor */
+#appsView .stat .st-up{font-size:var(--fs-xs)}
+/* the "may miss alerts" chip scrolls here: clear of the sticky header */
+#apNudge{scroll-margin-top:calc(var(--hdr-h,56px) + .5rem)}

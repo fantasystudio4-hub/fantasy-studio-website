@@ -372,6 +372,19 @@ export const leads = [
   { id: 'ld11', name: 'Deleted Enquiry', phone: '9000000000', phoneFull: '919000000000',
     source: 'contact_form', status: 'new', createdAt: ts(30), deleted: true, deletedAt: iso(-5),
     eventType: '', weddingDate: '', grandTotal: 0, message: '', notes: '' },
+  /* what the builder sends TODAY: no albumSheets (the album step is gone), a promo code, and a function the visitor
+     added but never chose a service for (the page must not count it) — plus an overseas number for the country split */
+  { id: 'ld12', name: 'Zainab Khan', phone: '501234567', phoneFull: '971501234567',
+    source: 'package_builder', status: 'new', createdAt: ts(2),
+    eventType: 'Wedding, Reception', weddingDate: iso(120), grandTotal: 180000, message: '', notes: '',
+    quote: {
+      promo: 'SPECIAL10',
+      events: [
+        { type: 'Wedding', date: iso(120), services: { candidPhotography: 2, cinematography: 1, drone: 1 } },
+        { type: 'Reception', date: iso(121), services: { candidPhotography: 1, traditionalVideo: 1 } },
+        { type: 'Mehendi', date: '', services: {} },
+      ],
+    } },
 ];
 
 /* ------------------------------------------------------------------- team */
@@ -539,6 +552,31 @@ export const partnerRequests = [
 export const signups = [
   { id: 'su01', phone10: '9440011223', phoneFull: '+919440011223', action: 'seen', createdAt: ts(0), lastAt: ts(0) },
   { id: 'su02', phone10: '9701055667', phoneFull: '+919701055667', action: 'lead', createdAt: ts(1), lastAt: ts(1) },
+];
+
+/* ------------------------------------------------------------- pushTokens
+   The phones that have the store app AND allowed alerts — what More > Apps &
+   website counts. Each row is { phone10, platform, updatedAt }; the real
+   documents' ids are the push tokens and are never read, so there is no id
+   here. The spread is deliberate:
+     · one person on TWO phones (tm01) — a person, not a device, is counted
+     · an iPhone, an Android and a build that did not say ('app')
+     · opened today, 2 days ago, 10 days ago, 40 days ago and 60 days ago
+     · a number that is on no record at all (9000012345) — "not on your books"
+     · crew with NO phone at all (tm07) or no app (tm06, tm08) and a partner
+       studio with no app (st02) — the "Who to nudge" list; tm03 never got a
+       token but did tap Later in the app, which still proves the app was used */
+export const pushTokens = [
+  { phone10: '9848001122', platform: 'ios',     updatedAt: ts(1)  },   /* tm01 */
+  { phone10: '9848001122', platform: 'android', updatedAt: ts(20) },   /* tm01's old phone */
+  { phone10: '9701002233', platform: 'android', updatedAt: ts(0)  },   /* tm02 */
+  { phone10: '9963004455', platform: 'ios',     updatedAt: ts(10) },   /* tm04 */
+  { phone10: '9032005566', platform: 'android', updatedAt: ts(40) },   /* tm05 */
+  { phone10: '9848111222', platform: 'ios',     updatedAt: ts(3)  },   /* st01 */
+  { phone10: '9876543210', platform: 'android', updatedAt: ts(2)  },   /* pk01, a booked client */
+  { phone10: '9848012345', platform: 'ios',     updatedAt: ts(60) },   /* pk03 */
+  { phone10: '9701122334', platform: 'app',     updatedAt: ts(5)  },   /* pk02, a build that did not say */
+  { phone10: '9000012345', platform: 'android', updatedAt: ts(5)  },   /* on nobody's record */
 ];
 
 /* --------------------------------------------------------------- expenses */

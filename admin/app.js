@@ -522,6 +522,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       try{
         _profUnsub = onSnapshot(query(collection(db,'profiles'), limit(PROFS_CAP)), snap=>{
           setProfiles(snap.docs.map(d=>({ id:d.id, ...d.data() })));
+          _profLoaded = true;
           warnIfCapped('profiles', snap.size, PROFS_CAP);
           _profErr = '';
           renderProfViews();
@@ -555,10 +556,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function stopProfiles(){
     if(_profUnsub){ try{ _profUnsub(); }catch(e){} _profUnsub = null; }
     if(_delUnsub){ try{ _delUnsub(); }catch(e){} _delUnsub = null; }
-    setProfiles([]); DELREQS = [];
+    setProfiles([]); DELREQS = []; _profLoaded = false;
   }
   /* every place a profile shows; each one is cheap and draws only its own box */
   function renderProfViews(){
+    appsTouch();
     renderTeamMembers();
     if(_tmEditId && $('#tmModal').classList.contains('open')) renderTmProf(memberById(_tmEditId));
     renderPkgListOnly();
@@ -732,6 +734,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user) stopStudioReqs();
     if(!user) stopProfiles();
     if(!user) stopAvailability();
+    if(!user) resetApps();
 
     if(user && !(await isAdmin(user))){
       $('#loginView').hidden = false; $('#appView').hidden = true; $('#hdr').hidden = true;
@@ -823,12 +826,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      Leads, Work = tabPkgs, Money in the bar; More in the header). tabCal,
      tabTeam and tabConfig are PARKED in the page, hidden: two dozen places in
      this file change screen by pressing one of them, and they keep working. */
-  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView', tabMoney:'moneyView', tabMore:'moreView' };
+  const TABS = { tabHome:'homeView', tabLeads:'leadsView', tabPkgs:'pkgView', tabCal:'calView', tabTeam:'teamView', tabConfig:'configView', tabMoney:'moneyView', tabMore:'moreView', tabApps:'appsView' };
   /* view name -> the button that shows it. The Team view answers to four
      names, one per section, so Back can return to the right one. 'team',
      'calendar' and 'editing' are the names older history entries carry. */
   const TAB_OF_VIEW = { home:'tabHome', packages:'tabPkgs', leads:'tabLeads', b2b:'tabCal', calendar:'tabHome', team:'tabTeam', editing:'tabTeam', config:'tabConfig',
-                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', expenses:'tabMoney', analytics:'tabMoney', insights:'tabMoney', more:'tabMore',
+                        crew:'tabTeam', paytrack:'tabTeam', members:'tabTeam', money:'tabMoney', expenses:'tabMoney', analytics:'tabMoney', insights:'tabMoney', more:'tabMore', apps:'tabApps',
                         'cfg-prices':'tabConfig', 'cfg-quote':'tabConfig', 'cfg-workflow':'tabConfig', 'cfg-calendar':'tabConfig', 'cfg-web':'tabConfig', trash:'tabConfig', backup:'tabConfig' };
   const SEG_OF_VIEW = { crew:'work', editing:'edit', paytrack:'pay', members:'crew' };
   /* Money's pages live in one view, the way the Team view's sections do: the
@@ -864,6 +867,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      the chrome reads them on the first paint. */
   let _cfgTouched = false, _cfgSaving = false, _cfgEdits = 0;
   const _cfgDirtyGroups = new Set();
+  /* Apps & website (More): present only when this page's markup has it, so a
+     stale cached page never offers a door that opens nothing. Its state lives
+     up here with the other page state — the chrome reads it on the first
+     paint. _apTok is the one thing it reads from the server: the phones that
+     have the store app AND allowed alerts, as {p10, plat, at}. The document
+     id of a pushTokens doc IS the push token, so it is never kept. */
+  const APPS_PAGE = !!($('#appsView') && $('#tabApps'));
+  let _apTab = ['app','people','web'].includes(viewGet('apTab')) ? viewGet('apTab') : 'app';
+  let _apTok = [], _apTokState = 'idle', _apTokAt = 0, _apTokErr = '', _apTokPartial = false, _apTokCapped = false, _apTokSkipped = 0;
+  let _apTimer = 0, _apReq = 0;
+  let _profLoaded = false, _supsLoaded = false;   /* the two lists the page reads that had no "has it arrived" flag */
 
   /* ---------- the screens, as the owner sees them ----------
      Home | Leads | ＋ | Work | Money in the bar, More in the header.
@@ -888,7 +902,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     more:     { tab:'tabMore',   view:'more',     hash:'#/more',           title:'More',            sec:'more' },
     studios:  { tab:'tabCal',    view:'b2b',      hash:'#/more/studios',   title:'Partner studios', sec:'more',  up:true },
     members:  { tab:'tabTeam',   view:'members',  hash:'#/more/team',      title:'Team',            sec:'more',  seg:'crew', up:true },
-    settings: { tab:'tabConfig', view:'config',   hash:'#/more/settings',  title:'Settings',        sec:'more',  up:true, cfg:'menu' },
+    apps:     { tab:'tabApps',   view:'apps',     hash:'#/more/apps',      title:'Apps & website',  sec:'more',  up:true },
+    settings:{ tab:'tabConfig', view:'config',   hash:'#/more/settings',  title:'Settings',        sec:'more',  up:true, cfg:'menu' },
     /* pages of Settings: `up` names the screen the back arrow returns to */
     cfgPrices:  { tab:'tabConfig', view:'cfg-prices',   hash:'#/more/settings/prices',    title:'Prices & packages',   sec:'more', up:'settings', cfg:'prices' },
     cfgQuote:   { tab:'tabConfig', view:'cfg-quote',    hash:'#/more/settings/quotation', title:'Quotation & contact', sec:'more', up:'settings', cfg:'quote' },
@@ -922,6 +937,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(viewShown('teamView')){ const g = teamSeg(); return g === 'edit' ? 'editing' : g === 'pay' ? 'paytrack' : g === 'crew' ? 'members' : 'crew'; }
     if(viewShown('configView')) return CFG_PAGES ? (CFG_ROUTE[_cfgPage] || 'settings') : 'settings';
     if(viewShown('moneyView')) return !MONEY_PAGES ? 'money' : _mnyPane === 'ex' ? 'expenses' : _mnyPane === 'an' ? (_anView === 'ins' ? 'insights' : 'analytics') : 'money';
+    if(viewShown('appsView')) return 'apps';
     if(viewShown('moreView')) return 'more';
     return 'home';
   }
@@ -941,6 +957,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(a === 'more'){
       if(b === 'studios') return 'studios';
       if(b === 'team') return 'members';
+      if(b === 'apps') return APPS_PAGE ? 'apps' : 'more';   /* a stale page has no such screen */
       if(b === 'settings'){
         if(!CFG_PAGES) return 'settings';   /* a stale page has one Settings screen */
         const c = p[2] || '';
@@ -1160,7 +1177,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     'Money',
     ['money','🧾','Transactions'], ['expenses','💸','Expenses'], ['paytrack','💰','Crew pay','#segPayB'], ['analytics','📊','Analytics'],
     'More',
-    ['portfolio','🖼','Portfolio','#morePortB'],     ['studios','🤝','Partner studios','#b2bBadge'], ['members','👤','Team','#teamBadge'], ['settings','⚙️','Settings'],
+    ['portfolio','🖼','Portfolio','#morePortB'],     ['studios','🤝','Partner studios','#b2bBadge'], ['members','👤','Team','#teamBadge'],
+    ...(APPS_PAGE ? [['apps','📱','Apps & website']] : []), ['settings','⚙️','Settings'],
     ['trash','🗑','Trash'], ['backup','⬇','Backup & export'], ['logout','↩','Logout'],
   ];
   function syncSide(r){
@@ -1505,6 +1523,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(typeof syncFabs === 'function') syncFabs();   /* after the views are toggled */
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
+    if(id === 'tabApps' && typeof appsOpen === 'function') appsOpen();
     if(id === 'tabHome'){
       if(typeof renderHome === 'function') renderHome();
       if(typeof renderCalendar === 'function') renderCalendar();   /* the calendar lives on Home now */
@@ -1794,7 +1813,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         _leadsInit = true;
         /* one throwing renderer must not stop the rest: a single odd lead used to
            blank Leads, Calendar, Home and Trash together */
-        [renderStats, renderLeads, renderCalendar, renderHome, renderTrash].forEach(fn=>{
+        [renderStats, renderLeads, renderCalendar, renderHome, renderTrash, appsTouch].forEach(fn=>{
           try{ fn(); }catch(err){ console.error('[leads] ' + fn.name + ' failed', err); }
         });
         /* Insights is a page now: a reload can land on it before the leads
@@ -3720,6 +3739,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      button in the bar carries the count of requests, since this is where
      they are answered from. */
   function renderHomeWait(){
+    appsTouch();   /* Apps & website counts the same waiting requests; it redraws only while it is on screen */
     const sec = $('#homeWait'), box = $('#homeReqs'), join = $('#homeJoin');
     if(!sec || !box || !join) return;
     const fresh = sreqUnits(SREQS.filter(r=>sreqStatus(r) === 'new'));
@@ -3773,6 +3793,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return { out, tel: telOf(tel) || p10 };
   }
   function renderDelReqs(){
+    appsTouch();   /* Apps & website lists these among what is waiting */
     const sec = $('#delReqSec'), el = $('#delReqs'); if(!sec || !el) return;
     const err = _delErr || _profErr;
     sec.hidden = !DELREQS.length && !err;
@@ -4527,6 +4548,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     else if(what === 'ejobs'){ loadEJobs(); }
     else if(what === 'profiles'){ loadProfiles(); }
     else if(what === 'avail'){ loadAvailability(); }
+    else if(what === 'apps'){ loadApps(); }
     toast('Reconnecting…');
   });
 
@@ -6792,6 +6814,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
 
   function renderTeam(){
+    appsTouch();   /* crew, assignments and join requests all land here */
     if(!$('#teamView')) return;
     renderTeamReqs();
     renderTeamEvents();
@@ -9706,6 +9729,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       _supsUnsub = onSnapshot(query(collection(db,'signups'), orderBy('lastAt','desc'), limit(200)), snap=>{
         SUPS = snap.docs.map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
+        _supsLoaded = true;
         _supsErr = ''; renderSignups();
       }, err=>{
         try{ if(_supsUnsub) _supsUnsub(); }catch(e){} _supsUnsub = null;
@@ -13028,6 +13052,506 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const b = e.target.closest('[data-more]'); if(!b) return;
     moreGo(b.dataset.more, { fromMore: true });
   });
+
+  /* ============================================================
+     APPS & WEBSITE — More › Apps & website (7 Oct 2026)
+     ------------------------------------------------------------
+     The owner's question: how many people use the app, and what else about
+     the app and the website the panel never said. Read-only — nothing here
+     writes, and nothing here is a new field, rule or function. Every number
+     but one is arithmetic over lists the panel already holds (leads, bookings,
+     crew, partner studios, requests, profiles, assignments). The one new read
+     is pushTokens: the phones that have the store app AND allowed alerts. It
+     is the only per-device record there is, so "app users" is always "at
+     least", never "installs" (only Play Console and App Store Connect know
+     installs).
+
+     A pushTokens document's id IS the push token. It is never kept, printed
+     or logged here — and keepSafeIds must never be run over this collection:
+     a token is far longer than SAFE_ID allows, and that function's toast
+     tells the owner to delete the "unusual" documents, which would stop
+     every alert. (The Firestore cache keeps what a read returns until Log
+     out wipes it, as for every other collection.)
+
+     Counts are floors: the live lists are capped (leads and bookings 1000,
+     sign-ups 200, assignments 2000, requests 300) and the page says so when
+     one gets near its cap. Leads and bookings go through liveLeads() /
+     livePkgs(), exactly as the screens they come from do.
+     ============================================================ */
+  const APPS_TOK_CAP = 2000;
+  const apMs = t => (t && typeof t.toMillis === 'function') ? t.toMillis()
+                  : (t && typeof t.seconds === 'number') ? t.seconds * 1000 : (typeof t === 'number' ? t : 0);
+  const apN = n => Number(n || 0).toLocaleString('en-IN');
+  const apPlural = (n, one, many) => apN(n) + ' ' + (n === 1 ? one : (many || one + 's'));
+  const apDays = ms => Math.floor((Date.now() - ms) / 864e5);
+  const apOld = ms => { if(!ms) return ''; const d = apDays(ms); return d < 1 ? 'oldest is from today' : d === 1 ? 'oldest is 1 day old' : 'oldest is ' + d + ' days old'; };
+  const apTime = ms => new Date(ms).toLocaleTimeString('en-IN', { hour:'numeric', minute:'2-digit' });
+  /* the dialling code of an enquiry or sign-up. Only the codes the SMS sign-in
+     allows are named, longest first; everything else is "Other". A bare
+     10-digit number is the panel's own convention for India. */
+  function apCountry(v){
+    const d = String(v || '').replace(/\D/g, '').replace(/^0+/, '');
+    if(!d) return '';
+    if(d.length <= 10) return 'India';
+    return d.startsWith('971') ? 'UAE' : d.startsWith('974') ? 'Qatar' : d.startsWith('91') ? 'India'
+         : d.startsWith('44') ? 'UK' : d.startsWith('1') ? 'US / Canada' : 'Other';
+  }
+  const apMonday = ms => { const x = new Date(ms); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+
+  async function loadApps(){
+    if(DEMO){ renderApps(); return; }   /* the fixtures own the list */
+    if(_apTokState === 'loading') return;
+    const req = ++_apReq;
+    _apTokState = 'loading'; _apTokErr = '';
+    renderApps();
+    try{
+      const q = query(collection(db, 'pushTokens'), limit(APPS_TOK_CAP));
+      let snap, partial = false;
+      try{ snap = await getDocsFromServer(q); }
+      catch(e){
+        if(e && e.code === 'permission-denied') throw e;
+        snap = await getDocs(q); partial = true;   /* offline: whatever this phone has saved, and say so */
+      }
+      if(req !== _apReq) return;   /* signed out, or reset, while the read was out */
+      /* offline with nothing saved is no answer: an empty list here would read as "nobody has the app" */
+      if(partial && snap.empty){
+        _apTokState = 'err'; _apTokErr = 'This phone is offline and has no saved phone list. Tap ↻ Re-check when you are back online.';
+        renderApps(); return;
+      }
+      const rows = []; let skipped = 0;
+      snap.docs.forEach(d=>{
+        const x = d.data() || {};   /* d.id is the push token: never touched */
+        const p10 = String(x.phone10 || '').replace(/\D/g, '');
+        if(p10.length !== 10 || !['ios', 'android', 'app'].includes(x.platform)){ skipped++; return; }
+        rows.push({ p10, plat: x.platform, at: apMs(x.updatedAt) });
+      });
+      _apTok = rows; _apTokSkipped = skipped; _apTokCapped = snap.size >= APPS_TOK_CAP;
+      _apTokPartial = partial || !!(snap.metadata && snap.metadata.fromCache);
+      _apTokAt = Date.now(); _apTokState = 'ok';
+    }catch(e){
+      if(req !== _apReq) return;
+      _apTokState = 'err';
+      _apTokErr = 'Could not read the phone list (' + ((e && (e.code || e.message)) || 'unknown') + ')';
+    }
+    renderApps();
+  }
+  function resetApps(){
+    _apReq++; clearTimeout(_apTimer);
+    _apTok = []; _apTokState = 'idle'; _apTokAt = 0; _apTokErr = ''; _apTokPartial = false; _apTokCapped = false; _apTokSkipped = 0;
+    const b = $('#appsBody'); if(b){ b.innerHTML = ''; b.dataset.sig = ''; }
+  }
+  /* the page opens with one read of the phones; it is read again only when
+     asked (↻ Re-check) or when it is older than ten minutes */
+  function appsOpen(){
+    if(!$('#appsView')) return;
+    if(_apTokState !== 'loading' && (_apTokState !== 'ok' || Date.now() - _apTokAt > 10 * 60 * 1000)) loadApps();
+    else renderApps();
+  }
+  /* called from the renderers the data passes through; never throws, and does
+     nothing unless the page is on screen */
+  function appsTouch(){
+    try{
+      const el = $('#appsView'); if(!el || el.hidden) return;
+      clearTimeout(_apTimer);
+      _apTimer = setTimeout(()=>{ try{ renderApps(); }catch(err){ console.error('[apps] redraw failed', err); } }, 120);
+    }catch(e){}
+  }
+
+  function apModel(){
+    const now = Date.now(), DAY = 864e5, today = todayISO();
+    const tokOK = _apTokState === 'ok';
+    const p10s = v => String(v || '').replace(/\D/g, '').slice(-10);
+    const dedupe = list => { const s = new Set(); return list.filter(p=>{ const k = p.p10.length === 10 ? p.p10 : 'x:' + p.id; if(s.has(k)) return false; s.add(k); return true; }); };
+
+    /* ---- the people on the books ---- */
+    const crew = dedupe(activeTeam().map(mm=>({ id:'c' + mm.id, kind:'Crew', name: mm.name || 'Crew member', sub: roleLabel(mm.role), p10: p10s(memberPhone10(mm)), phone: mm.phone || '' })));
+    const partners = dedupe(STUDIOS.filter(s=>s.active === true).map(s=>({ id:'s' + s.id, kind:'Partner studio', name: s.name || 'Partner studio',
+      sub: s.ownerName || 'no owner named', p10: p10s(s.phone10 || s.phone), phone: s.phone || '' })));
+    /* clients: a booked job, or one delivered in the last 90 days — the
+       people who have a reason to open the app today, not every wedding ever */
+    const cutIso = new Date(now - 90 * DAY).toLocaleDateString('en-CA');
+    const cl = new Map();
+    livePkgs().forEach(x=>{
+      const st = x.status || 'draft';
+      if(st === 'draft' || isStudioJob(x)) return;
+      const p = p10s(x.clientPhone); if(p.length !== 10) return;
+      const last = (x.events || []).map(e=>e && e.date).filter(d=>ISO_RE.test(d || '')).sort().pop() || '';
+      /* the day it was handed over, when the panel recorded one (weddings are delivered months after the last shoot) */
+      const when = ISO_RE.test(x.deliveredAt || '') ? x.deliveredAt : last;
+      const cur = st === 'booked' || (st === 'delivered' && when >= cutIso);
+      const c = cl.get(p) || { p10: p, cur: false }; c.cur = c.cur || cur; cl.set(p, c);
+    });
+    const clientsNow = [...cl.values()].filter(c=>c.cur);
+
+    /* ---- the phones ---- */
+    const dev = { ios: 0, android: 0, app: 0 }, byP = new Map();
+    _apTok.forEach(t=>{
+      dev[t.plat] = (dev[t.plat] || 0) + 1;
+      const c = byP.get(t.p10);
+      if(!c) byP.set(t.p10, { last: t.at, n: 1 }); else { c.n++; if(t.at > c.last) c.last = t.at; }
+    });
+    const profP = new Set(); PROFILES.forEach(p=>{ if(p.phone10.length === 10) profP.add(p.phone10); });
+    const used = k => byP.has(k) || profP.has(k);
+    const union = new Set([...byP.keys(), ...profP]);
+    const rec = { d1: 0, d7: 0, d30: 0, older: 0, nodate: 0 };
+    /* calendar days, so "today or yesterday" means exactly that at any hour */
+    const day0 = ms => { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x.getTime(); };
+    const midnight = day0(now);
+    byP.forEach(c=>{
+      if(!c.last){ rec.nodate++; return; }
+      const d = Math.round((midnight - day0(c.last)) / DAY);
+      if(d <= 1) rec.d1++; else if(d <= 7) rec.d7++; else if(d <= 30) rec.d30++; else rec.older++;
+    });
+    const cover = list => ({ total: list.length, has: list.filter(p=>p.p10.length === 10 && used(p.p10)).length });
+    const known = new Set();
+    TEAM.forEach(mm=>{ const k = p10s(memberPhone10(mm)); if(k.length === 10) known.add(k); });
+    STUDIOS.forEach(s=>{ const k = p10s(s.phone10 || s.phone); if(k.length === 10) known.add(k); });
+    livePkgs().forEach(x=>{ const k = p10s(x.clientPhone); if(k.length === 10) known.add(k); });
+
+    /* crew and partners who will not hear a push: no usable number, or (once
+       the phones have been read) no sign of the app on that number */
+    /* shown only once everything it is worked out from has arrived: a half-loaded list would send the owner to
+       message people who have the app (profiles feed used(), the crew and studio lists feed the rest) */
+    const errs = [_teamErr, _asgsErr, _studiosErr, _pkgsErr, _sreqsErr, _supsErr, _profErr].filter(Boolean);
+    const ready = _leadsLoaded && _pkgsLoaded && _teamLoaded && _asgsLoaded && _studiosLoaded && _sreqsLoaded && _supsLoaded && _profLoaded;
+    const nudge = [];
+    if(ready) [...crew, ...partners].forEach(p=>{
+      if(p.p10.length !== 10) nudge.push({ ...p, reason: 'No phone number saved', wa: '' });
+      else if(tokOK && !used(p.p10)) nudge.push({ ...p, reason: 'No app seen on this number', wa: String(normPhoneFull(p.phone || p.p10)).replace(/\D/g, '') });
+    });
+
+    /* ---- what is waiting ---- */
+    const oldest = (arr, f) => arr.reduce((mn, x)=>{ const t = f(x); return t && (!mn || t < mn) ? t : mn; }, 0);
+    const leadsNew = liveLeads().filter(l=>(l.status || 'new') === 'new');
+    const sups = suOpen().filter(u=>u.action === 'seen' || u.action === 'lead');
+    const creq = REQS.filter(r=>(r.status || 'pending') === 'pending');
+    const preq = preqPending();
+    const sreq = sreqUnits(SREQS.filter(r=>sreqStatus(r) === 'new'));
+    const waiting = [
+      { go: 'leads',   icon: '💬', one: 'enquiry not answered yet', many: 'enquiries not answered yet', n: leadsNew.length, old: oldest(leadsNew, l=>apMs(l.createdAt)) },
+      { go: 'leads',   icon: '👋', one: 'new sign-up to say hello to', many: 'new sign-ups to say hello to', n: sups.length, old: oldest(sups, u=>apMs(u.createdAt)) },
+      { go: 'members', icon: '🙋', one: 'crew join request', many: 'crew join requests', n: creq.length, old: oldest(creq, r=>apMs(r.createdAt)) },
+      { go: 'studios', icon: '🏢', one: 'partner studio request', many: 'partner studio requests', n: preq.length, old: oldest(preq, r=>apMs(r.createdAt)) },
+      { go: 'studios', icon: '📅', one: 'partner booking request', many: 'partner booking requests', n: sreq.length, old: oldest(sreq, r=>apMs(r.createdAt)) },
+      { go: 'home',    icon: '🗑', one: 'account deletion to finish', many: 'account deletions to finish', n: DELREQS.length, old: oldest(DELREQS, r=>apMs(r.at)) },
+    ];
+
+    /* ---- crew response (assignments) ---- */
+    const upcoming = ASGS.filter(a=>a.kind !== 'edit' && (a.date || '') >= today && !a.workDone);
+    const unseen = upcoming.filter(a=>a.status !== 'acknowledged').sort((a, b)=>String(a.date).localeCompare(String(b.date)));
+    const rates = activeTeam().map(mm=>({ mm, st: memberStats(mm.id) })).filter(x=>x.st.list.length >= 3 && x.st.rate != null)
+      .sort((a, b)=>a.st.rate - b.st.rate);
+
+    /* ---- partner studios' use of the booking-request page ---- */
+    const cut90 = now - 90 * DAY;
+    const stuUse = STUDIOS.filter(s=>s.active === true).map(s=>{
+      const all = SREQS.filter(r=>r.studioId === s.id);
+      const rs = sreqUnits(all.filter(r=>apMs(r.createdAt) >= cut90));
+      return { s, ever: all.length, n: rs.length, acc: rs.filter(r=>sreqStatus(r) === 'accepted').length,
+               dec: rs.filter(r=>sreqStatus(r) === 'declined').length, wait: rs.filter(r=>sreqStatus(r) === 'new').length };
+    }).sort((a, b)=>b.n - a.n);
+
+    /* ---- website: enquiries ---- */
+    const live = liveLeads();
+    const thisMon = apMonday(now);
+    const weeks = Array.from({ length: 8 }, ()=>({ people: new Set(), docs: 0 }));
+    const mKey = d => d.getFullYear() * 12 + d.getMonth();
+    const nowM = mKey(new Date(now));
+    const months = [new Set(), new Set()], monthDocs = [0, 0];   /* this month, last month */
+    const countryOf = new Map();
+    let undated = 0;
+    live.forEach(l=>{
+      const who = p10s(l.phone || l.phoneFull) || 'id:' + l.id;
+      if(!countryOf.has(who)) countryOf.set(who, apCountry(l.phoneFull || l.phone));
+      const t = apMs(l.createdAt);
+      if(!t){ undated++; return; }
+      const wi = Math.round((thisMon - apMonday(t)) / (7 * DAY));
+      if(wi >= 0 && wi < 8){ weeks[wi].people.add(who); weeks[wi].docs++; }
+      const mi = nowM - mKey(new Date(t));
+      if(mi === 0 || mi === 1){ months[mi].add(who); monthDocs[mi]++; }
+    });
+    SUPS.forEach(u=>{
+      const who = p10s(u.phone10 || u.phoneFull);
+      if(who.length === 10 && !countryOf.has(who)) countryOf.set(who, apCountry(u.phoneFull || u.phone10));
+    });
+    const countries = {};
+    countryOf.forEach(c=>{ const k = c || 'Not recorded'; countries[k] = (countries[k] || 0) + 1; });
+
+    /* ---- website: what people ask for in the builder ---- */
+    /* the builder keeps a function in quote.events even when no service is chosen on it, and an anonymous lead can
+       carry empty ones: only a function with a service counts, as in the lead's own quote breakdown */
+    const svcN = l=>l.quote.events.filter(ev=>ev && typeof ev === 'object' && ev.services && typeof ev.services === 'object' && Object.values(ev.services).some(q=>Number(q) > 0)).length;
+    const ql = live.filter(l=>l.quote && typeof l.quote === 'object' && Array.isArray(l.quote.events) && svcN(l) > 0);
+    const svcCount = {};
+    ql.forEach(l=>{
+      const keys = new Set();
+      l.quote.events.forEach(ev=>{ if(ev && ev.services && typeof ev.services === 'object') Object.entries(ev.services).forEach(([k, q])=>{
+        if(Number(q) > 0 && Object.prototype.hasOwnProperty.call(SERVICE_LABELS, k)) keys.add(k);   /* the keys are visitor-written: only the studio's own services are named */
+      }); });
+      keys.forEach(k=>{ svcCount[k] = (svcCount[k] || 0) + 1; });
+    });
+    const fromBuilder = live.filter(l=>l.source === 'package_builder').length;   /* the same test Insights uses */
+    const vals = ql.map(l=>Number(l.grandTotal) || 0).filter(v=>v > 0).sort((a, b)=>a - b);
+    const promos = {};
+    ql.forEach(l=>{ const c = typeof l.quote.promo === 'string' ? l.quote.promo.trim().toUpperCase().slice(0, 40) : ''; if(c) promos[c] = (promos[c] || 0) + 1; });
+
+    /* ---- how close the lists are to their caps ---- */
+    const caps = [['leads', LEADS.length, LEADS_CAP], ['bookings', PKGS.length, PKGS_CAP], ['sign-ups', SUPS.length, 200],
+                  ['assignments', ASGS.length, ASGS_CAP], ['booking requests', SREQS.length, SREQS_CAP], ['profiles', PROFILES.length, PROFS_CAP],
+                  ['phones', _apTok.length, APPS_TOK_CAP]].filter(c=>c[2] && c[1] >= 0.9 * c[2]);
+
+    return {
+      tokOK, ready, errs, stale: rec.older + rec.nodate,
+      dev, devices: _apTok.length, people: byP.size, profOnly: [...profP].filter(k=>!byP.has(k)).length, union: union.size, rec,
+      active7: rec.d1 + rec.d7, active30: rec.d1 + rec.d7 + rec.d30,
+      crew, partners, coverCrew: cover(crew), coverStu: cover(partners), coverCl: { total: clientsNow.length, has: clientsNow.filter(c=>used(c.p10)).length },
+      nudge, offBooks: (tokOK && ready) ? [...byP.keys()].filter(k=>!known.has(k)).length : 0,
+      prof: { done: PROFILES.filter(p=>p.has).length, empty: PROFILES.filter(p=>!p.has).length },
+      waiting, waitTotal: waiting.reduce((s, w)=>s + w.n, 0), leadsNew, sups,
+      upcoming, unseen, rates, stuUse,
+      weeks, months, monthDocs, undated, countries, liveN: live.length,
+      ql, fromBuilder, avgFns: ql.length ? ql.reduce((s, l)=>s + svcN(l), 0) / ql.length : 0,
+      services: Object.entries(svcCount).sort((a, b)=>b[1] - a[1]).slice(0, 6), medVal: vals.length ? vals[Math.floor((vals.length - 1) / 2)] : 0,
+      promos: Object.entries(promos).sort((a, b)=>b[1] - a[1]).slice(0, 5), promoTotal: Object.values(promos).reduce((s, n)=>s + n, 0), promoKinds: Object.keys(promos).length,
+      caps,
+    };
+  }
+
+  const apTile = (n, label, sub, cls) => `<div class="stat${cls ? ' ' + cls : ''}"><b>${n}</b><span>${label}</span>${sub ? `<em class="st-up">${sub}</em>` : ''}</div>`;
+  const apBar = (label, right, frac, cls) => `<div class="ins-bar${cls ? ' ' + cls : ''}"><span class="ib-l">${label}</span><span class="ib-t"><i style="width:${Math.max(2, Math.round(100 * (frac || 0)))}%"></i></span><b class="ib-r">${right}</b></div>`;
+  const apH = t => `<div class="finh">${t}</div>`;
+  const apNote = t => `<div class="insnote">${t}</div>`;
+  const apLink = (href, label) => `<a class="btn btn--ghost" href="${esc(href)}" target="_blank" rel="noopener">${label} ↗</a>`;
+  /* a section that throws must not take the page with it */
+  const apSafe = (name, fn) => { try{ return fn(); }catch(err){ console.error('[apps] ' + name + ' failed', err); return apNote('⚠ This part could not be drawn.'); } };
+
+  /* the figures draw from whatever has arrived, but nothing says "all clear" until it all has */
+  const apLoadNote = m => m.ready ? '' : apNote(m.errs.length
+    ? `⚠ Some of your records could not be loaded (${esc(m.errs[0])}), so some figures below are incomplete.`
+    : 'Your records are still loading — figures fill in as they arrive, and “nothing to do” lines appear only once everything is in.');
+
+  function apAppHTML(m){
+    const tv = n => m.tokOK ? apN(n) : (_apTokState === 'loading' ? '…' : '—');
+    const frac = (a, b) => b ? a / b : 0;
+    let h = apLoadNote(m);
+    if(_apTokState === 'err') h += errBox(_apTokErr, 'apps');
+    else if(_apTokState === 'loading' && !m.tokOK) h += apNote('Reading the phone list…');
+    if(m.tokOK && _apTokPartial) h += apNote('⚠ This phone is offline, so these figures are what it had saved and may be out of date. Tap ↻ Re-check when you are back online.');
+    if(m.tokOK && _apTokCapped) h += apNote(`⚠ Only the first ${apN(APPS_TOK_CAP)} phones were read; there are more, so every figure here is “at least”.`);
+
+    h += `<div class="fintiles">
+      ${apTile(tv(m.union), 'app users, at least', m.tokOK ? `${apN(m.people)} registered with alerts on${m.profOnly ? ` · +${apN(m.profOnly)} via the profile step only` : ''}` : 'alerts on, plus the profile step')}
+      ${apTile(tv(m.active7), 'opened in 7 days', m.tokOK ? `of ${apN(m.people)} registered` : '')}
+      ${apTile(tv(m.dev.ios), 'iPhones', m.tokOK ? 'registered with alerts on' : '')}
+      ${apTile(tv(m.dev.android), 'Android phones', m.tokOK && m.dev.app ? `+ ${apN(m.dev.app)} that did not say` : (m.tokOK ? 'registered with alerts on' : ''))}
+    </div>`;
+    h += apNote('<b>How to read this.</b> A phone is listed once it has the store app <i>and</i> alerts allowed, and it stays listed until an alert to it fails — so someone who uninstalled can still be counted for a while'
+      + (m.tokOK ? ` (<b>${apN(m.stale)}</b> ${m.stale === 1 ? 'phone has' : 'phones have'} not been opened in over 30 days)` : '')
+      + '. Anyone who said No to alerts, and everyone who only uses the website, is not in these numbers. Real installs, ratings and crashes live in the store consoles — buttons at the bottom.');
+
+    h += apH('Who has the app, by role');
+    h += apSafe('roles', ()=>[
+      ['🎬 Crew', m.coverCrew, 'crew members on your team'],
+      ['🏢 Partner studios', m.coverStu, 'active partner studios'],
+      ['👤 Clients with a booked job', m.coverCl, 'booked, or delivered in the last 90 days'],
+    ].map(([lab, c, what])=>apBar(`${lab} <em>${esc(what)}</em>`, (m.tokOK && m.ready) ? `${apN(c.has)} of ${apN(c.total)}` : '—', frac(c.has, c.total), 'gold')).join('')
+      + apNote('Matched by phone number. “Has the app” also counts anyone who reached the app’s profile step, even if they tapped Later. Each role is shown against its own total — they are not added together.'));
+
+    h += apH('When they last opened it');
+    h += m.tokOK ? apSafe('recency', ()=>{
+      const mx = Math.max(1, m.rec.d1, m.rec.d7, m.rec.d30, m.rec.older);
+      return apBar('Today or yesterday', apN(m.rec.d1), m.rec.d1 / mx)
+        + apBar('2–7 days ago', apN(m.rec.d7), m.rec.d7 / mx)
+        + apBar('8–30 days ago', apN(m.rec.d30), m.rec.d30 / mx)
+        + apBar('Longer ago', apN(m.rec.older), m.rec.older / mx)
+        + apNote('People, not devices. This is the last time a signed-in page ran with alerts on — a resume from the background does not count. A quiet client is normal when the wedding is months away, so names are listed below only for crew and partners who have no app at all.'
+          + (m.offBooks ? ` <b>${apPlural(m.offBooks, 'phone')}</b> ${m.offBooks === 1 ? 'belongs' : 'belong'} to numbers that are no longer on your books (a former crew member, a deleted booking, a changed number).` : ''));
+    }) : apNote('Shown once the phone list has been read.');
+
+    h += `<div id="apNudge"></div>` + apH('Who to nudge');
+    h += apSafe('nudge', ()=>{
+      if(!m.ready) return apNote('Worked out once everything above has loaded.');
+      if(!m.nudge.length) return m.tokOK ? apNote('✓ Every active crew member and partner studio has a usable number and has been seen in the app.')
+                                         : apNote('Everyone has a usable number. Who has the app is shown once the phone list has been read.');
+      return m.nudge.map(p=>`<div class="aps-row">
+        <span class="what"><b>${esc(p.name)}</b><span>${esc(p.kind)} · ${esc(p.sub)} — ${esc(p.reason)}</span></span>
+        ${p.wa ? `<a class="icon-btn icon-btn--ring" href="https://wa.me/${esc(p.wa)}?text=${encodeURIComponent('Hi ' + (String(p.name).split(/\s+/)[0] || '') + ', this is Fantasy Studio. Please install our app and allow notifications, so your shoot alerts reach your phone.')}" target="_blank" rel="noopener" title="WhatsApp ${esc(p.name)}" aria-label="WhatsApp ${esc(p.name)}">💬</a>` : ''}
+      </div>`).join('')
+        + apNote('Their assignment and booking alerts go to nobody until they sign in on the app and allow notifications. “No app seen” can also mean they allowed nothing, or use the website only — the app is the only thing that sends alerts.');
+    });
+
+    h += apH('The profile step in the app');
+    h += `<div class="fintiles">${apTile(apN(m.prof.done), 'added a profile', '')}${apTile(apN(m.prof.empty), 'skipped it (Later)', '')}</div>`
+       + apNote('Profiles are only offered inside the app, so this also shows people who reached it. Crew without an emergency contact are flagged on their Team card.');
+
+    h += apH('Store numbers — open the consoles');
+    h += `<div class="aps-links">
+      ${apLink('https://play.google.com/console', 'Play Console')}
+      ${apLink('https://appstoreconnect.apple.com/', 'App Store Connect')}
+      ${apLink('https://play.google.com/store/apps/details?id=in.fantasystudio.app', 'Play Store page')}
+    </div>` + apNote('Installs, uninstalls, ratings, crashes and reviews exist only there. The panel cannot read them without a key kept on a server.');
+    return h;
+  }
+
+  function apPeopleHTML(m){
+    let h = apLoadNote(m) + apH('Waiting on you');
+    h += apSafe('waiting', ()=>m.waiting.map(w=>`<div class="aps-row">
+        <span class="what"><b>${w.icon} ${apN(w.n)}</b> ${w.n === 1 ? w.one : w.many}${w.n && w.old ? `<span>${esc(apOld(w.old))}</span>` : ''}</span>
+        ${w.n ? `<button type="button" class="btn btn--sm btn--ghost" data-apgo="${w.go}">Open ›</button>` : ''}
+      </div>`).join('') + apNote('These are the same inboxes as on Home, Leads, Team and Partner studios — this is only the total and how long the oldest has waited.'));
+
+    h += apH('Crew: have they confirmed their shoots?');
+    h += apSafe('crew', ()=>{
+      if(!m.ready) return apNote('Worked out once the crew and assignments have loaded.');
+      /* one row per person per shoot: a wedding day with four crew is four of these, not one shoot */
+      let c = `<div class="fintiles">${apTile(apN(m.upcoming.length), 'crew bookings ahead', 'one per person per shoot')}${apTile(apN(m.unseen.length), 'not confirmed yet', m.unseen.length ? 'the crew member has not tapped Confirm' : 'everyone has confirmed', m.unseen.length ? 'warn' : '')}</div>`;
+      if(m.unseen.length){
+        c += m.unseen.slice(0, 8).map(a=>`<div class="aps-row"><span class="what"><b>${esc(a.memberName || 'Crew member')}</b><span>${esc(a.eventTitle || 'Event')} · ${esc(dmy(a.date))}</span></span></div>`).join('');
+        if(m.unseen.length > 8) c += apNote(`…and ${apN(m.unseen.length - 8)} more. They are on the Crew screen under each shoot.`);
+      }
+      if(m.rates.length){
+        c += `<div class="finh" style="margin-top:.7rem">Confirm rate — lowest first</div>`
+          + m.rates.slice(0, 8).map(x=>apBar(`${esc(x.mm.name || 'Crew member')} <em>${apN(x.st.acks)} of ${apN(x.st.list.length)}</em>`, x.st.rate + '%', x.st.rate / 100, x.st.rate < 60 ? '' : 'gold')).join('');
+      }
+      return c + apNote('“Confirmed” is the crew member tapping Confirm on the assignment, on the crew page or app or from the alert — the Crew screen shows it as “✓ seen”. Opening it without tapping does not count, and editing an assignment clears it, so a shoot can go back to “not confirmed” after a change.');
+    });
+
+    h += apH('Partner studios: booking requests, last 90 days');
+    h += apSafe('partners', ()=>{
+      if(!m.ready) return apNote('Worked out once the partner studios and their requests have loaded.');
+      if(!m.stuUse.length) return apNote('No active partner studios yet.');
+      const mx = Math.max(1, ...m.stuUse.map(x=>x.n));
+      const used = m.stuUse.filter(x=>x.n), idle = m.stuUse.filter(x=>!x.ever);
+      return (used.length ? used.map(x=>apBar(`${esc(x.s.name || 'Studio')} <em>${apN(x.acc)} accepted · ${apN(x.dec)} declined${x.wait ? ' · ' + apN(x.wait) + ' waiting' : ''}</em>`, apN(x.n), x.n / mx, 'gold')).join('')
+                          : apNote('No partner has sent a booking request in the last 90 days.'))
+        + (idle.length ? apNote(`<b>No request on file:</b> ${idle.map(x=>esc(x.s.name || 'Studio')).join(', ')}.`) : '')
+        + apNote('Counted from the newest 300 requests that still exist, so an old request can fall off the end, and one the partner cancelled or you deleted is not counted.');
+    });
+
+    h += apH('Sign-ups and where people are');
+    h += apSafe('countries', ()=>{
+      const entries = Object.entries(m.countries).sort((a, b)=>b[1] - a[1]);
+      const mx = Math.max(1, ...entries.map(e=>e[1]));
+      return `<div class="fintiles">${apTile(apN(m.sups.length), 'new sign-ups', 'waiting in Leads')}${apTile(apN(m.countries && Object.values(m.countries).reduce((s, n)=>s + n, 0)), 'people on record', 'enquiries and sign-ups, one per number')}</div>`
+        + entries.map(([k, n])=>apBar(esc(k), apN(n), n / mx)).join('')
+        + apNote('By the number’s dialling code — not where someone lives. <b>Sign-in opened to everyone on 6 Oct 2026</b>; before that only numbers you had set up could log in, so sign-up figures start low and are not comparable with earlier months.');
+    });
+
+    if(m.caps.length) h += apH('Data health') + apNote('⚠ ' + m.caps.map(c=>`${esc(c[0])} (${apN(c[1])} of ${apN(c[2])})`).join(', ') + ' — nearly full, so every figure built from it is “at least”. Backup &amp; export reads everything.');
+    return h;
+  }
+
+  function apWebHTML(m){
+    let h = apLoadNote(m);
+    const people = i => m.months[i].size, docs = i => m.monthDocs[i];
+    const oldLead = m.waiting[0].old;
+    h += `<div class="fintiles">
+      ${apTile(apN(people(0)), 'enquirers this month', apPlural(docs(0), 'enquiry', 'enquiries'))}
+      ${apTile(apN(people(1)), 'enquirers last month', apPlural(docs(1), 'enquiry', 'enquiries'))}
+      ${apTile(apN(m.leadsNew.length), 'waiting for an answer', m.leadsNew.length ? (esc(apOld(oldLead)) || 'not answered yet') : (m.ready ? 'all answered' : ''), m.leadsNew.length ? 'warn' : '')}
+      ${apTile(apN(m.fromBuilder), 'came from the builder', m.liveN ? Math.round(100 * m.fromBuilder / m.liveN) + '% of all enquiries' : '')}
+    </div>`;
+    h += apNote('Everything in Leads counts here, including calls asked for at sign-in and leads you added by hand. One person counts once, matched on the last 10 digits of their number — a quote sent twice is two enquiries but one enquirer. Dates come from the visitor’s phone, or from this device when you add a lead.' + (m.undated ? ` ${apPlural(m.undated, 'enquiry', 'enquiries')} carry no usable date and are left out of the weeks.` : ''));
+
+    h += apH('Last 8 weeks');
+    h += apSafe('weeks', ()=>{
+      const mx = Math.max(1, ...m.weeks.map(w=>w.people.size));
+      const mon = apMonday(Date.now());
+      return m.weeks.map((w, i)=>{ const d = new Date(mon); d.setDate(d.getDate() - 7 * i);
+        return apBar(i === 0 ? 'This week' : 'Week of ' + d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), `${apN(w.people.size)} · ${apN(w.docs)}`, w.people.size / mx, i === 0 ? 'gold' : ''); }).join('')
+        + apNote('Each row: people · enquiries.');
+    });
+
+    h += apH('What people ask for in the builder');
+    h += apSafe('builder', ()=>{
+      if(!m.ql.length) return apNote('No enquiry has come from the package builder yet.');
+      return `<div class="fintiles">
+        ${apTile(m.avgFns.toFixed(1), 'functions per quote', 'only functions with a service chosen')}
+        ${apTile(m.medVal ? inrShort(m.medVal) : '—', 'typical quote', 'the middle one, before any discount you give')}
+        ${apTile(apN(m.promoTotal), 'used a promo code', `of ${apPlural(m.ql.length, 'quote')}`)}
+        ${apTile(apN(m.ql.length), 'quotes counted', 'with at least one service chosen')}
+      </div>`
+        + (m.services.length ? `<div class="finh" style="margin-top:.7rem">Services asked for — share of quotes</div>`
+            + m.services.map(([k, n])=>apBar(esc(SERVICE_LABELS[k]), Math.round(100 * n / m.ql.length) + '%', n / m.services[0][1], 'gold')).join('') : '')
+        + (m.promos.length ? `<div class="finh" style="margin-top:.7rem">Promo codes</div>`
+            + m.promos.map(([c, n])=>apBar(esc(c), apPlural(n, 'quote'), n / m.promos[0][1])).join('')
+            + (m.promoKinds > m.promos.length ? apNote(`+ ${apPlural(m.promoKinds - m.promos.length, 'other code')} not listed.`) : '') : '')
+        + apNote('Taken from the quote each visitor sent from the builder. It is what people <i>asked for</i>; what actually sold is under Money › Insights.');
+    });
+    h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apgo="insights">Where the work comes from — Insights ›</button></div>`;
+
+    h += apH('Website visitors — open the tools');
+    h += `<div class="aps-links">
+      ${apLink('https://analytics.google.com/analytics/web/', 'Google Analytics')}
+      ${apLink('https://search.google.com/search-console', 'Search Console')}
+      ${apLink('https://business.google.com/', 'Google Business')}
+    </div>` + apNote('<b>What Google Analytics sees:</b> the home page and the package builder, and the builder is also what the app opens as “Plan a shoot”, so some app sessions are in there. Nothing on the sign-in pages or inside the client, crew and partner areas is measured — that is promised on the privacy page. Visits, sources, devices, cities and where people leave the builder live only in Analytics; the panel does not show them yet.');
+    return h;
+  }
+
+  function apAttnHTML(m){
+    const chips = [];
+    if(m.nudge.length) chips.push(`<button type="button" class="aps-chip warn" data-apgo="nudge"><b>${apN(m.nudge.length)}</b> ${m.nudge.length === 1 ? 'crew member or partner' : 'crew and partners'} may miss alerts<i>›</i></button>`);
+    if(m.leadsNew.length) chips.push(`<button type="button" class="aps-chip warn" data-apgo="leads"><b>${apN(m.leadsNew.length)}</b> ${m.leadsNew.length === 1 ? 'enquiry' : 'enquiries'} waiting${m.waiting[0].old ? ' — ' + esc(apOld(m.waiting[0].old)) : ''}<i>›</i></button>`);
+    if(m.sups.length) chips.push(`<button type="button" class="aps-chip" data-apgo="leads"><b>${apN(m.sups.length)}</b> new sign-up${m.sups.length === 1 ? '' : 's'} to say hello to<i>›</i></button>`);
+    const other = m.waitTotal - m.leadsNew.length - m.sups.length;
+    if(other > 0) chips.push(`<button type="button" class="aps-chip" data-apgo="people"><b>${apN(other)}</b> request${other === 1 ? '' : 's'} waiting — see People<i>›</i></button>`);
+    if(chips.length) return chips.join('');
+    /* "all clear" is only true once the lists behind it have arrived */
+    return m.ready ? '<div class="aps-chip ok">✓ Nothing here needs you right now</div>'
+                   : `<div class="aps-chip ok">${m.errs.length ? '⚠ Some records could not be loaded — see the note below' : '… Loading your records'}</div>`;
+  }
+
+  function renderApps(){
+    const root = $('#appsView'); if(!root || root.hidden) return;
+    let m;
+    try{ m = apModel(); }
+    catch(err){
+      console.error('[apps] model failed', err);
+      $('#appsBody').innerHTML = '<div class="empty">This page could not be worked out. Try ↻ Re-check, or reload the panel.</div>';
+      return;
+    }
+    const who = `<span>${_apTokAt ? 'Phones read at ' + esc(apTime(_apTokAt)) + (_apTokState === 'ok' && _apTokPartial ? ' (offline copy — may be out of date)' : '') + '. ' : ''}Figures are “at least”, never a headcount.</span>`
+      + `<button type="button" class="btn btn--sm btn--ghost" data-apre${_apTokState === 'loading' ? ' disabled' : ''}>↻ Re-check phones</button>`;
+    const whoEl = $('#appsWho'); if(whoEl && whoEl.dataset.sig !== who){ whoEl.innerHTML = who; whoEl.dataset.sig = who; }
+    const att = apAttnHTML(m);
+    const attEl = $('#appsAttn'); if(attEl && attEl.dataset.sig !== att){ attEl.innerHTML = att; attEl.dataset.sig = att; }
+    $$('#appsTabs [data-aptab]').forEach(b=>{
+      const on = b.dataset.aptab === _apTab;
+      b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on));
+    });
+    const html = _apTab === 'people' ? apPeopleHTML(m) : _apTab === 'web' ? apWebHTML(m) : apAppHTML(m);
+    const body = $('#appsBody');
+    if(body && body.dataset.sig !== _apTab + '|' + html){
+      const y = window.scrollY;
+      body.innerHTML = html; body.dataset.sig = _apTab + '|' + html;
+      if(window.scrollY !== y) window.scrollTo(0, y);
+    }
+  }
+
+  if($('#appsView')) on('#appsView', 'click', e=>{
+    const tb = e.target.closest('[data-aptab]');
+    if(tb){
+      if(tb.dataset.aptab === _apTab) return;
+      _apTab = tb.dataset.aptab; viewSet('apTab', _apTab);
+      renderApps(); scrollTopNow();
+      return;
+    }
+    if(e.target.closest('[data-apre]')){
+      if(DEMO){ toast('Demo — the phones here are sample data'); return; }
+      loadApps();
+      return;
+    }
+    if(e.target.closest('[data-retry]')) return;   /* the document-level retry handler takes it */
+    const g = e.target.closest('[data-apgo]'); if(!g) return;
+    const k = g.dataset.apgo;
+    if(k === 'nudge'){
+      if(_apTab !== 'app'){ _apTab = 'app'; viewSet('apTab', _apTab); renderApps(); }
+      const t = $('#apNudge'); if(t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }else if(k === 'people'){
+      _apTab = 'people'; viewSet('apTab', _apTab); renderApps(); scrollTopNow();
+    }else go(k, (ROUTES[k] && ROUTES[k].up) ? { fromMore: true } : undefined);   /* a screen under More: its arrow comes back here */
+  });
   /* Settings' own menu: a group is a step below it, so Back returns here */
   if($('#cfgMenu')) on('#cfgMenu', 'click', e=>{
     const b = e.target.closest('[data-cfgpage]'); if(!b) return;
@@ -13839,6 +14363,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         REQS    = [];
         PREQS   = (d.partnerRequests || []).map(r=>({ ...r }));
         SUPS    = (d.signups || []).map(r=>({ ...r }));
+        /* the phones with alerts on: copies, with the shape loadApps() builds from the server */
+        _apTok  = (d.pushTokens || []).map(r=>({ p10: String(r.phone10||'').slice(-10), plat: r.platform, at: r.updatedAt && r.updatedAt.toMillis ? r.updatedAt.toMillis() : 0 }));
+        _apTokState = 'ok'; _apTokAt = Date.now();
         CFG     = d.config;
         /* no fixture file for the availability config: the default threshold
            and one blocked evening ten days out, so the day box and the
@@ -13852,6 +14379,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         _leadsLoaded = _pkgsLoaded = _teamLoaded = _asgsLoaded = true;
         _studiosLoaded = _expsLoaded = _ejLoaded = _sreqsLoaded = _studiosFresh = true;
         _leadsFresh = _pkgsFresh = _asgsFresh = true;
+        _profLoaded = _supsLoaded = true;
 
         $('#loginView').hidden = true;
         $('#appView').hidden = false;

@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4b" />
-<link rel="stylesheet" href="app.css?v=p4i" />
+<link rel="stylesheet" href="app.css?v=p4m" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -82,7 +82,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <button class="out cfg" id="hdrTxns" hidden title="Transactions — every payment in and out" aria-label="Transactions"><i>🧾</i><em>Transactions</em></button>
     <!-- More keeps its WORD at every width: it took the place of the Logout
          pill, which was the one header button that always had one -->
-    <button class="out more" id="tabMore" type="button" title="Partner studios, Team, Settings, Trash, Backup, Logout">More<b class="badge" id="moreBadge" hidden></b></button>
+    <button class="out more" id="tabMore" type="button" title="Portfolio, Partner studios, Team, Apps &amp; website, Settings, Trash, Backup, Logout">More<b class="badge" id="moreBadge" hidden></b></button>
     <!-- PARKED, not removed: the gear and Logout are reached from More now, but
          the panel still presses these two buttons to do the work (TABS, the
          logout handler), so they stay in the page, hidden -->
@@ -148,6 +148,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <button id="tabMoney"><i>💰</i><span>Money</span></button>
     <button id="tabCal" hidden><i>🤝</i><span>B2B</span><b class="badge" id="b2bBadge" hidden></b></button>
     <button id="tabTeam" hidden><i>🎬</i><span>Team</span><b class="badge" id="teamBadge" hidden></b></button>
+    <button id="tabApps" hidden><i>📱</i><span>Apps</span></button>
   </div>
   <!-- the sections of Work and of Money; drawn by syncShell, sticky under the header -->
   <div class="tsegs subnav" id="subnav" role="tablist" hidden></div>
@@ -720,11 +721,25 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button type="button" data-more="portfolio">🖼 Portfolio <em>upload photos, films, reels · approve viewers</em><b class="badge" id="morePortB" hidden></b></button>
       <button type="button" data-more="studios">🤝 Partner studios <em>B2B jobs and requests</em><b class="badge" id="moreStuB" hidden></b></button>
       <button type="button" data-more="members">🎬 Team <em>crew members · leaderboard</em><b class="badge" id="moreTeamB" hidden></b></button>
+      <button type="button" data-more="apps">📱 Apps &amp; website <em>who uses the app · who visits the site</em></button>
       <button type="button" data-more="settings">⚙️ Settings <em>prices, packages, terms</em></button>
       <button type="button" data-more="trash">🗑 Trash <em>restore a deleted record</em></button>
       <button type="button" data-more="backup">⬇ Backup &amp; export <em>backup and CSV files</em></button>
       <button type="button" data-more="logout">↩ Logout</button>
     </div>
+  </div>
+
+  <!-- APPS & WEBSITE — opened from More. Read-only: drawn by renderApps() from the lists the
+       panel already holds, plus one read of the phones that have alerts on (pushTokens). -->
+  <div id="appsView" hidden>
+    <div class="who" id="appsWho"></div>
+    <div class="aps-attn" id="appsAttn"></div>
+    <div class="mode-pills aps-tabs" id="appsTabs" role="tablist" aria-label="Apps and website sections">
+      <button type="button" role="tab" data-aptab="app">📱 App</button>
+      <button type="button" role="tab" data-aptab="people">👥 People</button>
+      <button type="button" role="tab" data-aptab="web">🌐 Website</button>
+    </div>
+    <div id="appsBody"></div>
   </div>
 </div>
 
@@ -1009,7 +1024,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p4i"></script>
+<script type="module" src="app.js?v=p4m"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is
