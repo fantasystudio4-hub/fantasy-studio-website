@@ -13724,8 +13724,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the last time Google was asked and said no (a revoked permission, a busy moment): the figures below are then older */
     const said = apGaSay(_apWebInfo);
     if(said) h += apWarn(said + ' The figures below are from ' + esc(apDateTime(w.atMs)) + '.');
-    const bad = Object.keys(w.errors || {});
-    if(bad.length) h += apWarn('⚠ Google would not give: ' + esc(bad.join(', ')) + '. The rest is below.');
+    const bad = Object.keys(w.errors || {}), carried = new Set(Array.isArray(w.carried) ? w.carried : []);
+    if(bad.length) h += apWarn('⚠ Google would not give: ' + bad.map(k=>esc(k) + (carried.has(k) ? ' (showing the figures from an earlier check)' : '')).join(', ') + '. The rest is fresh.');
     if(now){
       h += `<div class="fintiles">
         ${apTile(apN(now.u), 'visitors', esc(apChange(now.u, bef.u)))}

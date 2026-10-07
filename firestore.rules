@@ -680,16 +680,20 @@ service cloud.firestore {
           && d.keys().hasAll(['day','bucket','n','updatedAt'])
           && d.day is string
           && d.bucket is string
-          && d.bucket.matches('^(app_ios|app_android|web|r_client|r_crew|r_studio|r_none|g[0-9]{2})$')
+          && d.bucket.matches('^(app_ios|app_android|web|r_client|r_crew|r_studio|r_none|g[1-9][0-9])$')
           && d.day == dayIst()
           && id == d.day + '_' + d.bucket
           && d.updatedAt == request.time;
       }
       allow read, delete: if isAdmin();
+      // n must be a whole number: a decimal 1.0 passes `== 1` and `== old + 1`, and once the stored count is a
+      // decimal the `is int` below refuses every honest +1, freezing that bucket for the day.
       allow create: if dailyOk(dayBucket)
+        && request.resource.data.n is int
         && request.resource.data.n == 1;
       allow update: if dailyOk(dayBucket)
         && resource.data.n is int
+        && request.resource.data.n is int
         && request.resource.data.n == resource.data.n + 1;
     }
 
