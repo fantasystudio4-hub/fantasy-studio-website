@@ -41,9 +41,33 @@ function nativePhoneAuth(){
     const C = window.Capacitor;
     if(!inApp || !C || !C.Plugins || !C.Plugins.FirebaseAuthentication) return null;
     if(C.isPluginAvailable && !C.isPluginAvailable('FirebaseAuthentication')) return null;
+    if(nativeIsOff()) return null;
     return C.Plugins.FirebaseAuthentication;
   }catch(e){ return null; }
 }
+/* The safety net for that check. Whatever leaves a person stuck on it (a code
+   that was sent but cannot be used, or no answer at all) turns it off on this
+   phone for a while, so the next Resend or Get OTP takes the reCAPTCHA check
+   that has always worked. Stored as "off until", so a clock set far ahead
+   cannot switch it off for good. */
+const NATIVE_OFF_KEY = 'fs_native_otp_off';
+const NATIVE_OFF_LONG = 7 * 24 * 3600e3, NATIVE_OFF_SHORT = 3600e3;
+let nativeOffMem = 0;   /* the same "off until", kept in memory too, for a phone that will not keep it in storage */
+function nativeIsOff(){
+  const now = Date.now();
+  return [Number(lsGet(NATIVE_OFF_KEY)), nativeOffMem].some(until => until - now > 0 && until - now <= NATIVE_OFF_LONG + 6e4);
+}
+function nativeSwitchOff(ms, why){
+  nativeOffMem = Date.now() + ms;
+  lsSet(NATIVE_OFF_KEY, String(nativeOffMem));
+  console.warn('[sign-in] the app phone check is off on this phone for now:', why);
+}
+function nativeSwitchOn(){ nativeOffMem = 0; lsSet(NATIVE_OFF_KEY, ''); }
+/* A wrong or expired code, no network, a rate limit: the person or the line is
+   at fault and the web check would fail the same way. Anything else on a code
+   the app itself sent means the app's check cannot be used here. */
+const CODE_PROBLEM = /invalid-verification-code|code-expired|missing-verification-code|network-request-failed|too-many-requests|quota-exceeded|user-disabled|operation-not-allowed|billing-not-enabled/;
+const codeNeedsWebCheck = err => !CODE_PROBLEM.test((err && err.code) || '');
 /* Local test hook, the portals' two locks: served from localhost AND ?demo
    in the URL. Samples everywhere, no sign-in, no SMS, no Firestore writes.
    On fantasystudio.in the first lock can never hold. */
@@ -835,6 +859,8 @@ export function mountPhoneSignIn(rootEl, opts = {}){
       else btn.textContent = `Resend OTP (${s}s)`;
     }, 1000);
   }
+  /* the code just shown cannot be used, so waiting out the cooldown would only add to the wait */
+  function endCooldown(btn){ clearInterval(coolIv); btn.disabled = false; btn.textContent = 'Resend OTP'; }
 
   /* read a country-code + number pair; India keeps strict 10-digit checks,
      other countries accept 6–14 national digits (NRI clients) */
@@ -932,6 +958,7 @@ export function mountPhoneSignIn(rootEl, opts = {}){
   const STALL_MS = 30000;
   const STALL_MSG = 'Still waiting for the security check. If a picture puzzle is showing, finish it, or try again.';
   let sendSeq = 0, sending = false;
+  let nativeAsked = 0;   /* the send (its sendSeq) now waiting on the app's own check; 0 = none */
   function sendIdle(){ sending = false; const b = $('[data-send]'); b.disabled = false; b.classList.remove('busy'); b.textContent = 'Get OTP'; }
   /* signed in: forget any send in flight and take the badge off the screen */
   function endSend(){ sendSeq++; sendIdle(); dropRecaptcha(verifier); verifier = null; dropNative(); }
@@ -963,17 +990,25 @@ export function mountPhoneSignIn(rootEl, opts = {}){
     }
     if(my !== sendSeq) return;
     btn.textContent = 'Sending OTP…';
-    const stall = setTimeout(() => { if(my === sendSeq){ sendIdle(); showErr(STALL_MSG); } }, STALL_MS);
+    const stall = setTimeout(() => {
+      if(my !== sendSeq) return;
+      /* no answer from the app's own check: the next tap must not wait on it again */
+      if(nativeAsked === my) nativeSwitchOff(NATIVE_OFF_SHORT, 'no answer in ' + STALL_MS / 1000 + ' s');
+      sendIdle(); showErr(STALL_MSG);
+    }, STALL_MS);
     try{
       const NA = ph.full === DEMO_PHONE ? null : nativePhoneAuth();
       if(NA){
         try{
+          nativeAsked = my;
           const vid = await nativeSend(NA, ph.full, my);
+          if(nativeAsked === my) nativeAsked = 0;
           if(my !== sendSeq) return;
-          confirmation = { confirm: code => signInWithCredential(auth, PhoneAuthProvider.credential(vid, code)) };
+          confirmation = { native: true, confirm: code => signInWithCredential(auth, PhoneAuthProvider.credential(vid, code)) };
           toOtp(ph.pretty);
           return;
         }catch(err){
+          if(nativeAsked === my) nativeAsked = 0;
           if(my !== sendSeq) return;
           console.warn('[sign-in] app phone check failed, using the web check:', err && err.message);
         }
@@ -995,10 +1030,20 @@ export function mountPhoneSignIn(rootEl, opts = {}){
     if(!confirmation){ showErr('Tap Resend OTP for a new code.'); return; }
     const btn = $('[data-verify]'); btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Verifying…';
     let cred = null;
-    try{ cred = await confirmation.confirm(code); }
-    catch(err){ showErr(err); }
+    const conf = confirmation;
+    try{ cred = await conf.confirm(code); }
+    catch(err){
+      if(conf.native && codeNeedsWebCheck(err)){
+        /* the app sent a code its own sign-in cannot use: from now on this phone takes
+           the web check, and Resend is free at once to send the code that way */
+        nativeSwitchOff(NATIVE_OFF_LONG, (err && err.code) || (err && err.message));
+        endCooldown($('[data-resend]'));
+        showErr('That code could not be used in the app. Tap Resend OTP and we will send a fresh one.' + errRef(err));
+      }else showErr(err);
+    }
     finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
     if(!cred) return;
+    if(conf.native) nativeSwitchOn();   /* it worked on this phone: forget any earlier trouble */
     endSend();
     if(!DEMO_VIEW) lsSet(MIGRATED, '1');   /* a session of its own: old ones stay where they are */
     const user = cred.user || auth.currentUser;
