@@ -422,6 +422,7 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 }
 .add-more:hover{background:rgba(184,144,43,.14);border-color:var(--gold)}
 .hint-line{margin-top:.8rem;font-size:.78rem;color:#8d846c;text-align:center}
+#buildOwn{display:inline-block;white-space:nowrap}   /* never "or" on one line and the rest on the next */
 
 /* ============================================================
    STEP 4 — REVIEW
@@ -468,6 +469,29 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 .ci-line .cl-v{white-space:nowrap}
 .ci-line .cl-x{width:24px;height:24px;flex:0 0 auto;border:0;background:none;color:#a3987d;cursor:pointer;font-size:1rem;line-height:1;border-radius:50%;transition:.2s}
 .ci-line .cl-x:hover{background:#fdeeea;color:#b04030}
+/* −/+ on each line of the quote: the smallest stepper that is still a thumb target */
+.ci-line .cl-step{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:30px;overflow:hidden;background:#fff}
+.ci-line .cl-step button{width:30px;height:28px;border:0;background:none;color:var(--gold-deep);cursor:pointer;font-size:1rem;line-height:1;transition:.2s}
+.ci-line .cl-step button:first-child{border-right:1px solid var(--line)}
+.ci-line .cl-step button:hover{background:rgba(184,144,43,.14)}
+.ci-line .cl-step button:disabled{opacity:.35;cursor:default;background:none}
+/* the send step's date nudge */
+.date-nudge{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.3rem .8rem;
+  margin:.4rem 0 .9rem;padding:.65rem .9rem;border:1px dashed rgba(184,144,43,.5);border-radius:12px;
+  background:rgba(184,144,43,.07);font-size:.8rem;color:var(--ink-soft);line-height:1.45;
+}
+.date-nudge b{color:var(--ink);font-weight:500}
+.date-nudge .linkish{padding:.3em .1em;white-space:nowrap}
+/* the compare sheet: four packages need a swipe on a phone — say so */
+.cmp-swipe{display:none;font-size:.74rem;color:#8d846c;text-align:center;margin:-.4rem 0 .5rem}
+@media(max-width:720px){
+  .cmp-swipe{display:block}
+  .cmp-scroll{
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);
+    mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);
+  }
+}
 .cart-foot{padding:1rem 1.2rem calc(1rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));background:#fff;border-top:1px solid var(--line)}
 .crow{display:flex;justify-content:space-between;font-size:.87rem;color:var(--ink-soft);padding:.18rem 0}
 .disc-field{display:flex;align-items:center;gap:.5rem;margin:.7rem 0;padding:.6rem .7rem;background:var(--cream);border:1px solid var(--line);border-radius:8px}
@@ -724,6 +748,25 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
   .stepper button{width:44px;height:44px;flex:0 0 44px}
   .stepper input{flex:1 1 auto;width:auto;min-width:0;height:44px;font-size:16px}
 
+  /* ---- the add-ons: one compact row each, not a second shelf of tiles ----
+     Six tiles made two more rows of 170px to scroll past for options most
+     families skip. A row carries the icon, the name, the price and Add; the
+     blurb goes (the name says what a drone or an LED screen is). */
+  .prods.prods-addons{grid-template-columns:1fr;gap:.4rem}
+  .prods.prods-addons .prod{
+    grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;
+    grid-template-areas:"ic name act" "ic price act";
+    column-gap:.55rem;row-gap:0;align-items:center;padding:.5rem .6rem;
+  }
+  .prods.prods-addons .prod h4{min-height:0;font-size:.84rem}
+  .prods.prods-addons .prod .blurb{display:none}
+  .prods.prods-addons .prod-price{margin-top:0;align-self:start}
+  .prods.prods-addons .prod-act{width:auto;justify-self:end;padding-top:0}
+  .prods.prods-addons .add-pill{width:auto;padding:.6em 1em;min-height:40px;display:inline-flex;align-items:center}
+  .prods.prods-addons .stepper{width:auto}
+  .prods.prods-addons .stepper button{width:40px;height:40px;flex:0 0 40px}
+  .prods.prods-addons .stepper input{width:36px;flex:0 0 36px;height:40px}
+
   /* chip rows swipe sideways rather than stacking */
   .bundles{
     flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
@@ -976,7 +1019,7 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
     <div class="sec-head">
       <div>
         <h2>Pick a package</h2>
-        <p>The fastest way — change anything afterwards. <span class="opt">Optional</span></p>
+        <p>The fastest way — change anything afterwards. <span class="opt">Optional</span> <a href="#pickerWrap" class="linkish" id="buildOwn">or build your own &darr;</a></p>
       </div>
     </div>
     <div class="sec-body">
@@ -1042,6 +1085,8 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
     <div class="sec-body">
       <div class="send-total" id="sendTotal"></div>
       <button type="button" class="linkish see-items" id="seeItems">See the full list &rarr;</button>
+      <!-- the quote goes out without dates unless someone asks; this asks, softly -->
+      <p class="date-nudge" id="dateNudge" hidden></p>
 
       <p class="terms-line" id="termsLine"></p>
       <div class="incl" id="inclRow"></div>
@@ -1166,6 +1211,7 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 <div class="cmp-modal" id="cmpModal" role="dialog" aria-modal="true" aria-label="Compare packages">
   <button class="lead-close" id="cmpClose" type="button" aria-label="Close comparison">&times;</button>
   <h3>Compare Packages</h3>
+  <p class="cmp-swipe">Swipe the table &rarr; to see all four packages</p>
   <div class="cmp-scroll"><table id="compareTable" class="compare-table"></table></div>
   <p class="cmp-note">Every package is fully customisable — pick one and adjust anything; the price updates live.</p>
 </div>
@@ -1221,7 +1267,7 @@ const MAIN_SERVICES = 4;      // photo, video, cinematography, candid — a 2×2
 /* the short names the collapsed bar and the "more" button use — a bar is one
    line, so "Photo · Video · Cinema" where the card says "Traditional Photo" */
 const SHORT_NAME = {
-  traditionalPhoto:'Photo', traditionalVideo:'Video', cinematography:'Cinema', candidPhotography:'Candid',
+  traditionalPhoto:'Photography', traditionalVideo:'Video', cinematography:'Cinema', candidPhotography:'Candid',
   ladyShooter:'Female shooter', drone:'Drone', ledScreen6x8:'LED 6×8', ledScreen8x12:'LED 8×12',
   liveStreaming:'Live stream', extraShortVPShoot:'VP shoot',
 };
@@ -1278,7 +1324,8 @@ function showToast(msg, actionLabel, actionFn, ms){
   btn.onclick = ()=>{ hideToast(); if(actionFn) actionFn(); };
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, ms || 7000);
+  /* a plain notice goes in 3.5 s; one with Undo stays long enough to use it */
+  toastTimer = setTimeout(hideToast, ms || (actionLabel ? 7000 : 3500));
 }
 function hideToast(){ $('#toast').classList.remove('show'); }
 $('#toastClose').addEventListener('click', hideToast);
@@ -1316,15 +1363,20 @@ function renderDeals(){
     </button>`;
   }).join('');
 }
+let _collapseOnStep2 = false;   // a package was just chosen: open Coverage with nothing expanded
 function applyPreset(key, quiet){
   const p = PRESETS[key]; if(!p) return;
   state.events = p.events.map(ev=>normalizeEvent(ev));
   activePresetKey = key;
   markBuilderStarted();
   track('preset_applied', { preset: key });
+  /* land on Coverage with every function closed: three bars reading
+     "Nikah · Photography ×2 · Video ×2 · Cinema · ₹38,000" say what the
+     package is at a glance; one open panel of tiles says nothing */
+  openEv = null; _collapseOnStep2 = true;
   renderAll();
   if(!quiet){
-    showToast(`${p.name} package added — change anything you like.`);
+    showToast(`${p.name} package added — tap a function to change it.`);
     goStep(2);
   }
 }
@@ -1435,7 +1487,7 @@ function eventPanelHTML(ev, idx){
   const mainList = list.filter((s)=>SERVICES.indexOf(s) < MAIN_SERVICES);
   const addonList = list.filter((s)=>SERVICES.indexOf(s) >= MAIN_SERVICES);
   const prods = mainList.map(prodHTML).join('') +
-    (addonList.length ? `</div><div class="prods-label">Add-ons</div><div class="prods">` + addonList.map(prodHTML).join('') : '');
+    (addonList.length ? `</div><div class="prods-label">Add-ons</div><div class="prods prods-addons">` + addonList.map(prodHTML).join('') : '');
 
   const m = (own(EVENT_META, ev.type) && EVENT_META[ev.type]) || {};
   /* whichever function still has nothing on it is the one to go to next */
@@ -1613,9 +1665,41 @@ document.addEventListener('click', e=>{
     return;
   }
 
-  /* "add another function" scrolls back to the picker */
-  if(e.target.closest('#addMore')){
+  /* "add another function" scrolls back to the picker; so does "build your own" on the start step */
+  if(e.target.closest('#addMore') || e.target.closest('#buildOwn')){
+    e.preventDefault();
     $('#pickerWrap').scrollIntoView({ behavior: smooth, block:'center' });
+    return;
+  }
+
+  /* the send step's date nudge: back to Coverage with the first undated
+     function open and its date field focused */
+  const ad = e.target.closest('[data-adddates]');
+  if(ad){
+    openEv = Number(ad.dataset.adddates);
+    goStep(2);
+    const inp = document.getElementById('evd-' + openEv);
+    if(inp) setTimeout(()=>{ scrollToPanel(openEv); try{ inp.focus(); }catch(e2){} }, 350);
+    return;
+  }
+
+  /* −/+ on a line of the quote sheet, so a ×2 can become ×1 without hunting
+     for the card; − on ×1 removes the line like ✕ does */
+  const cq = e.target.closest('[data-cartq]');
+  if(cq){
+    const ev = findEvent(cq.dataset.ev); if(!ev) return;
+    const key = cq.dataset.svc;
+    let q = (ev.services[key]||0) + (cq.dataset.cartq === 'inc' ? 1 : -1);
+    if(q > MAX_QTY) q = MAX_QTY;
+    const before = chosenCount(ev);
+    if(q > 0) ev.services[key] = q; else delete ev.services[key];
+    markCustomised();
+    if((before === 0) !== (chosenCount(ev) === 0)) renderEventPanel(ev.id);
+    else refreshProd(ev.id, key);
+    renderQuote();
+    /* the sheet is rebuilt — put the thumb back on the same button */
+    const again = document.querySelector(`#sheetBody [data-cartq="${cq.dataset.cartq}"][data-ev="${ev.id}"][data-svc="${key}"]`);
+    if(again) again.focus({ preventScroll:true });
     return;
   }
 
@@ -1834,7 +1918,10 @@ function buildBreakdownHTML(interactive){
       return `<div class="ci-line">
         <span class="cl-n">${esc(s.label)}${qLbl}</span>
         <span class="cl-v">${inr(PRICES[s.key]*q)}</span>
-        ${interactive?`<button type="button" class="cl-x" data-cartx data-ev="${ev.id}" data-svc="${s.key}" aria-label="Remove ${esc(s.label)} from ${esc(ev.type)}">&times;</button>`:''}
+        ${interactive?`<span class="cl-step">
+          <button type="button" data-cartq="dec" data-ev="${ev.id}" data-svc="${s.key}" aria-label="${q>1?'One less':'Remove'} ${esc(s.label)} at ${esc(ev.type)}">−</button>
+          <button type="button" data-cartq="inc" data-ev="${ev.id}" data-svc="${s.key}" aria-label="One more ${esc(s.label)} at ${esc(ev.type)}"${q >= MAX_QTY ? ' disabled' : ''}>+</button>
+        </span>`:''}
       </div>`;
     }).join('');
     if(!lines) return;
@@ -1907,6 +1994,18 @@ function renderQuote(){
        ${t.disc>0?`<span class="st-s">${inr(t.sub)} − ${esc(state.promo)} discount</span>`:''}`
     : '<span class="st-e">Nothing added yet — pick a package or a function above.</span>';
   const si = $('#seeItems'); if(si) si.hidden = !n;
+  /* functions with coverage but no date: the one thing the studio cannot
+     quote around. Named, with a way straight to the first empty field. */
+  const dn = $('#dateNudge');
+  if(dn){
+    const undated = state.events.filter(e=>chosenCount(e) && !e.date);
+    dn.hidden = !n || !undated.length;
+    if(!dn.hidden){
+      const nm = undated.map(e=>e.type.replace(' / Reception','')).join(', ');
+      dn.innerHTML = `<span>📅 No date yet for <b>${esc(nm)}</b> — add ${undated.length>1?'them':'it'} so we can check availability.</span>
+        <button type="button" class="linkish" data-adddates="${undated[0].id}">Add ${undated.length>1?'dates':'the date'} &rarr;</button>`;
+    }
+  }
 
   /* the send/save actions only make sense once something is selected */
   const empty = t.grand <= 0;
@@ -1980,8 +2079,11 @@ function goStep(n, quiet){
   }
   step = n;
   if(step === 2 && state.events.length){
-    const stillEmpty = state.events.find(e=>chosenCount(e) === 0);
-    if(!openEv || !findEvent(openEv)) openEv = (stillEmpty || state.events[0]).id;
+    if(_collapseOnStep2){ _collapseOnStep2 = false; openEv = null; }
+    else{
+      const stillEmpty = state.events.find(e=>chosenCount(e) === 0);
+      if(!openEv || !findEvent(openEv)) openEv = (stillEmpty || state.events[0]).id;
+    }
     renderEvents();
   }
   $$('.wiz-step').forEach(el=>{ el.hidden = Number(el.dataset.step) !== step; });
