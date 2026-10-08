@@ -132,6 +132,39 @@ html.fs-app .fs-ptr i{display:block;width:14px;height:14px;border-radius:50%;bor
 html.fs-app .fs-ptr.spin i{animation:fs-ptr-spin .8s linear infinite}
 @keyframes fs-ptr-spin{to{transform:rotate(360deg)}}
 
+/* ---- the update popup (app-shell.js, the app update block) ----
+   One card over the page: above the tab bar (1250 > 1200), under the lock
+   screen (1300). Same gold button as the lock screen. */
+html.fs-app .fs-upd{
+  position:fixed;inset:0;z-index:1250;
+  display:flex;align-items:center;justify-content:center;
+  padding:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)) 16px var(--fs-tabs-safe);
+  background:rgba(10,8,4,.72);font-family:'Jost',system-ui,sans-serif;
+}
+html.fs-app .fs-upd-card{
+  width:100%;max-width:360px;padding:24px 22px 14px;text-align:center;color:#f3ecdc;
+  background:linear-gradient(180deg,#1f1a10,#14110a);border:1px solid var(--fs-tabs-line);border-radius:18px;
+  box-shadow:0 18px 50px rgba(0,0,0,.5);
+}
+html.fs-app .fs-upd-card h2{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.3rem;line-height:1.25;color:#fff;margin:0 0 .5rem;text-wrap:balance}
+html.fs-app .fs-upd-sub{color:var(--fs-tabs-mut);font-size:.9rem;line-height:1.5;margin:0 0 .9rem}
+html.fs-app .fs-upd-msg{min-height:1.4em;color:var(--fs-tabs-gold);font-size:.88rem;line-height:1.4;margin:0 0 .6rem}
+html.fs-app .fs-upd-btn{
+  width:100%;min-height:50px;margin:0;padding:.9em 1.2em;
+  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;border-radius:40px;color:#fff;
+  font-family:inherit;font-size:.9rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:opacity .18s;
+}
+html.fs-app .fs-upd-btn:active{opacity:.85}
+html.fs-app .fs-upd-btn:disabled{opacity:.55;cursor:default}
+html.fs-app .fs-upd-later{
+  display:block;width:100%;min-height:44px;margin:.3rem 0 0;padding:.6em 1em;background:none;border:0;
+  font-family:inherit;font-size:.88rem;color:var(--fs-tabs-mut);cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+html.fs-app .fs-upd-later:active{color:var(--fs-tabs-gold)}
+html.fs-app .fs-upd-btn:focus,html.fs-app .fs-upd-later:focus{outline:none}
+html.fs-app .fs-upd-btn:focus-visible,html.fs-app .fs-upd-later:focus-visible{outline:2px solid var(--fs-tabs-gold);outline-offset:3px}
+
 @media (prefers-reduced-motion:reduce){
   html.fs-app .fs-tab,
   html.fs-app .fs-tab::before,

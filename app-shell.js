@@ -773,6 +773,148 @@
   }
 })();
 
+/* ================= the app update (store builds only) =================
+   The app loads the website, so most changes reach it on their own. A new
+   native build is the exception: the store does not push it, so the app
+   asks the store when it opens (and when it comes back from the background,
+   until a prompt has been shown this run). When a newer build is out, one
+   popup offers one button:
+     Android  Google Play's in-app update. The build downloads here with a
+              progress line; the app restarts into it when it is ready.
+              Nothing leaves the app.
+     iOS      Apple does not let an app install its own update, so the button
+              opens this app's App Store page, where the update is one tap.
+   "Later" hides it until the app is opened again. A build from before this
+   plugin shipped has no AppUpdate, so every call here is a quiet no-op. */
+(function(){
+  'use strict';
+  var html = document.documentElement;
+  if(!html.classList.contains('fs-app')) return;
+
+  var APP_BUNDLE = 'in.fantasystudio.app';
+  var STORE_COUNTRY = 'in';
+  var RECHECK_MS = 10 * 60 * 1000;   /* coming back from the background, at most this often */
+  var box = null, busy = false, shown = false, lastCheck = 0;
+
+  function plug(){ return FSApp.native.plugin('AppUpdate'); }
+  function android(){ try{ return String(window.Capacitor.getPlatform()) === 'android'; }catch(e){ return false; } }
+
+  /* the store's answer: Android reads Play, iOS reads the App Store listing.
+     A reject (no listing yet, no network) is a quiet 'no update'. */
+  function check(){
+    var U = plug();
+    if(!U || !U.getAppUpdateInfo || busy || shown) return;
+    busy = true; lastCheck = Date.now();
+    U.getAppUpdateInfo({ country: STORE_COUNTRY }).then(function(info){
+      busy = false;
+      if(!info || shown) return;
+      if(android()){
+        /* a flexible update downloaded before the app was closed: finish it */
+        if(info.installStatus === 11) return offer(info, 'install');
+        if(info.updateAvailability === 2) offer(info, 'android');
+      } else if(info.updateAvailability === 2){
+        offer(info, 'ios');
+      }
+    }, function(){ busy = false; });
+  }
+
+  function offer(info, kind){
+    if(box || shown) return;
+    shown = true;
+    box = document.createElement('div');
+    box.className = 'fs-upd';
+    box.innerHTML = '<div class="fs-upd-card" role="dialog" aria-modal="true" aria-labelledby="fsUpdTitle">' +
+      '<h2 id="fsUpdTitle">A new version is ready</h2>' +
+      '<p class="fs-upd-sub"></p>' +
+      '<p class="fs-upd-msg" role="status" aria-live="polite"></p>' +
+      '<button type="button" class="fs-upd-btn">Update now</button>' +
+      '<button type="button" class="fs-upd-later">Later</button></div>';
+    document.body.appendChild(box);
+    var sub = box.querySelector('.fs-upd-sub'), msg = box.querySelector('.fs-upd-msg');
+    var btn = box.querySelector('.fs-upd-btn'), later = box.querySelector('.fs-upd-later');
+    sub.textContent = kind === 'ios'
+      ? 'Apple does not let apps update themselves, so this opens Fantasy Studio in the App Store. Tap Update there.'
+      : 'The new version downloads here. The app restarts into it when it is ready.';
+
+    var ui = {
+      msg: function(t){ msg.textContent = t; },
+      busy: function(t){ btn.disabled = true; msg.textContent = t || ''; },
+      fail: function(t){ btn.disabled = false; msg.textContent = t; },
+      close: close
+    };
+    function close(){ if(box){ box.remove(); box = null; } }
+
+    later.addEventListener('click', close);
+    btn.addEventListener('click', function(){
+      if(btn.disabled) return;
+      if(kind === 'ios') return openStore(ui);
+      ui.busy('Downloading…');
+      download(info, ui);
+    });
+
+    if(kind === 'install'){ ui.busy('Restarting to finish the update…'); finish(ui); }
+    else btn.focus();
+  }
+
+  /* Android: start the Play update, follow its state, restart when it is in */
+  function download(info, ui){
+    var U = plug();
+    var onState = function(s){
+      if(!s) return;
+      if(s.installStatus === 2){
+        var pct = s.totalBytesToDownload ? Math.floor(100 * (s.bytesDownloaded || 0) / s.totalBytesToDownload) : null;
+        ui.busy(pct === null ? 'Downloading…' : 'Downloading… ' + pct + '%');
+      } else if(s.installStatus === 11){
+        finish(ui);
+      } else if(s.installStatus === 5 || s.installStatus === 6){
+        ui.fail('The update did not finish. Tap Update now to try again.');
+      }
+    };
+    try{
+      var L = U.addListener('onFlexibleUpdateStateChange', onState);
+      if(L && L.catch) L.catch(function(){});
+    }catch(e){}
+    /* Play's own prompt for an immediate update is the fallback where a
+       flexible one is not allowed for this build */
+    var go = info.flexibleUpdateAllowed ? U.startFlexibleUpdate() : U.performImmediateUpdate();
+    go.then(function(r){
+      /* 1 CANCELED (the person said no), 2 FAILED, 3 NOT_AVAILABLE, 4 NOT_ALLOWED */
+      if(r && r.code && r.code !== 0) ui.fail('The update did not start. Tap Update now to try again.');
+    }, function(){ ui.fail('The update did not start. Tap Update now to try again.'); });
+  }
+
+  function finish(ui){
+    var U = plug();
+    if(!U) return;
+    U.completeFlexibleUpdate().catch(function(){ ui.fail('The update could not restart the app. Close and open Fantasy Studio again.'); });
+  }
+
+  /* iOS: the App Store page needs the numeric id, which the same lookup gives */
+  function openStore(ui){
+    var U = plug();
+    if(!U) return;
+    ui.busy('Opening the App Store…');
+    fetch('https://itunes.apple.com/lookup?bundleId=' + APP_BUNDLE + '&country=' + STORE_COUNTRY)
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var id = j && j.results && j.results[0] && j.results[0].trackId;
+        if(!id) throw new Error('no listing');
+        return U.openAppStore({ appId: String(id) });
+      })
+      .then(function(){ ui.close(); }, function(){
+        ui.fail('Could not open the App Store. Search for Fantasy Studio there and tap Update.');
+      });
+  }
+
+  /* when to ask: once the first page has settled (after the splash), and
+     again on coming back, unless a prompt was already shown this run */
+  function boot(){ setTimeout(check, 2500); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible' && !shown && Date.now() - lastCheck > RECHECK_MS) check();
+  });
+})();
+
 /* Status-bar text colour. The app sets light text (StatusBar style DARK) for
    its dark pages, and the native setting outlives a page, so every app page
    restates its own on load: the cream builder asks for dark text with
