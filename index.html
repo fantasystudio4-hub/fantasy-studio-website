@@ -423,6 +423,34 @@ header.nav.scrolled{
 .insta-cta p{color:var(--ink-soft);max-width:46ch;margin:0 auto 1.9rem;position:relative}
 .insta-cta .btn{position:relative}
 /* ============================================================
+   GET THE APP (Android for now)
+   ============================================================ */
+.app-cta-sec{background:var(--ivory);padding-top:0}
+.app-cta{
+  max-width:860px;margin:0 auto;display:flex;align-items:center;gap:1.6rem;
+  background:linear-gradient(135deg,#1a150c,#14110a);border:1px solid rgba(184,144,43,.3);border-radius:18px;
+  padding:clamp(1.6rem,4vw,2.4rem);box-shadow:var(--shadow-md);position:relative;overflow:hidden;
+}
+.app-cta::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 0% 50%,rgba(184,144,43,.18),transparent 60%);pointer-events:none}
+.app-cta-ic{
+  flex:0 0 72px;width:72px;height:72px;border-radius:20px;display:grid;place-items:center;position:relative;
+  background:linear-gradient(135deg,var(--gold-soft),var(--gold-deep));box-shadow:0 14px 32px rgba(184,144,43,.34);
+}
+.app-cta-ic svg{width:36px;height:36px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round}
+.app-cta-txt{flex:1 1 auto;min-width:0;position:relative}
+.app-cta-txt .eyebrow{color:var(--gold-soft)}
+.app-cta-txt h3{font-family:var(--serif);font-size:clamp(1.25rem,3vw,1.6rem);color:#fff;margin:.3rem 0 .35rem}
+.app-cta-txt p{color:rgba(244,234,210,.72);font-size:.92rem;max-width:44ch;margin:0}
+.app-cta-act{flex:0 0 auto;text-align:center;position:relative}
+.app-cta-act .btn{white-space:nowrap}
+.app-ios-soon{margin:0;font-size:.82rem;color:rgba(244,234,210,.72)}
+@media(max-width:720px){
+  .app-cta{flex-direction:column;text-align:center;gap:1rem}
+  .app-cta-txt p{margin:0 auto}
+  .app-cta-act{width:100%}
+  .app-cta-act .btn{width:100%;white-space:normal}
+}
+/* ============================================================
    TESTIMONIALS
    ============================================================ */
 .testi{background:var(--ink);color:#f3ecdc;position:relative;overflow:hidden}
@@ -1165,6 +1193,32 @@ section[id]{scroll-margin-top:84px}
 </main>
 
 <!-- ============ FOOTER ============ -->
+<!-- ============ GET THE APP ============
+     Android only for now: the Play listing is live, the iPhone app is still
+     in review. The script below hides this inside the store app itself and
+     swaps the button for a "coming soon" line on an iPhone. -->
+<section class="app-cta-sec section-pad" id="getapp">
+  <div class="wrap">
+    <div class="app-cta reveal">
+      <div class="app-cta-ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 18.5h4"/></svg>
+      </div>
+      <div class="app-cta-txt">
+        <span class="eyebrow">Fantasy Studio App</span>
+        <h3>Your wedding, in your pocket</h3>
+        <p>Build your package, see your booking, and get shoot-day updates on your phone.</p>
+      </div>
+      <div class="app-cta-act">
+        <a href="https://play.google.com/store/apps/details?id=in.fantasystudio.app" target="_blank" rel="noopener" class="btn btn-gold app-play" id="playBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.4 13.2 12l-9.6 9.6c-.3-.3-.5-.7-.5-1.2V3.6c0-.5.2-.9.5-1.2Zm11 11 2.6 2.6-11.4 6.5c-.5.3-1 .3-1.5.1L14.6 13.4Zm0-2.8L4.3 1.4c.5-.2 1-.2 1.5.1l11.4 6.5-2.6 2.6Zm4.1.4 2.3 1.3c1 .6 1 1.9 0 2.5l-2.3 1.3L15.8 12l2.9-2.9Z"/></svg>
+          Get it on Google Play
+        </a>
+        <p class="app-ios-soon" id="iosSoon" hidden>iPhone app coming soon on the App Store.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div class="foot-grid">
@@ -1187,6 +1241,7 @@ section[id]{scroll-margin-top:84px}
         <a href="#about">About Us</a>
         <a href="#services">Services</a>
         <a href="builder/">Build a Package</a>
+        <a href="https://play.google.com/store/apps/details?id=in.fantasystudio.app" target="_blank" rel="noopener" class="foot-app">Android App ↗</a>
         <a href="#portfolio">Portfolio</a>
         <a href="#contact">Contact</a>
       </div>
@@ -1622,6 +1677,25 @@ flushLeadQueue();
       try{ localStorage.setItem('fs_ios_hint','1'); }catch(e){}
     }, 9000);
   }catch(e){}
+})();
+
+/* "Get the app": nothing to offer inside the store app itself; on an iPhone
+   the Play button makes no sense yet, so say the iPhone app is coming */
+(function(){
+  const inApp = navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || !!window.Capacitor;
+  /* an iPad on iPadOS 13+ says it is a Mac, so a touch Mac is an iPad —
+     unless the UA says Android (device emulators do) */
+  const ua = navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (!/android/i.test(ua) && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(inApp){ $$('#getapp, .foot-app').forEach(el=>{ el.hidden = true; }); return; }
+  if(isIOS){
+    const b = $('#playBtn'), s = $('#iosSoon');
+    if(b) b.hidden = true;
+    if(s) s.hidden = false;
+    $$('.foot-app').forEach(el=>{ el.hidden = true; });
+  }
+  const pb = $('#playBtn');
+  if(pb) pb.addEventListener('click', ()=>{ try{ track('app_store_click', { store:'play' }); }catch(e){} });
 })();
 
 /* ============================================================
