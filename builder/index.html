@@ -392,6 +392,10 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 }
 .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
+/* the add-ons' own heading once they are revealed; the rows above it stay the main four */
+.prods-label{
+  margin:.9rem 0 .4rem;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:#8d846c;
+}
 .more-btn{
   width:100%;margin-top:.55rem;cursor:pointer;background:none;border:1px dashed rgba(184,144,43,.45);
   color:var(--gold-deep);border-radius:40px;padding:.6em 1em;font-family:var(--sans);font-size:.78rem;transition:.22s;
@@ -1213,7 +1217,20 @@ let showAllSvc = {};          // per-function: are the add-ons revealed?
 /* The five below the fold are the ones people add last and least often, so
    they start hidden: a function opens showing the coverage decision, not
    ten of them. Anything already chosen is always shown, wherever it sits. */
-const MAIN_SERVICES = 5;
+const MAIN_SERVICES = 4;      // photo, video, cinematography, candid — a 2×2 on a phone; the rest under "more"
+/* the short names the collapsed bar and the "more" button use — a bar is one
+   line, so "Photo · Video · Cinema" where the card says "Traditional Photo" */
+const SHORT_NAME = {
+  traditionalPhoto:'Photo', traditionalVideo:'Video', cinematography:'Cinema', candidPhotography:'Candid',
+  ladyShooter:'Female shooter', drone:'Drone', ledScreen6x8:'LED 6×8', ledScreen8x12:'LED 8×12',
+  liveStreaming:'Live stream', extraShortVPShoot:'VP shoot',
+};
+function shortName(key){ const s = SERVICES.find(x=>x.key===key); return SHORT_NAME[key] || (s ? s.label : key); }
+/* what the collapsed bar says: the services by name, ×2 where there are two */
+function chosenSummary(ev){
+  return SERVICES.filter(s=>(ev.services[s.key]||0) > 0)
+    .map(s=>shortName(s.key) + (ev.services[s.key] > 1 ? ' ×' + ev.services[s.key] : '')).join(' · ');
+}
 
 /* ---- bundles: one tap for the combinations people actually ask for ---- */
 const BUNDLES = [
@@ -1369,7 +1386,7 @@ function bundlePrice(b){
   return t;
 }
 
-/* which services this function shows: the main five, plus anything already
+/* which services this function shows: the main four, plus anything already
    chosen from the add-ons, plus everything once the add-ons are revealed */
 function visibleServices(ev){
   if(showAllSvc[ev.id]) return SERVICES;
@@ -1387,8 +1404,12 @@ function eventPanelHTML(ev, idx){
       <b>+ ${esc(b.name)}</b><span class="bp">${inr(bundlePrice(b))}</span></button>`).join('');
 
   const list = visibleServices(ev);
-  const hiddenCount = SERVICES.length - list.length;
-  const prods = list.map(s=>{
+  const hidden = SERVICES.filter(s=>list.indexOf(s) === -1);
+  const hiddenCount = hidden.length;
+  /* the button says what it hides, so a family looking for the female
+     shooter knows it is one tap away and not missing */
+  const hiddenNames = hidden.slice(0,3).map(s=>shortName(s.key)).join(', ') + (hiddenCount > 3 ? '…' : '');
+  const prodHTML = s=>{
     const qty = ev.services[s.key]||0, on = qty>0;
     const unitTxt = s.unit==='head' ? 'per head' : 'per event';
     /* Off, the whole row is the target — a 300px-wide tap beats aiming at a
@@ -1409,14 +1430,19 @@ function eventPanelHTML(ev, idx){
         : '<span class="add-pill">＋ Add</span>'}
       </span>
     </div>`;
-  }).join('');
+  };
+  /* the main four, then the add-ons under their own label once any show */
+  const mainList = list.filter((s)=>SERVICES.indexOf(s) < MAIN_SERVICES);
+  const addonList = list.filter((s)=>SERVICES.indexOf(s) >= MAIN_SERVICES);
+  const prods = mainList.map(prodHTML).join('') +
+    (addonList.length ? `</div><div class="prods-label">Add-ons</div><div class="prods">` + addonList.map(prodHTML).join('') : '');
 
   const m = (own(EVENT_META, ev.type) && EVENT_META[ev.type]) || {};
   /* whichever function still has nothing on it is the one to go to next */
   const nextEv = state.events.slice(idx+1).find(e=>chosenCount(e) === 0)
               || state.events.slice(0, idx).find(e=>chosenCount(e) === 0);
   const sub = chosen
-    ? chosen + (chosen>1?' services':' service') + (ev.date ? ' · ' + fmtDate(ev.date) : '')
+    ? chosenSummary(ev) + (ev.date ? ' · ' + fmtDate(ev.date) : '')
     : 'Tap to choose coverage';
 
   return `
@@ -1432,7 +1458,7 @@ function eventPanelHTML(ev, idx){
         <input id="evd-${ev.id}" type="date" data-field="date" value="${esc(ev.date||'')}" min="${TODAY_ISO}" /></label>
       ${bundles?`<div class="bundles"><span class="bl">Quick start</span>${bundles}</div>`:''}
       <div class="prods">${prods}</div>
-      ${hiddenCount?`<button type="button" class="more-btn" data-more="${ev.id}">＋ ${hiddenCount} more options</button>`:''}
+      ${hiddenCount?`<button type="button" class="more-btn" data-more="${ev.id}">＋ ${hiddenCount} more: ${esc(hiddenNames)}</button>`:''}
       ${showAllSvc[ev.id] && !hiddenCount?`<button type="button" class="more-btn" data-more="${ev.id}">− Fewer options</button>`:''}
       <div class="ev-tools">
         ${idx>0?`<button type="button" class="tool" data-copyprev="${ev.id}">&#10697; Same as ${esc(state.events[idx-1].type)}</button>`:''}
@@ -1498,7 +1524,7 @@ function refreshEventChrome(ev){
   const chosen = Object.keys(ev.services).filter(k=>ev.services[k]>0).length;
   const sub = panel.querySelector('.ev-name span');
   if(sub) sub.textContent = chosen
-    ? chosen + (chosen>1?' services':' service') + (ev.date ? ' · ' + fmtDate(ev.date) : '')
+    ? chosenSummary(ev) + (ev.date ? ' · ' + fmtDate(ev.date) : '')
     : 'Tap to choose coverage';
 }
 /* how many services this function has — the quick-start row appears and
