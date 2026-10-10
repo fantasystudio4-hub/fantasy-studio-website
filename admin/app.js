@@ -8869,9 +8869,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         }
         if(old){
           Object.assign(old, base, { updatedAt: null });
-          old.pay = { ...(old.pay||{}), amount: amt,
-            ...(patch['pay.payments'] ? { payments: patch['pay.payments'], paidAmount: _frozen } : {}),
-            ...(patch['pay.paid'] !== undefined ? { paid: patch['pay.paid'] } : {}) };
+          /* mirrored the same way the Pay tracker's fee sheet does. This read
+             `_frozen`, a local that went into feeChangePatch when the rules
+             were shared — so changing the fee on a row already marked paid
+             threw AFTER the write had landed, and the owner saw "Save failed"
+             for a save that had worked. */
+          old.pay = { ...(old.pay||{}), amount: amt };
+          if(patch['pay.payments'])     old.pay.payments   = patch['pay.payments'];
+          if('pay.paidAmount' in patch) old.pay.paidAmount = patch['pay.paidAmount'];
+          if('pay.paid' in patch)       old.pay.paid       = patch['pay.paid'];
           if(reset){ old.status='assigned'; delete old.ackAt; }
         }
         if(auditMsg) ejAudit(base.pkgId || (old && old.pkgId), auditMsg);
