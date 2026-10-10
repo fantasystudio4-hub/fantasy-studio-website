@@ -3086,6 +3086,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* ---------- delivery tracker (booked → delivered) ---------- */
   const dSteps = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULTS.deliverySteps);
   const stepDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+  /* A date as a small calendar block — the day large, "Oct 2026" under it —
+     for list rows whose dates span years (a partner studio's job history and
+     shoot list). stepDate() drops the year, which there read "12 Oct" for a
+     job shot last year and one booked for next. */
+  const dateBlock = d => {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return '<b>—</b>';
+    const t = new Date(d + 'T00:00');
+    return `<b>${t.getDate()}</b><i>${t.toLocaleDateString('en-IN',{month:'short'})} ${t.getFullYear()}</i>`;
+  };
   /* album / cinematic steps only appear when the package actually includes them */
   const hasAlbum  = x => !!(x && ((x.album && (Number(x.album.sheets)>0 || Number(x.album.price)>0))
     || (x.addons||[]).some(a=>/album/i.test(a))));
@@ -10678,8 +10687,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ? { row: $$('#stuRateList [data-srate]').indexOf(_ae.closest('[data-srate]')),
           k: _ae.dataset.k, caret: _ae.selectionStart }
       : null;
+    /* sorted by the date the row SHOWS — the shoot, or the quote date when
+       nothing is dated yet. Sorting on the quote date alone put a job quoted
+       in March for a December wedding above one shot in October. */
+    const jobDate = x => nextShootDate(x) || (ISO_RE.test(x.quoteDate||'') ? x.quoteDate : '');
     const jobs = studioJobs(s.id).sort((a,b)=>{
-      const da = a.quoteDate||'', db2 = b.quoteDate||'';
+      const da = jobDate(a), db2 = jobDate(b);
       return da<db2?1:da>db2?-1:0;   /* newest first */
     });
     const conf = [...jobs].filter(x=>CONFIRMED_ST.includes(x.status||'draft')).reverse();  /* oldest first for the running balance */
@@ -10803,7 +10816,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           return `
           <div class="stujob ${open?'open':''}">
             <div class="up-ev" data-stujob="${esc(x.id)}" role="button" tabindex="0" aria-expanded="${open}">
-              <span class="when">${esc(stepDate(nextShootDate(x) || x.quoteDate) || '—')}</span>
+              <span class="when dblk" title="${nextShootDate(x) ? 'Shoot date' : 'Quote date — no event dated yet'}">${dateBlock(jobDate(x))}</span>
               <span class="what"><b class="qno">${esc(x.quoteNo||'—')}</b> <span>· ${inr((x.totals||{}).finalPrice||0)}${x.endClientName ? ' · ' + esc(x.endClientName) : ''}${x.whiteLabel ? ' · WL' : ''}</span>
                 ${bal > 0 ? `<em class="sjdue">${inr(bal)} due</em>` : ''}
                 ${di && di.total ? `<em class="sjd"><span class="dprog"><i style="width:${di.pct}%"></i></span><b>${di.doneCount}/${di.total}</b><span class="sjn">${
@@ -10847,7 +10860,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                aria-label="Open ${esc(r.x.quoteNo||'this job')}">
             <span class="l-ev">
               <i class="lq">${esc(r.x.quoteNo||'—')}<span class="chev" aria-hidden="true">›</span></i>
-              <span>${esc([stepDate(nextShootDate(r.x) || r.x.quoteDate),
+              <span>${esc([dmy(jobDate(r.x)),
                            ((r.x.events||[])[0]||{}).title || 'Job',
                            r.x.endClientName].filter(Boolean).join(' · '))}</span>
             </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
@@ -10856,7 +10869,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             🎬 Every shoot for this studio <b>${shot.length}</b><span class="car">▾</span></h4>
           ${_stuEvOpen ? (shot.length ? `<div class="shotlist">${shot.map(r=>`
             <div class="shot-row">
-              <span class="when">${esc(stepDate(r.date)||r.date)}</span>
+              <span class="when dblk">${dateBlock(r.date)}</span>
               <span class="what">${esc(r.title)}<span>· ${esc(r.quoteNo)}${r.endClient ? ' · ' + esc(r.endClient) : ''}${r.venue ? ' · 📍 ' + esc(r.venue) : ''}</span></span>
               <b class="${r.crew ? '' : 'neg'}">${r.crew} crew</b>
             </div>`).join('')}</div>`

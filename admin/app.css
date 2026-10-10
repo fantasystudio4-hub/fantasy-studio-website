@@ -787,6 +787,14 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .up-ev .what .sjd .dprog{flex:0 0 46px;height:3px}
 .up-ev .what .sjd b{color:var(--gold-b);font-weight:600;flex:0 0 auto}
 .up-ev .what .sjd .sjn{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+/* the row's date as a small calendar block — day over "Oct 2026" — so a job
+   from last year and one for next year never read the same */
+.up-ev .when.dblk,.shot-row .when.dblk{flex:0 0 64px;min-width:64px;display:flex;flex-direction:column;align-items:center;line-height:1.05;text-align:center}
+.when.dblk b{font-family:var(--serif);font-size:var(--fs-xl);font-weight:600;color:var(--gold-b)}
+.when.dblk i{font-family:var(--sans);font-style:normal;font-size:var(--fs-xs);color:var(--mut);letter-spacing:.02em;margin-top:.15rem;white-space:nowrap}
+/* the first line (quote no · price · end client) wraps rather than clipping
+   the price to "₹1,80,00…" */
+.stujob .up-ev .what{white-space:normal}
 .sj-det{padding:0 .2rem .6rem}
 .sj-det .dtrack{margin-top:.2rem}
 .sj-det .btn{width:100%;margin-top:.5rem}
