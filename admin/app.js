@@ -1972,7 +1972,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#leadList').innerHTML = list.map(l=>{
      try{
       const ts = l.createdAt && l.createdAt.toDate ? l.createdAt.toDate() : null;
-      const when = ts ? ts.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
+      const when = ts ? dayOf(ts) + ' ' + ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
       const sib = leadSiblings(l);
       const st = l.status||'new', state = stateOf(st);
       /* Meta is ordered by what matters at a venue, because it truncates from
@@ -3066,7 +3066,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      date grammars in a single line. The numeric form was there because the
      quote figure used to share that line and the year was what got clipped;
      the figure has moved to the rail, so the room exists now. The year stays:
-     a wedding date is often next year, and stepDate() drops it. */
+     a wedding date is often next year, and stepDate() only adds it when the
+     year is not this one. */
   const dmy = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'')
     ? new Date(d + 'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})
     : (d||'');
@@ -3085,11 +3086,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- delivery tracker (booked → delivered) ---------- */
   const dSteps = () => (CFG && Array.isArray(CFG.deliverySteps) && CFG.deliverySteps.length ? CFG.deliverySteps : DEFAULTS.deliverySteps);
-  const stepDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+  /* "12 Oct", and "12 Oct 2025" once the year is not this one — the rule the
+     profile dates (pfDate) and the crew page already follow. It used to drop
+     the year always, so a delivery step, a crew payment or a deleted record
+     from last October read exactly like one from this month. */
+  const stepDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'')
+    ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})
+      + (d.slice(0,4) !== todayISO().slice(0,4) ? ' ' + d.slice(0,4) : '')
+    : '';
+  /* the same for a Date — a lead's arrival, a note's time stamp */
+  const dayOf = d => (d && !isNaN(d)) ? stepDate(d.toLocaleDateString('en-CA')) : '';
   /* A date as a small calendar block — the day large, "Oct 2026" under it —
      for list rows whose dates span years (a partner studio's job history and
-     shoot list). stepDate() drops the year, which there read "12 Oct" for a
-     job shot last year and one booked for next. */
+     shoot list), where every row carries its year so they line up. */
   const dateBlock = d => {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return '<b>—</b>';
     const t = new Date(d + 'T00:00');
@@ -3727,7 +3736,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rest = _upEvents.slice(hero.length, hero.length + 4);
     const rows = rest.map((e,i)=>`
       <div class="up-ev" data-open-ev="${hero.length+i}" role="button" tabindex="0">
-        <span class="when">${new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
+        <span class="when">${stepDate(e.date)}</span>
         <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
         <i class="dot ${e.status}"></i>
       </div>`).join('');
@@ -6999,7 +7008,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const ejId = () => Date.now().toString(36) + (_ejIdN++).toString(36) + Math.random().toString(36).slice(2,5);
   const ejWhen = t => {
     const d = new Date(t||''); if(isNaN(d)) return '';
-    return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' · ' +
+    return dayOf(d) + ' · ' +
            d.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
   };
   /* the email is the audit record; the panel shows the part before the @ */
@@ -7858,7 +7867,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function ejAssignedAt(a){
     const t = a && a.createdAt;
     const d = t && typeof t.toDate === 'function' ? t.toDate() : (t ? new Date(t) : null);
-    if(d && !isNaN(d)) return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    if(d && !isNaN(d)) return dayOf(d);
     if(stepDate(a && a.dueDate)) return 'for ' + stepDate(a.dueDate);
     /* rows written before createdAt existed know neither — say nothing rather
        than printing "assigned —", which reads like a missing value */

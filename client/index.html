@@ -738,9 +738,13 @@ const stepsFor = x => dSteps().filter(s =>
   (!/cinematic|teaser/i.test(s) || hasCinema(x)) &&
   (!/photo/i.test(s)            || hasPhoto(x)) &&
   (!/video/i.test(s)            || hasVideo(x)));
-const human = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '';
+/* "Thu, 22 Oct 2026" — en-IN puts a comma before the year too ("22 Oct, 2026") */
+const human = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}).replace(/,\s*(\d{4})$/, ' $1') : '';
 loadCfg().catch(()=>{});   /* warm the config so contact buttons show the real number pre-login */
-const shortD = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+/* "6 Oct 2026" — payments and delivery steps carry the year, as on the
+   partner page. They were "6 Oct", which on a wedding from last year read
+   like this month. */
+const shortD = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '';
 
 /* ---------- error helper ---------- */
 function authMsg(err){
@@ -1671,7 +1675,7 @@ function renderJump(pkgs){
     /* the date a client recognises a booking by: the one still coming if there
        is one, otherwise the day it happened */
     const d = ds.find(v=>v >= today) || ds[ds.length-1] || '';
-    const when = d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : 'Date to come';
+    const when = d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'Date to come';
     const ev = (x.events||[]).length;
     /* named by the occasion, not the quote number: "FS-2026-041" identifies a
        booking to the studio and to nobody else */
@@ -1724,7 +1728,10 @@ function renderNextUp(pkgs){
   if(!next){ box.hidden = true; box.innerHTML = ''; return; }
   const d = new Date(next.date+'T00:00');
   const days = Math.round((d - new Date(today+'T00:00'))/864e5);
-  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : d.toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long'});
+  /* a wedding is often booked a year out — say the year when it is not this one */
+  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow'
+    : d.toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long'})
+      + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
   box.hidden = false;
   box.innerHTML = `
     <div class="nu-h">
@@ -2151,7 +2158,17 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
     : `${_titles[0]} & ${_titles.length-1} more`;
   const _span = !_dates.length ? 'Dates to be confirmed'
     : _dates[0] === _dates[_dates.length-1] ? human(_dates[0])
-    : `${shortD(_dates[0])} – ${shortD(_dates[_dates.length-1])} ${_dates[_dates.length-1].slice(0,4)}`;
+    /* "22 – 23 Oct 2026", "28 Nov – 2 Dec 2026", and the year on both ends
+       only when it changes: "28 Dec – 2 Jan 2027" put December in 2027 */
+    : (()=>{
+        const a = _dates[0], b = _dates[_dates.length-1];
+        if(a.slice(0,4) !== b.slice(0,4)) return `${shortD(a)} – ${shortD(b)}`;
+        const day = d => String(Number(d.slice(8,10)));
+        const mon = d => new Date(d+'T00:00').toLocaleDateString('en-IN',{month:'short'});
+        return a.slice(0,7) === b.slice(0,7)
+          ? `${day(a)} – ${day(b)} ${mon(b)} ${b.slice(0,4)}`
+          : `${day(a)} ${mon(a)} – ${day(b)} ${mon(b)} ${b.slice(0,4)}`;
+      })();
   const pct2 = Number(tt.finalPrice) > 0 ? Math.min(100, Math.round(100*paid/Number(tt.finalPrice))) : 0;
   const hasBreak = (Number(tt.gross) && Number(tt.discount)) || alb;
   return `
