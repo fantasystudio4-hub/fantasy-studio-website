@@ -436,6 +436,7 @@ html.fs-app .sch:last-child{border-bottom:0}
 html.fs-app .sch-d{flex:none;width:44px;text-align:center;line-height:1.1}
 html.fs-app .sch-d b{display:block;font-family:var(--serif);font-size:1.25rem;color:var(--gold-b);font-variant-numeric:tabular-nums}
 html.fs-app .sch-d span{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+html.fs-app .sch-d i{display:block;font-style:normal;font-size:.6rem;color:var(--mut);font-variant-numeric:tabular-nums}
 html.fs-app .sch-t{flex:1;min-width:0}
 html.fs-app .sch-t b{font-weight:500;overflow-wrap:anywhere}
 html.fs-app .sch-w{flex:none;font-size:.7rem;color:var(--mut);letter-spacing:.04em;white-space:nowrap;padding-top:.2rem}
@@ -797,7 +798,10 @@ function toStart(){ if(window.FSApp && FSApp.exitToStart) FSApp.exitToStart(); e
 const todayISO = () => new Date().toLocaleDateString('en-CA');
 const isDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'');
 const human = d => isDate(d) ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
-const dmy = d => isDate(d) ? d.slice(8,10)+'-'+d.slice(5,7)+'-'+d.slice(0,4) : (d||'');
+/* "6 Oct 2026", the same written form as every other date on this page. It
+   was 06-10-2026, so a delivery step or a payment read in a different date
+   grammar from the schedule printed above it ("Thursday, 22 October 2026"). */
+const dmy = d => isDate(d) ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : (d||'');
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 const shMoney = n => { n = Math.round(Number(n)||0);
   if(n >= 1e7) return '₹' + (+((n/1e7).toFixed(1))) + ' Cr';
@@ -1470,7 +1474,7 @@ function renderSched(upcoming){
     const days = Math.round((d - day0)/864e5);
     const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'in ' + days + ' days';
     return `<div class="sch${days === 0 ? ' today' : ''}">
-      <div class="sch-d"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span></div>
+      <div class="sch-d"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span><i>${d.getFullYear()}</i></div>
       <div class="sch-t"><b>${esc(e.title||'Event')}${slotTag(e.slot)}</b>
         <div class="evm">${esc(jobLabel(e.job))}${e.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(e.venue)}" target="_blank" rel="noopener">📍 ${esc(e.venue)}</a>` : ''}</div>
       </div>
@@ -1809,11 +1813,17 @@ function jobHTML(x, canToggle, collapsed, idx, total){
   const _span = (()=>{
     const ds = _evsSorted.map(e=>e.date).filter(isDate);
     if(!ds.length) return 'Dates to be confirmed';
-    /* dmy() is 18-12-2026, which is a field in a form, not a date a person
-       reads across the top of a card */
-    const sh = d => new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
-    return ds[0] === ds[ds.length-1] ? human(ds[0])
-      : `${sh(ds[0])} – ${sh(ds[ds.length-1])} ${ds[ds.length-1].slice(0,4)}`;
+    /* a range names each part once: "22 – 23 Oct 2026", "28 Nov – 2 Dec 2026",
+       and the year on both ends only when it changes — "28 Dec – 2 Jan 2027"
+       put a December wedding in the wrong year */
+    const a = ds[0], b = ds[ds.length-1];
+    if(a === b) return human(a);
+    const day = d => String(Number(d.slice(8,10)));
+    const mon = d => new Date(d+'T00:00').toLocaleDateString('en-IN',{month:'short'});
+    if(a.slice(0,4) !== b.slice(0,4)) return `${dmy(a)} – ${dmy(b)}`;
+    return a.slice(0,7) === b.slice(0,7)
+      ? `${day(a)} – ${day(b)} ${mon(b)} ${b.slice(0,4)}`
+      : `${day(a)} ${mon(a)} – ${day(b)} ${mon(b)} ${b.slice(0,4)}`;
   })();
   const pctPaid = Number(tt.finalPrice) > 0 ? Math.min(100, Math.round(100*paid/Number(tt.finalPrice))) : 0;
   const hasBreak = Number(tt.gross) && Number(tt.discount);
