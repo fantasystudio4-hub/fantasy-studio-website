@@ -1135,7 +1135,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* 'gs' (search) and 'fee' (edit fee) were missing: each pushed its own entry
      and closed through history.back(), but nothing here knew them, so the
      first ✕ or Back only dropped the entry and left the sheet on screen. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','masheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp'];
   function pushView(view, hash, replace, extra){
     if(_navFromPop) return;
     try{
@@ -1642,6 +1642,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeStatusUI === 'function') closeStatusUI();
       if(typeof closeTmUI === 'function') closeTmUI();
       if(typeof closeAsUI === 'function') closeAsUI();
+      if(typeof closeMaUI === 'function') closeMaUI();
       if(typeof closeFinUI === 'function') closeFinUI();
       if(typeof closeInsUI === 'function') closeInsUI();
       if(typeof closeEvUI === 'function') closeEvUI();
@@ -5826,7 +5827,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* editing is attached to an event but is not crew ON the day — counting it
        made a wedding with an editor look staffed when nobody was shooting */
     const rows = ASGS.filter(a=>a.pkgId===pkId && a.date===date && a.kind !== 'edit');
-    if(!title || rows.length < 2) return rows;
+    /* A LONE row used to skip the title test (rows.length < 2): with Ravi the
+       only crew on the morning Nikah, the evening Reception card listed him
+       too, and the assign picker then refused him there as "already on this
+       event". A row whose title matches no function that day falls out of
+       both cards here, so staleCrew below flags it instead. */
+    if(!title || !rows.length) return rows;
     const pk = PKGS.find(p=>p.id===pkId);
     const sameDay = pk ? (pk.events||[]).filter(e=>e.date===date).length : 1;
     if(sameDay < 2) return rows;
@@ -5836,8 +5842,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   /* crew pointing at this package but at a date the package no longer has —
      the event was edited after assigning. Shown with a sync button. */
+  /* Also a shoot row whose date is still there but whose function is not: on
+     a day with two or more functions evCrew places crew by title, so a row
+     left behind by a renamed function would sit on neither card and nobody
+     would know. Untitled legacy rows are not flagged (evCrew still shows
+     them), and editing rows are not either — a whole-booking edit is titled
+     'All functions', which no function ever is. */
+  const titleLost = (pk, a) => {
+    if(a.kind === 'edit') return false;
+    const t = String(a.eventTitle||'').trim().toLowerCase();
+    if(!t) return false;
+    const day = (pk.events||[]).filter(ev=>ev.date===a.date);
+    return day.length >= 2 && !day.some(ev=>String(ev.title||'').trim().toLowerCase() === t);
+  };
   const staleCrew = pk => ASGS.filter(a=>a.pkgId===pk.id
-    && !(pk.events||[]).some(ev=>ev.date===a.date));
+    && (!(pk.events||[]).some(ev=>ev.date===a.date) || titleLost(pk, a)));
 
   /* which of the six roles a booked service calls for. Order matters: candid
      and cinematography are their own crafts, not "a photographer" and "a
@@ -5859,6 +5878,127 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(r) n[r] = (n[r]||0) + q;
     });
     return n;
+  }
+
+  /* ---------- one person → many events: the rules ----------
+     The "👤 One person → many events" sheet (it sits after the assign sheet)
+     puts ONE outdoor member on several functions in one save. Its rules live
+     here, apart from the sheet, so the site tests can run them exactly as
+     written (app/backend/site-tests/multiAssign.test.js). */
+  /* a season's worth in one go; more ticks than this in one save is a slip */
+  const MA_CAP = 30;
+  const maNorm = t => String(t||'').trim().toLowerCase();
+  /* Who the sheet offers: active outdoor shooters. Office people and editors
+     keep ＋ Assign editing — an edit is one job per booking, not one per day. */
+  /* "Assign Ravi to 4 events": the first name is what fits on a button */
+  const maFirst = m => String((m||{}).name||'').trim().split(/\s+/)[0] || 'them';
+  const maIsOutdoor = m => !!m && m.active !== false && catOf(m) === 'outdoor' && !/editor/i.test(String(m.role||''));
+  /* a blank or full-day slot takes the whole day, so it meets both halves */
+  const slotsOverlap = (a, b) => { a = a || 'full'; b = b || 'full'; return a === 'full' || b === 'full' || a === b; };
+  /* Is this member ALREADY on this exact function? 'on' = yes (greyed, never
+     ticked twice), 'soft' = maybe, '' = no. Exact means booking + date +
+     title, as evCrew places crew (+ slot when both sides have one, but only
+     when two functions that day share the title — a function whose slot was
+     edited after assigning keeps its crew, so a title match alone is "on"
+     and the sheet never writes him onto it twice): being on the morning Nikah does
+     not put him on the evening Reception. On a day with ONE function every
+     row of his that day is that function, as evCrew reads it. A legacy row
+     with no title on a two-function day could be either, so it only warns —
+     treating it as "on" blocked both functions. */
+  function memberOnEvent(mid, pkgId, date, title, slot){
+    const rows = ASGS.filter(a=>a.memberId===mid && a.pkgId===pkgId && a.date===date && a.kind !== 'edit');
+    if(!rows.length) return '';
+    const pk = PKGS.find(p=>p.id===pkgId);
+    const day = pk ? (pk.events||[]).filter(e=>e.date===date) : [];
+    if((pk ? day.length : 1) < 2) return 'on';
+    const t = maNorm(title);
+    const twin = day.filter(e=>maNorm(e.title) === t).length >= 2;
+    if(rows.some(a=>maNorm(a.eventTitle) === t && (!twin || !a.slot || !slot || a.slot === slot))) return 'on';
+    return rows.some(a=>!maNorm(a.eventTitle)) ? 'soft' : '';
+  }
+  /* His other shoots that day. asgConflicts counts the date alone and editing
+     rows too, so a morning Nikah and an evening Reception of one wedding
+     asked "already booked that day?". Here: editing rows never count (an
+     edit is dated by its last shoot and done at a desk); the same booking
+     that day is normal (soft); another booking is a clash (hard) only when
+     the halves of the day overlap — a full or unset slot overlaps both. */
+  function shootClashes(mid, date, slot, pkgId){
+    const out = { hard: [], soft: [] };
+    ASGS.forEach(a=>{
+      if(a.memberId !== mid || a.date !== date || a.kind === 'edit') return;
+      (a.pkgId !== pkgId && slotsOverlap(a.slot, slot) ? out.hard : out.soft).push(a);
+    });
+    return out;
+  }
+  /* ticked events that collide with EACH OTHER: two bookings, one date,
+     overlapping halves of the day */
+  function pickClashes(ctxs){
+    const out = [];
+    for(let i = 0; i < ctxs.length; i++) for(let j = i + 1; j < ctxs.length; j++){
+      const a = ctxs[i], b = ctxs[j];
+      if(a.date === b.date && a.pkgId !== b.pkgId && slotsOverlap(a.slot, b.slot)) out.push([a, b]);
+    }
+    return out;
+  }
+  /* the roles a function still needs once its crew is counted off — the same
+     subtraction the Work cards print as "Still needs …" */
+  function evGap(pkId, ev){
+    const need = neededRoles(ev), have = {}, gap = {};
+    evCrew(pkId, ev.date, ev.title).forEach(a=>{ const r = maNorm(a.role); if(r) have[r] = (have[r]||0) + 1; });
+    Object.entries(need).forEach(([r, q])=>{ if(q - (have[r]||0) > 0) gap[r] = q - (have[r]||0); });
+    return gap;
+  }
+  /* an event as the assign sheet's ctx, built the way the Work card's
+     ＋ Assign builds it */
+  const maCtx = (pk, ev) => ({ pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+                               eventTitle: ev.title||'', slot: ev.slot||'', date: ev.date||'', venue: ev.venue||'' });
+  /* An event has no id. A tick remembers WHICH function by what identifies
+     it, never by its place in pk.events: a package edited while the sheet is
+     open would otherwise move the tick onto a different function. */
+  const maKey = c => [c.pkgId, c.date, maNorm(c.eventTitle), c.slot||''].join('|');
+  /* earliest first; on one day morning, then evening, then full day / unset */
+  const MA_SLOT_RANK = { morning: 0, evening: 1 };
+  const maOrder = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+    || ((a.slot in MA_SLOT_RANK ? MA_SLOT_RANK[a.slot] : 2) - (b.slot in MA_SLOT_RANK ? MA_SLOT_RANK[b.slot] : 2))
+    || String(a.eventTitle||'').localeCompare(String(b.eventTitle||''));
+  /* Ticks rows ({key, label}) onto ticks (a Map), never past MA_CAP in all.
+     True when some had to be left off. A tick starts at the member's own
+     rate (fee null) with no call time — a time is never copied across days. */
+  function maAddTicks(ticks, rows){
+    let capped = false;
+    rows.forEach(r=>{
+      if(ticks.has(r.key)) return;
+      if(ticks.size >= MA_CAP){ capped = true; return; }
+      ticks.set(r.key, { fee: null, call: '', label: r.label || '' });
+    });
+    return capped;
+  }
+  /* A new outdoor assignment, field for field what the assign sheet's own
+     Save writes for one member on a shoot (baseOf + pay + status + createdAt).
+     A second builder can drift from the first, so the site test pins the two
+     key lists together. */
+  function newShootAsg(m, ctx, o){
+    return {
+      memberId: m.id, memberName: m.name||'', memberPhone10: memberPhone10(m),
+      pkgId: ctx.pkgId, quoteNo: ctx.quoteNo||'', clientName: ctx.clientName||'',
+      eventTitle: ctx.eventTitle||'', date: ctx.date||'', venue: ctx.venue||'', slot: ctx.slot||'',
+      callTime: o.callTime||'', role: o.role,
+      kind: '', dueDate: '', deliver: '', scope: '',
+      notes: o.notes||'', updatedAt: serverTimestamp(),
+      pay: { amount: Math.max(0, Math.round(Number(o.fee)||0)), paid: false, paidDate: '', mode: '' },
+      status: 'assigned', createdAt: serverTimestamp()
+    };
+  }
+  /* Several events saved together are one group: the same groupId on every
+     doc, groupN = how many, groupI = its place with 0 the earliest. The push
+     function sends ONE notification per group (from groupI 0) instead of one
+     per event. A single event carries no group fields at all. */
+  function maGroup(docs, gid){
+    const out = docs.slice().sort(maOrder);
+    if(out.length < 2) return out;
+    const id = gid || ('g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+    out.forEach((d, i)=>{ d.groupId = id; d.groupN = out.length; d.groupI = i; });
+    return out;
   }
 
   /* What a shooter actually needs the night before: which function, when to be
@@ -6003,7 +6143,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             : `<div class="tm-need" title="This event needs ${esc(needTxt)}">Fully crewed <b class="ok2">✓</b></div>`)
           : ''}
         ${crew.map(a=>crewRowHTML(a)).join('')}
-        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(stepDate(a.date)||a.date||'date?')}</span><button class="btn btn--sm btn--ghost" data-assync="${esc(a.id)}" data-aspk="${esc(pk.id)}" data-asev="${idx}">Sync</button>`)).join('')}
+        ${stale.map(a=>crewRowHTML(a, `<span class="ackpill stale">⚠ ${esc(titleLost(pk, a) ? `${a.eventTitle} · ${stepDate(a.date)}` : (stepDate(a.date)||a.date||'date?'))}</span><button class="btn btn--sm btn--ghost" data-assync="${esc(a.id)}" data-aspk="${esc(pk.id)}" data-asev="${idx}">Sync</button>`)).join('')}
       </div>`;
     }).join('')
     + (all.length > TEAM_EV_N
@@ -6512,6 +6652,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="sq-acts">
             ${telOf(m.phone).replace(/\D/g,'').length >= 6 ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(telOf(m.phone))}" onclick="event.stopPropagation()" title="Call" aria-label="Call ${esc(m.name||'')}">📞</a>` : ''}
             ${wa ? `<a class="icon-btn icon-btn--ring" href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp" aria-label="WhatsApp ${esc(m.name||'')}">💬</a>` : ''}
+            ${/* straight to "put this person on several events", member already picked */
+              maIsOutdoor(m) ? `<button type="button" class="icon-btn icon-btn--ring" data-tmassign="${esc(m.id)}" title="Put on several events" aria-label="Assign ${esc(m.name||'this member')} to several events">📅</button>` : ''}
           </span>
         </div>
         ${/* the card's full width, not the name column: at 320px that column
@@ -8167,6 +8309,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const catOf = m => TM_CATS.includes((m||{}).cat) ? m.cat : 'outdoor';
   const CAT_LABEL = { outdoor:'🎥 Outdoor', office:'🏢 Office' };
   let _tmCat = 'outdoor';
+  /* the card as it stands in the form — #tmAssign hands over to a sheet that
+     reads the SAVED member, so a rate typed here and not saved would be lost */
+  let _tmSnap = '';
+  const tmFormKey = () => JSON.stringify([$('#tmName').value.trim(), _tmCat, $('#tmRole').value,
+    $('#tmPhone').value.trim(), Math.max(0, Math.round(Number($('#tmRate').value)||0))]);
   function setTmCat(c){
     _tmCat = TM_CATS.includes(c) ? c : 'outdoor';
     $('#tmCatOut').classList.toggle('on', _tmCat === 'outdoor');
@@ -8185,8 +8332,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tmPhone').value = m ? (m.phone||'') : '';
     $('#tmRate').value = m && m.defaultRate ? m.defaultRate : '';
     renderTmProf(m);
+    _tmSnap = tmFormKey();
     const tog = $('#tmToggle');
     tog.hidden = !m;
+    /* only for someone the many-events sheet can take: active outdoor crew */
+    $('#tmAssign').hidden = !maIsOutdoor(m);
     if(m){
       const off = m.active === false;
       tog.textContent = off ? 'Reactivate this member' : 'Deactivate (keeps their history)';
@@ -8222,6 +8372,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#tmClose', 'click', closeTm);
   on('#tmBackdrop', 'click', closeTm);
   on('#tmAdd', 'click', ()=>openTm(null));
+  /* closeTmUI, not closeTm: the new sheet's pushView replaces this sheet's
+     history entry, so one Back still closes it */
+  on('#tmAssign', 'click', ()=>{
+    const id = _tmEditId; if(!id) return;
+    if(tmFormKey() !== _tmSnap){ toast('Save the card first — the changes typed here are not saved yet'); return; }
+    closeTmUI();
+    openMa(id);
+  });
   on('#tmSave', 'click', async ()=>{
     const btn = $('#tmSave'); if(btn.disabled) return;
     const name = $('#tmName').value.trim();
@@ -8310,6 +8468,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-tm-add]')){ openTm(null); return; }
     const g = e.target.closest('[data-tmgrp]');
     if(g){ _tmShowInactive = !_tmShowInactive; renderTeamMembers(); return; }
+    /* the 📅 sits inside the card, and the card itself opens the editor */
+    const ma = e.target.closest('[data-tmassign]');
+    if(ma){ openMa(ma.dataset.tmassign); return; }
     const row = e.target.closest('[data-tmedit]'); if(!row) return;
     const m = TEAM.find(v=>v.id===row.dataset.tmedit);
     if(m) openTm(m);
@@ -8413,6 +8574,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!$('#asBookWrap').hidden && typeof fillBookingEvents === 'function') fillBookingEvents();
     $$('#asModal [data-shootonly]').forEach(f=>f.hidden = ed);
     $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save Assignment';
+    /* One outdoor shooter picked for a new shoot that is still ahead: offer
+       the rest of their events in the many-events sheet, this one ticked. */
+    const more = $('#asMore');
+    if(more){
+      const one = n === 1 ? memberById([..._asPicked][0]) : null;
+      const ok = !!one && !!_asCtx && !_asEditId && !_asForceEdit && $('#asBookWrap').hidden
+        && maIsOutdoor(one) && !ed && (_asCtx.date||'') >= todayISO()
+        /* the many-events sheet lists booked functions only — from a draft
+           or sent quote's event the hand-off would drop this pick */
+        && maEventRows().some(r=>r.key === maKey(_asCtx));
+      more.hidden = !ok;
+      if(ok) more.textContent = `📅 Put ${maFirst(one)} on more events too`;
+    }
   }
   on('#asRole', 'change', syncAsUI);
   /* the deadline is measured from the last function once it covers them all */
@@ -8535,6 +8709,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     refreshAsConflict();
     toast(`${ids.length} member${ids.length===1?'':'s'} picked — check the details, then Save`);
   });
+  /* hand over to the many-events sheet: same member, this event ticked with
+     the call time and fee typed here. closeAsUI, not closeAs — the new
+     sheet's pushView replaces this sheet's history entry. */
+  on('#asMore', 'click', ()=>{
+    const id = [..._asPicked][0], ctx = _asCtx;
+    if(!id || !ctx || _asEditId) return;
+    const pre = { ctx, call: $('#asCall').value || '', fee: $('#asAmt').value, role: $('#asRole').value };
+    closeAsUI();
+    openMa(id, pre);
+  });
   let _asForceEdit = false, _bookRows = [];
   /* what is typed in the crew filter, for the length of one sheet */
   let _asFilter = '';
@@ -8581,7 +8765,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   on('#asClose', 'click', closeAs);
   on('#asBackdrop', 'click', closeAs);
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeTm(); closeAs(); } });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeTm(); closeAs(); closeMa(); } });
 
   on('#asSave', 'click', async ()=>{
     const btn = $('#asSave'); if(btn.disabled || !_asCtx) return;
@@ -8756,6 +8940,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const a = ASGS.find(v=>v.id===sync.dataset.assync);
       const pk = PKGS.find(p=>p.id===sync.dataset.aspk);
       if(!a || !pk) return;
+      /* Its date is still there but its function was renamed: the fallbacks
+         below were written for a row whose DATE is gone, and would move a done
+         (maybe paid) shoot onto some other day's function. Which of that day's
+         functions it was is a human call. */
+      if(titleLost(pk, a)){
+        toast(`No function on ${stepDate(a.date) || a.date} is called "${a.eventTitle}" any more — remove this assignment (tap the name) and re-assign on the right function.`);
+        return;
+      }
       /* The stale row renders under the package's FIRST upcoming event, so the
          row's index must not decide where the assignment goes — in a
          multi-event package that rewrote crew onto the wrong function. Resolve
@@ -8797,6 +8989,368 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                eventTitle: a.eventTitle||'', slot: a.slot||'', date: a.date||'', venue: a.venue||'' }, a);
     }
   });
+
+  /* ---------- one person → many events: the sheet ----------
+     The assign sheet starts from an EVENT and picks people. The owner's usual
+     thought runs the other way — "Ravi does all three days of the Reddy
+     wedding, and Saturday's reception" — which was one trip through that
+     sheet per function. Here the person comes first: tick their functions,
+     one save, one batch. Outdoor shoots only; the rules it follows are in
+     "one person → many events: the rules" further up. */
+  let _maMid = null, _maRole = '', _maTicks = new Map(), _maOpen = '', _maRows = [], _maQ = '';
+  const MA_ROLES = TEAM_ROLES.filter(r=>!roleIsEdit(r));
+  $('#maRole').innerHTML = MA_ROLES.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('');
+  const maRate = m => Math.max(0, Math.round(Number((m||{}).defaultRate)||0));
+  const maDefaultRole = m => m && MA_ROLES.includes(m.role) ? m.role : MA_ROLES[0];
+  /* a tick's own fee when one was typed, otherwise the member's rate */
+  const maFee = (m, t) => t && t.fee !== null && t.fee !== undefined ? t.fee : maRate(m);
+  const maLabel = c => `${c.eventTitle || 'Event'}${slotSuffix(c.slot)} · ${stepDate(c.date) || c.date}`;
+  const maEvWord = n => `${n} event${n === 1 ? '' : 's'}`;
+  const MA_CAP_MSG = `${MA_CAP} events at most in one save — save these, then add the rest`;
+  /* booked functions from today on, one row per function */
+  function maEventRows(){
+    const seen = new Set(), out = [];
+    teamEventsIn('upcoming').forEach(({ pk, ev })=>{
+      const ctx = maCtx(pk, ev), key = maKey(ctx);
+      if(seen.has(key)) return;   /* two identical functions on one day are one row */
+      seen.add(key);
+      out.push({ pk, ev, ctx, key, i: out.length });
+    });
+    return out;
+  }
+  /* pre: what the assign sheet hands over — the event it was open on (ticked,
+     with the call time and fee typed there, for that event only) and its role */
+  function openMa(mid, pre){
+    const m = mid ? memberById(mid) : null;
+    _maMid = maIsOutdoor(m) ? m.id : null;
+    _maTicks = new Map(); _maOpen = ''; _maQ = '';
+    $('#maFilter').value = ''; $('#maNotes').value = '';
+    _maRole = maDefaultRole(m);
+    if(_maMid && pre){
+      if(pre.role && MA_ROLES.includes(pre.role)) _maRole = pre.role;
+      const row = pre.ctx && maEventRows().find(r=>r.key === maKey(pre.ctx));
+      const on = row && memberOnEvent(m.id, row.ctx.pkgId, row.ctx.date, row.ctx.eventTitle, row.ctx.slot) === 'on';
+      if(row && !on){
+        const typed = pre.fee === null || pre.fee === undefined || pre.fee === '' ? null : Math.max(0, Math.round(Number(pre.fee)||0));
+        _maTicks.set(row.key, { fee: typed === maRate(m) ? null : typed, call: pre.call || '', label: maLabel(row.ctx) });
+      }else if(pre.ctx){
+        /* never drop the event the owner started from without a word */
+        toast(on ? `${maFirst(m)} is already on ${pre.ctx.eventTitle || 'that event'} — it is not ticked again`
+                 : `${pre.ctx.eventTitle || 'That event'} is not in this list (booked functions only) — it was not carried over`);
+      }
+    }
+    renderMa();
+    $('#maModal').scrollTop = 0;
+    $('#maModal').classList.add('open'); $('#maBackdrop').classList.add('open');
+    pushView('masheet', '#team/many');
+  }
+  function closeMaUI(){
+    $('#maModal').classList.remove('open'); $('#maBackdrop').classList.remove('open');
+    _maMid = null; _maTicks = new Map(); _maOpen = '';
+  }
+  function closeMa(){ backFrom('masheet', closeMaUI); }
+  on('#maClose', 'click', closeMa);
+  on('#maBackdrop', 'click', closeMa);
+  on('#maAdd', 'click', ()=>openMa(null));
+
+  function renderMa(){
+    const m = _maMid ? memberById(_maMid) : null;
+    $('#maStep1').hidden = !!m; $('#maStep2').hidden = !m;
+    const warn = $('#maWarn');
+    if(!m){
+      $('#maWho').textContent = 'Pick who is going, then tick their events. Outdoor crew only — editing stays in ＋ Assign editing.';
+      warn.hidden = true;
+      renderMaPeople();
+      return;
+    }
+    const s = memberStats(m.id), rate = maRate(m);
+    $('#maWho').innerHTML = `<b>${esc(m.name||'—')}</b> · ${esc(roleLabel(m.role))} · `
+      + `${rate ? inr(rate) + ' per event' : 'no pay per event set'} · `
+      + `${s.up.length ? `${s.up.length} ahead, next ${esc(stepDate(s.next) || s.next)}` : 'nothing ahead'}`
+      + ` <button type="button" class="ma-swap" data-maswap>Change</button>`;
+    /* warned, never blocked: the pay rows are wanted even when the member
+       cannot see them yet */
+    const w = [];
+    if(memberPhone10(m).length !== 10) w.push(`⚠ ${esc(m.name||'This member')} has no 10-digit phone on file — the crew page will not show these events and no notification goes out. The pay rows are still saved.`);
+    if(!rate) w.push('No pay per event is set for them, so every event starts at ₹0 — tap an event’s ₹ chip to type its fee.');
+    warn.hidden = !w.length;
+    warn.innerHTML = w.join('<br>');
+    $('#maRole').value = _maRole;
+    renderMaEvents();
+    renderMaSum();
+  }
+  function renderMaPeople(){
+    const el = $('#maPeople'); if(!el) return;
+    const list = activeTeam().filter(maIsOutdoor);
+    el.innerHTML = list.map(m=>{
+      const s = memberStats(m.id), rate = maRate(m);
+      const bits = [roleLabel(m.role), rate ? inr(rate) + '/event' : 'no rate set', s.up.length ? `${s.up.length} ahead` : 'nothing ahead'];
+      if(memberPhone10(m).length !== 10) bits.push('⚠ no phone');
+      return `<button type="button" class="cpick" data-mamem="${esc(m.id)}"><i class="dot booked"></i>`
+        + `<span class="cp-t"><b>${esc(m.name||'—')}</b><em>${esc(bits.join(' · '))}</em></span></button>`;
+    }).join('') || '<div class="empty" style="padding:.6rem 0">No active outdoor crew — add one under More → Team.</div>';
+  }
+  /* what one event row says about this member, before it is ticked */
+  function maState(m, r, ticked){
+    const c = r.ctx;
+    const on = memberOnEvent(m.id, c.pkgId, c.date, c.eventTitle, c.slot);
+    const cl = shootClashes(m.id, c.date, c.slot, c.pkgId);
+    const mine = ticked.filter(x=>x !== c && x.date === c.date && x.pkgId !== c.pkgId && slotsOverlap(x.slot, c.slot));
+    const needs = !!evGap(c.pkgId, r.ev)[_maRole];
+    let note = 'free', warn = false;
+    if(on === 'on') note = 'already on this event';
+    else if(cl.hard.length){ warn = true; note = `⚠ busy · ${cl.hard[0].eventTitle || 'another event'}${slotSuffix(cl.hard[0].slot)} (${cl.hard[0].clientName || 'another booking'})`; }
+    else if(mine.length){ warn = true; note = `⚠ same time as ${mine[0].eventTitle || 'another event'} (${mine[0].clientName || 'another booking'}), also ticked`; }
+    else if(on === 'soft'){ warn = true; note = '⚠ may already be on it — an older row has no function name'; }
+    else if(cl.soft.length) note = `also on ${cl.soft[0].eventTitle || 'another event'}${slotSuffix(cl.soft[0].slot)} that day`;
+    return { here: on === 'on', warn, note, needs };
+  }
+  const maMonth = d => new Date(d.slice(0, 7) + '-01T00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  function renderMaEvents(){
+    const el = $('#maEvents'), m = memberById(_maMid); if(!el || !m) return;
+    _maRows = maEventRows();
+    const fb = $('#maFilter');
+    fb.hidden = _maRows.length <= 8;
+    /* by booking, earliest booking first (rows arrive soonest first) */
+    const groups = new Map();
+    _maRows.forEach(r=>{ if(!groups.has(r.pk.id)) groups.set(r.pk.id, []); groups.get(r.pk.id).push(r); });
+    /* the filter keeps or drops a WHOLE booking, so "all N" always means
+       every upcoming function of it, never just the ones a word matched */
+    const q = (fb.hidden ? '' : _maQ).trim().toLowerCase();
+    const shown = [...groups.values()].filter(g=>!q || [g[0].pk.quoteNo, g[0].pk.clientName]
+      .concat(g.map(r=>r.ctx.eventTitle), g.map(r=>r.ctx.venue)).join(' ').toLowerCase().includes(q));
+    const ticked = _maRows.filter(r=>_maTicks.has(r.key)).map(r=>r.ctx);
+    let lastMon = '';
+    el.innerHTML = shown.map(g=>{
+      g.sort((a, b)=>maOrder(a.ctx, b.ctx));
+      const pk = g[0].pk, mon = g[0].ctx.date.slice(0, 7);
+      const div = mon !== lastMon ? `<div class="ma-mon">${esc(maMonth(g[0].ctx.date))}</div>` : '';
+      lastMon = mon;
+      const rows = g.map(r=>({ r, st: maState(m, r, ticked) }));
+      const free = rows.filter(x=>!x.st.here);
+      const allOn = free.length > 0 && free.every(x=>_maTicks.has(x.r.key));
+      const d0 = g[0].ctx.date, d1 = g[g.length - 1].ctx.date;
+      const span = d0 === d1 ? stepDate(d0) : `${stepDate(d0)} – ${stepDate(d1)}`;
+      return div + `<div class="ma-grp">
+        <span class="ma-gt"><b>${pk.quoteNo ? esc(pk.quoteNo) + ' · ' : ''}${isStudioJob(pk) ? '🏢 ' : ''}${esc(pk.clientName||'—')}</b>`
+        + `<em>${g.length} function${g.length === 1 ? '' : 's'} ahead · ${esc(span)}</em></span>`
+        + (free.length > 1 ? `<button type="button" class="ma-all ${allOn ? 'on' : ''}" data-maall="${esc(pk.id)}" aria-pressed="${allOn}">${allOn ? '✓ ' : ''}all ${free.length}</button>` : '')
+        + `</div>` + rows.map(({ r, st })=>maRowHTML(m, r, st)).join('');
+    }).join('') || `<div class="empty" style="padding:.6rem 0">${q
+      ? 'No booking matches “' + esc(q) + '”.'
+      : 'No upcoming booked events. Events appear here once a package is booked and its dates are set.'}</div>`;
+  }
+  function maChipText(m, t){
+    const own = t.fee !== null && t.fee !== undefined;
+    return `${inr(maFee(m, t))}${own ? ' (this event)' : ''} · ⏰ ${t.call ? t.call : 'add time'}`;
+  }
+  function maRowHTML(m, r, st){
+    const c = r.ctx, t = _maTicks.get(r.key), on = !!t, open = on && _maOpen === r.key;
+    const title = c.eventTitle || 'Event';
+    return `<div class="ma-ev ${on ? 'on' : ''}">
+      <button type="button" class="cpick ${on ? 'on' : ''} ${st.here ? 'here' : ''}" data-matick="${r.i}" aria-pressed="${on}" ${st.here ? 'disabled' : ''}>`
+      + `<i class="dot ${st.here ? 'delivered' : st.warn ? 'unconfirmed' : 'booked'}"></i>`
+      + `<span class="cp-t"><b>${esc(stepDate(c.date) || c.date)} · ${esc(title)}${slotTag(c.slot)}${st.needs && !st.here ? '<i class="wantt">needed</i>' : ''}</b>`
+      + `<em class="${st.warn ? 'warn' : ''}">${esc(st.note)}${c.venue ? ' · 📍 ' + esc(c.venue) : ''}</em></span>`
+      + `<span class="ma-box" aria-hidden="true">${on ? '✓' : ''}</span></button>`
+      + (on ? `<button type="button" class="ma-chip" data-machip="${r.i}" aria-expanded="${open}" aria-label="Fee and call time for ${esc(title)}">${esc(maChipText(m, t))}</button>` : '')
+      + (open ? `<div class="ma-ov">
+          <div class="fld"><label for="maFee${r.i}">Fee for ${esc(title)} (₹)</label>
+            <input id="maFee${r.i}" type="number" min="0" inputmode="numeric" data-mafee="${r.i}" value="${t.fee === null || t.fee === undefined ? '' : esc(t.fee)}" placeholder="${esc(maRate(m))}" /></div>
+          <div class="fld"><label for="maCall${r.i}">Call time (${esc(title)} only)</label>
+            <input id="maCall${r.i}" type="time" data-macall="${r.i}" value="${esc(t.call || '')}" /></div>
+          <button type="button" class="btn btn--sm btn--ghost" data-machip="${r.i}">Done</button>
+        </div>` : '')
+      + `</div>`;
+  }
+  function renderMaSum(){
+    const m = memberById(_maMid), btn = $('#maSave'), note = $('#maNote');
+    const n = _maTicks.size;
+    let total = 0;
+    _maTicks.forEach(t=>{ total += maFee(m, t); });
+    $('#maSum').innerHTML = n
+      ? `<b>${maEvWord(n)}</b> · ${inr(total)}${n >= MA_CAP ? ` <em>· ${MA_CAP} is the most in one save</em>` : ''}`
+      : 'Tick the events below';
+    btn.disabled = !n;
+    btn.textContent = n ? `Assign ${maFirst(m)} to ${maEvWord(n)}` : 'Assign';
+    /* one push per save, not one per event (the push function groups them) */
+    /* no 10-digit phone = no push at all, as the warning up top says */
+    const told = n >= 2 && memberPhone10(m).length === 10;
+    note.hidden = !told;
+    note.textContent = told ? `${maFirst(m)} gets one notification for all of them.` : '';
+  }
+
+  on('#maPeople', 'click', e=>{
+    const b = e.target.closest('[data-mamem]'); if(!b) return;
+    const m = memberById(b.dataset.mamem); if(!maIsOutdoor(m)) return;
+    _maMid = m.id; _maRole = maDefaultRole(m); _maTicks = new Map(); _maOpen = '';
+    renderMa();
+    $('#maModal').scrollTop = 0;
+  });
+  on('#maWho', 'click', async e=>{
+    if(!e.target.closest('[data-maswap]')) return;
+    /* a fee typed for one person means nothing for the next, so the ticks go too */
+    if(_maTicks.size && !await confirmDialog({
+      title: 'Pick someone else?',
+      body: `The ${maEvWord(_maTicks.size)} ticked for ${esc(maFirst(memberById(_maMid)))} will be cleared.`,
+      confirmText: 'Pick someone else', danger: false })) return;
+    _maMid = null; _maTicks = new Map(); _maOpen = '';
+    renderMa();
+  });
+  on('#maRole', 'change', e=>{ _maRole = e.target.value; renderMaEvents(); });
+  on('#maFilter', 'input', e=>{ _maQ = e.target.value; renderMaEvents(); });
+  on('#maFilter', 'keydown', e=>{
+    if(e.key !== 'Escape') return;
+    e.stopPropagation();          /* clear the filter first; Escape again closes the sheet */
+    _maQ = ''; e.target.value = ''; renderMaEvents();
+  });
+  /* the list is redrawn on every tap, which drops the element that had
+     focus — put it back on the same control, without jumping the sheet */
+  const maRefocus = sel => { const el = $('#maEvents ' + sel); if(el){ try{ el.focus({ preventScroll: true }); }catch(e){} } };
+  on('#maEvents', 'click', e=>{
+    const m = memberById(_maMid); if(!m) return;
+    const all = e.target.closest('[data-maall]');
+    if(all){
+      const rows = _maRows.filter(r=>r.pk.id === all.dataset.maall
+        && memberOnEvent(m.id, r.ctx.pkgId, r.ctx.date, r.ctx.eventTitle, r.ctx.slot) !== 'on');
+      if(rows.length && rows.every(r=>_maTicks.has(r.key))){
+        rows.forEach(r=>_maTicks.delete(r.key));
+        if(rows.some(r=>r.key === _maOpen)) _maOpen = '';
+      }else if(maAddTicks(_maTicks, rows.map(r=>({ key: r.key, label: maLabel(r.ctx) })))) toast(MA_CAP_MSG);
+      renderMaEvents(); renderMaSum();
+      maRefocus(`[data-maall="${CSS.escape(all.dataset.maall)}"]`);
+      return;
+    }
+    const chip = e.target.closest('[data-machip]');
+    if(chip){
+      const r = _maRows[Number(chip.dataset.machip)]; if(!r || !_maTicks.has(r.key)) return;
+      _maOpen = _maOpen === r.key ? '' : r.key;
+      renderMaEvents();
+      if(_maOpen) maRefocus('#maFee' + r.i);
+      else maRefocus(`.ma-chip[data-machip="${r.i}"]`);
+      return;
+    }
+    const tick = e.target.closest('[data-matick]'); if(!tick || tick.disabled) return;
+    const r = _maRows[Number(tick.dataset.matick)]; if(!r) return;
+    if(_maTicks.has(r.key)){
+      _maTicks.delete(r.key);
+      if(_maOpen === r.key) _maOpen = '';
+    }else if(maAddTicks(_maTicks, [{ key: r.key, label: maLabel(r.ctx) }])){ toast(MA_CAP_MSG); return; }
+    renderMaEvents(); renderMaSum();
+    maRefocus(`[data-matick="${r.i}"]`);
+  });
+  /* typing a fee or a time redraws only the chip and the total — redrawing
+     the list would take the cursor out of the box being typed in */
+  on('#maEvents', 'input', e=>{
+    const m = memberById(_maMid); if(!m) return;
+    const el = e.target.closest('[data-mafee],[data-macall]'); if(!el) return;
+    const r = _maRows[Number(el.dataset.mafee !== undefined ? el.dataset.mafee : el.dataset.macall)];
+    const t = r && _maTicks.get(r.key); if(!t) return;
+    if(el.dataset.mafee !== undefined) t.fee = el.value === '' ? null : Math.max(0, Math.round(Number(el.value)||0));
+    else t.call = el.value || '';
+    const chip = $(`#maEvents .ma-chip[data-machip="${r.i}"]`);
+    if(chip) chip.textContent = maChipText(m, t);
+    renderMaSum();
+  });
+
+  on('#maSave', 'click', async ()=>{
+    const btn = $('#maSave'); if(btn.disabled) return;
+    const m = memberById(_maMid);
+    if(!maIsOutdoor(m)){ toast('Pick who is going first'); return; }
+    if(!_maTicks.size){ toast('Tick at least one event'); return; }
+    /* The sheet can sit open while bookings and crew change underneath it,
+       and live snapshots do not redraw it. Every tick is found again in what
+       is loaded NOW, by what identifies its function, and anything that no
+       longer fits is left out and named. */
+    const fresh = maEventRows(), dropped = [], picks = [];
+    _maTicks.forEach((t, key)=>{
+      const r = fresh.find(x=>x.key === key);
+      if(!r){ dropped.push({ key, label: t.label || 'An event', why: 'it is no longer listed: its date or name changed, or the booking is no longer booked' }); return; }
+      const on = memberOnEvent(m.id, r.ctx.pkgId, r.ctx.date, r.ctx.eventTitle, r.ctx.slot);
+      if(on === 'on'){ dropped.push({ key, label: maLabel(r.ctx), why: `${maFirst(m)} is already on it` }); return; }
+      picks.push({ r, t, soft: on === 'soft' });
+    });
+    /* the screen catches up with what was found, whatever happens next */
+    if(dropped.length){
+      dropped.forEach(d=>_maTicks.delete(d.key));
+      if(!_maTicks.has(_maOpen)) _maOpen = '';
+      renderMaEvents(); renderMaSum();
+    }
+    if(!picks.length){
+      toast(dropped.length === 1 ? `Nothing saved — ${dropped[0].label}: ${dropped[0].why}`
+        : `Nothing saved — none of the ticked events can take ${maFirst(m)} any more`);
+      return;
+    }
+    /* ONE question, and only when something needs a decision */
+    const rate = maRate(m), name = m.name || 'This member', n = picks.length;
+    const items = dropped.map(d=>`<li><b>${esc(d.label)}</b> is left out — ${esc(d.why)}.</li>`);
+    picks.forEach(p=>{
+      const hard = shootClashes(m.id, p.r.ctx.date, p.r.ctx.slot, p.r.ctx.pkgId).hard;
+      if(hard.length) items.push(`<li><b>${esc(maLabel(p.r.ctx))}</b> — already on ${esc(hard[0].eventTitle || 'an event')}${esc(slotSuffix(hard[0].slot))} (${esc(hard[0].clientName || 'another booking')}) that day.</li>`);
+      if(p.soft) items.push(`<li><b>${esc(maLabel(p.r.ctx))}</b> — an older row with no function name may already put them on it.</li>`);
+    });
+    pickClashes(picks.map(p=>p.r.ctx)).forEach(([a, b])=>items.push(`<li><b>${esc(maLabel(a))}</b> and <b>${esc(maLabel(b))}</b> are two bookings at the same time.</li>`));
+    const zero = picks.filter(p=>!maFee(m, p.t));
+    if(zero.length) items.push(`<li><b>${zero.length === n ? (n === 1 ? 'The event' : `All ${n} events`) : maEvWord(zero.length)}</b> at ₹0 — ${esc(zero.map(p=>p.r.ctx.eventTitle || 'Event').join(', '))}.</li>`);
+    if(rate) picks.filter(p=>maFee(m, p.t) > rate * 5).forEach(p=>items.push(`<li><b>${esc(maLabel(p.r.ctx))}</b> at ${inr(maFee(m, p.t))} — more than 5× their usual ${inr(rate)}.</li>`));
+    if(memberPhone10(m).length !== 10) items.push(`<li>${esc(name)} has no 10-digit phone on file, so the crew page will not show these and no notification goes out. The pay rows are still saved.</li>`);
+    if(items.length && !await confirmDialog({
+      title: 'Check before saving',
+      body: `<ul class="ma-cfm">${items.join('')}</ul>`,
+      confirmText: `Assign to ${maEvWord(n)}`, danger: false })) return;
+    if(!maIsOutdoor(memberById(m.id)) || _maMid !== m.id) return;   /* the sheet moved on while the question was up */
+    const notes = $('#maNotes').value.trim();
+    const role = MA_ROLES.includes(_maRole) ? _maRole : maDefaultRole(m);
+    const docs = maGroup(picks.map(p=>newShootAsg(m, p.r.ctx, { role, fee: maFee(m, p.t), callTime: p.t.call || '', notes })));
+    /* Plain auto ids, never one made from member + event: batch.set on an id
+       that already exists would wipe that row's payments[]. A ref is minted
+       on this device, so the demo gets real ones; only the commit is skipped. */
+    const refs = docs.map(()=>doc(collection(db,'assignments')));
+    btn.disabled = true;
+    try{
+      let res = 'ok';
+      if(!DEMO){
+        /* one batch: all of them land, or none do — never half a wedding */
+        const batch = writeBatch(db);
+        docs.forEach((d, i)=>batch.set(refs[i], d));
+        res = await settle(batch.commit());
+      }
+      const sm = settleMsg(res, `${name} is on ${maEvWord(n)} ✓`, `${name} is on ${maEvWord(n)} — saved offline, will sync`);
+      if(!sm.ok){ toast(sm.msg); return; }
+      /* the listener may already hold these rows (a local write raises a
+         snapshot before the server answers): add only the ones it has not */
+      const have = new Set(ASGS.map(a=>a.id));
+      docs.forEach((d, i)=>{ if(!have.has(refs[i].id)) ASGS.unshift({ id: refs[i].id, ...d, updatedAt: null, createdAt: null }); });
+      buzz(); renderTeam(); renderEditTab();
+      closeMa();
+      toastUndo(sm.msg + (DEMO ? ' (demo — not saved)' : ''), ()=>maUndo(refs.map(r=>r.id), name));
+    }catch(err){ toast('Save failed: ' + (err.code||err.message)); }
+    finally{ btn.disabled = !_maTicks.size; }
+  });
+  /* Undo takes the whole save back in one batch — except a row the member has
+     already confirmed or that has money against it: that is no longer a
+     mis-tap, and it stays. The notification may already have gone out. */
+  async function maUndo(ids, name){
+    const keep = ids.map(id=>ASGS.find(a=>a.id === id))
+      .filter(a=>a && (a.status === 'acknowledged' || payGot(a) > 0)).map(a=>a.id);
+    const gone = ids.filter(id=>!keep.includes(id));
+    if(!gone.length){ toast(`Nothing undone — ${name} has already confirmed or been paid on all of them`); return; }
+    try{
+      let res = 'ok';
+      if(!DEMO){
+        const b = writeBatch(db);
+        gone.forEach(id=>b.delete(doc(db,'assignments',id)));
+        res = await settle(b.commit());
+      }
+      if(res === 'denied'){ toast('NOT undone — the server refused the write. Remove them one at a time in Work → Crew.'); return; }
+      const g = new Set(gone);
+      ASGS = ASGS.filter(a=>!g.has(a.id));
+      renderTeam(); renderEditTab();
+      toast(`Undone — ${name} is off ${maEvWord(gone.length)}`
+        + (keep.length ? `; ${keep.length} kept (already confirmed or paid)` : '')
+        + '. They may already have had the notification.');
+    }catch(err){ toast('Undo failed'); }
+  }
 
   /* ---------- pay tracker: pay crew in instalments against one assignment ---------- */
   let _cpId = null, _cpMode = 'online';

@@ -295,6 +295,19 @@ html.fs-app .ejt-new textarea{font-size:16px}
 .ackbtn:disabled{opacity:.7;cursor:default}
 .ackdone{margin-top:.8rem;text-align:center;color:var(--ok);font-size:.82rem}
 .undobtn{background:none;border:0;color:var(--mut);text-decoration:underline;cursor:pointer;font-size:.76rem;padding:.2em .4em}
+/* Confirm all: the studio can put one member on every function of a wedding
+   in one save, which lands here as a row of cards each wanting its Confirm.
+   One bar above them does the lot. Amber, like the "please confirm" chip,
+   because it is the same request; the question wraps rather than clips. */
+.ackall{background:var(--panel);border:1px solid rgba(255,176,84,.4);border-radius:16px;padding:.8rem .95rem;margin:0 0 .9rem}
+.ackall p{font-size:.86rem;line-height:1.45;color:var(--text);overflow-wrap:anywhere}
+.ackall p b{color:#ffb054;font-weight:600}
+.ackall .ackbtn{margin-top:.65rem;min-height:44px}
+.ackall .aa-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.65rem}
+.ackall .aa-row .ackbtn{flex:1 1 9rem;width:auto;margin-top:0}
+.ackall .aa-no{flex:0 1 auto;min-height:44px;background:none;border:1px solid var(--line);color:var(--mut);
+  border-radius:40px;padding:.6em 1.3em;font-size:.85rem;cursor:pointer}
+.ackall .aa-no:active{background:rgba(255,255,255,.06)}
 
 .paycard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;margin-bottom:.9rem}
 .paycard h3{color:var(--gold-b);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.55rem;font-family:var(--sans);font-weight:500}
@@ -511,6 +524,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 html.fs-app[data-tab]:not([data-tab="shoots"]) #roleSw,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #cdCard,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upHead,
+html.fs-app[data-tab]:not([data-tab="shoots"]) #ackAll,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upList,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #availBox,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #pastWrap,
@@ -755,6 +769,9 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     <div class="stats2" id="crewStats" hidden></div>
 
     <div class="grp" id="upHead" hidden>Upcoming events<b id="upCount"></b></div>
+    <!-- Confirm all, when two or more upcoming shoots still want a Confirm.
+         Outside #upList so the first card there keeps its highlight. -->
+    <div class="ackall" id="ackAll" hidden></div>
     <div id="upList"><div class="skel"></div><div class="skel"></div></div>
     <div id="editWrap" hidden>
       <div class="grp">✂️ Editing<b id="editCount"></b></div>
@@ -1122,6 +1139,9 @@ if(!CONFIGURED){
   let _pastOpen = false, _phone10 = '', _pretty = '', _pushFor = '', _uid = '';
   /* showing the App Review sample: nothing on screen has a document behind it */
   let _demo = false;
+  /* Confirm all (renderAckAll): the bar is asking "Confirm these?", and the
+     ids whose writes are still out (empty when none) */
+  let _ackAllAsk = false, _ackAllBusy = new Set();
   /* profiles/{uid} for the Me tab (loadProfile): undefined not read yet,
      null none, false the read failed (unknown, not "none") */
   let PROFILE, _profFor = '', _profGen = 0;
@@ -1137,6 +1157,7 @@ if(!CONFIGURED){
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
     _pushFor = '';
     _demo = false;
+    _ackAllAsk = false; _ackAllBusy = new Set();
     PROFILE = undefined; _profFor = ''; _profGen++; _rolesAsked = false;
     availOff();    /* the calendar's month listener goes with the shoots' */
     lockReset();   /* the next sign-in meets the store app's lock again */
@@ -2503,6 +2524,7 @@ if(!CONFIGURED){
     $('#upList').innerHTML = up.length ? up.map(a=>asgCard(a, false)).join('')
       : (_asgsLoaded ? '<div class="empty">Nothing scheduled yet — new assignments from Fantasy Studio will appear here.</div>'
                      : '<div class="skel"></div><div class="skel"></div>');
+    renderAckAll(up);
     $('#pastWrap').hidden = !past.length;
     $('#pastCount').textContent = past.length;
     $('#pastList').hidden = !_pastOpen;
@@ -2958,7 +2980,7 @@ if(!CONFIGURED){
   async function ackAsg(a, b, msg){
     if(b){ b.disabled = true; b.textContent = 'Confirming…'; }
     try{
-      if(!_demo) await updateDoc(doc(db,'assignments',a.id), { status:'acknowledged', ackAt: serverTimestamp() });
+      await ackWrite(a);
       a.status = 'acknowledged';
       render();
       toast(msg || 'Confirmed ✓ — the studio can see it');
@@ -2966,6 +2988,97 @@ if(!CONFIGURED){
       if(b){ b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment"; }
       toast(navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal');
     }
+  }
+  /* The rules let a member change exactly two keys on their own assignment
+     to confirm it, status to 'acknowledged' and ackAt to the server's time,
+     so every Confirm (a card, the push, Confirm all) goes through this one
+     write. The sample (Apple's review number, the test hook) writes nothing. */
+  function ackWrite(a){
+    return _demo ? Promise.resolve()
+      : updateDoc(doc(db,'assignments',a.id), { status:'acknowledged', ackAt: serverTimestamp() });
+  }
+
+  /* ---------- Confirm all ----------
+     Two or more upcoming shoots still waiting for a Confirm get one button
+     above the cards. It asks first, on the bar itself and naming the shoots,
+     because a Confirm is the member's word to the studio that they will be
+     there; then it makes each card's own write (ackWrite) and says how many
+     the server took, so a refused write is never counted as confirmed.
+     Shoots only: an editing job is confirmed on its own card, as before.
+     When every one came from the same save in the panel (groupId) they are
+     "new shoots"; without group fields it works just the same. */
+  const ACKALL_NAMES = 4;   /* shoots named in the question before "+ N more" */
+  const ackOrder = (x,y) => (x.date||'') < (y.date||'') ? -1 : (x.date||'') > (y.date||'') ? 1
+    : slotRank(x.slot) - slotRank(y.slot) || String(x.eventTitle||'').localeCompare(String(y.eventTitle||''));
+  function renderAckAll(up){
+    const box = $('#ackAll');
+    const pend = up.filter(a=>a.status !== 'acknowledged').sort(ackOrder);
+    /* "Confirming…" only while a write we sent still shows as waiting. Off
+       signal updateDoc does not settle until the server answers, but the
+       listener redraws the cards as confirmed from the phone's own copy at
+       once, so the bar steps aside the same way a card's button does; the
+       toast in ackAll still waits for the server, and a refused write comes
+       back through the listener as waiting again. */
+    const busy = pend.filter(a=>_ackAllBusy.has(a.id)).length;
+    if(busy){
+      box.hidden = false;
+      box.innerHTML = `<button type="button" class="ackbtn" disabled>Confirming ${busy} shoot${busy === 1 ? '' : 's'}…</button>`;
+      return;
+    }
+    const n = pend.length;
+    if(n < 2){ _ackAllAsk = false; box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    if(!_ackAllAsk){
+      const g = pend[0].groupId;
+      const oneSave = typeof g === 'string' && g !== '' && pend.every(a=>a.groupId === g);
+      box.innerHTML = (oneSave
+        ? `<p><b>${n} new shoots</b> from the studio — confirm them all in one go</p>`
+        : `<p><b>${n} shoots</b> are waiting for your confirmation</p>`)
+        + `<button type="button" class="ackbtn" data-ackall>✓ Confirm all ${n}</button>`;
+      return;
+    }
+    /* the ids ride on the Yes button, so it confirms exactly the shoots the
+       question named even if a snapshot redraws the list meanwhile */
+    const named = pend.slice(0, ACKALL_NAMES).map(a=>esc((a.eventTitle || 'Event') + ' ' + fmtShort(a.date)));
+    const more = n - named.length;
+    box.innerHTML = `<p>Confirm ${n} shoots: ${named.join(', ')}${more ? ` + ${more} more` : ''}?</p>
+      <div class="aa-row">
+        <button type="button" class="ackbtn" data-ackall-yes="${esc(pend.map(a=>a.id).join(' '))}">✓ Yes, confirm all ${n}</button>
+        <button type="button" class="aa-no" data-ackall-no>Cancel</button>
+      </div>`;
+  }
+  $('#ackAll').addEventListener('click', e=>{
+    if(e.target.closest('[data-ackall]')){
+      _ackAllAsk = true; render();
+      const y = $('#ackAll [data-ackall-yes]'); if(y) y.focus();
+      return;
+    }
+    if(e.target.closest('[data-ackall-no]')){ _ackAllAsk = false; render(); return; }
+    const b = e.target.closest('[data-ackall-yes]'); if(!b || b.disabled) return;
+    ackAll(b.dataset.ackallYes.split(' ').filter(Boolean));
+  });
+  async function ackAll(ids){
+    _ackAllAsk = false;
+    /* one confirmed meanwhile (its own card, the push) needs no second write */
+    const rows = ids.map(id=>ASGS.find(a=>a.id === id)).filter(a=>a && a.status !== 'acknowledged');
+    if(!rows.length){ render(); return; }
+    rows.forEach(a=>_ackAllBusy.add(a.id));
+    render();
+    const res = await Promise.allSettled(rows.map(ackWrite));
+    let ok = 0;
+    res.forEach((r, i)=>{
+      if(r.status !== 'fulfilled') return;
+      ok++;
+      /* a snapshot may have rebuilt ASGS while the writes were out */
+      rows[i].status = 'acknowledged';
+      const cur = ASGS.find(a=>a.id === rows[i].id); if(cur) cur.status = 'acknowledged';
+    });
+    rows.forEach(a=>_ackAllBusy.delete(a.id));
+    render();
+    const bad = rows.length - ok;
+    toast(!bad ? (ok === 1 ? 'Confirmed ✓ — the studio can see it' : `All ${ok} confirmed ✓ — the studio can see them`)
+      : ok ? `${ok} confirmed ✓ · ${bad} could not be saved — ${navigator.onLine ? 'try again' : 'you are offline, try again with signal'}`
+      : (navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal'));
   }
 
   /* the calendar button on the countdown card and on the upcoming cards */

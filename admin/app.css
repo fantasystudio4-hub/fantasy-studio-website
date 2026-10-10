@@ -897,6 +897,70 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .copycrew{width:100%;background:none;border:1.5px dashed var(--line);color:var(--gold-b);border-radius:var(--r-md);padding:.55em;cursor:pointer;font-size:var(--fs-md);margin:0 0 .8rem;font-family:var(--sans)}
 .copycrew:active{background:var(--gold-t2)}
 @media(hover:hover){ .copycrew:hover{border-color:var(--gold)} }
+#asMore{min-height:var(--tap)}
+
+/* ---- one person → many events (#maModal) ----
+   The crew picker's look, turned round: one person, a list of events. Event
+   names are long ("Reception · Lakshmi Priyanka & Venkata Subrahmanyam"), so
+   the rows here are one column and WRAP — the picker's nowrap + ellipsis
+   would cut the very part that says which function it is. */
+.ma-modal .who{padding-right:2.6rem;line-height:1.5}
+.ma-modal .who b{color:var(--text);font-weight:600}
+.ma-swap{background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);
+  padding:.25em .8em;margin-left:.2rem;min-height:var(--tap);cursor:pointer;font:inherit;font-size:var(--fs-sm)}
+.ma-swap:active{background:var(--gold-t2)}
+.ma-lbl{font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-b);margin:0 0 .4rem}
+.crewpick.ma-list{grid-template-columns:1fr;margin-bottom:.4rem}
+.ma-list .cp-t b,.ma-list .cp-t em,.ma-evs .cp-t b,.ma-evs .cp-t em{white-space:normal;overflow:visible;overflow-wrap:anywhere}
+.ma-evs{display:flex;flex-direction:column;gap:.4rem;margin:0 0 .9rem}
+/* a month heading, and under it one header per booking with its "all N" */
+.ma-mon{font-size:var(--fs-xs);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin:.55rem 0 0}
+.ma-mon:first-child{margin-top:0}
+.ma-grp{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:.35rem;padding:.2rem 0 .1rem;border-top:1px dashed var(--line)}
+.ma-gt{flex:1 1 160px;min-width:0}
+.ma-gt b{display:block;color:var(--text);font-size:var(--fs-base);font-weight:600;overflow-wrap:anywhere}
+.ma-gt em{display:block;font-style:normal;font-size:var(--fs-xs);color:var(--mut)}
+.ma-all{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--gold-b);border-radius:var(--r-pill);
+  padding:.3em .9em;min-height:var(--tap);cursor:pointer;font-family:var(--sans);font-size:var(--fs-sm);white-space:nowrap}
+.ma-all.on{background:rgba(var(--gold-rgb),.18);border-color:var(--gold)}
+.ma-all:active{transform:scale(.97)}
+.ma-ev{display:flex;flex-direction:column;gap:.3rem}
+.ma-ev .cpick{width:100%;min-height:var(--tap)}
+.ma-ev .cp-t em.warn{color:var(--warn)}
+/* the tick box on the right: the row is a toggle, and should look like one */
+.ma-box{flex:0 0 auto;display:grid;place-items:center;width:22px;height:22px;border:1.5px solid var(--line-2);
+  border-radius:var(--r-xs);color:var(--ink-0);font-size:var(--fs-sm);font-weight:700}
+.cpick.on .ma-box{background:var(--grad-gold);border-color:transparent}
+.cpick.here .ma-box{visibility:hidden}
+/* "₹6,000 · ⏰ add time" — this event's own fee and call time */
+.ma-chip{align-self:flex-start;max-width:100%;background:var(--gold-t1);border:1px dashed var(--line);color:var(--gold-b);
+  border-radius:var(--r-pill);padding:.3em .9em;min-height:var(--tap);margin-left:1.4rem;cursor:pointer;
+  font-family:var(--sans);font-size:var(--fs-sm);text-align:left;overflow-wrap:anywhere}
+.ma-chip[aria-expanded="true"]{border-style:solid;border-color:var(--gold)}
+.ma-ov{margin-left:1.4rem;padding:.6rem .65rem .2rem;border:1px solid var(--line);border-radius:var(--r-md);background:var(--field)}
+.ma-ov .fld{margin-bottom:.6rem}
+.ma-ov label{text-transform:none;letter-spacing:.02em;overflow-wrap:anywhere}
+.ma-ov .btn{width:100%;margin-bottom:.45rem}
+/* N events · ₹X and the button ride the bottom edge, like every sheet's Save */
+.ma-foot{position:sticky;bottom:-1.4rem;z-index:3;background:var(--panel);padding:.55rem 0 0;
+  box-shadow:0 -14px 18px -8px var(--panel), 0 0 0 6px var(--panel)}
+@media(max-width:699px){ .ma-foot{bottom:calc(-1.4rem - env(safe-area-inset-bottom))} }
+.ma-sum{font-size:var(--fs-md);color:var(--mut);margin:0 0 .45rem;text-align:center}
+.ma-sum b{color:var(--gold-b);font-weight:600}
+.ma-sum em{font-style:normal;color:var(--warn)}
+.ma-foot .gbtn{white-space:normal;line-height:1.25}
+.ma-foot .gbtn:disabled{opacity:.45;cursor:default;box-shadow:none}
+.ma-note{font-size:var(--fs-sm);color:var(--mut);text-align:center;margin:.4rem 0 0}
+/* the one question before saving lists everything that needs a decision */
+.ma-cfm{margin:.2rem 0 0;padding-left:1.1rem;white-space:normal}
+.ma-cfm li{margin:.25rem 0}
+/* a third ring button (📅) on the squad card: below 400px the name column
+   would shrink under the 83px floor .sq-t is sized for (73px at 360px, which
+   clipped the rate off the role line), so the buttons drop to their own row */
+@media(max-width:399px){
+  .sq-h:has(.sq-acts > :nth-child(3)){flex-wrap:wrap}
+  .sq-h:has(.sq-acts > :nth-child(3)) .sq-acts{flex-basis:100%;justify-content:flex-end}
+}
 
 .lbtog{margin-left:auto;display:inline-flex;gap:.3rem}
 .lbtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:var(--r-pill);padding:.22em .7em;font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}

@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4b" />
-<link rel="stylesheet" href="app.css?v=p4s" />
+<link rel="stylesheet" href="app.css?v=p4u" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -446,6 +446,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="fchips" id="workTabs"></div>
       <div id="workBody">
         <div id="workUp">
+          <!-- the person first: tick all their events, one save -->
+          <button class="addrow" id="maAdd" type="button" style="margin:0 0 .7rem">👤 One person → many events</button>
           <p class="sub" id="workHint"></p>
           <div id="teamEvents"></div>
         </div>
@@ -843,6 +845,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <input id="tmPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
   <div class="fld"><label>Pay per event (₹)</label><input id="tmRate" type="number" min="0" inputmode="numeric" /></div>
   <button class="gbtn" id="tmSave" type="button">Save</button>
+  <button class="btn btn--sm btn--ghost" id="tmAssign" type="button" hidden style="width:100%;margin-top:.55rem">📅 Put on several events</button>
   <button class="btn btn--sm btn--ghost" id="tmToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
 
@@ -859,6 +862,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="crewpick" id="asPick"></div>
   </div>
   <div class="as-warn" id="asConflict" hidden></div>
+  <!-- one outdoor shooter picked: carry on to the rest of their events -->
+  <button class="copycrew" id="asMore" type="button" hidden></button>
   <!-- picking several hides Role and Pay, because each member keeps their own.
        This is what that actually works out to, before it is saved. -->
   <div class="as-multi" id="asMulti" hidden></div>
@@ -883,6 +888,34 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
   <button class="btn btn--sm btn--ghost" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
+</div>
+
+<!-- One person → many events: the assign sheet turned round. Pick the
+     person, tick their functions, one save. Outdoor shoots only — editing
+     keeps ＋ Assign editing. Filled by openMa / renderMa in app.js. -->
+<div class="pay-backdrop" id="maBackdrop"></div>
+<div class="pay-modal ma-modal" id="maModal" role="dialog" aria-modal="true" aria-labelledby="maTitle">
+  <button class="pay-close" id="maClose" type="button" aria-label="Close">&times;</button>
+  <h3 id="maTitle">One person → many events</h3>
+  <div class="who" id="maWho"></div>
+  <div class="as-warn" id="maWarn" hidden></div>
+  <div id="maStep1">
+    <div class="ma-lbl" id="maPeopleLbl">Who is going</div>
+    <div class="crewpick ma-list" id="maPeople" role="group" aria-labelledby="maPeopleLbl"></div>
+  </div>
+  <div id="maStep2" hidden>
+    <div class="fld"><label for="maRole">Role on every ticked event</label><select id="maRole"></select></div>
+    <div class="ma-lbl" id="maEvLbl">Upcoming booked events</div>
+    <input id="maFilter" class="crewfilter" type="search" placeholder="Filter by client, quote or function…" aria-label="Filter events" hidden autocomplete="off" />
+    <div class="ma-evs" id="maEvents" role="group" aria-labelledby="maEvLbl"></div>
+    <div class="fld"><label for="maNotes">Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member, on every event)</span></label>
+      <textarea id="maNotes" rows="2"></textarea></div>
+    <div class="ma-foot">
+      <div class="ma-sum" id="maSum" aria-live="polite"></div>
+      <button class="gbtn" id="maSave" type="button" disabled>Assign</button>
+      <p class="ma-note" id="maNote" hidden></p>
+    </div>
+  </div>
 </div>
 
 <!-- The three money sheets (Transactions, Money Analytics, Insights) are
@@ -1024,7 +1057,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p4t"></script>
+<script type="module" src="app.js?v=p4u"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is
