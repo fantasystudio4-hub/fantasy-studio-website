@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "in.fantasystudio.app",
+      "sha256_cert_fingerprints": [
+        "C4:31:F5:36:9D:3C:49:7F:81:C5:7B:84:51:F3:54:4E:92:67:CF:03:69:F0:8C:F6:68:47:A8:87:60:77:EB:72",
+        "FC:9E:EC:F6:5D:EC:E9:70:AA:F6:2C:B1:0A:37:3B:0C:33:BA:9D:63:8B:CD:1C:29:84:3B:C3:C9:51:50:D7:2A"
+      ]
+    }
+  }
+]

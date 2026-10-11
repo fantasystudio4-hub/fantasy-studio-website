@@ -1,0 +1,48 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "VYY93J4JY5.in.fantasystudio.app"
+        ],
+        "components": [
+          {
+            "/": "/app",
+            "comment": "The share link: opens the app (the store if it is not installed)."
+          },
+          {
+            "/": "/app/"
+          },
+          {
+            "/": "/get"
+          },
+          {
+            "/": "/get/*"
+          },
+          {
+            "/": "/start/*",
+            "comment": "The app's own pages: the app opens on that page."
+          },
+          {
+            "/": "/client/*"
+          },
+          {
+            "/": "/team/*"
+          },
+          {
+            "/": "/studio/*"
+          },
+          {
+            "/": "/portfolio/*"
+          },
+          {
+            "/": "/profile/*"
+          },
+          {
+            "/": "/builder/*"
+          }
+        ]
+      }
+    ]
+  }
+}
