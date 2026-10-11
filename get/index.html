@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <!-- The one link to share for the app: https://www.fantasystudio.in/app
-     (vercel.json rewrites /app here; /get/ works too). Each phone goes to
-     its own store before anything paints: iPhone/iPad → App Store, Android →
-     Google Play. A computer stays and sees both stores plus a QR code that
+     (vercel.json rewrites /app here; /get/ works too). Each phone goes on to
+     its own store as soon as the page is read: iPhone/iPad → App Store,
+     Android → Google Play. A computer stays and sees both stores plus a QR code that
      opens this same link on a phone. The store app itself has nothing to
      get here, so it goes on to its own entry page.
      ?from=<source> (qr, instagram, card…) reaches Google Play as utm_source,
@@ -44,10 +44,33 @@
   window.FS_PLAY = play;
   html.classList.add(ios ? 'is-ios' : android ? 'is-android' : 'is-desk');
   if(invite) html.classList.add('invite');
+  /* the jump itself waits for the whole page (below): a hand-off that does not
+     happen (Safari's "Open in App Store?" cancelled, an in-app browser that
+     blocks it, Back from the store) aborts that navigation and leaves this
+     page as it was. Sent from here, before the parser reached <body>, that
+     was a blank page with no button. */
   if((ios || android) && !invite && !(q && q.has('stay'))){
     html.classList.add('going');
-    location.replace(ios ? APPLE : play);
+    window.FS_GO = ios ? APPLE : play;
   }
+  /* once the page is read. DOMContentLoaded, because a script placed after
+     the fonts stylesheet would wait for that download first. The Play
+     button carries the same ?from, an invite names its sender (as text
+     only), and a phone that is still here 3 s after the jump was not taken
+     to its store (some in-app browsers hold it back): say so, and point at
+     the button. Then the jump. */
+  document.addEventListener('DOMContentLoaded', function(){
+    var pb = document.getElementById('playBtn'), h = document.getElementById('invH1');
+    if(pb && window.FS_PLAY) pb.href = window.FS_PLAY;
+    if(invite){
+      if(by && h) h.textContent = by + ' invited you to Fantasy Studio';
+      document.title = (by ? by + ' invited you' : 'You’re invited') + ' · Fantasy Studio';
+    }
+    if(window.FS_GO){
+      setTimeout(function(){ if(document.visibilityState !== 'hidden') html.classList.add('late'); }, 3000);
+      location.replace(window.FS_GO);
+    }
+  });
 })();
 </script>
 <title>Get the Fantasy Studio app</title>
@@ -182,23 +205,5 @@ html.is-desk .qr{display:block}
 
   <a class="web" href="/">Continue to the website →</a>
 </main>
-<script>
-/* the Play button carries the same ?from as the redirect, and a phone that
-   is still here after a few seconds was not taken to its store (some in-app
-   browsers hold it back): say so, and point at the button */
-(function(){
-  var html = document.documentElement, pb = document.getElementById('playBtn');
-  if(pb && window.FS_PLAY) pb.href = window.FS_PLAY;
-  /* an invite names its sender, as text only (cleaned in <head>) */
-  var by = window.FS_BY, h = document.getElementById('invH1');
-  if(html.classList.contains('invite')){
-    if(by && h) h.textContent = by + ' invited you to Fantasy Studio';
-    document.title = (by ? by + ' invited you' : 'You’re invited') + ' · Fantasy Studio';
-  }
-  if(html.classList.contains('going')) setTimeout(function(){
-    if(document.visibilityState !== 'hidden') html.classList.add('late');
-  }, 3000);
-})();
-</script>
 </body>
 </html>
