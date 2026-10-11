@@ -499,7 +499,9 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       <a class="me-nudge" id="meNudge" href="../profile/?role=client&amp;next=client%2F" hidden>
         <b>Complete your profile</b><span id="meNudgeText">Add your photo and email.</span>
       </a>
-      <div class="sec"><a class="merow" id="meEdit" href="../profile/?role=client&amp;next=client%2F"><span>Edit profile</span><b>›</b></a></div>
+      <div class="sec"><a class="merow" id="meEdit" href="../profile/?role=client&amp;next=client%2F"><span>Edit profile</span><b>›</b></a>
+        <!-- the app link with this client's name on it, through the phone's own share sheet (invite()) -->
+        <button class="merow" id="meInvite" type="button"><span>Invite family &amp; friends</span><b>›</b></button></div>
     </div>
     <!-- Only when there is more than one booking: every booking is open on
          this page now, so a client with three of them needs a way to reach the
@@ -1165,6 +1167,37 @@ function fillMe(user, pkgs){
   switchRow(user);
   lockRow();
 }
+
+/* ---------- store app: Invite family & friends ----------
+   The app link (www.fantasystudio.in/app, get/index.html) with this
+   client's name on it, through the phone's own share sheet: the page it
+   opens says "<name> invited you to Fantasy Studio" and offers the store
+   for that phone. The name is the one on the Me card (the profile's, else
+   the booking's), its first three words; no name, a plain invite. The
+   iPhone app has navigator.share, Android's web view does not, so the
+   Share plugin opens the same sheet there; a build without it copies the
+   message instead. */
+const INVITE_TEXT = 'I booked Fantasy Studio for our photos and videos. Have a look at their app:';
+function inviteUrl(){
+  const p = _prof.p;
+  const name = ((p && String(p.name||'').trim()) || _meName || '').split(/\s+/).filter(Boolean).slice(0, 3).join(' ');
+  return 'https://www.fantasystudio.in/app?' + (name ? 'by=' + encodeURIComponent(name) : 'from=invite');
+}
+function invite(){
+  const url = inviteUrl(), data = { title:'Fantasy Studio app', text:INVITE_TEXT, url };
+  const copy = ()=>{
+    if(navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(INVITE_TEXT + ' ' + url).then(()=>toast('Invite copied. Paste it in WhatsApp.'), ()=>prompt('Copy this link:', url));
+    else prompt('Copy this link:', url);
+  };
+  const S = window.FSApp && FSApp.native ? FSApp.native.plugin('Share') : null;
+  try{
+    if(navigator.share) navigator.share(data).catch(()=>{});
+    else if(S && S.share) S.share(data).catch(()=>{});
+    else copy();
+  }catch(e){ copy(); }
+}
+if(FS_APP) $('#meInvite').addEventListener('click', invite);
 
 /* ---------- store app: Face ID / Touch ID lock ----------
    Off until the client turns it on from the Me tab (fs_lock_client in

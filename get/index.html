@@ -12,7 +12,12 @@
      ?from=<source> (qr, instagram, card…) reaches Google Play as utm_source,
      so Play Console counts installs per source. ?stay keeps a phone on this
      page, to look at it or test it. Paths here are root-relative because
-     the page is served at /app as well as /get/. -->
+     the page is served at /app as well as /get/.
+     A client's invite (the app's Me › Invite family & friends) adds
+     ?by=<their name>: the page then says who sent it and waits for a tap
+     on the store button rather than leaving at once. The name is cleaned
+     to letters and written as text, never markup, and it stays on this
+     page (Google Play only hears utm_source=invite). -->
 <script>
 (function(){
   var html = document.documentElement, ua = navigator.userAgent;
@@ -21,6 +26,16 @@
   var PLAY = 'https://play.google.com/store/apps/details?id=in.fantasystudio.app';
   var q = null; try{ q = new URLSearchParams(location.search); }catch(e){}
   var from = String((q && q.get('from')) || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
+  var by = String((q && q.get('by')) || '');
+  try{ by = by.replace(new RegExp("[^\\p{L}\\p{M}'&. -]", 'gu'), ' '); }catch(e){ by = by.replace(/[^A-Za-z'&. -]/g, ' '); }
+  by = by.replace(/\s+/g, ' ').trim();
+  /* at most 24 characters, cut between words (one long word is cut short) */
+  var chars = Array.from ? Array.from(by) : by.split('');
+  if(chars.length > 24){ by = chars.slice(0, 25).join(''); by = /\s/.test(by) ? by.replace(/\s+\S*$/, '') : chars.slice(0, 24).join(''); }
+  by = by.replace(/^[\s'&.-]+|[\s'&-]+$/g, '');
+  var invite = !!by || from === 'invite';
+  if(invite && !from) from = 'invite';
+  window.FS_BY = by;
   var play = from ? PLAY + '&referrer=' + encodeURIComponent('utm_source=' + from + '&utm_medium=app_link') : PLAY;
   var android = /android/i.test(ua);
   /* an iPad on iPadOS 13+ says it is a Mac, so a touch Mac is an iPad —
@@ -28,7 +43,8 @@
   var ios = !android && (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
   window.FS_PLAY = play;
   html.classList.add(ios ? 'is-ios' : android ? 'is-android' : 'is-desk');
-  if((ios || android) && !(q && q.has('stay'))){
+  if(invite) html.classList.add('invite');
+  if((ios || android) && !invite && !(q && q.has('stay'))){
     html.classList.add('going');
     location.replace(ios ? APPLE : play);
   }
@@ -79,8 +95,12 @@ body{
 main{width:100%;max-width:420px;text-align:center}
 .logo-mark{display:block;width:76px;height:76px;margin:0 auto 1.1rem}
 .eyebrow{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.45rem}
-h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.65rem,6.5vw,2.25rem);line-height:1.15;color:#fff;margin-bottom:.6rem}
+h1{font-family:var(--serif);font-weight:700;font-size:clamp(1.65rem,6.5vw,2.25rem);line-height:1.15;color:#fff;margin-bottom:.6rem;text-wrap:balance}
 .lead{color:var(--mut);font-size:.98rem;margin:0 auto 1.4rem;max-width:30em}
+/* an invite has its own heading and line (who sent it, what the studio is) */
+.inv{display:none}
+html.invite .std{display:none}
+html.invite .inv{display:block}
 
 /* a phone on its way to the store: one calm line, the button as a fallback */
 .status{display:none;align-items:center;justify-content:center;gap:.6rem;color:var(--gold-b);font-size:.92rem;margin:-.4rem 0 1.1rem}
@@ -120,6 +140,7 @@ html.is-desk .qr{display:block}
   html.is-desk main{max-width:760px;display:grid;grid-template-columns:1fr auto;column-gap:3rem;align-items:center;text-align:left}
   html.is-desk .logo-mark{margin:0 0 1.1rem}
   html.is-desk .lead{margin-left:0}
+  html.is-desk main > *{grid-column:1}
   html.is-desk .qr{grid-column:2;grid-row:1 / span 7;margin:0}
   html.is-desk .web{margin-left:-.6rem}
 }
@@ -136,8 +157,10 @@ html.is-desk .qr{display:block}
     <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
   </svg>
   <p class="eyebrow">Fantasy Studio App</p>
-  <h1>Your wedding, in your pocket</h1>
-  <p class="lead">Build your package, see your booking, and get shoot-day updates on your phone.</p>
+  <h1 class="std">Your wedding, in your pocket</h1>
+  <h1 class="inv" id="invH1">You’re invited to Fantasy Studio</h1>
+  <p class="lead std">Build your package, see your booking, and get shoot-day updates on your phone.</p>
+  <p class="lead inv">Wedding photography and films in Hyderabad since 2012. Get the app to build your package and see your price straight away.</p>
 
   <p class="status" role="status"><i class="spin" aria-hidden="true"></i><span class="to-ios">Opening the App Store…</span><span class="to-android">Opening Google Play…</span><span class="late">Didn’t open? Tap the button below.</span></p>
 
@@ -166,6 +189,12 @@ html.is-desk .qr{display:block}
 (function(){
   var html = document.documentElement, pb = document.getElementById('playBtn');
   if(pb && window.FS_PLAY) pb.href = window.FS_PLAY;
+  /* an invite names its sender, as text only (cleaned in <head>) */
+  var by = window.FS_BY, h = document.getElementById('invH1');
+  if(html.classList.contains('invite')){
+    if(by && h) h.textContent = by + ' invited you to Fantasy Studio';
+    document.title = (by ? by + ' invited you' : 'You’re invited') + ' · Fantasy Studio';
+  }
   if(html.classList.contains('going')) setTimeout(function(){
     if(document.visibilityState !== 'hidden') html.classList.add('late');
   }, 3000);
