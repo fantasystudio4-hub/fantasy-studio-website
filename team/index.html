@@ -1807,6 +1807,7 @@ if(!CONFIGURED){
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
         ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
         <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
+        ${(Number(a.heads)||1) > 1 ? `<div class="ln"><span>People</span><span>You + ${Number(a.heads) - 1} — ${Number(a.heads)} of you on this</span></div>` : ''}
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
       ${past ? '' : (seen

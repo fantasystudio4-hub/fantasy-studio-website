@@ -868,6 +868,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
        This is what that actually works out to, before it is saved. -->
   <div class="as-multi" id="asMulti" hidden></div>
   <div class="fld" data-solo><label>Role for this event</label><select id="asRole"></select></div>
+  <!-- a member who brings their own second shooter: one row, one fee (the
+       total for all of them), counted as that many against what the event
+       needs. Editors are always one, so this hides with the call time. -->
+  <div class="fld" data-solo data-shootonly><label>How many people they bring <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(the pay below is for all of them)</span></label>
+    <select id="asHeads"><option value="1">Just them (1)</option><option value="2">2 people — them + 1</option><option value="3">3 people — them + 2</option><option value="4">4 people — them + 3</option><option value="5">5 people — them + 4</option></select></div>
   <div class="fld" data-shootonly><label>Call time</label><input id="asCall" type="time" /></div>
   <!-- The editing deadline was asked for here AND set on the job in the
        Editing tab, so one edit had two dates that could disagree and nothing
@@ -905,6 +910,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   </div>
   <div id="maStep2" hidden>
     <div class="fld"><label for="maRole">Role on every ticked event</label><select id="maRole"></select></div>
+    <div class="fld"><label for="maHeads">How many people they bring <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(each event's fee is for all of them)</span></label>
+      <select id="maHeads"><option value="1">Just them (1)</option><option value="2">2 people — them + 1</option><option value="3">3 people — them + 2</option><option value="4">4 people — them + 3</option><option value="5">5 people — them + 4</option></select></div>
     <div class="ma-lbl" id="maEvLbl">Upcoming booked events</div>
     <input id="maFilter" class="crewfilter" type="search" placeholder="Filter by client, quote or function…" aria-label="Filter events" hidden autocomplete="off" />
     <div class="ma-evs" id="maEvents" role="group" aria-labelledby="maEvLbl"></div>

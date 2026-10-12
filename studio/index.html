@@ -1690,7 +1690,7 @@ function crewFor(x, ev){
 function crewChips(list){
   if(!list.length) return '';
   return `<div class="crewrow">${list.map(c=>
-    `<span class="crewchip">${esc(c.name||'Crew')}${c.role ? ` <i>· ${esc(c.role)}</i>` : ''}</span>`).join('')}</div>`;
+    `<span class="crewchip">${esc(c.name||'Crew')}${(Number(c.heads)||1) > 1 ? ' ×' + Number(c.heads) : ''}${c.role ? ` <i>· ${esc(c.role)}</i>` : ''}</span>`).join('')}</div>`;
 }
 
 /* Where the job has got to, read-only. The partner used to have to ring the

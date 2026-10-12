@@ -424,7 +424,8 @@ export const assignments = [
   asg('as02', 'pk01', team[1], iso(0), 'Haldi', 'cinematography', 'acknowledged', 25000, 0),
   /* today's Sangeet — wants 2 photo + 2 cine + LED, has 2 people: a real gap */
   asg('as03', 'pk01', team[0], iso(0), 'Sangeet', 'photography', 'acknowledged', 18000, 0),
-  asg('as04', 'pk01', team[5], iso(0), 'Sangeet', 'cinematography', 'pending', 24000, 0),
+  /* one member bringing their own second shooter: one row, ×2 against the need */
+  { ...asg('as04', 'pk01', team[5], iso(0), 'Sangeet', 'cinematography', 'pending', 24000, 0), heads: 2 },
   /* tomorrow's Wedding — wants 3 photo + 2 cine + drone, has 2: the biggest gap */
   asg('as05', 'pk01', team[2], iso(1), 'Wedding', 'photography', 'pending', 16000, 0),
   asg('as06', 'pk01', team[3], iso(1), 'Wedding', 'drone', 'acknowledged', 22000, 0),

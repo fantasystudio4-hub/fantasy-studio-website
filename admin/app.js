@@ -5840,6 +5840,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const exact = rows.filter(a=>String(a.eventTitle||'').trim().toLowerCase() === t);
     return exact.length ? exact : rows.filter(a=>!a.eventTitle);
   }
+  /* One row can stand for more than one pair of hands. A member who brings
+     their own second shooter is on the event ONCE — one row, one confirm,
+     one fee that is the total for all of them — but counts for two against
+     what the event needs. heads is how many; absent or 1 is just them. */
+  const HEADS_MAX = 5;
+  const headsOf = a => Math.max(1, Math.min(HEADS_MAX, Math.round(Number((a||{}).heads)||1)));
+  const headsTag = a => headsOf(a) > 1 ? ` ×${headsOf(a)}` : '';
+  const crewHeads = rows => rows.reduce((n, a)=>n + headsOf(a), 0);
   /* crew pointing at this package but at a date the package no longer has —
      the event was edited after assigning. Shown with a sync button. */
   /* Also a shoot row whose date is still there but whose function is not: on
@@ -5944,7 +5952,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      subtraction the Work cards print as "Still needs …" */
   function evGap(pkId, ev){
     const need = neededRoles(ev), have = {}, gap = {};
-    evCrew(pkId, ev.date, ev.title).forEach(a=>{ const r = maNorm(a.role); if(r) have[r] = (have[r]||0) + 1; });
+    evCrew(pkId, ev.date, ev.title).forEach(a=>{ const r = maNorm(a.role); if(r) have[r] = (have[r]||0) + headsOf(a); });
     Object.entries(need).forEach(([r, q])=>{ if(q - (have[r]||0) > 0) gap[r] = q - (have[r]||0); });
     return gap;
   }
@@ -5982,7 +5990,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       memberId: m.id, memberName: m.name||'', memberPhone10: memberPhone10(m),
       pkgId: ctx.pkgId, quoteNo: ctx.quoteNo||'', clientName: ctx.clientName||'',
       eventTitle: ctx.eventTitle||'', date: ctx.date||'', venue: ctx.venue||'', slot: ctx.slot||'',
-      callTime: o.callTime||'', role: o.role,
+      callTime: o.callTime||'', role: o.role, heads: headsOf({ heads: o.heads }),
       kind: '', dueDate: '', deliver: '', scope: '',
       notes: o.notes||'', updatedAt: serverTimestamp(),
       pay: { amount: Math.max(0, Math.round(Number(o.fee)||0)), paid: false, paidDate: '', mode: '' },
@@ -6015,7 +6023,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       when ? `📅 ${when}` : '',
       a.callTime ? `⏰ Call time ${a.callTime}` : '⏰ Call time to be confirmed',
       a.venue ? `📍 ${a.venue}` : '',
-      `🎬 You are on ${roleLabel(a.role)}`,
+      `🎬 You are on ${roleLabel(a.role)}${headsOf(a) > 1 ? ` — you + ${headsOf(a) - 1} (${headsOf(a)} people)` : ''}`,
       a.notes ? `📝 ${a.notes}` : '',
       '',
       'Please open your crew page and confirm.'
@@ -6037,7 +6045,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const wa = a.kind === 'edit' ? '' : crewWaNumber(a);
     return `
       <div class="tm-crew" data-asedit="${esc(a.id)}">
-        <span class="nm2">${esc(a.memberName||'—')}</span>
+        <span class="nm2">${esc(a.memberName||'—')}${headsTag(a)}</span>
         <span class="rl">${esc(roleLabel(a.role))}${a.callTime ? ' · call ' + esc(a.callTime) : ''}${(a.pay||{}).amount ? ' · ' + inr(a.pay.amount) : ''}</span>
         ${extra || pill}
         ${(!extra && wa) ? `<button class="csbtn" type="button" data-callsheet="${esc(a.id)}" title="WhatsApp ${esc(a.memberName||'them')} the call sheet" aria-label="Send call sheet to ${esc(a.memberName||'this member')}">📤</button>` : ''}
@@ -6082,8 +6090,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          below it in their head. Count the roles already on the event off
          against it and say what is actually still missing. */
       const have = {};
-      crew.forEach(a=>{ const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0) + 1; });
+      crew.forEach(a=>{ const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0) + headsOf(a); });
       const gap = Object.entries(need).map(([r,q])=>[r, q - (have[r]||0)]).filter(([,q])=>q > 0);
+      /* people on the day, not rows: one member bringing a second shooter is two */
+      const heads = crewHeads(crew);
       const gapTxt = gap.map(([r,q])=>`${q}× ${roleLabel(r)}`).join(' · ');
       /* stale crew (event date was edited after assigning) surfaces once per
          package, on its first upcoming row, with a one-tap re-sync */
@@ -6096,7 +6106,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the Done tab shows dates in the past, where "in -40d" is nonsense */
       const away = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days === -1 ? 'yesterday'
                  : days > 0 ? `in ${days}d` : `${-days}d ago`;
-      const fill = needTotal ? Math.min(100, Math.round(100*crew.length/needTotal)) : (crew.length ? 100 : 0);
+      const fill = needTotal ? Math.min(100, Math.round(100*heads/needTotal)) : (crew.length ? 100 : 0);
       /* Role-aware, not headcount: three photographers on a job that wants two
          photographers and a cinematographer used to read as fully crewed. */
       const state = !crew.length ? 'none' : (needTotal && gap.length) ? 'part' : 'full';
@@ -6115,7 +6125,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         <div class="tm-fill">
           <span class="fbar"><i style="width:${fill}%"></i></span>
-          <b class="${state}">${crew.length}${needTotal ? '/' + needTotal : ''} crew</b>
+          <b class="${state}">${heads}${needTotal ? '/' + needTotal : ''} crew</b>
           ${unconf ? `<em>${unconf} not confirmed</em>`
             /* "all confirmed" in green beside a half-staffed shoot two days out
                read as reassurance. It is only good news once the event is
@@ -6410,7 +6420,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!Object.keys(need).length) return false;
       const have = {};
       evCrew(pk.id, ev.date, ev.title).forEach(a=>{
-        const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0)+1;
+        const r = String(a.role||'').trim().toLowerCase(); if(r) have[r] = (have[r]||0) + headsOf(a);
       });
       return Object.entries(need).some(([r,q])=>q - (have[r]||0) > 0);
     });
@@ -8715,7 +8725,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#asMore', 'click', ()=>{
     const id = [..._asPicked][0], ctx = _asCtx;
     if(!id || !ctx || _asEditId) return;
-    const pre = { ctx, call: $('#asCall').value || '', fee: $('#asAmt').value, role: $('#asRole').value };
+    const pre = { ctx, call: $('#asCall').value || '', fee: $('#asAmt').value, role: $('#asRole').value, heads: $('#asHeads').value };
     closeAsUI();
     openMa(id, pre);
   });
@@ -8752,6 +8762,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asDeliver').value = a ? (a.deliver||'') : '';
     $('#asWhole').checked = a ? (a.scope === 'package') : !!(opts && opts.whole);
     $('#asAmt').value = a ? ((a.pay||{}).amount || '') : '';
+    $('#asHeads').value = String(a ? headsOf(a) : 1);
     $('#asNotes').value = a ? (a.notes||'') : '';
     $('#asRemove').hidden = !a;
     renderAsPick();
@@ -8800,6 +8811,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            single time of day */
         slot: (ed && $('#asWhole').checked) ? '' : (_asCtx.slot||''),
         callTime: ed ? '' : ($('#asCall').value||''), role: r,
+        /* how many this row stands for — an editor is always one, and when
+           several members are picked at once each is just themselves */
+        heads: (ed || multi) ? 1 : headsOf({ heads: $('#asHeads').value }),
         /* empty strings rather than absent keys: a member switched off editing
            must lose the deadline, not keep a stale one */
         kind: ed ? 'edit' : '',
@@ -8845,6 +8859,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const reset = old && old.status === 'acknowledged'
           && (old.memberId !== base.memberId || old.callTime !== base.callTime
               || old.role !== base.role || old.venue !== base.venue || old.date !== base.date
+              || headsOf(old) !== base.heads            /* "bring one more" is news to them */
               || (old.notes||'') !== base.notes);   /* the note is shown to them too */
         if(reset){ patch.status = 'assigned'; patch.ackAt = deleteField(); }
         const res = await settle(updateDoc(doc(db,'assignments',_asEditId), patch));
@@ -9003,7 +9018,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      sheet per function. Here the person comes first: tick their functions,
      one save, one batch. Outdoor shoots only; the rules it follows are in
      "one person → many events: the rules" further up. */
-  let _maMid = null, _maRole = '', _maTicks = new Map(), _maOpen = '', _maRows = [], _maQ = '';
+  let _maMid = null, _maRole = '', _maHeads = 1, _maTicks = new Map(), _maOpen = '', _maRows = [], _maQ = '';
   const MA_ROLES = TEAM_ROLES.filter(r=>!roleIsEdit(r));
   $('#maRole').innerHTML = MA_ROLES.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('');
   const maRate = m => Math.max(0, Math.round(Number((m||{}).defaultRate)||0));
@@ -9031,9 +9046,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _maMid = maIsOutdoor(m) ? m.id : null;
     _maTicks = new Map(); _maOpen = ''; _maQ = '';
     $('#maFilter').value = ''; $('#maNotes').value = '';
-    _maRole = maDefaultRole(m);
+    _maRole = maDefaultRole(m); _maHeads = 1;
     if(_maMid && pre){
       if(pre.role && MA_ROLES.includes(pre.role)) _maRole = pre.role;
+      if(pre.heads) _maHeads = headsOf({ heads: pre.heads });
       const row = pre.ctx && maEventRows().find(r=>r.key === maKey(pre.ctx));
       const on = row && memberOnEvent(m.id, row.ctx.pkgId, row.ctx.date, row.ctx.eventTitle, row.ctx.slot) === 'on';
       if(row && !on){
@@ -9082,6 +9098,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     warn.hidden = !w.length;
     warn.innerHTML = w.join('<br>');
     $('#maRole').value = _maRole;
+    $('#maHeads').value = String(_maHeads);
     renderMaEvents();
     renderMaSum();
   }
@@ -9204,6 +9221,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderMa();
   });
   on('#maRole', 'change', e=>{ _maRole = e.target.value; renderMaEvents(); });
+  on('#maHeads', 'change', e=>{ _maHeads = headsOf({ heads: e.target.value }); renderMaEvents(); });
   on('#maFilter', 'input', e=>{ _maQ = e.target.value; renderMaEvents(); });
   on('#maFilter', 'keydown', e=>{
     if(e.key !== 'Escape') return;
@@ -9307,7 +9325,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!maIsOutdoor(memberById(m.id)) || _maMid !== m.id) return;   /* the sheet moved on while the question was up */
     const notes = $('#maNotes').value.trim();
     const role = MA_ROLES.includes(_maRole) ? _maRole : maDefaultRole(m);
-    const docs = maGroup(picks.map(p=>newShootAsg(m, p.r.ctx, { role, fee: maFee(m, p.t), callTime: p.t.call || '', notes })));
+    const docs = maGroup(picks.map(p=>newShootAsg(m, p.r.ctx, { role, heads: _maHeads, fee: maFee(m, p.t), callTime: p.t.call || '', notes })));
     /* Plain auto ids, never one made from member + event: batch.set on an id
        that already exists would wipe that row's payments[]. A ref is minted
        on this device, so the demo gets real ones; only the commit is skipped. */
@@ -10109,7 +10127,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      strip a job's crew. */
   let _crewSyncT = null, _crewSyncBusy = false, _crewSyncAgain = false;
   const _crewKey = list => (Array.isArray(list) ? list : [])
-    .map(c => [c.name, c.role, c.date, c.slot, c.kind].map(v => String(v || '')).join('|'))
+    .map(c => [c.name, c.role, c.date, c.slot, c.kind, c.heads].map(v => String(v || '')).join('|'))
     .sort().join('~');
   function syncStudioCrew(){
     if(!_pkgsFresh || !_asgsFresh) return;
@@ -10129,7 +10147,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           if(_capped && (Array.isArray(p.crew) ? p.crew : []).some(c => String((c||{}).date || '') <= _horizon)) continue;
           const want = ASGS.filter(a => a.pkgId === p.id)
             .map(a => ({ name: a.memberName || '', role: a.role || '', date: a.date || '',
-                         slot: a.slot || '', kind: a.kind === 'edit' ? 'edit' : '' }));
+                         slot: a.slot || '', kind: a.kind === 'edit' ? 'edit' : '', heads: headsOf(a) }));
           if(_crewKey(want) === _crewKey(p.crew)) continue;
           p.crew = want;   /* keep the local copy in step — no rewrite on the echo snapshot */
           await settle(updateDoc(doc(db,'packages',p.id), { crew: want }));
