@@ -467,6 +467,35 @@ header.nav.scrolled{
 .testi-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold-soft),var(--gold-deep));display:grid;place-items:center;color:#fff;font-family:var(--serif);font-size:1.1rem;flex:0 0 auto}
 .testi-who b{display:block;font-family:var(--serif);font-size:1rem;color:#fff}
 .testi-who span{font-size:.76rem;color:#b3a98f}
+/* Write a review — the form under the Kind Words cards, on the same dark
+   ground: a card like the quotes, dark fields, gold stars. The stars are
+   five radios; the label paints up to the picked one (.on) and, under the
+   pointer, up to the hovered one (.hov). */
+.rv-cta{position:relative;z-index:2;text-align:center;margin-top:clamp(28px,4vw,44px)}
+.rv-cta p{color:#b3a98f;font-size:.92rem;margin-bottom:1rem}
+.rv-form,.rv-done{position:relative;z-index:2;max-width:640px;margin:1.6rem auto 0;background:rgba(255,255,255,.04);border:1px solid rgba(226,194,117,.25);border-radius:12px;padding:clamp(1.3rem,3.5vw,2.2rem)}
+.rv-form .fg label,.rv-rate legend{color:#cdbf9a}
+.rv-form .fg label small{text-transform:none;letter-spacing:0;color:#8f866f}
+.rv-form .fg input,.rv-form .fg textarea{background:rgba(255,255,255,.06);border-color:rgba(226,194,117,.25);color:#f3ecdc}
+.rv-form .fg input::placeholder,.rv-form .fg textarea::placeholder{color:#8f866f}
+.rv-form .fg input:focus,.rv-form .fg textarea:focus{background:rgba(255,255,255,.09);border-color:var(--gold-bright);box-shadow:0 0 0 3px rgba(226,194,117,.15)}
+.rv-form .fg textarea{min-height:120px}
+.rv-rate{border:0;padding:0;margin:0 0 1.1rem;min-width:0}
+.rv-rate legend{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;padding:0;margin-bottom:.35rem}
+.rv-stars{display:flex;gap:.1rem;position:relative}
+.rv-stars label{cursor:pointer;font-size:2.1rem;line-height:1;color:#5a5340;padding:.08em .1em;transition:color .15s,transform .15s;user-select:none;-webkit-user-select:none}
+.rv-stars label.on,.rv-stars label.hov{color:var(--gold-bright)}
+.rv-stars label:hover{transform:scale(1.12)}
+.rv-stars input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;margin:0}
+.rv-stars input:focus-visible + label{outline:2px solid var(--gold-bright);outline-offset:2px;border-radius:6px}
+.rv-stars.bad label{color:#7a4a3a}
+.rv-stars.bad label.on{color:var(--gold-bright)}
+.rv-form .btn-gold{width:100%}
+.rv-note{font-size:.78rem;color:#b3a98f;margin:.9rem 0 0;text-align:center}
+.rv-done{text-align:center}
+.rv-done .stars{justify-content:center;font-size:1.4rem}
+.rv-done b{display:block;font-family:var(--serif);font-size:1.25rem;color:#fff;margin-bottom:.4rem;font-weight:500}
+.rv-done p{color:#b3a98f;font-size:.9rem;line-height:1.55}
 
 /* ============================================================
    CONTACT
@@ -1119,6 +1148,36 @@ section[id]{scroll-margin-top:84px}
         <div class="testi-who"><span class="testi-av" aria-hidden="true">S</span><div><b>Sana &amp; Bilal</b><span>Old City, Hyderabad</span></div></div>
       </div>
     </div>
+    <!-- Write a review: anyone, no sign-in. It lands in the studio's inbox
+         (reviews/{id}) and joins the cards above once the studio approves it
+         in the admin panel — nothing is published straight from here. -->
+    <div class="rv-cta reveal">
+      <p>Were you one of our couples? Tell the next one how it went.</p>
+      <button type="button" class="btn btn-outline-light" id="rvOpen" aria-expanded="false" aria-controls="rvForm">✍️ Write a review</button>
+    </div>
+    <form class="rv-form" id="rvForm" hidden novalidate aria-label="Write a review">
+      <fieldset class="rv-rate"><legend>Your rating</legend>
+        <div class="rv-stars" id="rvStars">
+          <input type="radio" name="rvRating" id="rvS1" value="1" aria-label="1 star" /><label for="rvS1" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS2" value="2" aria-label="2 stars" /><label for="rvS2" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS3" value="3" aria-label="3 stars" /><label for="rvS3" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS4" value="4" aria-label="4 stars" /><label for="rvS4" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS5" value="5" aria-label="5 stars" /><label for="rvS5" aria-hidden="true">★</label>
+        </div>
+      </fieldset>
+      <div class="form-row">
+        <div class="fg"><label for="rvName">Your name</label><input type="text" id="rvName" required maxlength="80" placeholder="e.g. Ayesha &amp; Imran" autocomplete="name" /></div>
+        <div class="fg"><label for="rvLoc">Area / city <small>(optional)</small></label><input type="text" id="rvLoc" maxlength="80" placeholder="e.g. Malakpet, Hyderabad" autocomplete="address-level2" /></div>
+      </div>
+      <div class="fg"><label for="rvText">Your review</label><textarea id="rvText" required maxlength="1000" placeholder="Which functions did we shoot for you, and how did it go?"></textarea></div>
+      <button type="submit" class="btn btn-gold">Send review</button>
+      <p class="rv-note">Reviews appear here after a quick check by the studio. Your name and area are shown; nothing else.</p>
+    </form>
+    <div class="rv-done" id="rvDone" hidden>
+      <div class="stars" id="rvDoneStars" role="img" aria-label="Rated 5 out of 5">★★★★★</div>
+      <b id="rvDoneName">Thank you!</b>
+      <p>Your review is with the studio. It appears here after a quick check.</p>
+    </div>
   </div>
 </section>
 
@@ -1540,6 +1599,64 @@ $('#enquiryForm').addEventListener('submit', async e=>{
 });
 
 /* ============================================================
+   WRITE A REVIEW — the Kind Words section. Anyone, no sign-in: it lands as
+   reviews/{id} with status 'new' (catalog.js __saveReview, over REST like a
+   lead) and shows on this page only once the studio approves it in the
+   admin panel, which copies it onto the testimonials list above. A sent
+   review is remembered in this browser for a day, so a refresh shows the
+   thank-you card instead of asking the same person twice.
+   ============================================================ */
+(function(){
+  const form = $('#rvForm'), open = $('#rvOpen'), done = $('#rvDone');
+  if(!form || !open || !done) return;
+  const RV_KEY = 'fs_review_sent';
+  const box = $('#rvStars');
+  const labels = $$('#rvStars label'), radios = $$('#rvStars input');
+  const paint = (n, cls) => labels.forEach((l, i)=>l.classList.toggle(cls, i < n));
+  const picked = () => { const r = radios.find(x=>x.checked); return r ? (Number(r.value) || 0) : 0; };
+  radios.forEach(r=>r.addEventListener('change', ()=>{ paint(picked(), 'on'); box.classList.remove('bad'); }));
+  labels.forEach((l, i)=>l.addEventListener('mouseenter', ()=>paint(i + 1, 'hov')));
+  box.addEventListener('mouseleave', ()=>paint(0, 'hov'));
+  function showDone(rating, name){
+    form.hidden = true; open.hidden = true; done.hidden = false;
+    const st = $('#rvDoneStars');
+    st.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    st.setAttribute('aria-label', `Rated ${rating} out of 5`);
+    $('#rvDoneName').textContent = name ? `Thank you, ${name}!` : 'Thank you!';
+  }
+  try{
+    const s = JSON.parse(localStorage.getItem(RV_KEY) || 'null');
+    if(s && Date.now() - (Number(s.at) || 0) < 864e5) showDone(Math.min(5, Math.max(1, Number(s.rating) || 5)), String(s.name || '').slice(0, 80));
+  }catch(e){}
+  open.addEventListener('click', ()=>{
+    const show = form.hidden;
+    form.hidden = !show;
+    open.setAttribute('aria-expanded', String(show));
+    if(show) setTimeout(()=>{ try{ radios[4].focus({ preventScroll: true }); }catch(e){} }, 30);
+  });
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const name = $('#rvName').value.trim(), location = $('#rvLoc').value.trim(), text = $('#rvText').value.trim(), rating = picked();
+    if(!rating){ box.classList.add('bad'); showToast('Please pick a star rating.'); return; }
+    if(!name){ showToast('Please tell us your name.'); $('#rvName').focus(); return; }
+    if(!text){ showToast('Please write a line or two.'); $('#rvText').focus(); return; }
+    const btn = form.querySelector('button[type="submit"]');
+    if(btn && btn.disabled) return;
+    if(btn){ btn.disabled = true; btn.textContent = 'Sending…'; }
+    let ok = false;
+    try{
+      if(await firebaseReady(6000) && typeof window.__saveReview === 'function') ok = await window.__saveReview({ name, location, rating, text });
+    }catch(err){ ok = false; }
+    if(btn){ btn.disabled = false; btn.textContent = 'Send review'; }
+    if(!ok){ showToast('Could not send your review — please check your connection and try again.'); return; }
+    track('review_sent', { rating, source: 'website' });
+    try{ localStorage.setItem(RV_KEY, JSON.stringify({ at: Date.now(), rating, name })); }catch(e){}
+    showToast('Thank you! Your review is with the studio.');
+    showDone(rating, name);
+  });
+})();
+
+/* ============================================================
    ANIMATED STAT COUNTERS (About)
    ============================================================ */
 const statIO = new IntersectionObserver(entries=>{
@@ -1708,9 +1825,12 @@ onRemoteConfig(function(cfg){
   try{
     if(cfg && Array.isArray(cfg.testimonials) && cfg.testimonials.length){
       const grid = document.querySelector('.testi-grid');
+      /* a testimonial approved from a review carries its star count; the
+         ones typed in Config have none and read as five, as they always did */
+      const starsOf = t => Math.min(5, Math.max(1, Math.round(Number(t && t.rating)) || 5));
       if(grid) grid.innerHTML = cfg.testimonials.map(t=>`
         <div class="testi-card">
-          <div class="stars" role="img" aria-label="Rated 5 out of 5">★★★★★</div>
+          <div class="stars" role="img" aria-label="Rated ${starsOf(t)} out of 5">${'★'.repeat(starsOf(t))}${'☆'.repeat(5 - starsOf(t))}</div>
           <p class="quote">"${esc(t.text||'')}"</p>
           <div class="testi-who"><span class="testi-av" aria-hidden="true">${esc(String(t.name||'F').charAt(0))}</span><div><b>${esc(t.name||'')}</b><span>${esc(t.location||'')}</span></div></div>
         </div>`).join('');

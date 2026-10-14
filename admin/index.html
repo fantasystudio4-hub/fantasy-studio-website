@@ -271,6 +271,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="sec" id="homeWait" hidden>
       <h3>⏳ Waiting on you</h3>
       <div id="homeReqs"></div>
+      <!-- reviews waiting for an answer — the same cards as Settings → Website content -->
+      <div id="homeRevs"></div>
       <button class="upall" id="homeJoin" type="button" hidden></button>
       <button class="upall" id="homePreq" type="button" hidden></button>
       <button class="upall" id="homeSu" type="button" hidden></button>
@@ -627,6 +629,16 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <h3>Quotation Terms</h3>
       <div id="termList"></div>
       <button class="addrow" id="addTerm">＋ Add term</button>
+    </div>
+    <!-- Reviews received: "Write a review" on the website (no sign-in) and
+         "Rate your experience" in the client area land here as reviews/{id}.
+         Approve copies one onto the Testimonials list below AND publishes it
+         (config/site) at once — no Save All needed; Decline only marks it.
+         The cards are not Save All's: nothing here is a data-testi row. -->
+    <div class="sec" id="revSec" data-cfg="web">
+      <h3>Reviews received <b class="count" id="revCount" hidden></b></h3>
+      <p class="sub">What people wrote on the website's <b>Write a review</b> and in the client area's <b>Rate your experience</b>. Nothing shows on the site until you approve it: <b>Approve</b> puts it on the website straight away and adds it to the Testimonials list below (to take one off the site later, remove it there and Save All). <b>Decline</b> keeps it here, unpublished.</p>
+      <div id="revList"></div>
     </div>
     <div class="sec" data-cfg="web">
       <h3>Testimonials</h3>

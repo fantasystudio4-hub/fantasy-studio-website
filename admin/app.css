@@ -2172,6 +2172,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .rq-items b.none{color:var(--warn);font-size:var(--fs-sm)}
 .rq-items .tot{margin-top:.25rem;padding-top:.4rem;border-top:1px solid var(--line)}
 .rq-items .tot span{color:var(--mut)}
+/* reviews (Home and Settings → Website content): the same card, with the
+   stars and the quote in place of a request's facts */
+.rq.rv .rv-stars{margin-top:.4rem;color:var(--gold-b);letter-spacing:.12em;font-size:var(--fs-lg);line-height:1}
+.rv-quote{margin:.45rem 0 0;font-style:italic;color:var(--text);line-height:1.5;font-size:var(--fs-md);overflow-wrap:anywhere}
+.rv-meta{margin-top:.35rem;font-size:var(--fs-xs);color:var(--mut);overflow-wrap:anywhere}
+.rq.rv-old{opacity:.85}
+#revSec .count{display:inline-block;min-width:1.4em;padding:0 .4em;margin-left:.3em;border-radius:1em;background:var(--gold-b);color:var(--ink,#1b1812);font-size:var(--fs-xs);text-align:center;vertical-align:middle}
 .rq-items .tot b{font-family:var(--serif);font-weight:700;font-size:var(--fs-lg);color:var(--gold-b)}
 .rq-items .nil{color:var(--mut)}
 /* how full that half already is — the same three colours as the public

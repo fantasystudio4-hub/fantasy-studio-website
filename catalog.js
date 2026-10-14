@@ -804,4 +804,34 @@ function applyRemoteConfig(cfg){
       new Promise(function(res){ setTimeout(function(){ res(false); }, 2500); })
     ]);
   };
+
+  /* A review from the website's Kind Words section, by someone who is not
+     signed in (the signed-in client area writes its own, with the SDK).
+     Same transport as a lead; resolves true only if the write landed. Nothing
+     waits on it (no WhatsApp hand-off), so it gets a longer box than a lead
+     — a review typed out on one bar of signal should not be lost at 2.5s.
+     The rule pins the shape: website source, no phone, no uid, status new. */
+  window.__saveReview = function(rv){
+    /* a whole 1-5, or nothing: a rating of 0 or 'five' is refused here, not
+       rounded up to one star the person never gave */
+    var raw = Math.round(Number(rv && rv.rating));
+    var rating = raw >= 1 ? Math.min(5, raw) : 0;
+    var doc = {
+      name:     String(rv && rv.name     != null ? rv.name     : '').trim().slice(0, 80),
+      location: String(rv && rv.location != null ? rv.location : '').trim().slice(0, 80),
+      rating:   rating,
+      text:     String(rv && rv.text     != null ? rv.text     : '').trim().slice(0, 1000),
+      source: 'website', phone10: '', uid: '', pkgId: '',
+      status: 'new', createdAt: new Date()
+    };
+    if(!doc.name || !doc.text || !rating) return Promise.resolve(false);
+    return Promise.race([
+      fetch(BASE + '/reviews?key=' + CFG.apiKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: toFields(doc) })
+      }).then(function(r){ return r.ok; }).catch(function(){ return false; }),
+      new Promise(function(res){ setTimeout(function(){ res(false); }, 8000); })
+    ]);
+  };
 })();

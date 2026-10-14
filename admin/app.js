@@ -759,6 +759,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
       loadStudioReqs();   /* booking requests from the partner page — the B2B tab's badge and inbox */
+      loadReviews();      /* reviews from the website and the client area — Home and Website content */
       loadProfiles();   /* photos + details people added in the app, and account deletions */
       loadAvailability();   /* config/availability (created if missing) + the month the calendar shows */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
@@ -2689,6 +2690,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="pevs">${(p.events||[]).map(presetEvRow).join('')}</div>
       <button class="addrow" type="button" data-addpev>＋ Add event to this package</button>
     </div>`;
+  /* a testimonial typed here has no star count and shows as five, as it
+     always did; one approved from a review carries the stars the person gave */
+  const testiStars = t => Math.min(5, Math.max(1, Math.round(Number(t && t.rating)) || 5));
   const testiRow = (t={}) => `
     <div class="row" data-testi>
       <button class="del" data-del title="Remove">✕</button>
@@ -2696,6 +2700,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>Name</label><input data-k="name" value="${esc(t.name||'')}" /></div>
         <div class="fld"><label>Location</label><input data-k="location" value="${esc(t.location||'')}" /></div>
       </div>
+      <div class="fld"><label>Stars</label><select data-k="rating">${[5,4,3,2,1].map(n=>`<option value="${n}"${n === testiStars(t) ? ' selected' : ''}>${'★'.repeat(n)}${'☆'.repeat(5 - n)} ${n} of 5</option>`).join('')}</select></div>
       <div class="fld"><label>Review text</label><textarea data-k="text">${esc(t.text||'')}</textarea></div>
     </div>`;
   const faqRow = (f={}) => `
@@ -2849,6 +2854,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const testimonials = $$('[data-testi]').map(r=>({
         name: r.querySelector('[data-k="name"]').value.trim(),
         location: r.querySelector('[data-k="location"]').value.trim(),
+        rating: testiStars({ rating: r.querySelector('[data-k="rating"]').value }),
         text: r.querySelector('[data-k="text"]').value.trim()
       })).filter(t=>t.name || t.text);
       const faqs = $$('[data-faq]').map(r=>({
@@ -3785,13 +3791,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        already on that date: draw it only once all three lists have arrived */
     const ready = _sreqsLoaded && _studiosLoaded && _pkgsLoaded;
     box.innerHTML = ready ? fresh.map(sreqCardHTML).join('') : '';
+    /* reviews waiting for an answer — their cards depend on nothing else */
+    const rvN = revNew().length, rvBox = $('#homeRevs');
+    if(rvBox) rvBox.innerHTML = revNew().map(revCardHTML).join('');
     const suN = suOpen().filter(u=>u.action === 'seen' || u.action === 'lead').length;
     const pq = preqPending().length, pj = $('#homePreq');
     if(pj){ pj.hidden = !pq; pj.textContent = pq ? `🏢 ${pq} partner studio request${pq === 1 ? '' : 's'} — open Partner studios ›` : ''; }
     const rq = reqCount();
     join.hidden = !rq;
     join.textContent = rq ? `🙋 ${rq} crew join request${rq === 1 ? '' : 's'} — open Team ›` : '';
-    sec.hidden = !((ready && fresh.length) || rq || pq || suN);
+    sec.hidden = !((ready && fresh.length) || rq || pq || suN || rvN);
     const hb = $('#homeBadge');
     if(hb){ hb.hidden = !fresh.length; hb.textContent = fresh.length || ''; }
   }
@@ -4582,6 +4591,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     else if(what === 'team'){ loadTeam(); }
     else if(what === 'studios'){ loadStudios(); }
     else if(what === 'sreqs'){ loadStudioReqs(); }
+    else if(what === 'revs'){ loadReviews(); }
     else if(what === 'leads'){ loadLeads(); }
     else if(what === 'ejobs'){ loadEJobs(); }
     else if(what === 'profiles'){ loadProfiles(); }
@@ -10255,6 +10265,202 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ? new Date(d + 'T00:00').toLocaleDateString('en-IN', { weekday:'short' }) + ' ' + dmy(d)
     : 'No date';
 
+  /* ============================================================
+     REVIEWS (14 Oct 2026) — "Write a review" on the website (anyone, no
+     sign-in, over REST like a lead) and "Rate your experience" in the
+     client area (the signed-in client, with the SDK). Both land here as
+     reviews/{id} = { name, location, rating 1-5, text, source:'website'|
+     'client', phone10, uid, pkgId, status:'new', createdAt }. Nothing
+     reaches the website by itself:
+       Approve → the testimonial { name, location, text, rating } is
+                 appended to config/site.testimonials and PUBLISHED at
+                 once (the home page reads that document), the row joins
+                 the Testimonials list below (so Save All keeps it), and
+                 the review becomes { status:'approved', answeredAt }
+       Decline → { status:'declined', answeredAt }: kept here, never shown
+     Every field was typed by a stranger or a client: nothing reaches the
+     page unescaped, and the client card's booking is looked up from the
+     panel's own records by the verified phone, never from the review.
+     ============================================================ */
+  let REVS = [];
+  let _revsUnsub = null, _revsErr = '', _revBusy = '', _revOldOpen = false;
+  const REVS_CAP = 300, REV_OLD_SHOWN = 20;
+  const revStatus = r => (r && (r.status === 'approved' || r.status === 'declined')) ? r.status : 'new';
+  const revText = (v, cap) => typeof v === 'string' ? v.trim().slice(0, cap) : '';
+  const revRating = r => Math.min(5, Math.max(1, Math.round(Number(r && r.rating)) || 5));
+  const revStars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const revById = id => REVS.find(v=>v.id === id) || null;
+  function revNew(){
+    return REVS.filter(r=>revStatus(r) === 'new').sort((a,b)=>pfMs(b.createdAt) - pfMs(a.createdAt));
+  }
+  function loadReviews(){
+    if(DEMO) return;   /* the fixtures own the list */
+    if(_revsUnsub){ renderReviews(); return; }
+    _revsErr = '';
+    try{
+      let first = true;
+      _revsUnsub = onSnapshot(query(collection(db,'reviews'), orderBy('createdAt','desc'), limit(REVS_CAP)),
+        { includeMetadataChanges: true }, snap=>{
+        if(!first && !snap.docChanges().length) return;
+        first = false;
+        REVS = keepSafeIds(snap.docs, 'review').map(d=>({ id:d.id, ...d.data({ serverTimestamps:'estimate' }) }));
+        warnIfCapped('reviews', snap.size, REVS_CAP);
+        _revsErr = '';
+        renderReviews();
+      }, err=>{
+        try{ if(_revsUnsub) _revsUnsub(); }catch(e){} _revsUnsub = null;
+        _revsErr = 'Could not load reviews (' + (err.code||err.message) + ')'
+          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : '');
+        renderReviews();
+      });
+    }catch(err){ _revsErr = 'Could not load reviews (' + (err.code||err.message) + ')'; renderReviews(); }
+  }
+  /* who wrote it: the website, or a client — named from the panel's own
+     booking for that verified number (the review's pkgId is only a hint) */
+  function revWho(r){
+    if(r.source !== 'client') return { label:'from the website', sub:'' };
+    const p10 = String(r.phone10 || '').replace(/\D/g, '').slice(-10);
+    const mine = livePkgs().filter(x=>!isStudioJob(x) && normPhone(x.clientPhone) === p10);
+    const pk = mine.find(x=>x.id === r.pkgId) || mine[0] || null;
+    return { label:'client', sub: pk ? `${pk.clientName || 'Client'} · ${pk.quoteNo || ''}`.replace(/ · $/, '') : (p10 ? 'number ' + p10 : '') };
+  }
+  function revCardHTML(r){
+    const n = revRating(r), who = revWho(r), when = pfDate(pfMs(r.createdAt));
+    const loc = revText(r.location, 80);
+    const dis = _revBusy ? ' disabled' : '';
+    return `
+    <article class="rq rv" data-rv="${esc(r.id)}">
+      <div class="rq-top">
+        <b class="rq-stu">${esc(revText(r.name, 80) || 'No name')}</b>
+        <span class="chip-status no-dot" data-state="${r.source === 'client' ? 'confirmed' : 'neutral'}">${esc(who.label)}</span>
+        ${when ? `<span class="rq-age">${esc(when)}</span>` : ''}
+      </div>
+      <div class="rv-stars" role="img" aria-label="${n} out of 5 stars">${revStars(n)}</div>
+      <blockquote class="rv-quote">${esc(revText(r.text, 1000))}</blockquote>
+      ${loc || who.sub ? `<div class="rv-meta">${esc(loc)}${loc && who.sub ? ' · ' : ''}${esc(who.sub)}</div>` : ''}
+      <div class="rq-acts">
+        <button type="button" class="btn btn--sm btn--primary" data-rvok="${esc(r.id)}"${dis}>${_revBusy === r.id ? 'Working…' : 'Approve → on the website'}</button>
+        <button type="button" class="btn btn--sm btn--danger" data-rvno="${esc(r.id)}"${dis}>Decline</button>
+      </div>
+    </article>`;
+  }
+  function revOldHTML(r){
+    const n = revRating(r), st = revStatus(r), who = revWho(r), when = pfDate(pfMs(r.answeredAt));
+    return `
+    <article class="rq rv rv-old" data-rv="${esc(r.id)}">
+      <div class="rq-top">
+        <b class="rq-stu">${esc(revText(r.name, 80) || 'No name')}</b>
+        <span class="chip-status no-dot" data-state="${st === 'approved' ? 'confirmed' : 'neutral'}">${st === 'approved' ? 'on the website' : 'declined'}</span>
+        <span class="rq-age">${esc(who.label)}${when ? ' · ' + esc(when) : ''}</span>
+      </div>
+      <div class="rv-stars" role="img" aria-label="${n} out of 5 stars">${revStars(n)}</div>
+      <blockquote class="rv-quote">${esc(revText(r.text, 1000))}</blockquote>
+      <div class="rq-acts">
+        <button type="button" class="btn btn--sm btn--ghost" data-rvdel="${esc(r.id)}">Delete</button>
+      </div>
+    </article>`;
+  }
+  function renderReviews(){
+    const fresh = revNew();
+    const cnt = $('#revCount');
+    if(cnt){ cnt.hidden = !fresh.length; cnt.textContent = fresh.length || ''; }
+    renderHomeWait();   /* the same cards on Home */
+    const sec = $('#revSec'), el = $('#revList'); if(!sec || !el) return;
+    const old = REVS.filter(r=>revStatus(r) !== 'new').sort((a,b)=>pfMs(b.answeredAt) - pfMs(a.answeredAt));
+    const shown = old.slice(0, REV_OLD_SHOWN);
+    el.innerHTML = (_revsErr ? errBox(_revsErr, 'revs') : '')
+      + (fresh.length ? fresh.map(revCardHTML).join('')
+          : _revsErr ? '' : '<p class="cfgnote">Nothing waiting. A new review from the website or the client area lands here, and on Home.</p>')
+      + (old.length
+          ? `<div class="grp tog ${_revOldOpen ? '' : 'closed'}" data-rvold role="button" tabindex="0" aria-expanded="${_revOldOpen}"><span class="car">▾</span>Answered<b>${old.length}</b></div>`
+            + (_revOldOpen
+                ? shown.map(revOldHTML).join('')
+                  + (old.length > shown.length ? `<p class="rq-more">The latest ${shown.length} of ${old.length}.</p>` : '')
+                : '')
+          : '');
+  }
+  /* Approve: publish it. The testimonials list on config/site gains this one
+     — read live first and refuse if the document moved since this tab
+     opened, exactly as Save All does, so another device's edits are never
+     overwritten; then the Testimonials rows below gain it too, so a later
+     Save All (which rewrites the list from those rows) keeps it. */
+  async function approveReview(id){
+    const r = revById(id);
+    if(!r || revStatus(r) !== 'new' || _revBusy) return;
+    if(_cfgLoadFailed){ toast('Cannot approve — the website settings did not load. Reload and try again.'); return; }
+    const t = { name: revText(r.name, 80), location: revText(r.location, 80), rating: revRating(r), text: revText(r.text, 1000) };
+    if(!t.name || !t.text){ toast('Cannot approve — this review has no name or no text. Decline it.'); return; }
+    _revBusy = id; renderReviews();
+    try{
+      if(DEMO){
+        CFG.testimonials = [...(CFG.testimonials || []), t];
+        const tl = $('#testiList'); if(tl) tl.insertAdjacentHTML('beforeend', testiRow(t));
+        r.status = 'approved'; r.answeredAt = sreqNow();
+        toast('Approved — it is on the website now ✓ (demo: nothing was written)');
+        return;
+      }
+      let fresh = null;
+      try{ fresh = await getDoc(doc(db,'config','site')); }catch(e){ fresh = null; }
+      const live = fresh && fresh.exists() ? fresh.data() : null;
+      if(live && _cfgLoadedAt && live.updatedAt && live.updatedAt !== _cfgLoadedAt){
+        toast('Not approved — the website settings were changed on another device. Reload, then approve.');
+        return;
+      }
+      const list = [...((live && Array.isArray(live.testimonials)) ? live.testimonials : (CFG.testimonials || [])), t];
+      const stamp = new Date().toISOString();
+      const res = await settle(setDoc(doc(db,'config','site'), { testimonials: list, updatedAt: stamp }, { merge: true }));
+      if(res === 'denied'){ toast('NOT approved — the server refused the write. Check your sign-in and try again.'); return; }
+      CFG.testimonials = list; _cfgLoadedAt = stamp;
+      const tl = $('#testiList'); if(tl) tl.insertAdjacentHTML('beforeend', testiRow(t));
+      const m = $('#saveMsg'); if(m && !_cfgTouched){ m.style.color = ''; m.textContent = 'Changes go live on the site immediately after saving.'; }
+      const res2 = await settle(updateDoc(doc(db,'reviews', id), { status:'approved', answeredAt: serverTimestamp() }));
+      if(res2 === 'denied'){ toast('On the website, but the review could not be marked approved — tap Approve again later.'); return; }
+      toast(res === 'queued' ? 'Approved — it publishes the moment you are back online' : 'Approved — it is on the website now ✓');
+    }catch(err){ toast('Could not approve: ' + (err.code||err.message)); }
+    finally{ _revBusy = ''; renderReviews(); }
+  }
+  async function declineReview(id){
+    const r = revById(id);
+    if(!r || revStatus(r) !== 'new' || _revBusy) return;
+    _revBusy = id; renderReviews();
+    try{
+      if(DEMO){ r.status = 'declined'; r.answeredAt = sreqNow(); toast('Declined — kept here, not on the website'); return; }
+      const res = await settle(updateDoc(doc(db,'reviews', id), { status:'declined', answeredAt: serverTimestamp() }));
+      if(res === 'denied'){ toast('Not declined — the server refused the write.'); return; }
+      toast(res === 'queued' ? 'Declined — saves when you are back online' : 'Declined — kept here, not on the website');
+    }catch(err){ toast('Could not decline: ' + (err.code||err.message)); }
+    finally{ _revBusy = ''; renderReviews(); }
+  }
+  async function deleteReview(id){
+    const r = revById(id); if(!r) return;
+    const onSite = revStatus(r) === 'approved';
+    if(!await confirmDialog({ title: 'Delete this review?',
+      body: `<p><b>${esc(revText(r.name, 80) || 'No name')}</b> — ${revStars(revRating(r))}</p><p>${esc(revText(r.text, 200))}${(r.text || '').length > 200 ? '…' : ''}</p>`
+        + (onSite ? '<p>It stays on the website: that copy is in the Testimonials list. Remove it there and Save All to take it off.</p>' : ''),
+      confirmText: 'Delete' })) return;
+    try{
+      if(DEMO){ REVS = REVS.filter(v=>v.id !== id); renderReviews(); toast('Deleted'); return; }
+      const res = await settle(deleteDoc(doc(db,'reviews', id)));
+      if(res === 'denied'){ toast('Not deleted — the server refused.'); return; }
+      toast(res === 'queued' ? 'Deleted — syncs when you are back online' : 'Deleted');
+    }catch(err){ toast('Could not delete: ' + (err.code||err.message)); }
+  }
+  function revClick(e){
+    if(e.target.closest('[data-retry]')) return;   /* the document-level retry handler takes it */
+    if(e.target.closest('[data-rvold]')){ _revOldOpen = !_revOldOpen; renderReviews(); return; }
+    const ok = e.target.closest('[data-rvok]');
+    if(ok){ approveReview(ok.dataset.rvok); return; }
+    const no = e.target.closest('[data-rvno]');
+    if(no){ declineReview(no.dataset.rvno); return; }
+    const del = e.target.closest('[data-rvdel]');
+    if(del){ deleteReview(del.dataset.rvdel); }
+  }
+  on('#revList', 'click', revClick);
+  on('#homeRevs', 'click', revClick);
+  on('#revList', 'keydown', e=>{
+    if((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-rvold]')){ e.preventDefault(); _revOldOpen = !_revOldOpen; renderReviews(); }
+  });
+
   function loadStudioReqs(){
     loadPartnerReqs();
     loadSignups();
@@ -15495,6 +15701,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         STUDIOS = d.studios.slice();
         /* copies, not the module's own objects: Accept and Decline rewrite them in memory */
         SREQS   = (d.studioRequests || []).map(r=>({ ...r }));
+        REVS    = (d.reviews || []).map(r=>({ ...r }));
         EXPS    = d.expenses.slice();
         EJOBS   = (d.editingJobs || []).slice();
         REQS    = [];
@@ -15546,6 +15753,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         renderStats(); renderLeads();
         renderPkgList();            /* cascades into Home, Trash, Team and B2B */
         renderStuReqs();            /* the B2B badge has to be right from any tab */
+        renderReviews();            /* the Home cards and the Website content inbox */
         renderCalendar();
         renderEditTab();
         /* Config is filled from CFG on load in the real app; the demo sets CFG

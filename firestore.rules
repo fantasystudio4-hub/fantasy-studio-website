@@ -851,6 +851,61 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // reviews/{id} — what someone wrote in "Write a review": on the website's
+    // Kind Words section (no sign-in) or in the client area (signed in).
+    // Nothing lands on the site by itself: the owner reads them in the admin
+    // panel, and Approve copies one onto config/site.testimonials (that is
+    // what the home page shows). A doc is
+    //   { name, location, rating 1-5, text, source:'website'|'client',
+    //     phone10, uid, pkgId, status:'new', createdAt }
+    // A visitor's doc carries no phone (phone10 '' and uid ''), so a stranger
+    // can never write a review AS a client. A client's carries the verified
+    // phone and uid of the sign-in that wrote it, so the panel can say which
+    // booking it is from, and the client page reads its own back (the read
+    // rule is provable from the page's phone10 == filter). Like leads: pinned
+    // to exact keys with size caps, since the write is open to the world.
+    // Only the owner changes or deletes one — status is the owner's answer.
+    match /reviews/{reviewId} {
+      function rvField(k) {
+        return request.resource.data.get(k, '');
+      }
+      function rvShape() {
+        return request.resource.data.keys().hasOnly(
+             ['name','location','rating','text','source','phone10','uid','pkgId','status','createdAt'])
+          && request.resource.data.status == 'new'
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && rvField('location') is string
+          && rvField('location').size() <= 80
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000
+          && rvField('pkgId') is string
+          && rvField('pkgId').size() <= 64;
+      }
+      allow create: if rvShape()
+        && (
+          // the website form, by anyone: no phone, no uid
+          (request.resource.data.source == 'website'
+            && rvField('phone10') == ''
+            && rvField('uid') == '')
+          // the client area: the signed-in client's own verified number
+          || (request.resource.data.source == 'client'
+            && request.auth != null
+            && clientPhone10() != '__none__'
+            && request.resource.data.phone10 == clientPhone10()
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.createdAt == request.time)
+        );
+      allow read: if isAdmin() || resource.data.phone10 == clientPhone10();
+      allow update, delete: if isAdmin();
+    }
+
     // everything else (incl. legacy lenscal_* data): admin only — default deny
     match /{document=**} {
       allow read, write: if isAdmin();

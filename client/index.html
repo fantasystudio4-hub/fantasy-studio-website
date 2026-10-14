@@ -409,6 +409,24 @@ html.fs-app .md-del.busy::before{content:"";display:inline-block;width:15px;heig
 html.fs-app .md-no{display:block;width:100%;min-height:48px;margin-top:.45rem;border:1px solid var(--line);border-radius:40px;padding:.7em;
   background:none;color:var(--text);font-size:.9rem;cursor:pointer}
 html.fs-app .md-no:disabled{opacity:.6;cursor:default}
+/* Rate your experience — one card after the bookings. Five radios, the
+   label paints up to the picked one; the sent review is read back live, so
+   the card says "with the studio" and then "on our website" by itself. */
+.rv .pkg-h h2{font-size:1.05rem}
+.rv .ph-when{white-space:normal;line-height:1.45}
+.rv-stars{display:flex;gap:.05rem;margin:.1rem 0 .9rem;position:relative}
+.rv-stars label{cursor:pointer;font-size:2.1rem;line-height:1;color:#4a4335;padding:.06em .1em;transition:color .15s;user-select:none;-webkit-user-select:none;min-height:44px;display:flex;align-items:center}
+.rv-stars label.on{color:var(--gold-b)}
+.rv-stars input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;margin:0}
+.rv-stars input:focus-visible + label{outline:2px solid var(--gold-b);outline-offset:2px;border-radius:6px}
+.rv-stars.bad label{color:#7a4a3a}
+.rv-stars.bad label.on{color:var(--gold-b)}
+.rv form .fld textarea{min-height:96px;resize:vertical}
+.rv-done{text-align:center}
+.rv-done .rv-sent{color:var(--gold-b);font-size:1.35rem;letter-spacing:.12em;margin-bottom:.4rem}
+.rv-done blockquote{margin:0 0 .6rem;font-style:italic;color:var(--text);line-height:1.5;font-size:.92rem;overflow-wrap:anywhere}
+.rv-done .nf-note{margin-top:.2rem}
+.rv-done .nf-note b{color:var(--ok);font-weight:500}
 </style>
 <!-- the store app's shell: the fs-app-only / fs-web-only helpers and the tab
      bar. A browser matches nothing in it but the one rule that hides app-only bits. -->
@@ -521,6 +539,35 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
          third without scrolling past the other two. -->
     <div class="jump" id="pkgJump" data-tab="booking schedule payments" hidden></div>
     <div id="pkgList"></div>
+    <!-- Rate your experience: the client's own review of the studio, one per
+         number. It lands as reviews/{id} (status new) and is read back live
+         through the same filter the rules prove, so the card says "with the
+         studio" and then "on our website" once the studio approves it in the
+         admin panel. Website and app alike; the ?demo view and the review
+         number never write. -->
+    <div class="pkg rv" id="rvCard" data-tab="booking" hidden>
+      <div class="pkg-h"><div class="ph-t"><h2>Rate your experience</h2><span class="ph-when" id="rvSub">How did we do? A line or two helps the next couple choose.</span></div></div>
+      <form class="sec" id="rvForm" novalidate>
+        <div class="rv-stars" id="rvStars" role="radiogroup" aria-label="Your rating">
+          <input type="radio" name="rvRating" id="rvS1" value="1" aria-label="1 star" /><label for="rvS1" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS2" value="2" aria-label="2 stars" /><label for="rvS2" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS3" value="3" aria-label="3 stars" /><label for="rvS3" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS4" value="4" aria-label="4 stars" /><label for="rvS4" aria-hidden="true">★</label>
+          <input type="radio" name="rvRating" id="rvS5" value="5" aria-label="5 stars" /><label for="rvS5" aria-hidden="true">★</label>
+        </div>
+        <div class="fld"><label for="rvName">Your name, as it will show</label><input id="rvName" type="text" maxlength="80" autocomplete="off" /></div>
+        <div class="fld"><label for="rvLoc">Area / city (optional)</label><input id="rvLoc" type="text" maxlength="80" placeholder="e.g. Malakpet, Hyderabad" autocomplete="off" /></div>
+        <div class="fld"><label for="rvText">Your review</label><textarea id="rvText" maxlength="1000" rows="4" placeholder="Which functions we shot, and how it went"></textarea></div>
+        <div class="err" id="rvErr" role="alert" hidden></div>
+        <button class="gbtn" id="rvSend" type="submit">Send review</button>
+        <p class="nf-note">Only your name and area are shown on the website, never your number.</p>
+      </form>
+      <div class="sec rv-done" id="rvDone" hidden>
+        <div class="rv-sent" id="rvDoneStars" role="img" aria-label="Rated 5 out of 5">★★★★★</div>
+        <blockquote id="rvDoneText"></blockquote>
+        <p class="nf-note" id="rvDoneState"></p>
+      </div>
+    </div>
     <div class="pkg fs-app-only" id="meAcct" data-tab="me">
       <div class="sec"><h3>Your account</h3>
         <div class="merow"><span>Notifications</span><b id="meNotif">Off</b></div>
@@ -1352,6 +1399,7 @@ function route(user){
      booking, and re-routing while one is open would otherwise stack a second. */
   stopPackages();
   availOff();   /* the calendar's month listener goes with the booking's */
+  rvOff();      /* and the review read-back */
   lockReset();
   if(!user){ if(!_leaving) signedOut(); return; }
   if(!user.phoneNumber){ linkAuth = auth; _otpFresh = true; show('linkView'); return; }
@@ -1541,7 +1589,7 @@ function renderPackages(snap, user){
   const said = syncOpenPaySheet(pkgs);
   /* signed in, no booking: this number is not set up as a client, so the
      widget goes (the contract's "no access"), as for crew not yet added */
-  if(!pkgs.length){ widgetOff(); availOff(); reveal('emptyView'); fillEmpty(user); return; }
+  if(!pkgs.length){ widgetOff(); availOff(); rvOff(); reveal('emptyView'); fillEmpty(user); return; }
   if(auth.currentUser) rememberPortal(true);   /* a booking that arrived after the not-found screen */
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
@@ -1553,6 +1601,7 @@ function renderPackages(snap, user){
   fillMe(user, pkgs);
   renderJump(pkgs);
   renderNextUp(pkgs);
+  rvSync(user, pkgs, name);
   /* Which bookings are open right now. On the first paint there is nothing to
      remember, so it keeps the original behaviour: one booking opens as it
      always did, a second and third open collapsed so the page is not three
@@ -1593,6 +1642,100 @@ function renderPackages(snap, user){
   /* the owner's daily head-count (anonymous; see fs-auth.js touchDaily): never delays or breaks this page */
   try{ if(!DEMO_VIEW && FS.touchDaily) FS.touchDaily('client'); }catch(e){}
 }
+
+/* ---------- Rate your experience (reviews/{id}) ----------
+   The card after the bookings. One review per number: the page listens to
+   reviews where phone10 == the signed-in number (the rules prove exactly
+   that filter) and, once one exists, shows it back with its state instead
+   of the form — "with the studio" while status is new, "on our website"
+   once the owner approves it in the admin panel (that copies it onto the
+   home page's testimonials), and a quiet line if it was not used. The
+   ?demo view and the review number (FS.isSample) never read or write: the
+   form works, and the thank-you is drawn locally. */
+let _rvUnsub = null, _rvKey = '', _rvCtx = null, _rvSending = false;
+const rvRating = () => { const r = $$('#rvStars input').find(x=>x.checked); return r ? (Number(r.value) || 0) : 0; };
+const rvPaint = n => $$('#rvStars label').forEach((l, i)=>l.classList.toggle('on', i < n));
+const rvStarsOf = r => Math.min(5, Math.max(1, Math.round(Number(r && r.rating)) || 5));
+$$('#rvStars input').forEach(r=>r.addEventListener('change', ()=>{ rvPaint(rvRating()); $('#rvStars').classList.remove('bad'); }));
+function rvShowDone(r){
+  const n = rvStarsOf(r);
+  const st = $('#rvDoneStars');
+  st.textContent = '★'.repeat(n) + '☆'.repeat(5 - n);
+  st.setAttribute('aria-label', `Rated ${n} out of 5`);
+  $('#rvDoneText').textContent = '“' + String(r.text || '').trim().slice(0, 1000) + '”';
+  const state = $('#rvDoneState');
+  state.innerHTML = r.status === 'approved' ? '<b>✓ On our website</b> — thank you!'
+    : r.status === 'declined' ? 'Thank you for your review — it is with the studio.'
+    : 'Thank you! Your review is <b>with the studio</b> and appears on our website after a quick check.';
+  $('#rvSub').textContent = 'Thank you for telling us how it went.';
+  $('#rvForm').hidden = true; $('#rvDone').hidden = false;
+}
+function rvShowForm(){
+  $('#rvDone').hidden = true; $('#rvForm').hidden = false;
+  $('#rvSub').textContent = 'How did we do? A line or two helps the next couple choose.';
+}
+function rvSync(user, pkgs, name){
+  const card = $('#rvCard'); if(!card) return;
+  const last10 = String(user.phoneNumber || '').replace(/\D/g, '').slice(-10);
+  const sample = DEMO_VIEW || FS.isSample(user);
+  _rvCtx = { user, last10, sample, pkgId: String((pkgs[0] && pkgs[0].id) || '').slice(0, 64) };
+  const nm = $('#rvName');
+  if(nm && !nm.value && name) nm.value = String(name).slice(0, 80);
+  card.hidden = false;
+  if(sample){ if(!_rvKey){ _rvKey = 'sample'; rvShowForm(); } return; }
+  /* the same number again (a snapshot repainting the bookings): the listener is already up */
+  if(_rvKey === last10 && _rvUnsub) return;
+  rvOff(); _rvKey = last10;
+  rvShowForm();
+  try{
+    _rvUnsub = onSnapshot(query(collection(db,'reviews'), where('phone10','==', last10)), snap=>{
+      const mine = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      if(!mine.length){ rvShowForm(); return; }
+      /* the latest, if there is somehow more than one */
+      mine.sort((a,b)=>((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
+      rvShowDone(mine[0]);
+    }, err=>{
+      /* the card still works without the read-back: the rules were not
+         published, or the tunnel dropped — a sent review says so on its own */
+      console.warn('[review] could not read the review back', err && err.code);
+      rvOff(); _rvKey = last10;
+    });
+  }catch(e){ _rvUnsub = null; }
+}
+function rvOff(){
+  if(_rvUnsub){ try{ _rvUnsub(); }catch(e){} }
+  _rvUnsub = null; _rvKey = ''; _rvCtx = null;
+  const card = $('#rvCard'); if(card) card.hidden = true;
+}
+$('#rvForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  if(_rvSending || !_rvCtx) return;
+  const err = $('#rvErr'); err.hidden = true;
+  const rating = rvRating();
+  const name = $('#rvName').value.trim().slice(0, 80);
+  const location = $('#rvLoc').value.trim().slice(0, 80);
+  const text = $('#rvText').value.trim().slice(0, 1000);
+  const say = m => { err.textContent = m; err.hidden = false; };
+  if(!rating){ $('#rvStars').classList.add('bad'); say('Please pick a star rating.'); return; }
+  if(!name){ say('Please tell us your name.'); $('#rvName').focus(); return; }
+  if(!text){ say('Please write a line or two.'); $('#rvText').focus(); return; }
+  const btn = $('#rvSend');
+  _rvSending = true; btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Sending…';
+  const rv = { name, location, rating, text, source:'client', phone10:_rvCtx.last10, uid:String(_rvCtx.user.uid || ''), pkgId:_rvCtx.pkgId, status:'new' };
+  try{
+    if(_rvCtx.sample){ await new Promise(r=>setTimeout(r, 400)); }
+    else await setDoc(doc(collection(db,'reviews')), { ...rv, createdAt: serverTimestamp() });
+    toast('Thank you! Your review is with the studio.');
+    /* the listener repaints it from the server a moment later; say it now */
+    rvShowDone(rv);
+  }catch(ex){
+    console.error('[review]', ex && ex.code, ex && ex.message);
+    say(/permission/.test(String(ex && ex.code)) ? 'We could not save your review just now — please try again in a while.'
+      : 'Could not send your review — please check your connection and try again.');
+  }finally{
+    _rvSending = false; btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Send review';
+  }
+});
 
 /* ---------- the studio's availability calendar (../avail.js) ----------
    #availBox on the Schedule tab: a month grid, each day a morning and an

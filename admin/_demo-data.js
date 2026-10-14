@@ -494,6 +494,24 @@ export const studios = [
     gst: '', terms: '', notes: 'Stopped sending work after Mar 2026.', rateCard: {} },
 ];
 
+/* -------------------------------------------------------- reviews
+   "Write a review" on the website (no sign-in) and "Rate your experience"
+   in the client area: the inbox on Home and under Settings → Website
+   content. Two waiting — one from a client with a booking (pk03, so the card
+   can name the booking), one from the website — and one already approved, so
+   the Answered list is not empty. Approve in the demo only changes memory. */
+export const reviews = [
+  { id: 'rv01', name: 'Aisha & Faizan', location: 'Mehdipatnam, Hyderabad', rating: 5,
+    text: 'Both our functions were shot so gracefully — the lady photographer in the ladies section was exactly what Ammi wanted. Teaser came in a week!',
+    source: 'client', phone10: '9848012345', uid: 'demo-uid-aisha', pkgId: 'pk03', status: 'new', createdAt: ts(0) },
+  { id: 'rv02', name: 'Rahul V', location: '', rating: 4,
+    text: 'Drone shots of the baraat were superb and the team was on time. Album took a little longer than promised, but the quality made up for it.',
+    source: 'website', phone10: '', uid: '', pkgId: '', status: 'new', createdAt: ts(2) },
+  { id: 'rv03', name: 'Mehreen S', location: 'Secunderabad', rating: 5,
+    text: 'Our Nikah video made the whole family cry. Highly recommended.',
+    source: 'website', phone10: '', uid: '', pkgId: '', status: 'approved', createdAt: ts(9), answeredAt: ts(8) },
+];
+
 /* -------------------------------------------------------- studioRequests
    What a partner studio sends from "Request a booking" on the partner page;
    the B2B tab's inbox. Two waiting, one already declined:
