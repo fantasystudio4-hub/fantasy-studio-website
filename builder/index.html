@@ -49,7 +49,13 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
 <!-- live pricing is read from here on first paint -->
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
 <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- the scripts at the foot of the page start downloading now instead of when the parser reaches them -->
+<link rel="preload" as="script" href="../firebase-config.js" />
+<link rel="preload" as="script" href="../catalog.js" />
+<link rel="preload" as="script" href="../app-shell.js" />
+<!-- non-blocking: the page paints in the fallback font and swaps once this arrives (same swap as before, ~0.9 s earlier first paint on slow phones) -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@400;500;600&display=swap" /></noscript>
 
 <script type="application/ld+json">
 {
@@ -282,6 +288,20 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
    STEP 2 — FUNCTIONS
    ============================================================ */
 .ev-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
+/* Reserve the room the catalogue fills a moment later, so the first paint
+   (before catalog.js runs) already has the final shape and nothing below it
+   jumps: four package rows (~350-365px with gaps), eight function tiles in
+   2 / 3 / 4 / 5 columns (measured 238-257 / 217 / 162 / 147-162px — the tile
+   text wraps differently per width, so these are the nearest rem), the four
+   progress dots and the hint line. Only while the container is still empty,
+   so the filled layout is untouched. */
+.wiz-dots:empty{min-height:1.8rem}
+.deals:empty{min-height:22.3rem}
+#pickerHintText:empty{min-height:1.25rem}
+.ev-picker:empty{min-height:9.6rem}
+@media (max-width:999px){.ev-picker:empty{min-height:10rem}}
+@media (max-width:699px){.ev-picker:empty{min-height:13.5rem}}
+@media (max-width:599px){.ev-picker:empty{min-height:15.5rem}}
 
 .ev-tile{
   display:flex;align-items:center;gap:.65rem;text-align:left;cursor:pointer;

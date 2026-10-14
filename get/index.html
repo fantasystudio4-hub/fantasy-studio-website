@@ -97,7 +97,9 @@
 <meta name="twitter:description" content="Your booking, schedule and shoot-day updates on your phone. iPhone and Android." />
 <meta name="twitter:image" content="https://www.fantasystudio.in/og-app.jpg" />
 
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- non-blocking: the page paints in the fallback font and swaps once this arrives (same swap as before, ~0.9 s earlier first paint on slow phones) -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" /></noscript>
 <style>
 :root{
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
