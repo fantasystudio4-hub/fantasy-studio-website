@@ -532,7 +532,12 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       </a>
       <div class="sec"><a class="merow" id="meEdit" href="../profile/?role=client&amp;next=client%2F"><span>Edit profile</span><b>›</b></a>
         <!-- the app link with this client's name on it, through the phone's own share sheet (invite()) -->
-        <button class="merow" id="meInvite" type="button"><span>Invite family &amp; friends</span><b>›</b></button></div>
+        <button class="merow" id="meInvite" type="button"><span>Invite family &amp; friends</span><b>›</b></button>
+        <!-- the Rate your experience card lives at the foot of the Booking tab,
+             where nobody scrolls: this row is the way to it from Me. Its label
+             follows the card — "Rate your experience" until a review is sent,
+             then the stars given. -->
+        <button class="merow" id="meReview" type="button"><span id="meReviewLabel">Rate your experience</span><b id="meReviewStars" aria-hidden="true">›</b></button></div>
     </div>
     <!-- Only when there is more than one booking: every booking is open on
          this page now, so a client with three of them needs a way to reach the
@@ -1669,11 +1674,31 @@ function rvShowDone(r){
     : 'Thank you! Your review is <b>with the studio</b> and appears on our website after a quick check.';
   $('#rvSub').textContent = 'Thank you for telling us how it went.';
   $('#rvForm').hidden = true; $('#rvDone').hidden = false;
+  rvMeRow(n, r.status);
+}
+/* the Me tab's row: what it says and whether a tap still has a form to open */
+function rvMeRow(stars, status){
+  const l = $('#meReviewLabel'), b = $('#meReviewStars'); if(!l || !b) return;
+  if(!stars){ l.textContent = 'Rate your experience'; b.textContent = '›'; return; }
+  l.textContent = status === 'approved' ? 'Your review is on our website' : 'Your review';
+  b.textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
 function rvShowForm(){
   $('#rvDone').hidden = true; $('#rvForm').hidden = false;
   $('#rvSub').textContent = 'How did we do? A line or two helps the next couple choose.';
+  rvMeRow(0);
 }
+/* Me → Rate your experience: over to the Booking tab, the card into view,
+   the stars focused if the form is still open. setTab is the app's; in a
+   browser (no bar) the row is hidden anyway, so only the scroll runs. */
+$('#meReview').addEventListener('click', ()=>{
+  const card = $('#rvCard'); if(!card || card.hidden) return;
+  if(window.FSApp && FSApp.current && FSApp.current() !== 'booking') FSApp.setTab('booking');
+  setTimeout(()=>{
+    card.scrollIntoView({ behavior:'smooth', block:'start' });
+    if(!$('#rvForm').hidden){ try{ $('#rvS5').focus({ preventScroll:true }); }catch(e){} }
+  }, 60);
+});
 function rvSync(user, pkgs, name){
   const card = $('#rvCard'); if(!card) return;
   const last10 = String(user.phoneNumber || '').replace(/\D/g, '').slice(-10);
