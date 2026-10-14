@@ -830,49 +830,14 @@ section[id]{scroll-margin-top:84px}
 
 .pkg-showcase{position:relative;z-index:2;margin-bottom:2.2rem}
 
-/* build-your-own call to action */
-.builder-cta{
-  position:relative;z-index:2;display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:center;
-  background:#fff;border:1px solid var(--line);border-radius:14px;
-  padding:clamp(1.4rem,3vw,2.2rem);box-shadow:var(--shadow-sm);margin-bottom:2.2rem;
-}
-.builder-cta h3{font-size:clamp(1.3rem,2.6vw,1.75rem);color:var(--ink);margin-bottom:.45rem}
-.builder-cta p{color:var(--ink-soft);font-size:.92rem;max-width:56ch}
-.bc-steps{list-style:none;display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;margin-top:1.1rem}
-.bc-steps li{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--ink-soft)}
-.bc-steps li span{
-  width:26px;height:26px;flex:0 0 auto;border-radius:50%;border:1px solid var(--gold);
-  color:var(--gold-deep);display:grid;place-items:center;font-family:var(--serif);font-size:.82rem;
-}
-.bc-actions{display:flex;flex-direction:column;gap:.7rem}
-.bc-actions .btn{width:100%}
-.bc-note{font-size:.72rem;color:#8d846c;text-align:center;line-height:1.5}
-
-/* open rate card — the prices stay readable (and indexable) on the home page */
-.rate-card{
-  position:relative;z-index:2;background:linear-gradient(180deg,#FFFDF7,#FBF4E1);
-  border:1px solid var(--gold-bright);border-radius:14px;
-  padding:clamp(1.4rem,3vw,2.2rem);box-shadow:var(--shadow-sm);text-align:center;
-}
-.rate-card h3{font-size:clamp(1.3rem,2.6vw,1.75rem);color:var(--ink)}
-.rate-sub{font-size:.85rem;color:var(--ink-soft);margin-top:.3rem}
-.rate-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:.55rem;
-  margin:1.3rem 0 1.1rem;text-align:left;
-}
-.rate-row{
-  display:flex;align-items:baseline;justify-content:space-between;gap:.7rem;
-  background:#fff;border:1px solid var(--line);border-radius:9px;padding:.65rem .85rem;
-}
-.rate-row .rn{font-size:.85rem;color:var(--ink);min-width:0}
-.rate-row .ru{display:block;font-size:.68rem;color:#8d846c}
-.rate-row .rp{font-family:var(--serif);font-weight:600;font-size:1.02rem;color:var(--gold-deep);white-space:nowrap}
-.rate-note{font-size:.8rem;color:var(--ink-soft);max-width:70ch;margin:0 auto}
-.rate-note b{color:var(--gold-deep)}
-.rate-cta{margin-top:1.3rem}
+/* one button under the packages; the rate card and the build-your-own
+   walkthrough moved to the builder (14 Oct 2026) */
+.pkg-go{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:.9rem}
+.pkg-go .btn{min-width:min(100%,320px)}
+.pkg-rates{font-size:.82rem;letter-spacing:.04em;color:var(--gold-deep);text-decoration:underline;text-underline-offset:3px}
+.pkg-rates:hover{color:var(--ink)}
 
 @media(max-width:860px){
-  .builder-cta{grid-template-columns:1fr;gap:1.4rem}
   /* the ornament belongs beside the label, not floating against a wrapped
      three-line block */
   .resume-card{flex-wrap:wrap;align-items:flex-start}
@@ -881,7 +846,6 @@ section[id]{scroll-margin-top:84px}
 }
 @media(max-width:560px){
   .rate-grid{grid-template-columns:1fr}
-  .bc-steps{flex-direction:column;gap:.5rem}
 }
 </style>
 </head>
@@ -965,7 +929,7 @@ section[id]{scroll-margin-top:84px}
     <div class="center-head reveal">
       <span class="eyebrow center">Design Your Day</span>
       <h2 class="h-section">Build Your <span class="it">Package</span></h2>
-      <p class="lead">Start from a ready-made package or build your own — add your functions, choose the coverage for each, and watch the price update live. Two minutes, no sign-up.</p>
+      <p class="lead">Start from a ready-made package, or build your own. Prices update live — no sign-up.</p>
     </div>
 
     <!-- returning visitor with a package already in progress -->
@@ -988,7 +952,7 @@ section[id]{scroll-margin-top:84px}
         .reveal{opacity:1!important;transform:none!important}
         /* these are painted by script, so without it they are empty boxes and
            dead buttons that read as a broken page */
-        .pkg-showcase,.builder-cta,.rate-card,#resumeCard{display:none!important}
+        .pkg-showcase,.pkg-go,#resumeCard{display:none!important}
         /* a burger that cannot open anything is worse than no burger */
         .burger{display:none!important}
       </style>
@@ -1009,29 +973,13 @@ section[id]{scroll-margin-top:84px}
       <button type="button" class="pkg-compare-btn" id="pkgCompareBtn">&#8646; Compare packages side-by-side</button>
     </div>
 
-    <div class="builder-cta reveal d2">
-      <div class="bc-copy">
-        <h3>Or build it your own way</h3>
-        <p>Add Manje, Sanchak, Mehndi, Nikah, Ruksati or Valima — and choose candid, cinematography, drone, LED screens, live streaming or a dedicated lady shooter for each function.</p>
-        <ol class="bc-steps">
-          <li><span>1</span>Pick your functions</li>
-          <li><span>2</span>Add the coverage you want</li>
-          <li><span>3</span>Send it to us on WhatsApp</li>
-        </ol>
-      </div>
-      <div class="bc-actions">
-        <a class="btn btn-gold" href="builder/">Build Your Package</a>
-        <a class="btn btn-outline-gold" href="builder/#events">Add an Event</a>
-        <span class="bc-note">Nothing is charged here — you only send us your list.</span>
-      </div>
-    </div>
-
-    <div class="rate-card reveal d3">
-      <h3>Our rates, in the open</h3>
-      <p class="rate-sub">Every charge below is per function, up to 5 hours.</p>
-      <div class="rate-grid" id="rateGrid"></div>
-      <p class="rate-note" id="rateNote"></p>
-      <a class="btn btn-gold rate-cta" href="builder/">Price my package &rarr;</a>
+    <!-- the "build your own" walkthrough and the open rate card used to sit
+         here too: three phone screens of pricing before a visitor reached who
+         we are. Both live in the builder now (the rate card under "Our rates"
+         on its first step), where the prices are anyway. -->
+    <div class="pkg-go reveal d2">
+      <a class="btn btn-gold" href="builder/">Build Your Package</a>
+      <a class="pkg-rates" href="builder/#rates">See all our rates &rarr;</a>
     </div>
   </div>
 </section>
@@ -1043,8 +991,7 @@ section[id]{scroll-margin-top:84px}
       <span class="eyebrow">Who We Are</span>
       <h2 class="h-section">Timeless stories,<br><span class="it">beautifully</span> told.</h2>
       <p class="lead-2">For over fourteen years, Fantasy Studio has been Hyderabad's trusted name in luxury wedding photography &amp; cinematography.</p>
-      <p>Based in the heart of Malakpet, we have had the honour of documenting more than 1,500 celebrations — from intimate Nikahs to grand Receptions, vibrant Mehndis to soulful Ruksati moments. Every frame we create is rooted in respect, artistry, and an obsessive eye for detail.</p>
-      <p>We are proud to be warmly trusted for <strong>Muslim</strong> wedding traditions, honouring every ritual and every emotion with the dignity it deserves.</p>
+      <p>From our home in Malakpet we have documented more than 1,500 celebrations, from intimate Nikahs to grand Receptions — and we are trusted for <strong>Muslim</strong> wedding traditions, every ritual honoured with the dignity it deserves.</p>
       <div class="trust-row">
         <div class="ti"><b class="stat" data-count="1500" data-suffix="+">1500+</b><span>Weddings Filmed</span></div>
         <div class="ti"><b class="stat" data-count="14" data-suffix=" Yrs">14 Yrs</b><span>Of Experience</span></div>
@@ -1060,7 +1007,7 @@ section[id]{scroll-margin-top:84px}
     <div class="center-head reveal">
       <span class="eyebrow center">What We Offer</span>
       <h2 class="h-section">A Complete <span class="it">Wedding</span> Production House</h2>
-      <p class="lead">Every craft you need to remember the day forever — under one roof, by dedicated specialist teams.</p>
+      <p class="lead">Every craft for the day, under one roof.</p>
     </div>
     <div class="svc-grid">
       <div class="svc-card reveal">
@@ -1113,7 +1060,7 @@ section[id]{scroll-margin-top:84px}
     <div class="center-head reveal">
       <span class="eyebrow center">Our Work</span>
       <h2 class="h-section">See Our Latest <span class="it">Films &amp; Frames</span></h2>
-      <p class="lead">Our complete portfolio lives on Instagram — hundreds of real weddings, candid moments and cinematic films, updated regularly.</p>
+      <p class="lead">Hundreds of real weddings and films, updated on Instagram.</p>
     </div>
     <div class="insta-cta reveal d1">
       <div class="insta-ic">
@@ -1418,18 +1365,7 @@ function renderPresets(){
   }).join('');
 }
 
-function renderRateCard(){
-  const grid = $('#rateGrid'); if(!grid) return;
-  grid.innerHTML = SERVICES.map(s=>`
-    <div class="rate-row">
-      <span class="rn">${esc(s.label)}<span class="ru">${s.unit==='head'?'per head, per function':'per function'}</span></span>
-      <span class="rp">${inr(PRICES[s.key])}</span>
-    </div>`).join('');
-  const note = $('#rateNote');
-  if(note) note.innerHTML = `Albums are <b>${inr(PRICES.albumPerSheet)} per sheet</b> (minimum ${PRICES.albumMinSheets} sheets). `
-    + `Raw photos and the fully edited video are delivered on a pendrive with every package. `
-    + `Payment: ${PAYMENT_TERMS.join(' · ')}.`;
-}
+/* the open rate card (renderRateCard) moved to the builder's first step */
 
 function renderCompareTable(){
   const tbl = $('#compareTable'); if(!tbl) return;
@@ -1730,7 +1666,6 @@ $('#year').textContent = new Date().getFullYear();
 const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
 
 renderPresets();
-renderRateCard();
 renderResume();
 $('#pkgCompareBtn').addEventListener('click', openCompare);
 $('#cmpClose').addEventListener('click', closeCompare);
@@ -1862,7 +1797,6 @@ onRemoteConfig(function(cfg){
   }catch(e){}
   /* prices/presets were already merged by catalog.js — repaint what shows them */
   renderPresets();
-  renderRateCard();
   renderCompareTable();
   renderResume();
   observeReveals();

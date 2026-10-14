@@ -252,7 +252,6 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 .wiz-back{background:transparent;border:1px solid var(--line);color:var(--ink-soft)}
 .wiz-back:hover{border-color:var(--gold);color:var(--gold-deep)}
 .wiz-next:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
-.wiz-help{flex:1 1 200px;font-size:.78rem;color:#8d846c}
 .mq-next:disabled{opacity:.5}
 
 /* ============================================================
@@ -442,6 +441,25 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
 }
 .add-more:hover{background:rgba(184,144,43,.14);border-color:var(--gold)}
 .hint-line{margin-top:.8rem;font-size:.78rem;color:#8d846c;text-align:center}
+
+/* the open rate card: a collapsed card on step 1, opened by a tap or by
+   arriving at #rates from the home page's "See all our rates" */
+.rates summary{list-style:none;cursor:pointer;display:flex;align-items:center}
+.rates summary::-webkit-details-marker{display:none}
+.rates summary > div{flex:1;min-width:0}
+.rates-chev{flex:0 0 auto;color:var(--gold-deep);font-size:1.3rem;line-height:1;transition:transform .25s}
+.rates[open] .rates-chev{transform:rotate(180deg)}
+.rates:not([open]) summary{border-bottom:0}
+.rate-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:.55rem;margin-bottom:1rem}
+.rate-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:.7rem;
+  background:#fff;border:1px solid var(--line);border-radius:9px;padding:.65rem .85rem;
+}
+.rate-row .rn{font-size:.85rem;color:var(--ink);min-width:0}
+.rate-row .ru{display:block;font-size:.68rem;color:#8d846c}
+.rate-row .rp{font-family:var(--serif);font-weight:600;font-size:1.02rem;color:var(--gold-deep);white-space:nowrap}
+.rate-note{font-size:.8rem;color:var(--ink-soft);max-width:70ch}
+.rate-note b{color:var(--gold-deep)}
 #buildOwn{display:inline-block;white-space:nowrap}   /* never "or" on one line and the rest on the next */
 
 /* ============================================================
@@ -837,7 +855,6 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
   /* the bottom bar carries the step forward, so Back is a way out, not a
      second primary button spanning the screen */
   .wiz-nav .wiz-back{flex:0 0 auto;padding:.8em 1.8em;font-size:.78rem}
-  .wiz-help{flex:1 1 100%;text-align:center;order:-1}
   .shop{padding-left:.9rem;padding-right:.9rem}
   .review-actions{gap:.55rem}
   .review-actions .btn{flex:1 1 100%}
@@ -1067,8 +1084,22 @@ html.fs-app .hdr-start svg{width:18px;height:18px;flex:0 0 auto;stroke:currentCo
     </div>
   </section>
 
+  <!-- ============ OUR RATES (moved here from the home page, 14 Oct 2026) ============ -->
+  <details class="sec rates" id="rates">
+    <summary class="sec-head">
+      <div>
+        <h2>Our rates, in the open</h2>
+        <p>Every charge is per function, up to 5 hours. Tap to see the list.</p>
+      </div>
+      <span class="rates-chev" aria-hidden="true">&#8964;</span>
+    </summary>
+    <div class="sec-body">
+      <div class="rate-grid" id="rateGrid"></div>
+      <p class="rate-note" id="rateNote"></p>
+    </div>
+  </details>
+
     <div class="wiz-nav">
-      <span class="wiz-help" id="wizHelp1">Pick a package, or tap the functions you are having.</span>
       <button type="button" class="btn btn-gold wiz-next" data-goto-step="2">Next: choose coverage &rarr;</button>
     </div>
   </div>
@@ -1447,7 +1478,22 @@ function renderPicker(){
   const hint = $('#pickerHintText');
   if(hint) hint.textContent = state.events.length
     ? state.events.length + (state.events.length>1?' functions':' function') + ' chosen'
-    : 'Most families pick Nikah and Valima / Reception.';
+    : 'Pick a package, or tap the functions you are having — most families pick Nikah and Valima / Reception.';
+}
+
+/* the open rate card (from the home page): every service at its price, plus
+   the album and delivery note. Repainted when the live prices land. */
+function renderRateCard(){
+  const grid = $('#rateGrid'); if(!grid) return;
+  grid.innerHTML = SERVICES.map(s=>`
+    <div class="rate-row">
+      <span class="rn">${esc(s.label)}<span class="ru">${s.unit==='head'?'per head, per function':'per function'}</span></span>
+      <span class="rp">${inr(PRICES[s.key])}</span>
+    </div>`).join('');
+  const note = $('#rateNote');
+  if(note) note.innerHTML = `Albums are <b>${inr(PRICES.albumPerSheet)} per sheet</b> (minimum ${PRICES.albumMinSheets} sheets). `
+    + `Raw photos and the fully edited video are delivered on a pendrive with every package. `
+    + `Payment: ${PAYMENT_TERMS.join(' · ')}.`;
 }
 
 function bundleSatisfied(ev, b){
@@ -2121,9 +2167,7 @@ function renderWizBar(){
   const t = $('#wizTitle'), c = $('#wizCount');
   if(t) t.textContent = WIZ[step-1].title;
   if(c) c.textContent = 'Step ' + step + ' of ' + WIZ.length;
-  /* the Next button on step 1 is the gate — it says what is missing */
-  const help = $('#wizHelp1');
-  if(help) help.hidden = state.events.length > 0;   /* the button speaks for itself once it works */
+  /* the Next button on step 1 is the gate; the picker's hint line says what is missing */
   $$('.wiz-step[data-step="1"] .wiz-next').forEach(b=>{ b.disabled = !state.events.length; });
 }
 document.addEventListener('click', e=>{
@@ -2735,6 +2779,15 @@ syncPromoUI();
 /* a shared link, a saved package or a chosen preset all arrive with functions
    already on them — start on coverage rather than asking the question again */
 goStep(state.events.length ? 2 : 1, true);
+
+/* the rate card on step 1: painted now, again when live prices land, and
+   opened when the home page's "See all our rates" link brought the visitor */
+renderRateCard();
+onRemoteConfig(renderRateCard);
+if(location.hash === '#rates'){
+  const r = $('#rates');
+  if(r){ goStep(1, true); r.open = true; r.scrollIntoView({ block:'start' }); }
+}
 
 /* Payment terms are written once, in catalog.js, and printed here, in the
    sidebar, in the WhatsApp message and in the PDF. They used to be retyped in
