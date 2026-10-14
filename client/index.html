@@ -56,7 +56,16 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
 .hd .back{margin-left:auto;color:var(--mut);font-size:.8rem;text-decoration:none;border:1px solid var(--line);border-radius:30px;padding:.35em 1em;white-space:nowrap}
 .hd .back + .out{margin-left:.5rem}
-@media(hover:hover){ .hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)} }
+.hd .build{margin-left:auto;color:var(--gold-b);font-size:.75rem;text-decoration:none;border:1px solid rgba(201,163,71,.55);background:rgba(201,163,71,.1);border-radius:30px;padding:.35em .9em;white-space:nowrap;font-weight:500}
+.hd .build span{font-size:.8em;margin-right:.1em}
+.hd .build em{font-style:normal;margin-left:.3em}
+.hd .build + .back{margin-left:.5rem}
+@media(hover:hover){ .hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)} .hd .build:hover{background:rgba(201,163,71,.22);border-color:var(--gold)} }
+/* a 360px phone: logo, name, three pills — the two words of the name stack and
+   the "Client Area" line goes, so nothing is clipped */
+@media(max-width:420px){ .hd{gap:.55rem} .hd b{font-size:.95rem;line-height:1.05;display:block;max-width:5.2em} .hd span{display:none} .hd .build,.hd .back,.hd .out{padding:.35em .7em} }
+@media(max-width:380px){ .hd{gap:.45rem} .hd .build,.hd .back,.hd .out{padding:.35em .55em} .hd .build + .back,.hd .back + .out{margin-left:.35rem} }
+@media(max-width:345px){ .hd .build em{display:none} }   /* the oldest small phones: just "Build" */
 
 .login{max-width:400px;margin:10vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
 .login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
@@ -313,7 +322,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 }
 /* small text buttons were ~18-20px tall */
 .mini{min-height:44px;padding:.4em .9em}
-.hd .out,.hd .back{min-height:44px;display:inline-flex;align-items:center}
+.hd .out,.hd .back,.hd .build{min-height:44px;display:inline-flex;align-items:center}
 
 /* ==== polish pass: one visual system across admin / crew / client ==== */
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
@@ -351,6 +360,7 @@ html.fs-app[data-tab] #dashView .pkg > [data-tab]{border-bottom:0;border-top:1px
 /* Home is website chrome (fs-web-only); the sibling rule above still fires
    for a hidden Home, which would pull Logout in from the right */
 html.fs-app .hd .back + .out{margin-left:auto}
+html.fs-app .hd .build ~ .out{margin-left:.5rem}
 /* while the bar is up, signing out lives on the Me tab */
 html.fs-app.fs-tabs-on #logoutBtn{display:none}
 /* the toast and the page's own bottom padding clear the bar (the bar's
@@ -434,6 +444,9 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
   <div class="hd">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
     <div><b>Fantasy Studio</b><span>Client Area</span></div>
+    <!-- the website's Package Builder (/builder/), not a second one: a signed-in
+         client plans the next function from here; it shows with Logout -->
+    <a class="build" id="buildLink" href="../builder/" aria-label="Build a package" hidden><span aria-hidden="true">✨</span> Build <em>a package</em></a>
     <a class="back fs-web-only" id="backLink" href="../">Home</a>
     <button class="out" id="logoutBtn" hidden>Logout</button>
   </div>
@@ -1333,6 +1346,7 @@ function rememberPortal(on){
 }
 function route(user){
   $('#logoutBtn').hidden = !user;
+  $('#buildLink').hidden = !user;
   /* Every path out of the dashboard drops the stream first. A shared family
      phone signing out must not leave a live listener on the previous person's
      booking, and re-routing while one is open would otherwise stack a second. */
@@ -2282,6 +2296,7 @@ function demoClient(){
 function demoDraw(){ renderPackages({ docs: demoClient().map(x=>({ id:x.id, data:()=>x })) }, DEMO_USER); }
 function startDemo(){
   $('#logoutBtn').hidden = false;
+  $('#buildLink').hidden = false;
   show('loadingView');
   lockGate();
   demoDraw();
