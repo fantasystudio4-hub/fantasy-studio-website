@@ -1136,7 +1136,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* 'gs' (search) and 'fee' (edit fee) were missing: each pushed its own entry
      and closed through history.back(), but nothing here knew them, so the
      first ✕ or Back only dropped the entry and left the sheet on screen. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','masheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','masheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp','stx'];
   function pushView(view, hash, replace, extra){
     if(_navFromPop) return;
     try{
@@ -1653,6 +1653,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeJtUI === 'function') closeJtUI();
       if(typeof closeCrewPayUI === 'function') closeCrewPayUI();
       if(typeof closeTxUI === 'function') closeTxUI();
+      if(typeof closeStuTxUI === 'function') closeStuTxUI();
       if(typeof closeFeeUI === 'function') closeFeeUI();
       if(typeof closeGsUI === 'function') closeGsUI();
       if(typeof closeExpUI === 'function') closeExpUI();
@@ -11076,6 +11077,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     renderB2BStats();
     renderStudioList();
     if(!$('#studioDetailView').hidden) renderStudioDetail();
+    if($('#stxModal') && $('#stxModal').classList.contains('open')) renderStuTx();
   }
   function renderB2BStats(){
     const el = $('#b2bStats'); if(!el) return;
@@ -11640,7 +11642,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                the picture, and it was nowhere on this page. -->
           <div class="stu-money">
             <div class="stat"><b title="${inr(totBilled)}">${inrShort(totBilled)}</b><span>billed</span></div>
-            <div class="stat"><b style="color:var(--ok)" title="${inr(totPaid)}">${inrShort(totPaid)}</b><span>paid</span></div>
+            <div class="stat stutx" data-stutx="*" role="button" tabindex="0" title="${inr(totPaid)} — double-tap to see every payment"><b style="color:var(--ok)">${inrShort(totPaid)}</b><span>paid</span></div>
             <div class="stat ${run>0?'warn':''}"><b title="${inr(run)}">${inrShort(run)}</b><span>outstanding</span></div>
           </div>
           <div class="ledrow hd stuled-hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
@@ -11656,7 +11658,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <span>${esc([dmy(jobDate(r.x)),
                            ((r.x.events||[])[0]||{}).title || 'Job',
                            r.x.endClientName].filter(Boolean).join(' · '))}</span>
-            </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" style="color:var(--ok)" title="${inr(r.got)}">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
+            </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" class="stutx" data-stutx="${esc(r.x.id)}" style="color:var(--ok)" title="${inr(r.got)} — double-tap for this job's payments">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
           <h4 class="shotlist-h ${_stuEvOpen?'':'closed'}" data-stuevtog role="button" tabindex="0" aria-expanded="${_stuEvOpen}">
             🎬 Every shoot for this studio <b>${shot.length}</b><span class="car">▾</span></h4>
@@ -11752,9 +11754,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(lj){
       const x = livePkgs().find(p=>p.id === lj.dataset.ledjob);
       if(!x){ toast('That job is not here any more — it may have been deleted'); return; }
-      if(!canLeaveEditor()) return;
-      $('#tabPkgs').click();
-      openPkgEdit(x);
+      const openJob = ()=>{
+        if(!canLeaveEditor()) return;
+        $('#tabPkgs').click();
+        openPkgEdit(x);
+      };
+      /* the Received figure also answers a double-tap (the transactions list,
+         below) — a double-tap is two clicks first, so the first one must not
+         have already left the page: wait out the double-tap window */
+      if(e.target.closest('[data-stutx]')){ clearTimeout(_stxClickT); _stxClickT = setTimeout(openJob, 330); return; }
+      openJob();
       return;
     }
     if(e.target.closest('[data-stunewjob]')){
@@ -11843,6 +11852,93 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       _stuJobOpen = (_stuJobOpen === j.dataset.stujob) ? null : j.dataset.stujob;
       renderStudioDetail();
     }
+  });
+
+  /* ---------- studio transactions sheet (owner, 15 Oct 2026) ----------
+     A double-tap on the "paid" tile lists every payment this studio has made
+     across its confirmed jobs; on a ledger row's Received figure, that one
+     job's payments. Payments are the same rows the pay sheet and the
+     Transactions page read (package.payments), so the three can never
+     disagree — and a row here opens the pay sheet on that entry, as the
+     Transactions page does, rather than editing a copy. */
+  let _stxClickT = null, _stxJob = '';
+  on('#studioDetailView', 'dblclick', e=>{
+    const t = e.target.closest('[data-stutx]'); if(!t) return;
+    clearTimeout(_stxClickT);
+    e.preventDefault();
+    try{ const sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){}
+    openStuTx(t.dataset.stutx);
+  });
+  function stuTxRows(s, jobId){
+    const jobs = jobId === '*'
+      ? studioJobs(s.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft'))
+      : studioJobs(s.id).filter(x=>x.id === jobId);
+    const rows = [];
+    jobs.forEach(x=>(x.payments||[]).forEach(pm=>{
+      if(!pm) return;
+      rows.push({
+        id: x.id,
+        pid: String(pm.id||'') || `${Number(pm.amount)||0}|${pm.date||''}|${pm.mode||''}`,
+        amount: Math.max(0, Number(pm.amount)||0), date: String(pm.date||''),
+        mode: String(pm.mode||''), note: String(pm.note||''),
+        quoteNo: x.quoteNo||'—', endClient: x.endClientName||''
+      });
+    }));
+    return rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  }
+  function renderStuTx(){
+    const s = studioById(_stuDetailId);
+    const body = $('#stxBody'); if(!s || !body) return;
+    const all = _stxJob === '*';
+    const job = all ? null : studioJobs(s.id).find(x=>x.id === _stxJob);
+    if(!all && !job){ body.innerHTML = '<div class="empty" style="padding:.6rem 0">That job is not here any more.</div>'; return; }
+    const rows = stuTxRows(s, _stxJob);
+    const got = rows.reduce((n,r)=>n + r.amount, 0);
+    const scope = all ? studioJobs(s.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft')) : [job];
+    const billed = scope.reduce((n,x)=>n + (Number((x.totals||{}).finalPrice)||0), 0);
+    const due = scope.reduce((n,x)=>n + Math.max(0, Number((x.totals||{}).balance)||0), 0);
+    $('#stxTitle').textContent = all ? 'Transactions' : `Transactions — ${job.quoteNo||'job'}`;
+    $('#stxWho').textContent = all
+      ? `${s.name||'This studio'} — ${rows.length} payment${rows.length === 1 ? '' : 's'} across ${scope.length} booked & delivered job${scope.length === 1 ? '' : 's'}`
+      : `${s.name||'This studio'}${job.endClientName ? ' · ' + job.endClientName : ''} — ${rows.length} payment${rows.length === 1 ? '' : 's'}`;
+    body.innerHTML = `
+      <div class="finsplit txsum">
+        <span>Billed <b>${inr(billed)}</b></span>
+        <span>Received <b style="color:var(--ok)">${inr(got)}</b></span>
+        <span>Due <b style="color:var(${due > 0 ? '--warn' : '--ok'})">${due > 0 ? inr(due) : '✓ Nil'}</b></span>
+      </div>
+      ${rows.length ? `<div class="pay-hist stx-list">${rows.map(r=>`
+        <div class="pmedit" data-stxpay data-id="${esc(r.id)}" data-pid="${esc(r.pid)}" role="button" tabindex="0" title="Tap to open or correct this payment">
+          <span>${esc(ISO_RE.test(r.date||'') ? stepDate(r.date) : 'no date')} · ${esc(r.mode||'—')}${all ? ' · ' + esc(r.quoteNo) : ''}${r.note ? `<em class="paynote">${esc(r.note)}</em>` : ''}</span>
+          <b>+${inr(r.amount)}</b>
+        </div>`).join('')}</div>`
+      : `<div class="empty" style="padding:.6rem 0">No payments recorded ${all ? 'from this studio' : 'on this job'} yet.</div>`}
+      ${!all && job ? `<button class="btn btn--sm btn--ghost" type="button" data-stxadd style="width:100%;margin-top:.6rem">＋ Record a payment</button>` : ''}`;
+  }
+  function openStuTx(jobId){
+    if(!studioById(_stuDetailId)) return;
+    _stxJob = String(jobId||'*');
+    renderStuTx();
+    const wasOpen = $('#stxModal').classList.contains('open');
+    $('#stxModal').classList.add('open'); $('#stxBackdrop').classList.add('open');
+    if(!wasOpen) pushView('stx', '#b2b/transactions');
+  }
+  function closeStuTxUI(){ $('#stxModal').classList.remove('open'); $('#stxBackdrop').classList.remove('open'); _stxJob = ''; }
+  function closeStuTx(){ backFrom('stx', closeStuTxUI); }
+  on('#stxClose', 'click', closeStuTx);
+  on('#stxBackdrop', 'click', closeStuTx);
+  on('#stxBody', 'click', e=>{
+    const add = e.target.closest('[data-stxadd]');
+    if(add){
+      const x = PKGS.find(pk=>pk.id === _stxJob);
+      if(!x){ toast('That job is no longer here'); return; }
+      closeStuTxUI(); openPay(x);
+      return;
+    }
+    const el = e.target.closest('[data-stxpay]'); if(!el) return;
+    const x = PKGS.find(pk=>pk.id === el.dataset.id);
+    if(!x){ toast('That package is no longer here — it may have been deleted'); return; }
+    closeStuTxUI(); openPay(x); enterPayEdit(el.dataset.pid||'');
   });
 
   /* ---------- new booking chooser: direct client or studio job ---------- */
@@ -12071,6 +12167,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* (as a page of Money, Insights is not a sheet: it must not end the
        keypress, or Escape closes nothing that is open over it) */
     if(!MONEY_PAGES && $('#insModal').classList.contains('open')){ closeIns(); return; }
+    if($('#stxModal').classList.contains('open')){ closeStuTx(); return; }
     closePay(); closeStatus(); closeFin(); closeEv(); closeUpList(); closeQa(); closeStu(); closeJt(); closeTx();
   });
   /* Everything tappable here is a div — a calendar date, a shoot row, a stat

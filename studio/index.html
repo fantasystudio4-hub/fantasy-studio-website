@@ -274,7 +274,20 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .pay-sheet{position:fixed;left:0;right:0;bottom:0;background:#1c1710;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:1rem 1.2rem calc(1.2rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateY(105%);transition:.28s;z-index:50;max-width:640px;margin:0 auto;max-height:88vh;overflow:auto}
 .pay-sheet.open{transform:translateY(0)}
 .pay-sheet::before{content:"";display:block;width:44px;height:4px;border-radius:4px;background:var(--line);margin:0 auto .8rem}
-.pay-sheet h3{font-family:var(--serif);font-size:1.05rem;margin-bottom:.7rem}
+      <div class="sums txopen" data-tx="${esc(x.id)}" title="Double-tap to see every payment on this job">
+        <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
+/* the Money tiles open the transactions list on a double-tap; manipulation
+   stops the browser's double-tap zoom from eating the second tap */
+.sums.txopen{touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}
+.txlist{max-height:min(50vh,400px);overflow:auto;margin-top:.4rem}
+.txlist .payrow{border-bottom:1px dashed var(--line);padding:.45rem 0}
+.txlist .payrow:last-child{border-bottom:0}
+.txlist .payrow em{display:block;font-style:normal;font-size:.76rem;color:var(--mut);opacity:.85;margin-top:.1rem}
+.txsum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem;margin-bottom:.4rem}
+.txsum div{padding:.45rem .3rem;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--ink)}
+.txsum b{display:block;font-family:var(--serif);font-size:.98rem}
+.txsum span{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.txsum .due2 b{color:#e5b57f}
 .amtwrap{display:flex;align-items:center;gap:.4rem;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.15rem .7rem;margin-bottom:.6rem}
 .amtwrap b{color:var(--mut)}
 .amtwrap input{flex:1;background:none;border:0;color:var(--text);padding:.6rem 0;font-size:1.05rem;min-width:0}
@@ -644,6 +657,18 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
   <p class="note" style="margin-top:.5rem">If no app opens, copy the UPI ID and pay from any UPI app.</p>
   <a class="payapp" id="payDone" target="_blank" rel="noopener" style="margin-top:.9rem"><b>I've paid — tell Fantasy Studio</b><span class="go">WhatsApp →</span></a>
   <button class="mini" id="payClose" style="width:100%;margin-top:.8rem">Close</button>
+</div>
+
+<!-- Transactions (owner, 15 Oct 2026): a double-tap on a job's Money tiles
+     opens this list — every payment Fantasy Studio has recorded on that job,
+     newest first, with the job total and what is still due. Same sheet rules
+     as Pay: backdrop, Escape, a history entry so Back closes it. -->
+<div class="pay-back" id="txBack"></div>
+<div class="pay-sheet" id="txSheet" role="dialog" aria-modal="true" aria-labelledby="txTitle">
+  <h3 id="txTitle">Transactions</h3>
+  <div class="note" id="txWho" style="margin:-.3rem 0 .6rem"></div>
+  <div id="txBody"></div>
+  <button class="mini" id="txClose" style="width:100%;margin-top:.8rem">Close</button>
 </div>
 
 <!-- Request a booking (owner, 1 Oct 2026): a bottom sheet on the Pay sheet's
@@ -1369,6 +1394,7 @@ function render(){
   renderTiles(jobs);
   renderRequests();   /* booking requests, above the jobs */
   renderJobs(jobs);
+  if($('#txSheet') && $('#txSheet').classList.contains('open')) renderTxSheet();   /* a payment landing while the list is up */
   renderLedger(jobs);
   renderRates();
   if(FS_APP) renderMe();
@@ -1852,7 +1878,7 @@ function jobHTML(x, canToggle, collapsed, idx, total){
     <div class="sec"><h4>Money</h4>
       ${/* the three figures were printed as tiles, then again as a list, then
             again as a percentage. Once, as tiles; the rest is in the fold. */''}
-      <div class="sums">
+      <div class="sums txopen" data-tx="${esc(x.id)}" title="Double-tap to see every payment on this job">
         <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
         <div><b>${inr(paid)}</b><span>paid</span></div>
         <div class="${bal>0?'due2':over>0?'over2':'ok2'}"><b>${bal>0 ? inr(bal) : over>0 ? inr(over) : '✓ Paid'}</b><span>${bal>0?'you owe':over>0?'due back to you':'all clear'}</span></div>
@@ -2100,6 +2126,68 @@ $('#payHalf').addEventListener('click', ()=>{ $('#payAmt').value = Math.ceil((_p
 $('#vpaCopy').addEventListener('click', async ()=>{
   try{ await navigator.clipboard.writeText($('#vpaText').textContent); toast('UPI ID copied'); }
   catch(e){ toast('Could not copy — long-press the ID instead'); }
+});
+
+/* ---------- transactions sheet (owner, 15 Oct 2026) ----------
+   A double-tap on a job's Money tiles lists every payment recorded on it.
+   The rows are the job's own payments (the same list the breakdown fold
+   shows), newest first; the figures above them are totals.* — what the tiles,
+   the ledger and the panel all read. */
+let _txJobId = '';
+function renderTxSheet(){
+  const x = allJobs().find(j=>j.id === _txJobId);
+  const body = $('#txBody'); if(!body) return;
+  if(!x){ body.innerHTML = '<div class="empty" style="padding:.6rem 0">This job is no longer on your account.</div>'; return; }
+  const tt = x.totals||{};
+  const paid = Math.max(0, Number(tt.advance)||0);
+  const bal = Math.max(0, Number(tt.balance)||0);
+  const over = Math.max(0, -(Number(tt.balance)||0));
+  const rows = [...(x.payments||[])].filter(Boolean)
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  $('#txTitle').textContent = `Transactions — ${x.quoteNo||jobLabel(x)}`;
+  $('#txWho').textContent = `${jobLabel(x)} · ${rows.length} payment${rows.length === 1 ? '' : 's'}${x.quoteDate ? ' · quoted ' + dmy(x.quoteDate) : ''}`;
+  body.innerHTML = `
+    <div class="txsum">
+      <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
+      <div><b>${inr(paid)}</b><span>paid</span></div>
+      <div class="${bal>0?'due2':''}"><b>${bal>0 ? inr(bal) : over>0 ? inr(over) : '✓ Paid'}</b><span>${bal>0?'you owe':over>0?'due back to you':'all clear'}</span></div>
+    </div>
+    ${rows.length ? `<div class="txlist">${rows.map(pm=>
+      `<div class="payrow"><span>${esc(isDate(pm.date) ? dmy(pm.date) : 'Date not recorded')} · ${esc(pm.mode||'—')}${pm.note ? `<em>${esc(pm.note)}</em>` : ''}</span><b>+ ${inr(pm.amount)}</b></div>`).join('')}</div>`
+    : '<div class="empty" style="padding:.6rem 0">No payments recorded on this job yet.</div>'}
+    ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-jid="${esc(x.id)}" style="margin-top:.7rem">Pay ${inr(bal)} now</button>` : ''}`;
+}
+function openTxSheet(jobId){
+  _txJobId = jobId || '';
+  renderTxSheet();
+  const was = $('#txSheet').classList.contains('open');
+  $('#txBack').classList.add('open'); $('#txSheet').classList.add('open');
+  $('#txSheet').scrollTop = 0;
+  if(window.FSApp) FSApp.hide();
+  if(!was) ovOpen('tx');
+}
+function closeTxSheet(fromPop){
+  if(!$('#txSheet').classList.contains('open')) return;
+  $('#txBack').classList.remove('open'); $('#txSheet').classList.remove('open');
+  _txJobId = '';
+  if(window.FSApp && !$('#paySheet').classList.contains('open')) FSApp.show();
+  ovClosed('tx', fromPop === true);
+}
+window.addEventListener('popstate', ()=>{ closeTxSheet(true); });
+$('#txBack').addEventListener('click', closeTxSheet);
+$('#txClose').addEventListener('click', closeTxSheet);
+/* the pay sheet can sit over this list (Pay now inside it): one Escape, one sheet */
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('#paySheet').classList.contains('open')) closeTxSheet(); });
+document.addEventListener('dblclick', e=>{
+  const t = e.target.closest('[data-tx]'); if(!t) return;
+  e.preventDefault();
+  try{ const sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){}
+  openTxSheet(t.dataset.tx);
+});
+/* Pay now inside the sheet: the pay sheet slides over this one */
+$('#txBody').addEventListener('click', e=>{
+  const pay = e.target.closest('[data-pay]'); if(!pay) return;
+  openPay(Number(pay.dataset.pay)||0, pay.dataset.q||'', pay.dataset.jid||'');
 });
 
 /* ---------- request a booking (owner, 1 Oct 2026) ----------

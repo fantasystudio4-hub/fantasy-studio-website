@@ -785,6 +785,19 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button class="btn btn--sm btn--ghost" id="payDel" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Delete this payment</button>
 </div>
 
+<!-- Studio transactions (owner, 15 Oct 2026): a double-tap on the "paid"
+     tile or on a ledger row's Received figure on a partner studio's page opens
+     this list — every payment that studio (or that one job) has made, newest
+     first. A row opens the pay sheet with that payment loaded, as the
+     Transactions page does. -->
+<div class="pay-backdrop" id="stxBackdrop"></div>
+<div class="pay-modal" id="stxModal" role="dialog" aria-modal="true" aria-label="Transactions">
+  <button class="pay-close" id="stxClose" type="button" aria-label="Close">&times;</button>
+  <h3 id="stxTitle">Transactions</h3>
+  <div class="who" id="stxWho"></div>
+  <div id="stxBody"></div>
+</div>
+
 <!-- Edit fee: opened from a Pay tracker row. Deliberately its own small sheet
      rather than an inline input — the pay list re-renders on every snapshot,
      which would wipe a half-typed number, and a fee is not a field to fat-finger

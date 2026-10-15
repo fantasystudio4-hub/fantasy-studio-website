@@ -1632,6 +1632,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    ========================================================================= */
 .stu-money{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);margin:0 0 .8rem}
 .stu-money .stat{margin:0}
+/* the "paid" tile and a ledger row's Received figure answer a double-tap with
+   the transactions list; manipulation stops the browser's own double-tap zoom
+   from eating the second tap */
+.stutx{touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}
+.stu-money .stat.stutx:active{border-color:var(--gold-b)}
+.stx-list{max-height:min(52vh,420px)}
 
 /* the shot list: every dated event across this studio's confirmed jobs */
 .shotlist-h{
