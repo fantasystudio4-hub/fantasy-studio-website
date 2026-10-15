@@ -460,6 +460,13 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .hq-lb .lbl b{display:block;font-size:.76rem;letter-spacing:.01em;text-transform:none;color:var(--text);font-weight:500;margin-top:.12rem}
 .hq-lb .pos{flex:0 0 auto;font-family:var(--serif);font-size:1.4rem;color:var(--gold-b);line-height:1;white-space:nowrap}
 .hq-lb .pos em{font-style:normal;font-family:var(--sans);font-size:.7rem;color:var(--mut);margin-left:.3rem;letter-spacing:.02em}
+/* Month · Year · All — the three places the panel writes (lb.m / lb.y /
+   lb.all), so a member can see how they did this month, this year and
+   overall. Same gold-pill look as the chips under it. */
+.hq-lbtog{display:flex;gap:.35rem;margin-top:.55rem}
+.hq-lbtog button{flex:1;font:inherit;font-size:.66rem;letter-spacing:.04em;padding:.36em .6em;border-radius:20px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,color .15s,border-color .15s}
+.hq-lbtog button[aria-pressed="true"]{background:rgba(184,144,43,.18);border-color:rgba(226,194,117,.55);color:var(--gold-b);font-weight:600}
+.hq-lbtog button:focus-visible{outline:2px solid var(--gold-b);outline-offset:2px}
 
 /* next shoot — a live countdown, because "in 3 days" is the whole question */
 /* Medium, like the rank card above it. The clock was three 1.45rem numerals
@@ -753,9 +760,16 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
         </div>
       </div>
       <!-- the member's place on the studio's crew leaderboard (team/{id}.lb) -->
-      <div class="hq-lb" id="hqLb" hidden>
-        <span class="lbl"><span id="hqLbTtl">🏆 Crew leaderboard</span><b id="hqLbSub"></b></span>
-        <span class="pos" id="hqLbPos"></span>
+      <div id="hqLbWrap" hidden>
+        <div class="hq-lb" id="hqLb">
+          <span class="lbl"><span id="hqLbTtl">🏆 Crew leaderboard</span><b id="hqLbSub"></b></span>
+          <span class="pos" id="hqLbPos"></span>
+        </div>
+        <div class="hq-lbtog" id="hqLbTog" role="group" aria-label="Leaderboard period">
+          <button type="button" data-lb="m" aria-pressed="false">Month</button>
+          <button type="button" data-lb="y" aria-pressed="true">Year</button>
+          <button type="button" data-lb="all" aria-pressed="false">All time</button>
+        </div>
       </div>
       <div class="hq-chips" id="hqChips"></div>
     </div>
@@ -2223,23 +2237,43 @@ if(!CONFIGURED){
      The year board leads, as it does in the panel; all time stands in during
      the first weeks of a year with nothing on it yet. Nothing until the panel
      has run once after this ships. */
+  /* The member picks the period: Month, Year or All time (remembered on
+     this device; Year first, as in the panel). A period with no place yet
+     (a fresh month, a fresh year) still shows — "No shoots this month yet" —
+     so the buttons never go dead. The card hides only when the panel has not
+     written any place at all. */
+  const LB_PERIOD_KEY = 'fs_crew_lb_period';
+  const LB_LABEL = { m: 'this month', y: 'this year', all: 'all time' };
+  let _lbPeriod = (()=>{ try{ const v = localStorage.getItem(LB_PERIOD_KEY); return LB_LABEL[v] ? v : 'y'; }catch(e){ return 'y'; } })();
   function renderLb(){
     const lb = (ME && ME.lb) || {};
-    const pick = (lb.y && lb.y.pos > 0) ? ['y','this year'] : (lb.all && lb.all.pos > 0) ? ['all','all time'] : null;
-    $('#hqLb').hidden = !pick;
-    if(!pick) return;
+    const any = ['m','y','all'].some(k => lb[k] && lb[k].pos > 0);
+    $('#hqLbWrap').hidden = !any;
+    if(!any) return;
     const cat = lb.cat === 'office' ? 'office' : lb.cat === 'outdoor' ? 'outdoor' : '';
     $('#hqLbTtl').textContent = '🏆 ' + (cat === 'office' ? 'Office' : cat === 'outdoor' ? 'Outdoor' : 'Crew') + ' leaderboard';
-    const r = lb[pick[0]];
-    const medal = r.pos === 1 ? '🥇 ' : r.pos === 2 ? '🥈 ' : r.pos === 3 ? '🥉 ' : '';
-    $('#hqLbPos').innerHTML = `${medal}#${Number(r.pos)}<em>of ${Number(r.of)||1}</em>`;
-    /* the board is ordered by earnings, so say the earnings first */
+    $$('#hqLbTog button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lb === _lbPeriod)));
+    const r = lb[_lbPeriod] || {};
     const n = Number(r.n)||0, amt = Number(r.amt)||0;
     /* shooters shoot; the office does jobs (the member's own record decides
        when the place predates the split) */
     const unit = ((cat || ME.cat) === 'office' ? 'job' : 'shoot') + (n === 1 ? '' : 's');
-    $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} ${unit} ${pick[1]}`;
+    if(!(r.pos > 0)){
+      $('#hqLbPos').innerHTML = `—`;
+      $('#hqLbSub').textContent = `No ${unit} ${LB_LABEL[_lbPeriod]} yet`;
+      return;
+    }
+    const medal = r.pos === 1 ? '🥇 ' : r.pos === 2 ? '🥈 ' : r.pos === 3 ? '🥉 ' : '';
+    $('#hqLbPos').innerHTML = `${medal}#${Number(r.pos)}<em>of ${Number(r.of)||1}</em>`;
+    /* the board is ordered by earnings, so say the earnings first */
+    $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} ${unit} ${LB_LABEL[_lbPeriod]}`;
   }
+  $('#hqLbTog').addEventListener('click', e => {
+    const b = e.target.closest('[data-lb]'); if(!b || b.dataset.lb === _lbPeriod) return;
+    _lbPeriod = b.dataset.lb;
+    try{ localStorage.setItem(LB_PERIOD_KEY, _lbPeriod); }catch(e){}
+    renderLb();
+  });
 
   /* ---------- the home-screen widget (FSApp.widget, app only) ----------
      The widget shows the shoot this countdown counts down to, and the three
