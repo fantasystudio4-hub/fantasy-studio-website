@@ -143,7 +143,11 @@ const WA = 'https://wa.me/918686868803';
 $('#waLink').href = WA; $('#waLink2').href = WA;
 
 /* The store app's bottom bar, the same five tabs as the client page: the other
-   tabs go back to the client page opened on that tab. */
+   tabs go back to the client page opened on that tab. A client with no booking
+   under the number has no Booking or Payments tab there (the client page
+   leaves fs_client_nobook in sessionStorage for this run), so neither shows
+   here either, and Schedule is called Calendar as on that page. */
+const noBook = () => { try{ return sessionStorage.getItem('fs_client_nobook') === '1'; }catch(e){ return false; } };
 const ICON = {
   booking:'<svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>',
   schedule:'<svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>',
@@ -157,7 +161,9 @@ if(window.FSApp){
   FSApp.mount({
     portal: 'portfolio',
     tabs: [['booking','Booking'], ['schedule','Schedule'], ['payments','Payments'], ['portfolio','Portfolio'], ['me','Me']].map(([id, label]) => ({
-      id, label, icon: ICON[id],
+      id, icon: ICON[id],
+      label: id === 'schedule' ? () => noBook() ? 'Calendar' : 'Schedule' : label,
+      hiddenWhen: (id === 'booking' || id === 'payments') ? noBook : undefined,
       onTap: id === 'portfolio' ? () => window.scrollTo(0, 0) : () => { try{ sessionStorage.setItem('fs_tab_client', id); }catch(e){} location.href = '../client/' + DEMO_Q; },
     })),
     visibleWhen: () => true,

@@ -308,7 +308,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
    the way out */
 .portlink{display:flex;align-items:center;gap:.8rem;text-decoration:none;color:inherit;border:1px solid var(--line,rgba(184,144,43,.3));border-radius:14px;padding:.8rem 1rem;margin:.9rem 0;background:rgba(184,144,43,.08);font-size:1.4rem;text-align:left}
 .portlink span{flex:1;font-size:.95rem;line-height:1.3}.portlink b{display:block}.portlink em{display:block;font-style:normal;font-size:.8rem;opacity:.7}.portlink i{font-style:normal;opacity:.6}
-#emptyView > .pkg,#errorView > .pkg{margin-top:1rem}   /* not flush against the header */
+#errorView > .pkg{margin-top:1rem}   /* not flush against the header */
+/* signed in, no booking: the card under the calendar (see #noBooking) */
+.nobook .sec p{color:var(--mut);font-size:.88rem;line-height:1.55;margin:0 0 .7rem}
+.nobook .sec p:last-child{margin-bottom:0}
+.nobook .sec p a{color:var(--gold-b)}
+.nobook .contact{margin-top:.2rem}
+.nobook .nf-acts{justify-content:flex-start;margin-top:.1rem}
+.nobook .nf-acts .mini{margin-top:0;padding-left:0}
+.nobook .nf-roles{margin-top:.6rem}
 .empty .nf-h{display:block;font-family:var(--serif);color:#fff;font-size:1.1rem;margin-bottom:.4rem}
 #emptyPhone{white-space:nowrap}
 .nf-note{color:var(--mut);font-size:.76rem;margin-top:.9rem}
@@ -442,7 +450,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
        whole portal, sign-in included, is script-driven. Say so, and give the
        one thing that still works — a way to reach a human. -->
   <style>
-    #loadingView,#loginView,#appView,#errorView,#linkView,#emptyView,
+    #loadingView,#loginView,#appView,#errorView,#linkView,
     #requestView,#pendingView,#noAccessView,.hdr,header{display:none!important}
     .ns-portal{max-width:34rem;margin:22vh auto 0;padding:0 1.3rem;text-align:center;
       font-family:'Jost',system-ui,sans-serif;color:#f3ecdc}
@@ -517,6 +525,29 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
          first on the Schedule tab (owner, 1 Oct 2026) -->
     <div id="availBox" data-tab="schedule"></div>
     <div class="nextup" id="nextUp" data-tab="schedule" hidden></div>
+    <!-- signed in, no booking under this number yet (only numbers the studio
+         has put on a booking get one; the admin decides who is a client). The
+         calendar above is the page — this card says what to do next and why
+         there is no booking card, never a dead end. It sits on the Schedule
+         tab, which is the home tab while there is no booking (Booking and
+         Payments are hidden then; see the tabs below). -->
+    <div class="pkg nobook" id="noBooking" data-tab="schedule" hidden>
+      <div class="sec">
+        <h3>Planning a function?</h3>
+        <p>Tap a free date above to ask us about it on WhatsApp, or <a href="../builder/">build your package</a> and we will get back to you with a quote.</p>
+        <div class="contact">
+          <a id="emptyCall" href="#">📞 Call the studio</a>
+          <a id="emptyWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>Booked with us already?</h3>
+        <p>Your booking shows here the moment the studio adds <b id="emptyPhone" style="color:var(--text)"></b> to it. Booked with a different number? Sign in with that one — or <a id="emptyWaLost" href="#" target="_blank" rel="noopener">tell us</a> and we will sort it out right away.</p>
+        <!-- the same number set up as crew or a partner studio: their page -->
+        <div class="nf-roles" id="emptyRoles" hidden></div>
+        <div class="nf-acts"><button class="mini" id="emptyOut" type="button">Sign in with another number</button></div>
+      </div>
+    </div>
     <!-- store app only: the Me tab. Who is signed in sits above the bookings'
          own Questions? blocks, the account rows below them. Both are
          fs-app-only, so a browser never shows them. -->
@@ -593,31 +624,6 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     </div>
   </div>
 
-  <!-- signed in, no booking under this number: only numbers the studio has
-       put on a booking see one (the admin decides who is a client) -->
-  <div id="emptyView" hidden>
-    <div class="pkg"><div class="empty">
-      <span class="ic">📸</span>
-      <b class="nf-h">No booking under this number yet</b>
-      Your booking shows here once the studio adds <b id="emptyPhone" style="color:var(--text)"></b> to it.
-      Booked with a different number? Sign out and sign in with that one — or reach us and we'll help you right away.
-      <div class="contact" style="margin-top:1.1rem">
-        <a id="emptyCall" href="#">📞 Call the studio</a>
-        <a id="emptyWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
-      </div>
-      <!-- the booking list is live, so this is true -->
-      <a class="portlink" href="../portfolio/" style="margin:1rem 0 0">🎞 <span><b>See our portfolio</b><em>Photos, films and reels from our weddings</em></span><i aria-hidden="true">→</i></a>
-      <p class="nf-note">The moment the studio adds this number to a booking, this page opens by itself.</p>
-      <!-- the same number set up as crew or a partner studio: their page -->
-      <div class="nf-roles" id="emptyRoles" hidden></div>
-      <div class="nf-acts">
-        <button class="mini" id="emptyOut" type="button">Sign in with another number</button>
-        <!-- no tab bar on this screen, so the app keeps its delete here too -->
-        <button class="mini fs-app-only" id="emptyDelete" type="button">Delete my account</button>
-      </div>
-    </div></div>
-  </div>
-
   <!-- load failed (network / permissions) — distinct from "no bookings" -->
   <div id="errorView" hidden>
     <div class="pkg"><div class="empty">
@@ -683,6 +689,9 @@ const FS_APP = document.documentElement.classList.contains('fs-app');
    fantasystudio.in the first lock can never hold. */
 const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
                && new URLSearchParams(location.search).has('demo');
+/* ?demo=empty: the same hook signed in with no booking (calendar first) */
+const DEMO_EMPTY = DEMO_VIEW && new URLSearchParams(location.search).get('demo') === 'empty';
+const DEMO_Q = DEMO_VIEW ? (DEMO_EMPTY ? '?demo=empty' : '?demo') : '';
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 /* time of day on an event, denormalised onto the assignment by the panel */
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
@@ -694,26 +703,34 @@ const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
-const show = id => { ['loadingView','linkView','dashView','emptyView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+const show = id => { ['loadingView','linkView','dashView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
 /* Signed out goes to the one sign-in, /start/ (app and website alike); the
    local test hook keeps ?demo, so /start/ opens its own test view */
 const toStart = () => location.replace(DEMO_VIEW ? '../start/?demo' : '../start/');
+/* signed in with no booking under this number (set by renderPackages before
+   any view changes, so the tab bar's hiddenWhen reads it on that same change) */
+let _noBook = false;
 
 /* ---------- store app: bottom tabs ----------
    FSApp.mount returns null without html.fs-app, so a browser never gets a
    bar. A tab is only html[data-tab]; the stylesheet shows the matching
    sections (data-tab on the dashboard's blocks and in pkgHTML). Mounted
    before Firebase loads, so the bar is ready whatever the network does; it
-   only shows while the dashboard is on screen. */
+   only shows while the dashboard is on screen.
+   No booking under the number (owner, 15 Oct 2026): a new client used to land
+   on a 'No booking under this number yet' screen with no bar at all. Now the
+   dashboard shows with Booking and Payments hidden, so the bar is Calendar ·
+   Portfolio · Me and the studio's availability is the first thing seen;
+   the Schedule tab is called Calendar while there is nothing to schedule. */
 if(window.FSApp) FSApp.mount({
   portal: 'client',
   tabs: [
-    { id:'booking',  label:'Booking',  icon:'<svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>' },
-    { id:'schedule', label:'Schedule', icon:'<svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>' },
-    { id:'payments', label:'Payments', icon:'<svg viewBox="0 0 24 24"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>' },
+    { id:'booking',  label:'Booking',  hiddenWhen: () => _noBook, icon:'<svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>' },
+    { id:'schedule', label: () => _noBook ? 'Calendar' : 'Schedule', icon:'<svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>' },
+    { id:'payments', label:'Payments', hiddenWhen: () => _noBook, icon:'<svg viewBox="0 0 24 24"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>' },
     { id:'portfolio', label:'Portfolio', icon:'<svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg>',
-      /* the gallery is its own page, which mounts this same bar; coming back, the client opens on Booking */
-      onTap: () => { try{ sessionStorage.setItem('fs_tab_client', 'booking'); sessionStorage.setItem('fs_lock_hop', String(Date.now())); }catch(e){} location.href = '../portfolio/' + (DEMO_VIEW ? '?demo' : ''); } },
+      /* the gallery is its own page, which mounts this same bar; coming back, the client opens on its home tab */
+      onTap: () => { try{ sessionStorage.setItem('fs_tab_client', _noBook ? 'schedule' : 'booking'); sessionStorage.setItem('fs_lock_hop', String(Date.now())); }catch(e){} location.href = '../portfolio/' + DEMO_Q; } },
     { id:'me',       label:'Me',       icon:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>' },
   ],
   visibleWhen: () => !$('#dashView').hidden,
@@ -1125,7 +1142,6 @@ $('#delBd').addEventListener('click', delClose);
 document.addEventListener('keydown', e=>{ if(e.key === 'Escape') delClose(); });
 /* Back (Android, or a tab change) closes it instead of leaving it over another tab */
 window.addEventListener('popstate', ()=>delClose());
-$('#emptyDelete').addEventListener('click', delOpen);
 
 /* ---------- store app: the Me tab ----------
    Sign out is the header button's own path. Switch is not a sign-out: a
@@ -1344,7 +1360,7 @@ if(lockable()){
   window.addEventListener('fs:relock', ()=>{
     if(_lockHeld || !lockOn() || FSApp.lock.shown()) return;
     if(!auth.currentUser && !DEMO_VIEW) return;
-    if($('#dashView').hidden && $('#emptyView').hidden) return;
+    if($('#dashView').hidden) return;
     _lockHeld = true;
     const my = ++_lockSeq;
     lockScreen(my);
@@ -1596,8 +1612,9 @@ function renderPackages(snap, user){
   const said = syncOpenPaySheet(pkgs);
   /* signed in, no booking: this number is not set up as a client, so the
      widget goes (the contract's "no access"), as for crew not yet added */
-  if(!pkgs.length){ widgetOff(); availOff(); rvOff(); reveal('emptyView'); fillEmpty(user); return; }
-  if(auth.currentUser) rememberPortal(true);   /* a booking that arrived after the not-found screen */
+  if(!pkgs.length){ widgetOff(); rvOff(); renderNoBooking(user); return; }
+  setNoBooking(false);
+  if(auth.currentUser) rememberPortal(true);   /* a booking that arrived after the no-booking view */
   /* newest first — createdAt when present, quote number as tiebreaker */
   pkgs.sort((a,b)=>
     ((b.createdAt && b.createdAt.seconds)||0) - ((a.createdAt && a.createdAt.seconds)||0)
@@ -1733,6 +1750,7 @@ function rvOff(){
   if(_rvUnsub){ try{ _rvUnsub(); }catch(e){} }
   _rvUnsub = null; _rvKey = ''; _rvCtx = null;
   const card = $('#rvCard'); if(card) card.hidden = true;
+  const row = $('#meReview'); if(row) row.hidden = true;   /* nothing to rate yet (set again by rvSync) */
 }
 $('#rvForm').addEventListener('submit', async e=>{
   e.preventDefault();
@@ -2184,12 +2202,44 @@ document.addEventListener('keydown', e=>{
   e.preventDefault();
   t.click();
 });
+/* Signed in, no booking under this number: the dashboard itself, with the
+   studio's calendar first, the Planning / Booked already? card under it and
+   the Me tab as for any client — never a screen that only says no. Booking
+   and Payments leave the bar (hiddenWhen reads _noBook), so the app opens on
+   Calendar · Portfolio · Me; a browser shows the same blocks top to bottom.
+   The flag is set BEFORE any view changes: the bar re-reads hiddenWhen on
+   every hidden flip, and must find it already true. */
+function setNoBooking(on){
+  /* the Portfolio page mounts the same bar and reads this for its tabs; written
+     on every render, not only on a change, so a booking that arrives on a
+     fresh page load clears what an earlier load of this run left */
+  try{ if(on) sessionStorage.setItem('fs_client_nobook', '1'); else sessionStorage.removeItem('fs_client_nobook'); }catch(e){}
+  if(_noBook === on) return;
+  _noBook = on;
+  /* the greeting leads the Calendar tab while there is no Booking tab */
+  ['#hello', '#helloSub'].forEach(q=>{ $(q).setAttribute('data-tab', on ? 'schedule' : 'booking'); });
+  $('#noBooking').hidden = !on;
+}
+function renderNoBooking(user){
+  setNoBooking(true);
+  const name = user.displayName || '';
+  $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
+  $('#helloSub').textContent = 'Welcome to Fantasy Studio. Here is when the studio is free — tap a date to ask about it.';
+  $('#pkgList').innerHTML = ''; _pkgSig = '';
+  fillMe(user, []);
+  renderJump([]);
+  renderNextUp([]);
+  fillEmpty(user);
+  reveal('dashView');
+  availSync(user, []);   /* the studio's calendar, nothing ringed */
+}
 function fillEmpty(user){
   const phone = String(user.phoneNumber||'');
   $('#emptyPhone').textContent = phone.replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2') || 'this number';
   const ph = (contact().phone||'').replace(/\D/g,'');
   $('#emptyCall').href = 'tel:+' + ph;
-  $('#emptyWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! I cannot find my booking in the client area. My number: ' + phone);
+  $('#emptyWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! I would like to ask about booking Fantasy Studio for our function.');
+  $('#emptyWaLost').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! I cannot find my booking in the client area. My number: ' + phone);
   rememberPortal(false);   /* /start/ must not send this number straight back here */
   otherRoles(user);
 }
@@ -2463,7 +2513,7 @@ function demoClient(){
   }];
 }
 /* the sample through the page's own renderer, exactly as a snapshot would arrive */
-function demoDraw(){ renderPackages({ docs: demoClient().map(x=>({ id:x.id, data:()=>x })) }, DEMO_USER); }
+function demoDraw(){ renderPackages({ docs: (DEMO_EMPTY ? [] : demoClient()).map(x=>({ id:x.id, data:()=>x })) }, DEMO_USER); }
 function startDemo(){
   $('#logoutBtn').hidden = false;
   $('#buildLink').hidden = false;

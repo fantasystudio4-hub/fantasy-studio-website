@@ -9,6 +9,9 @@
    listeners keep running exactly as on the website.
 
    FSApp.mount({ portal, tabs:[{id,label,icon,hiddenWhen?,onTap?}], visibleWhen, onChange? })
+     label may be a function: it is read again with hiddenWhen, so a tab can
+     change its word with the data (the client's Schedule is 'Calendar' while
+     there is no booking to schedule).
    FSApp.setTab(id)  FSApp.current()  FSApp.hide()  FSApp.show()
    FSApp.refresh()   FSApp.exitToStart()
 
@@ -60,6 +63,10 @@
       try{ h = !!(t.hiddenWhen && t.hiddenWhen()); }catch(e){}
       t.hidden = h;
       if(t.btn.hidden !== h) t.btn.hidden = h;
+      if(typeof t.label === 'function'){
+        var l = ''; try{ l = String(t.label() || t.id); }catch(e){ l = t.id; }
+        if(l !== t.lb){ t.lb = l; t.btn.lastChild.textContent = l; }
+      }
     });
     if(st.id && !usable(tab(st.id))) apply(firstVisible().id, 'replace');
   }
@@ -128,8 +135,8 @@
       b.setAttribute('data-tab', d.id); b.setAttribute('aria-selected', 'false');
       /* the icon is the page's own emoji or SVG string, never user data */
       b.innerHTML = '<span class="fs-tab-ic" aria-hidden="true">' + (d.icon || '') + '</span><span class="fs-tab-lb"></span>';
-      b.lastChild.textContent = d.label || d.id;
-      var t = { id: d.id, hiddenWhen: d.hiddenWhen, btn: b, hidden: false };
+      b.lastChild.textContent = typeof d.label === 'function' ? d.id : (d.label || d.id);
+      var t = { id: d.id, hiddenWhen: d.hiddenWhen, label: d.label, lb: '', btn: b, hidden: false };
       b.addEventListener('click', function(){
         haptic();
         if(d.onTap){ try{ d.onTap(); }catch(e){} return; }   /* a tab that leaves for another page */
