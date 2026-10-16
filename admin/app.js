@@ -5924,17 +5924,30 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      row of his that day is that function, as evCrew reads it. A legacy row
      with no title on a two-function day could be either, so it only warns —
      treating it as "on" blocked both functions. */
-  function memberOnEvent(mid, pkgId, date, title, slot){
+  /* the member's shoot rows that sit on THIS function (on), or — when none
+     is titled for it — whether an untitled older row may be it (soft) */
+  function memberEvRows(mid, pkgId, date, title, slot){
     const rows = ASGS.filter(a=>a.memberId===mid && a.pkgId===pkgId && a.date===date && a.kind !== 'edit');
-    if(!rows.length) return '';
+    if(!rows.length) return { on: [], soft: false };
     const pk = PKGS.find(p=>p.id===pkgId);
     const day = pk ? (pk.events||[]).filter(e=>e.date===date) : [];
-    if((pk ? day.length : 1) < 2) return 'on';
+    if((pk ? day.length : 1) < 2) return { on: rows, soft: false };
     const t = maNorm(title);
     const twin = day.filter(e=>maNorm(e.title) === t).length >= 2;
-    if(rows.some(a=>maNorm(a.eventTitle) === t && (!twin || !a.slot || !slot || a.slot === slot))) return 'on';
-    return rows.some(a=>!maNorm(a.eventTitle)) ? 'soft' : '';
+    const on = rows.filter(a=>maNorm(a.eventTitle) === t && (!twin || !a.slot || !slot || a.slot === slot));
+    return { on, soft: !on.length && rows.some(a=>!maNorm(a.eventTitle)) };
   }
+  /* One person can hold two roles on one function — the photographer who
+     also flies the drone, or shoots stills AND video at a small event — as
+     two rows, one fee each. So "on this event" is asked per ROLE when a role
+     is given: on as Photography does not make them on as Videography. */
+  function memberOnEvent(mid, pkgId, date, title, slot, role){
+    const r = memberEvRows(mid, pkgId, date, title, slot);
+    const on = role ? r.on.filter(a=>maNorm(a.role) === maNorm(role)) : r.on;
+    return on.length ? 'on' : r.soft ? 'soft' : '';
+  }
+  const memberRolesOn = (mid, pkgId, date, title, slot) =>
+    [...new Set(memberEvRows(mid, pkgId, date, title, slot).on.map(a=>maNorm(a.role)).filter(Boolean))];
   /* His other shoots that day. asgConflicts counts the date alone and editing
      rows too, so a morning Nikah and an evening Reception of one wedding
      asked "already booked that day?". Here: editing rows never count (an
@@ -8519,9 +8532,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- assign sheet ---------- */
   let _asEditId = null, _asCtx = null;
-  function asgConflicts(mid, date, excludeId){
-    return ASGS.filter(a=>a.memberId===mid && a.date===date && a.id!==excludeId);
+  /* ctx: the function being staffed — a row the member already has ON it
+     (a second role for the same person) is not "booked elsewhere that day" */
+  function asgConflicts(mid, date, excludeId, ctx){
+    const own = new Set(ctx ? evCrew(ctx.pkgId, ctx.date, ctx.eventTitle).map(a=>a.id) : []);
+    return ASGS.filter(a=>a.memberId===mid && a.date===date && a.id!==excludeId && !own.has(a.id));
   }
+  /* the roles this member already holds on the function the sheet is on,
+     the row being edited left out (it is about to change) */
+  const asRolesOn = mid => !_asCtx ? [] : [...new Set(evCrew(_asCtx.pkgId, _asCtx.date, _asCtx.eventTitle)
+    .filter(a=>a.memberId===mid && a.id!==_asEditId).map(a=>maNorm(a.role)).filter(Boolean))];
   /* ---- crew picker: who is free, who the event actually needs, and more
      than one at a time. A three-photographer wedding used to be three trips
      through this sheet. ---- */
@@ -8534,7 +8554,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function refreshAsConflict(){
     const box = $('#asConflict');
-    const clash = [..._asPicked].map(id=>({ m: memberById(id), cs: _asCtx ? asgConflicts(id, _asCtx.date, _asEditId) : [] }))
+    const clash = [..._asPicked].map(id=>({ m: memberById(id), cs: _asCtx ? asgConflicts(id, _asCtx.date, _asEditId, _asCtx) : [] }))
       .filter(x=>x.cs.length);
     box.hidden = !clash.length;
     if(clash.length){
@@ -8647,7 +8667,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const fq = (filterBox && !filterBox.hidden ? _asFilter : '').trim().toLowerCase();
     if(fq) list = list.filter(m=>String(m.name||'').toLowerCase().includes(fq)
       || String(m.role||'').toLowerCase().includes(fq));
-    const busyOf = m => _asCtx ? asgConflicts(m.id, _asCtx.date, _asEditId) : [];
+    const busyOf = m => _asCtx ? asgConflicts(m.id, _asCtx.date, _asEditId, _asCtx) : [];
     /* wanted for this event and free → first; busy → last */
     const rank = m => _asForceEdit
       ? (roleIsEdit(m.role) ? 0 : 1)                                  /* editors first */
@@ -8671,14 +8691,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     function pickBtn(m){
       const busy = busyOf(m);
-      const here = onEvent.has(m.id) && m.id !== sel;
+      /* Already on this function — in one role or more. They used to be greyed
+         out as "already on this event", which made the photographer who is
+         also the drone pilot impossible to put on twice. They stay tappable:
+         picking them again adds ANOTHER role (Save refuses the same role twice). */
+      const held = onEvent.has(m.id) && m.id !== sel ? asRolesOn(m.id) : [];
+      const here = held.length > 0;
       const on = _asPicked.has(m.id);
       const wanted = !!need[String(m.role||'').toLowerCase()];
-      const note = here ? 'already on this event' : busy.length ? 'busy · ' + esc(busy[0].eventTitle||'another event') : 'free';
+      const note = here ? 'on this event as ' + esc(held.map(roleLabel).join(' + ')) + ' · tap to add another role'
+        : busy.length ? 'busy · ' + esc(busy[0].eventTitle||'another event') : 'free';
       /* a bare ★ read as a favourite or a rating — it means this event's
          services actually call for their craft */
-      return `<button type="button" class="cpick ${on?'on':''} ${here?'here':''}" data-pick="${esc(m.id)}" ${here?'disabled':''}>
-        <i class="dot ${here ? 'delivered' : busy.length ? 'unconfirmed' : 'booked'}"></i>
+      return `<button type="button" class="cpick ${on?'on':''} ${here?'again':''}" data-pick="${esc(m.id)}">
+        <i class="dot ${here ? 'lead' : busy.length ? 'unconfirmed' : 'booked'}"></i>
         <span class="cp-t"><b>${esc(m.name||'—')}${wanted?'<i class="wantt">needed</i>':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
       </button>`;
     }
@@ -8694,14 +8720,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(pk && !_asEditId){
       src = (pk.events||[])
         .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||'') && !(e.date === _asCtx.date && String(e.title||'') === String(_asCtx.eventTitle||'')))
-        .map(e=>({ e, crew: evCrew(pk.id, e.date, e.title).filter(a=>!onEvent.has(a.memberId)) }))
+        /* people, not rows — one person in two roles there is one to copy */
+        .map(e=>({ e, crew: [...new Set(evCrew(pk.id, e.date, e.title).filter(a=>!onEvent.has(a.memberId)).map(a=>a.memberId))] }))
         .filter(x=>x.crew.length)
         .sort((a,b)=>a.e.date < b.e.date ? 1 : -1)[0] || null;
     }
     btn.hidden = !src;
     if(src){
       btn.textContent = `⧉ Same crew as ${src.e.title || 'the other day'} (${stepDate(src.e.date)}) — ${src.crew.length}`;
-      btn.dataset.copy = src.crew.map(a=>a.memberId).join(',');
+      btn.dataset.copy = src.crew.join(',');
     }
   }
   on('#asPick', 'click', e=>{
@@ -8714,7 +8741,18 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_asPicked.size === 1){
       const m = memberById([..._asPicked][0]);
       if(m){
-        if(TEAM_ROLES.includes(m.role)) $('#asRole').value = m.role;
+        const held = asRolesOn(m.id);
+        if(!held.length){
+          if(TEAM_ROLES.includes(m.role)) $('#asRole').value = m.role;
+        }else{
+          /* already on it: their own role is taken, so start on what the
+             function still needs — else the first role they do not hold */
+          const ev = asEventOf(_asCtx);
+          const gap = ev ? Object.keys(evGap(_asCtx.pkgId, ev)) : [];
+          const next = gap.find(r=>TEAM_ROLES.includes(r) && !held.includes(r))
+            || TEAM_ROLES.find(r=>!held.includes(r) && !roleIsEdit(r));
+          if(next) $('#asRole').value = next;
+        }
         if(!_asEditId && m.defaultRate) $('#asAmt').value = m.defaultRate;
       }
     }
@@ -8795,8 +8833,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!picked.length){ toast('Tap a team member to assign'); return; }
     const multi = !_asEditId && picked.length > 1;
     const m = picked[0];
+    /* several at once: each keeps their own role and their own rate, because
+       one rate and one role across a mixed crew is never what was meant */
+    const roleFor = x => multi ? (x.role || $('#asRole').value || '') : ($('#asRole').value || x.role || '');
+    /* A second row for the same person is a second ROLE. The same role twice
+       would be the same job counted twice (and paid twice): refused here —
+       before any question — so the picker can leave them tappable. Editing
+       rows are not crew on the day and are not counted. */
+    const twice = picked.find(x=>!roleIsEdit(roleFor(x)) && asRolesOn(x.id).includes(maNorm(roleFor(x))));
+    if(twice){
+      const r = roleLabel(roleFor(twice));
+      toast(multi ? `${twice.name||'A member'} is already on this event as ${r} — pick them on their own to add another role`
+                  : `${twice.name||'This member'} is already on this event as ${r} — pick a different role, or edit that row`);
+      return;
+    }
     /* ask once, listing everyone who already has something that day */
-    const clash = picked.filter(x=>asgConflicts(x.id, _asCtx.date, _asEditId).length);
+    const clash = picked.filter(x=>asgConflicts(x.id, _asCtx.date, _asEditId, _asCtx).length);
     if(clash.length){
       const names = clash.map(x=>x.name||'a member').join(', ');
       if(!await confirmDialog({
@@ -8806,10 +8858,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     const typed = Math.max(0, Math.round(Number($('#asAmt').value)||0));
     const amt = typed;
-    /* several at once: each keeps their own role and their own rate, because
-       one rate and one role across a mixed crew is never what was meant */
     const payFor = x => multi ? Math.max(0, Math.round(Number(x.defaultRate)||0)) : typed;
-    const roleFor = x => multi ? (x.role || $('#asRole').value || '') : ($('#asRole').value || x.role || '');
     const baseOf = x => {
       const r = roleFor(x), ed = roleIsEdit(r);
       return {
@@ -9062,7 +9111,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(pre.role && MA_ROLES.includes(pre.role)) _maRole = pre.role;
       if(pre.heads) _maHeads = headsOf({ heads: pre.heads });
       const row = pre.ctx && maEventRows().find(r=>r.key === maKey(pre.ctx));
-      const on = row && memberOnEvent(m.id, row.ctx.pkgId, row.ctx.date, row.ctx.eventTitle, row.ctx.slot) === 'on';
+      const on = row && memberOnEvent(m.id, row.ctx.pkgId, row.ctx.date, row.ctx.eventTitle, row.ctx.slot, _maRole) === 'on';
       if(row && !on){
         const typed = pre.fee === null || pre.fee === undefined || pre.fee === '' ? null : Math.max(0, Math.round(Number(pre.fee)||0));
         _maTicks.set(row.key, { fee: typed === maRate(m) ? null : typed, call: pre.call || '', label: maLabel(row.ctx) });
@@ -9127,12 +9176,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* what one event row says about this member, before it is ticked */
   function maState(m, r, ticked){
     const c = r.ctx;
-    const on = memberOnEvent(m.id, c.pkgId, c.date, c.eventTitle, c.slot);
+    const on = memberOnEvent(m.id, c.pkgId, c.date, c.eventTitle, c.slot, _maRole);
+    const other = on === 'on' ? [] : memberRolesOn(m.id, c.pkgId, c.date, c.eventTitle, c.slot);
     const cl = shootClashes(m.id, c.date, c.slot, c.pkgId);
     const mine = ticked.filter(x=>x !== c && x.date === c.date && x.pkgId !== c.pkgId && slotsOverlap(x.slot, c.slot));
     const needs = !!evGap(c.pkgId, r.ev)[_maRole];
     let note = 'free', warn = false;
-    if(on === 'on') note = 'already on this event';
+    if(on === 'on') note = `already on this event as ${roleLabel(_maRole)}`;
+    else if(other.length) note = `also on it as ${other.map(roleLabel).join(' + ')} · this adds ${roleLabel(_maRole)}`;
     else if(cl.hard.length){ warn = true; note = `⚠ busy · ${cl.hard[0].eventTitle || 'another event'}${slotSuffix(cl.hard[0].slot)} (${cl.hard[0].clientName || 'another booking'})`; }
     else if(mine.length){ warn = true; note = `⚠ same time as ${mine[0].eventTitle || 'another event'} (${mine[0].clientName || 'another booking'}), also ticked`; }
     else if(on === 'soft'){ warn = true; note = '⚠ may already be on it — an older row has no function name'; }
@@ -9247,7 +9298,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const all = e.target.closest('[data-maall]');
     if(all){
       const rows = _maRows.filter(r=>r.pk.id === all.dataset.maall
-        && memberOnEvent(m.id, r.ctx.pkgId, r.ctx.date, r.ctx.eventTitle, r.ctx.slot) !== 'on');
+        && memberOnEvent(m.id, r.ctx.pkgId, r.ctx.date, r.ctx.eventTitle, r.ctx.slot, _maRole) !== 'on');
       if(rows.length && rows.every(r=>_maTicks.has(r.key))){
         rows.forEach(r=>_maTicks.delete(r.key));
         if(rows.some(r=>r.key === _maOpen)) _maOpen = '';
@@ -9298,11 +9349,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        is loaded NOW, by what identifies its function, and anything that no
        longer fits is left out and named. */
     const fresh = maEventRows(), dropped = [], picks = [];
+    const role = MA_ROLES.includes(_maRole) ? _maRole : maDefaultRole(m);
     _maTicks.forEach((t, key)=>{
       const r = fresh.find(x=>x.key === key);
       if(!r){ dropped.push({ key, label: t.label || 'An event', why: 'it is no longer listed: its date or name changed, or the booking is no longer booked' }); return; }
-      const on = memberOnEvent(m.id, r.ctx.pkgId, r.ctx.date, r.ctx.eventTitle, r.ctx.slot);
-      if(on === 'on'){ dropped.push({ key, label: maLabel(r.ctx), why: `${maFirst(m)} is already on it` }); return; }
+      const on = memberOnEvent(m.id, r.ctx.pkgId, r.ctx.date, r.ctx.eventTitle, r.ctx.slot, role);
+      if(on === 'on'){ dropped.push({ key, label: maLabel(r.ctx), why: `${maFirst(m)} is already on it as ${roleLabel(role)}` }); return; }
       picks.push({ r, t, soft: on === 'soft' });
     });
     /* the screen catches up with what was found, whatever happens next */
@@ -9335,7 +9387,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       confirmText: `Assign to ${maEvWord(n)}`, danger: false })) return;
     if(!maIsOutdoor(memberById(m.id)) || _maMid !== m.id) return;   /* the sheet moved on while the question was up */
     const notes = $('#maNotes').value.trim();
-    const role = MA_ROLES.includes(_maRole) ? _maRole : maDefaultRole(m);
     const docs = maGroup(picks.map(p=>newShootAsg(m, p.r.ctx, { role, heads: _maHeads, fee: maFee(m, p.t), callTime: p.t.call || '', notes })));
     /* Plain auto ids, never one made from member + event: batch.set on an id
        that already exists would wipe that row's payments[]. A ref is minted

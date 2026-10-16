@@ -428,6 +428,9 @@ export const assignments = [
   { ...asg('as04', 'pk01', team[5], iso(0), 'Sangeet', 'cinematography', 'pending', 24000, 0), heads: 2 },
   /* tomorrow's Wedding — wants 3 photo + 2 cine + drone, has 2: the biggest gap */
   asg('as05', 'pk01', team[2], iso(1), 'Wedding', 'photography', 'pending', 16000, 0),
+  /* the same person twice, in two roles — Sandeep shoots stills AND video on
+     the Wedding: two rows, two fees, counted against both needs */
+  asg('as05b', 'pk01', team[2], iso(1), 'Wedding', 'videography', 'pending', 12000, 0),
   asg('as06', 'pk01', team[3], iso(1), 'Wedding', 'drone', 'acknowledged', 22000, 0),
   /* the B2B job in 2 days — crew on hire */
   asg('as07', 'pk04', team[1], iso(2), 'Wedding (crew on hire)', 'cinematography', 'acknowledged', 25000, 12500),

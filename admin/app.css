@@ -873,6 +873,8 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .cpick.on{border-color:var(--gold);background:rgba(var(--gold-rgb),.18)}
 .cpick.on .cp-t b{color:var(--gold-b)}
 .cpick.here{opacity:.45;cursor:default}
+/* on this function already, in another role — still a live choice */
+.cpick.again em{color:var(--gold-b)}
 .cpick:active{transform:scale(.98)}
 @media(hover:hover){ .cpick:hover:not(.here){border-color:var(--gold)} }
 /* "this event's services call for their craft" — a bare ★ read as a rating */
