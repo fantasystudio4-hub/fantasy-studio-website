@@ -208,6 +208,19 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-ev-t{flex:1;min-width:0}
 .cal-ev-t b{display:block;font-family:var(--serif);color:var(--white);font-size:var(--fs-lg)}
 .cal-ev-t span{font-size:var(--fs-sm);color:var(--mut)}
+/* ---- the day box's events as a numbered rail (Home calendar) ----
+   "3 events", then every row with its number in a ring on a line down the
+   left. The ring's colour is the status (the legend's dot colours), so the
+   dot is not drawn as well. Rows lose their dashed rule — the rail is what
+   separates them now. */
+.cal-cnt{font-family:var(--sans);font-size:var(--fs-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);font-weight:600;margin:-.15rem 0 .4rem 2px}
+.cal-rail{position:relative}
+.cal-rail::before{content:"";position:absolute;left:15px;top:14px;bottom:16px;width:1px;background:var(--line)}
+.cal-rail .cal-ev{border-bottom:0;padding:.55rem 0;align-items:flex-start;gap:.75rem;position:relative}
+.cal-rail .cal-ev-t{padding-top:.3rem}
+.cal-rail .cal-ev .btn{margin-top:.2rem}
+.cal-n{flex:0 0 auto;width:31px;height:31px;border-radius:50%;background:var(--ink-2);border:2px solid var(--mut);color:var(--text);font-family:var(--sans);font-weight:600;font-size:var(--fs-sm);line-height:1;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.cal-n.booked{border-color:var(--ok)} .cal-n.sent{border-color:var(--state-info)} .cal-n.unconfirmed{border-color:var(--state-risk)} .cal-n.draft{border-color:var(--mut)} .cal-n.lead{border-color:var(--gold-b)} .cal-n.delivered{border-color:var(--state-done)}
 
 /* packages page — status accents, pills, money badges, group headers */
 .duelbl{font-style:normal;font-size:var(--fs-2xs);letter-spacing:.1em;color:var(--warn);background:var(--state-pending-bg);border-radius:var(--r-lg);padding:.2em .6em;margin-right:.45em;vertical-align:2px;font-weight:600}
@@ -1737,6 +1750,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* an event row above it already draws its dashed rule (it is no longer
    :last-child, so it keeps its border) — one line between them, not two */
 .cal-ev + .av-box{border-top:0;margin-top:.2rem}
+/* the rail has no rule under its last row, so the box keeps its own line */
+.cal-rail + .av-box{margin-top:.5rem}
 .av-hd{margin-bottom:.35rem}
 .av-hd b{display:block;color:var(--gold-b);font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;font-weight:600}
 .av-hd span{display:block;font-size:var(--fs-xs);color:var(--mut);line-height:1.45;margin-top:.15rem}
