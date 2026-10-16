@@ -1683,8 +1683,11 @@ if(!CONFIGURED){
       const d = asgs.filter(a=>a.date < today && a.date.startsWith(from));
       return d.length ? { pos, of, n: d.length, amt: d.reduce((s,a)=>s + payFee(a), 0) } : { pos: 0, of, n: 0, amt: 0 };
     };
-    const me = { id: 'smp-crew', name: 'Arjun Rao', cat: 'outdoor', role: 'photography', phone10, active: true,
-                 lb: { cat: 'outdoor', m: place(today.slice(0,7), 2, 8), y: place(today.slice(0,4), 3, 9),
+    /* ?demo=office paints the same sample as an office member — the rank
+       card then opens on Month, as it does for the real office crew */
+    const office = /(^|[?&])demo=office(&|$)/.test(location.search);
+    const me = { id: 'smp-crew', name: 'Arjun Rao', cat: office ? 'office' : 'outdoor', role: office ? 'editing' : 'photography', phone10, active: true,
+                 lb: { cat: office ? 'office' : 'outdoor', m: place(today.slice(0,7), 2, 8), y: place(today.slice(0,4), 3, 9),
                        all: place('', 4, 11), at: stamp(0) } };
     return { me, asgs, ejobs };
   }
@@ -2238,19 +2241,25 @@ if(!CONFIGURED){
      the first weeks of a year with nothing on it yet. Nothing until the panel
      has run once after this ships. */
   /* The member picks the period: Month, Year or All time (remembered on
-     this device; Year first, as in the panel). A period with no place yet
-     (a fresh month, a fresh year) still shows — "No shoots this month yet" —
-     so the buttons never go dead. The card hides only when the panel has not
+     this device). Until they pick, the board decides where it opens: the
+     Office board opens on Month (owner, 16 Oct 2026 — office work is paid and
+     judged month by month, so "how did this month go" is the question), the
+     Outdoor board on Year, as in the panel. A period with no place yet (a
+     fresh month, a fresh year) still shows — "No shoots this month yet" — so
+     the buttons never go dead. The card hides only when the panel has not
      written any place at all. */
   const LB_PERIOD_KEY = 'fs_crew_lb_period';
   const LB_LABEL = { m: 'this month', y: 'this year', all: 'all time' };
-  let _lbPeriod = (()=>{ try{ const v = localStorage.getItem(LB_PERIOD_KEY); return LB_LABEL[v] ? v : 'y'; }catch(e){ return 'y'; } })();
+  /* the member's own pick, or null while they have never tapped a period */
+  let _lbPick = (()=>{ try{ const v = localStorage.getItem(LB_PERIOD_KEY); return LB_LABEL[v] ? v : null; }catch(e){ return null; } })();
+  let _lbPeriod = _lbPick || 'y';
   function renderLb(){
     const lb = (ME && ME.lb) || {};
     const any = ['m','y','all'].some(k => lb[k] && lb[k].pos > 0);
     $('#hqLbWrap').hidden = !any;
     if(!any) return;
     const cat = lb.cat === 'office' ? 'office' : lb.cat === 'outdoor' ? 'outdoor' : '';
+    _lbPeriod = _lbPick || (((cat || ME.cat) === 'office') ? 'm' : 'y');
     $('#hqLbTtl').textContent = '🏆 ' + (cat === 'office' ? 'Office' : cat === 'outdoor' ? 'Outdoor' : 'Crew') + ' leaderboard';
     $$('#hqLbTog button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lb === _lbPeriod)));
     const r = lb[_lbPeriod] || {};
@@ -2270,7 +2279,7 @@ if(!CONFIGURED){
   }
   $('#hqLbTog').addEventListener('click', e => {
     const b = e.target.closest('[data-lb]'); if(!b || b.dataset.lb === _lbPeriod) return;
-    _lbPeriod = b.dataset.lb;
+    _lbPick = _lbPeriod = b.dataset.lb;
     try{ localStorage.setItem(LB_PERIOD_KEY, _lbPeriod); }catch(e){}
     renderLb();
   });
