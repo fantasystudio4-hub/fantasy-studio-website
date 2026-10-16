@@ -43,22 +43,45 @@ h1 em{font-style:normal;color:var(--gold-b)}
 .tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:1.2rem 0}
 .tabs button{font:inherit;font-size:.88rem;background:none;color:var(--paper);border:1px solid var(--line);border-radius:999px;padding:.4rem 1rem;min-height:40px;cursor:pointer}
 .tabs button[aria-pressed=true]{background:rgba(184,144,43,.25);border-color:var(--gold)}
+ /* 16 Oct 2026 — the grid is tidy: every photo tile is a square, every reel 9:16, every film 16:9 across the
+   row, so rows line up instead of leaving holes beside a tall piece (the whole photo still shows in the viewer).
+   On All the pieces are grouped Films · Reels · Photos for the same reason. The picture inside a tile is
+   positioned absolutely, so it fills the tile on every browser (an iPhone did not always resolve height:100%
+   against an aspect-ratio box and drew the tile empty). A film with no preview picture shows its own first
+   frame instead of a dark box. */
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;align-items:start}
+.gsec{grid-column:1/-1;font:600 .72rem 'Jost',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-b);margin:.9rem 0 .1rem}
+.gsec:first-child{margin-top:.2rem}
 .tile.video{grid-column:1/-1}
-@media(min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tile.video{grid-column:span 2}}
-.tile{position:relative;border-radius:12px;overflow:hidden;background:#0f0d08;border:1px solid var(--line);cursor:pointer;display:block;width:100%;padding:0;color:inherit;font:inherit;text-align:left}
-.tile img{display:block;width:100%;height:100%;object-fit:cover}
-.tile .ph{width:100%;height:100%;background:#0f0d08}
+@media(min-width:700px){.grid{grid-template-columns:repeat(6,minmax(0,1fr))}.tile{grid-column:span 2}.tile.video{grid-column:span 3}}   /* wide: three photos or reels a row, two films */
+.tile{position:relative;border-radius:12px;overflow:hidden;background:#0f0d08;border:1px solid var(--line);cursor:pointer;display:block;width:100%;padding:0;color:inherit;font:inherit;text-align:left;aspect-ratio:1/1;-webkit-tap-highlight-color:transparent}
+.tile.reel{aspect-ratio:9/16}
+.tile.video{aspect-ratio:16/9}
+@supports not (aspect-ratio:1/1){.tile{height:0;padding-bottom:100%}.tile.reel{padding-bottom:177.7%}.tile.video{padding-bottom:56.25%}}
+.tile img,.tile video,.tile .ph{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center;background:#0f0d08}
+.tile img{opacity:0;transition:opacity .25s}
+.tile img.in{opacity:1}
 .tile .play{position:absolute;inset:0;display:grid;place-items:center;font-size:2.2rem;background:linear-gradient(transparent 55%,rgba(0,0,0,.55));text-shadow:0 2px 8px #000}
-.tile .cap{position:absolute;left:.6rem;right:.6rem;bottom:.5rem;font-size:.8rem;color:#fff;text-shadow:0 1px 6px #000}
+.tile .cap{position:absolute;left:.6rem;right:.6rem;bottom:.5rem;font-size:.8rem;color:#fff;text-shadow:0 1px 6px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .empty{color:var(--mut);padding:2rem 0}
 .lb{position:fixed;inset:0;background:rgba(8,6,3,.96);z-index:50;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
 .lb[hidden]{display:none}
 .lb img,.lb video{max-width:100%;max-height:100%;object-fit:contain}
-.lb button{position:absolute;background:rgba(0,0,0,.55);color:#fff;border:1px solid var(--line);border-radius:50%;width:46px;height:46px;font-size:1.3rem;cursor:pointer}
+/* the viewer: the small preview shows at once, a ring turns until the full picture or the film is ready,
+   and a film the phone cannot play says so instead of staying black */
+#lbStage{position:relative}
+#lbStage img.lo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:blur(6px);opacity:.7;pointer-events:none}
+#lbStage img.hi{position:relative;opacity:0;transition:opacity .2s}
+#lbStage img.hi.in{opacity:1}
+#lbStage video{position:relative;background:#000}
+.lb .ld{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:var(--gold-b);animation:lbspin .9s linear infinite;pointer-events:none}
+@keyframes lbspin{to{transform:rotate(360deg)}}
+.lb .msg{position:absolute;left:1.2rem;right:1.2rem;top:50%;transform:translateY(-50%);text-align:center;color:var(--paper);font-size:.95rem;line-height:1.5;padding:1rem;background:rgba(0,0,0,.6);border:1px solid var(--line);border-radius:14px}
+.lb .msg a{color:var(--gold-b)}
+.lb button{position:absolute;z-index:3;background:rgba(0,0,0,.55);color:#fff;border:1px solid var(--line);border-radius:50%;width:46px;height:46px;font-size:1.3rem;cursor:pointer}
 .lb .x{top:calc(12px + env(safe-area-inset-top));right:12px}
 .lb .p{left:10px;top:50%}.lb .n{right:10px;top:50%}
-.lb .t{pointer-events:none;position:absolute;left:0;right:0;top:calc(20px + env(safe-area-inset-top));text-align:center;font-size:.9rem;color:#fff;text-shadow:0 1px 6px #000;padding:0 70px}
+.lb .t{pointer-events:none;z-index:3;position:absolute;left:0;right:0;top:calc(20px + env(safe-area-inset-top));text-align:center;font-size:.9rem;color:#fff;text-shadow:0 1px 6px #000;padding:0 70px}
 /* Pardah: no saving, no selecting, no printing, and every viewer's name over the work */
 #vGal,.lb{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #vGal img,.lb img,.lb video{-webkit-user-drag:none;user-drag:none}
@@ -179,7 +202,10 @@ try{
 const { doc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp } = window._fsm;
 
 const user = await FS.ready();
-if(FS.DEMO_VIEW){
+const DEMO_GALLERY = FS.DEMO_VIEW && new URLSearchParams(location.search).get('demo') === 'gallery';
+if(DEMO_GALLERY){
+  view('vGal');   /* the sample pieces are put in at the end of this script, once the gallery's state exists */
+}else if(FS.DEMO_VIEW){
   /* the local ?demo hook has no sign-in at all: the same request screen, nothing written.
      The review number (9000000001) is a real Firebase login, so it takes the real path
      below and the owner approves it in the admin like anyone else. */
@@ -268,18 +294,30 @@ function drawTabs(){
   $('#tabs').innerHTML = TABS.filter(t => have(t[0])).map(t => `<button type="button" data-k="${t[0]}" aria-pressed="${t[0] === FILTER}">${t[1]}</button>`).join('');
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if(!b) return; FILTER = b.dataset.k; drawTabs(); drawGrid(); });
+const KINDS = [['video', 'Films'], ['reel', 'Reels'], ['photo', 'Photos']];
 function drawGrid(){
-  SHOWN = ITEMS.filter(i => FILTER === 'all' || i.kind === FILTER);
+  /* on All the pieces are grouped by kind, films first, so every row of the grid is tiles of one shape;
+     within a group the admin's order holds. SHOWN is in the order drawn, which the viewer's ‹ › follow. */
+  const groups = FILTER === 'all' ? KINDS.map(([k, label]) => ({ label, list: ITEMS.filter(i => i.kind === k) })).filter(g => g.list.length)
+                                   : [{ label: '', list: ITEMS.filter(i => i.kind === FILTER) }];
+  SHOWN = groups.flatMap(g => g.list);
   if(!$('#lb').hidden){ const k = SHOWN.findIndex(x => x.id === CUR); if(k < 0) closeLb(); else IDX = k; }
   $('#none').hidden = SHOWN.length > 0;
-  $('#grid').innerHTML = SHOWN.map((it, i) => {
+  let i = 0;
+  const tile = it => {
     const poster = it.thumb || (it.kind === 'photo' ? it.url : '');
-    const ar = it.w > 0 && it.h > 0 ? it.w + '/' + it.h : it.kind === 'reel' ? '9/16' : it.kind === 'video' ? '16/9' : '4/5';
-    return `<button class="tile ${esc(it.kind)}" style="aspect-ratio:${ar}" type="button" data-i="${i}" aria-label="${esc(it.title || 'Open')}">`
-      + (poster ? `<img src="${esc(poster)}" loading="lazy" alt="${esc(it.title || '')}" />` : '<div class="ph"></div>')
+    /* a film or reel with no preview picture shows its own first frame (no sound, nothing plays) */
+    const pic = poster ? `<img src="${esc(poster)}" loading="lazy" decoding="async" alt="${esc(it.title || '')}" onload="this.classList.add('in')" onerror="this.classList.add('in');this.alt=''" />`
+              : it.kind !== 'photo' ? `<video src="${esc(it.url)}#t=0.5" muted playsinline preload="metadata" disablePictureInPicture disableRemotePlayback tabindex="-1" aria-hidden="true"></video>`
+              : '<div class="ph"></div>';
+    return `<button class="tile ${esc(it.kind)}" type="button" data-i="${i++}" aria-label="${esc(it.title || (it.kind === 'photo' ? 'Photo' : it.kind === 'reel' ? 'Reel' : 'Film'))}">`
+      + pic
       + (it.kind !== 'photo' ? '<span class="play" aria-hidden="true">▶</span>' : '')
       + (it.title ? `<span class="cap">${esc(it.title)}</span>` : '') + '</button>';
-  }).join('');
+  };
+  $('#grid').innerHTML = groups.map(g => (groups.length > 1 ? `<div class="gsec">${esc(g.label)}</div>` : '') + g.list.map(tile).join('')).join('');
+  /* a picture the browser already had may not fire load again: show it */
+  $('#grid').querySelectorAll('img').forEach(im => { if(im.complete && im.naturalWidth) im.classList.add('in'); });
 }
 $('#grid').addEventListener('click', e => { const b = e.target.closest('.tile'); if(b) openLb(+b.dataset.i); });
 
@@ -296,10 +334,25 @@ function openLb(i){
     try{ if(window.FSApp) FSApp.hide(); }catch(e){}
   }
   const st = $('#lbStage');
-  st.innerHTML = it.kind === 'photo'
-    ? `<img src="${esc(it.url)}" alt="${esc(it.title || '')}" />`
-    : `<video src="${esc(it.url)}" ${it.thumb ? `poster="${esc(it.thumb)}"` : ''} controls autoplay playsinline preload="auto" controlsList="nodownload noremoteplayback" disablePictureInPicture disableRemotePlayback oncontextmenu="return false" style="${it.kind === 'reel' ? 'height:100%' : 'width:100%'}"></video>`;
-  $('#lbT').textContent = it.title || '';
+  const ring = '<div class="ld" aria-hidden="true"></div>';
+  if(it.kind === 'photo'){
+    /* the small preview at once (blurred), the full picture over it when it has arrived */
+    st.innerHTML = (it.thumb ? `<img class="lo" src="${esc(it.thumb)}" alt="" aria-hidden="true" />` : '') + ring
+      + `<img class="hi" src="${esc(it.url)}" alt="${esc(it.title || '')}" decoding="async" />`;
+    const hi = st.querySelector('img.hi');
+    const done = () => { hi.classList.add('in'); st.querySelectorAll('.ld, img.lo').forEach(x => x.remove()); };
+    if(hi.complete && hi.naturalWidth) done(); else { hi.onload = done; hi.onerror = () => { st.querySelectorAll('.ld, img.lo, img.hi').forEach(x => x.remove()); st.insertAdjacentHTML('beforeend', `<div class="msg">This photo could not load. Please check your connection and try again.</div>`); }; }
+  }else{
+    st.innerHTML = ring + `<video src="${esc(it.url)}" ${it.thumb ? `poster="${esc(it.thumb)}"` : ''} controls autoplay playsinline preload="auto" controlsList="nodownload noremoteplayback" disablePictureInPicture disableRemotePlayback oncontextmenu="return false" style="${it.kind === 'reel' ? 'height:100%' : 'width:100%'}"></video>`;
+    const v = st.querySelector('video'), ringOff = () => { const r = st.querySelector('.ld'); if(r) r.remove(); };
+    /* the ring turns while the film is fetching; a phone that cannot play the file says so instead of staying black */
+    v.addEventListener('canplay', ringOff); v.addEventListener('playing', ringOff); v.addEventListener('loadeddata', ringOff);
+    v.addEventListener('waiting', () => { if(!st.querySelector('.ld')) st.insertAdjacentHTML('afterbegin', ring); });
+    v.addEventListener('error', () => { ringOff(); v.hidden = true; st.insertAdjacentHTML('beforeend', `<div class="msg">This ${it.kind === 'reel' ? 'reel' : 'film'} could not play on this device.<br><a href="${WA}" target="_blank" rel="noopener">Message us on WhatsApp</a> and we'll send it to you.</div>`); });
+    /* autoplay with sound is refused on many phones: start muted then, so it plays, and the controls unmute */
+    v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+  }
+  $('#lbT').textContent = (SHOWN.length > 1 ? (IDX + 1) + ' / ' + SHOWN.length + (it.title ? ' · ' : '') : '') + (it.title || '');
   $('#lb').hidden = false; document.body.style.overflow = 'hidden';
   const one = SHOWN.length < 2; $('#lbP').hidden = $('#lbN').hidden = one;
 }
@@ -324,6 +377,21 @@ $('#lb').addEventListener('touchend', e => {
   if(sx == null) return; const dx = e.changedTouches[0].clientX - sx; sx = null;
   if(Math.abs(dx) > 70 && e.target.tagName !== 'VIDEO') openLb(IDX + (dx < 0 ? 1 : -1));
 });
+
+if(DEMO_GALLERY){
+  /* local only: /portfolio/?demo=gallery draws the approved view from the sample pieces in ./demo/,
+     so the grid and the viewer can be looked at without a real sign-in and approval */
+  const D = (id, kind, title, w, h, ext) => ({ id, kind, title, w, h, url: `demo/${id}.${ext || 'jpg'}`, thumb: `demo/${id}_t.jpg` });
+  ITEMS = [
+    D('v1', 'video', 'Highlights — Ayesha & Imran', 1280, 720, 'mp4'),
+    D('p1', 'photo', 'The bride', 1200, 1500), D('p2', 'photo', 'Baraat', 1500, 1000),
+    D('r1', 'reel', 'Mehndi reel', 720, 1280, 'mp4'),
+    D('p3', 'photo', '', 1000, 1000), D('p4', 'photo', 'Nikah', 1200, 1600), D('p5', 'photo', 'Reception', 1600, 900), D('p6', 'photo', 'Walima', 900, 1600),
+    { id: 'v2', kind: 'video', title: 'Film with no preview', w: 0, h: 0, url: 'demo/v1.mp4', thumb: '' },
+    { id: 'v3', kind: 'video', title: 'Film that cannot play', w: 0, h: 0, url: 'demo/missing.mp4', thumb: 'demo/v1_t.jpg' },
+  ];
+  drawTabs(); drawGrid();
+}
 </script>
 </body>
 </html>
