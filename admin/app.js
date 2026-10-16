@@ -4704,6 +4704,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     box.innerHTML = `<div class="sec">
       <div class="cd-head${hasShoot ? ' cd-head--2' : ''}"><h3><span class="dl">${human}</span><span class="ds">${humanShort}</span>${isToday ? ' <span class="todaypill">Today</span>' : ''}</h3><span class="cd-acts">${hasShoot ? '<button class="btn btn--sm btn--ghost" type="button" data-daycrew>🎬 Crew</button>' : ''}<button class="btn btn--sm btn--ghost" type="button" data-addev>＋ Add event</button></span></div>`
       + (fests.length ? `<div class="festrow">${fests.map(f=>`<span class="fest">🪔 ${esc(f)}</span>`).join('')}</div>` : '')
+      /* No quote number on the row — the owner reads the day by who it is
+         for, so the client (or partner studio) is the lit part of the line
+         and the number lives on the booking itself. */
       /* The day's events as a numbered rail: "3 events", then 1, 2, 3 down a
          line on the left. The number sits in a ring whose colour is the
          status the dot used to carry (booked green, unconfirmed red, …), so
@@ -4713,7 +4716,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return `
       <div class="cal-ev" data-kind="${esc(e.kind)}" data-id="${esc(e.id)}">
         <span class="cal-n ${esc(e.status)}">${i + 1}</span>
-        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span>${e.quoteNo ? esc(e.quoteNo) + ' · ' : ''}${e.b2b ? '🏢 ' : ''}${esc(e.client)}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span><em class="cal-who">${e.b2b ? '🏢 ' : ''}${esc(e.client)}</em>${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
         <button class="btn btn--sm btn--ghost" data-openev>Open</button>
       </div>`;
     }).join('') + '</div>' : '<div class="empty">No events on this date.</div>')

@@ -208,6 +208,8 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-ev-t{flex:1;min-width:0}
 .cal-ev-t b{display:block;font-family:var(--serif);color:var(--white);font-size:var(--fs-lg)}
 .cal-ev-t span{font-size:var(--fs-sm);color:var(--mut)}
+/* the client / partner studio, a shade brighter than the venue and crew */
+.cal-ev-t .cal-who{font-style:normal;color:var(--text);font-weight:500}
 /* ---- the day box's events as a numbered rail (Home calendar) ----
    "3 events", then every row with its number in a ring on a line down the
    left. The ring's colour is the status (the legend's dot colours), so the
