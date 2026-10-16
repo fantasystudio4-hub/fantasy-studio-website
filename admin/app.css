@@ -2536,4 +2536,26 @@ html.shell .stu-hd #stuBack{display:none}
 .aps-form--row .aps-lab{flex:none}
 details.aps-more{margin:.4rem 0 .8rem}
 details.aps-more summary{min-height:var(--tap);display:flex;align-items:center;cursor:pointer;color:var(--gold-b);font-size:var(--fs-base)}
-#apAuth{scroll-margin-top:calc(var(--hdr-h,56px) + .5rem)}
+/* Apps & website as question-and-answer cards (16 Oct 2026): the header is the question and its one-line
+   answer, the figures are inside, the explanation behind a ⓘ fold */
+.aps-lead{font-family:var(--serif);font-size:var(--fs-lg);line-height:1.35;color:var(--text);margin:.2rem 0 .6rem}
+.aps-lead b{color:var(--gold-b);font-weight:600}
+details.aps-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);margin:0 0 .55rem;padding:0 .8rem;scroll-margin-top:calc(var(--hdr-h,56px) + .5rem)}
+details.aps-card.warn{border-color:var(--state-pending-ln)}
+details.aps-card>summary{list-style:none;display:flex;align-items:center;gap:.6rem;min-height:var(--tap);padding:.65rem 0;cursor:pointer}
+details.aps-card>summary::-webkit-details-marker{display:none}
+details.aps-card>summary .q{flex:1 1 auto;min-width:0;font-family:var(--serif);font-size:var(--fs-lg);color:var(--text);line-height:1.25;overflow-wrap:anywhere}
+details.aps-card>summary .q span{display:block;font-family:var(--sans);font-size:var(--fs-sm);color:var(--mut);margin-top:.2rem;line-height:1.35}
+details.aps-card.warn>summary .q span{color:var(--warn)}
+details.aps-card>summary .chev{flex:none;font-style:normal;font-size:var(--fs-xl);color:var(--gold-b);transform:rotate(90deg);transition:transform .15s}
+details.aps-card[open]>summary .chev{transform:rotate(-90deg)}
+details.aps-card>.aps-cardbody{border-top:1px dashed var(--line);padding:.35rem 0 .7rem}
+.aps-cardbody .fintiles{margin:.5rem 0 .6rem}
+.aps-cardbody .finh{margin-top:.8rem}
+.aps-cardbody .aps-links{margin:.5rem 0 .4rem}
+details.aps-help{margin:.35rem 0 .2rem}
+details.aps-help>summary{list-style:none;display:flex;align-items:center;gap:.35rem;min-height:var(--tap);cursor:pointer;color:var(--gold-b);font-size:var(--fs-sm)}
+details.aps-help>summary::-webkit-details-marker{display:none}
+details.aps-help>summary::before{content:'ⓘ';font-size:var(--fs-base)}
+details.aps-help[open]>summary::before{content:'ⓘ'}
+details.aps-help>.insnote{margin-top:0}

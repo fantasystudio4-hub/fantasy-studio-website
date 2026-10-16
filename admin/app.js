@@ -14512,34 +14512,46 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return p === 0 ? 'same as the 28 days before' : (p > 0 ? '▲ ' : '▼ ') + Math.abs(p) + '% vs the 28 days before';
   };
 
+  /* 16 Oct 2026 — the page read as a wall of figures and footnotes (about 2,000 words over the three tabs,
+     27 explanatory paragraphs between the numbers). Now each part is a card whose header is a plain question
+     and its one-line answer; the figures are inside, and every "how to read this" paragraph sits behind a
+     ⓘ fold. A card or fold the owner opens or closes stays that way through every redraw (_apOpen), and the
+     cards that need something done open on their own. */
+  const _apOpen = {};
+  const apIsOpen = (id, def) => _apOpen[id] !== undefined ? !!_apOpen[id] : !!def;
+  const apCard = (id, q, a, body, o) => { o = o || {}; return `<details class="aps-card${o.warn ? ' warn' : ''}" id="apc-${id}" data-apc="${id}"${apIsOpen(id, o.open) ? ' open' : ''}>
+      <summary><span class="q">${q}<span>${a || ''}</span></span><i class="chev" aria-hidden="true">›</i></summary>
+      <div class="aps-cardbody">${body}</div></details>`; };
+  const apHelp = (id, text, label) => `<details class="aps-help" data-apc="h-${id}"${apIsOpen('h-' + id, false) ? ' open' : ''}><summary>${label || 'What this means'}</summary><div class="insnote">${text}</div></details>`;
+
   /* signed-in devices per day (appDaily) and which build of the app they run */
   function apDailyHTML(m){
     const d = m.daily;
-    if(_apDailyState === 'err') return apNote('⚠ Could not read the daily head-count. It needs the updated rules published first.');
-    if(_apDailyState === 'offline') return apNote('⚠ Could not read the daily head-count — this phone looks offline. Tap ↻ Re-check when you are back online.');
-    if(_apDailyState !== 'ok') return apNote('Reading the daily head-count…');
-    if(!d.any) return apNote('Nothing is counted yet. It starts the day the update that adds it goes live: from then on each signed-in phone or browser adds one a day.');
+    if(_apDailyState === 'err') return apNote('⚠ Could not read the daily count. It needs the updated rules published first.');
+    if(_apDailyState === 'offline') return apNote('⚠ Could not read the daily count — this phone looks offline. Tap ↻ Check again when you are back online.');
+    if(_apDailyState !== 'ok') return apNote('Reading the daily count…');
+    if(!d.any) return apNote('Nothing is counted yet. From the day the update that adds it goes live, every signed-in phone or browser counts once a day.');
     const t = d.today, n7 = d.ios7 + d.and7 + d.web7, mx7 = Math.max(1, d.ios7, d.and7, d.web7);
     const r7 = d.roles7, rmx = Math.max(1, r7.client, r7.crew, r7.studio, r7.none);
     let h = `<div class="fintiles">
-      ${apTile(apN(t.n), 'signed-in devices today', `iPhone app ${apN(t.ios)} · Android app ${apN(t.and)} · website ${apN(t.web)}`)}
-      ${apTile(apN(n7), 'device-days, last 7 days', 'one per device per day')}
+      ${apTile(apN(t.n), 'opened it today', `iPhone ${apN(t.ios)} · Android ${apN(t.and)} · website ${apN(t.web)}`)}
+      ${apTile(apN(n7), 'opens in the last 7 days', 'one per phone per day')}
     </div>`;
     h += apCols(d.rows.map(r=>({ n: r.n, t: `${apDayShort(r.d)}: ${r.n} (iPhone ${r.ios}, Android ${r.and}, website ${r.web})` })),
-      'Signed-in devices per day, last 14 days', apDayShort(d.rows[0].d), 'today');
+      'Opens per day, last 14 days', apDayShort(d.rows[0].d), 'today');
     h += apBar('iPhone app <em>last 7 days</em>', apN(d.ios7), d.ios7 / mx7, 'gold')
        + apBar('Android app', apN(d.and7), d.and7 / mx7, 'gold')
        + apBar('Website, signed in', apN(d.web7), d.web7 / mx7, 'gold');
-    h += `<div class="finh" style="margin-top:.7rem">Which page they opened — last 7 days</div>`
+    h += `<div class="finh">Which page they opened — last 7 days</div>`
        + apBar('Client area', apN(r7.client), r7.client / rmx) + apBar('Crew page', apN(r7.crew), r7.crew / rmx)
-       + apBar('Partner page', apN(r7.studio), r7.studio / rmx) + apBar('Signed in, not set up', apN(r7.none), r7.none / rmx);
-    h += apNote(`Counting since ${esc(apDayShort(d.first))}. A signed-in phone or browser adds <b>one a day</b>, so a week is device-days, not people: someone who opens it daily is seven, and one person on two phones counts twice. A phone that is offline, blocks storage or has the wrong clock can be missed, so read these as approximate. Visitors who are not signed in (the public pages) are in Google Analytics only — so do not read app against website as a share of everyone.`);
+       + apBar('Partner page', apN(r7.studio), r7.studio / rmx) + apBar('Signed in, not set up yet', apN(r7.none), r7.none / rmx);
     if(d.gens.length){
       const gmx = Math.max(1, ...d.gens.map(x=>x[1]));
-      h += `<div class="finh" style="margin-top:.7rem">Which build of the app — last 7 days</div>`
-         + d.gens.map(([code, n])=>apBar(esc(apBuild(code)), apN(n), n / gmx)).join('')
-         + apNote('Device-days again. The build is told from which native features the app has, because the site is the same for every build. When nobody is left on the first builds, you can switch on a native feature for everyone.');
+      h += `<div class="finh">Which version of the app — last 7 days</div>`
+         + d.gens.map(([code, n])=>apBar(esc(apBuild(code)), apN(n), n / gmx)).join('');
     }
+    h += apHelp('daily', `Counting since ${esc(apDayShort(d.first))}. A signed-in phone or browser counts <b>once a day</b>, so a week is opens, not people: someone who opens it every day is seven, and one person on two phones is two. A phone that is offline or blocks storage can be missed, so read these as approximate. Visitors who are not signed in (the public pages) are in Google Analytics only.`
+      + (d.gens.length ? ' The version is told from which native features the app has. When nobody is left on the first builds, a native feature can be switched on for everyone.' : ''), 'How this is counted');
     return h;
   }
 
@@ -14551,28 +14563,28 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!c && !p) return apNote('No alert has been counted yet. From the day the update that adds it goes live, every alert the studio sends is tallied here: how many went out, how many phones took them, and how many had nobody to go to.');
     const monthName = ym => new Date(ym + '-01T00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     const n = o => (k)=>apN((o || {})[k] || 0);
-    const cur = n(c), prev = n(p);
+    const cur = n(c);
     let h = `<div class="fintiles">
       ${apTile(cur('alerts'), 'alerts sent', esc(monthName(m.ymNow)))}
       ${apTile(cur('sent'), 'phones reached', 'one alert can reach several phones')}
-      ${apTile(cur('failed'), 'phones that failed', 'a phone that did not take it', ((c || {}).failed || 0) ? 'warn' : '')}
-      ${apTile(cur('removed'), 'dead phones removed', 'apps that were uninstalled')}
+      ${apTile(cur('failed'), 'did not get through', 'the phone did not take it', ((c || {}).failed || 0) ? 'warn' : '')}
+      ${apTile(cur('removed'), 'uninstalled phones removed', 'the app is gone from them')}
     </div>`;
-    if((c || {}).nodevice) h += apWarn(`⚠ <b>${apPlural(c.nodevice, 'alert')}</b> this month had <b>nobody to receive them</b> — the person has not installed the app or said No to notifications. Who to nudge is listed above.`);
+    if((c || {}).nodevice) h += apWarn(`⚠ <b>${apPlural(c.nodevice, 'alert')}</b> this month had <b>nobody to receive them</b> — the person has not installed the app or said No to notifications. See “Not getting alerts yet”.`);
     if((c || {}).badphone) h += apWarn(`⚠ <b>${apPlural(c.badphone, 'alert')}</b> this month went to a record with <b>no usable phone number</b> — check the crew member's or client's number.`);
-    if(p) h += apNote(`Last month (${esc(monthName(m.ymPrev))}): ${apPlural((p || {}).alerts || 0, 'alert')} · ${apPlural((p || {}).sent || 0, 'phone')} reached · ${apN((p || {}).failed || 0)} failed · ${apN((p || {}).nodevice || 0)} with nobody to receive them.`);
-    h += apNote('“Reached” means the phone accepted the alert, not that the person read it, and “failed” does not always mean they missed it. Counted from the day this started; earlier months are not in it.');
+    if(p) h += apNote(`Last month (${esc(monthName(m.ymPrev))}): ${apPlural((p || {}).alerts || 0, 'alert')} · ${apPlural((p || {}).sent || 0, 'phone')} reached · ${apN((p || {}).failed || 0)} did not get through · ${apN((p || {}).nodevice || 0)} with nobody to receive them.`);
+    h += apHelp('alerts', '“Reached” means the phone accepted the alert, not that the person read it, and “did not get through” does not always mean they missed it. Counted from the day this started; earlier months are not in it.');
     return h;
   }
 
   /* Firebase Auth totals (adminStats) — everyone who has ever logged in */
   function apAuthHTML(m){
     const s = _apStats, busy = _apBusy === 'stats';
-    const btn = `<button type="button" class="btn btn--sm btn--ghost" data-apstat${busy ? ' disabled' : ''}>${busy ? 'Reading…' : '↻ ' + (s ? 'Refresh people numbers' : 'Read login numbers')}</button>`;
+    const btn = `<button type="button" class="btn btn--sm btn--ghost" data-apstat${busy ? ' disabled' : ''}>${busy ? 'Reading…' : '↻ ' + (s ? 'Refresh' : 'Read the numbers')}</button>`;
     let h = '';
     if(_apStatsMsg) h += apWarn('⚠ ' + esc(_apStatsMsg));
     if(!s){
-      h += apNote('Firebase keeps the list of everyone who has ever logged in with a phone number. A web page cannot read it, so the studio’s server counts it and reports only the totals. ' + (_apStatsState === 'none' ? 'Nothing has been read yet.' : _apStatsState === 'err' ? 'It could not be read just now.' : 'Reading…'))
+      h += apNote('Everyone who has ever logged in with their phone number — on the app or the website. The studio’s server counts it; tap the button to read the totals. ' + (_apStatsState === 'none' ? 'Nothing has been read yet.' : _apStatsState === 'err' ? 'It could not be read just now.' : 'Reading…'))
          + `<div class="aps-links">${btn}</div>`;
       return h;
     }
@@ -14582,28 +14594,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const statDay = s.atMs ? istDayAt(s.atMs) : '', isToday = statDay === istDayAt(Date.now());
     const recent = !!s.atMs && Date.now() - s.atMs < 12 * 3600e3;
     h += `<div class="fintiles">
-      ${apTile(apN(s.total), 'people have logged in', s.since ? 'since ' + esc(apDayShort(s.since)) : '')}
-      ${apTile(apN(s.new7), 'new in 7 days', `${apN(s.new30)} in 30 days`)}
-      ${apTile(apN(s.active30), 'sessions refreshed in 30 days', `${apN(s.active7)} in the last 7 days`)}
-      ${apTile(apN(t.today || 0), isToday ? 'new accounts today' : 'new accounts on ' + esc(apDayShort(statDay)), t.avg7 !== undefined ? `usually about ${esc(String(t.avg7))} a day` : '', (t.flag && recent) ? 'warn' : '')}
+      ${apTile(apN(s.total), 'people have an account', s.since ? 'since ' + esc(apDayShort(s.since)) : '')}
+      ${apTile(apN(s.new7), 'new this week', `${apN(s.new30)} in the last 30 days`)}
+      ${apTile(apN(s.active30), 'active in the last 30 days', `${apN(s.active7)} this week`)}
+      ${apTile(apN(t.today || 0), isToday ? 'new today' : 'new on ' + esc(apDayShort(statDay)), t.avg7 !== undefined ? `usually about ${esc(String(t.avg7))} a day` : '', (t.flag && recent) ? 'warn' : '')}
     </div>`;
-    if(t.flag && recent) h += apWarn(`⚠ <b>${apPlural(t.today, 'new account')} today</b> against about ${esc(String(t.avg7))} a day. A jump like this can be someone running up the sign-in SMS bill — open Authentication usage below and check.`);
+    if(t.flag && recent) h += apWarn(`⚠ <b>${apPlural(t.today, 'new account')} today</b> against about ${esc(String(t.avg7))} a day. A jump like this can be someone running up the sign-in SMS bill — open “Sign-in SMS limits” below and check.`);
     const days = (s.newByDay || []).slice(-30);
     if(days.length){
       const hasMark = days.some(x=>x.d === AP_SIGNIN_OPENED);
-      h += `<div class="finh" style="margin-top:.7rem">New accounts per day — last 30 days</div>`
+      h += `<div class="finh">New accounts per day — last 30 days</div>`
          + apCols(days.map(x=>({ n: x.n, mark: x.d === AP_SIGNIN_OPENED, t: `${apDayShort(x.d)}: ${x.n}` })), 'New accounts per day, last 30 days', apDayShort(days[0].d), apDayShort(days[days.length - 1].d))
-         + apNote(hasMark ? 'The gold column is <b>6 Oct</b>, when sign-in opened to everyone. Before it only numbers you had set up could log in, so earlier days are not comparable.'
+         + apNote(hasMark ? 'The gold column is <b>6 Oct</b>, when sign-in opened to everyone. Before it only numbers you had set up could log in.'
                           : 'Sign-in opened to everyone on <b>6 Oct 2026</b>; before that only numbers you had set up could log in.');
     }
     const cmx = Math.max(1, ...(s.byCountry || []).map(x=>x.n));
-    if((s.byCountry || []).length) h += `<div class="finh" style="margin-top:.7rem">Accounts by dialling code</div>` + s.byCountry.map(x=>apBar(esc(x.c), apN(x.n), x.n / cmx)).join('');
+    if((s.byCountry || []).length) h += `<div class="finh">Where their numbers are from</div>` + s.byCountry.map(x=>apBar(esc(x.c), apN(x.n), x.n / cmx)).join('');
     const pr = s.providers || {};
-    h += apNote(`Signed in with a phone number: ${apN(pr.phone || 0)}${pr.google ? ' · Google: ' + apN(pr.google) : ''}${pr.password ? ' · password: ' + apN(pr.password) : ''}. The studio’s own login and the App Review number are left out.`);
-    h += apNote('“Sessions refreshed” is the last time a device asked Firebase for a fresh session — the nearest thing Firebase keeps to “active”, not an exact headcount. New accounts are <b>at least</b> that many sign-in text messages: a repeat login or a failed try also costs an SMS but is not a new account. Firebase cannot say whether someone used the app or the website.');
+    h += apHelp('auth', `“Active” is the last time a phone asked Firebase for a fresh session — the nearest thing there is to “used it”, not an exact headcount. Firebase cannot say whether someone used the app or the website. New accounts are <b>at least</b> that many sign-in text messages: a repeat login or a failed try also costs an SMS. Signed in with a phone number: ${apN(pr.phone || 0)}${pr.google ? ' · Google: ' + apN(pr.google) : ''}${pr.password ? ' · password: ' + apN(pr.password) : ''}. The studio’s own login and the App Review number are left out.`);
     h += `<div class="aps-links">
-      ${apLink('https://console.firebase.google.com/project/fantasy-studio-web-f7813/authentication/users', 'Authentication — users')}
-      ${apLink('https://console.firebase.google.com/project/fantasy-studio-web-f7813/authentication/settings', 'SMS limits and regions')}
+      ${apLink('https://console.firebase.google.com/project/fantasy-studio-web-f7813/authentication/users', 'All accounts (Firebase)')}
+      ${apLink('https://console.firebase.google.com/project/fantasy-studio-web-f7813/authentication/settings', 'Sign-in SMS limits')}
       ${apLink('https://console.cloud.google.com/billing/budgets', 'Billing budget alert')}
     </div>` + apNote('Set a billing budget alert and an SMS daily limit once — only you can; the panel cannot do it for you.');
     return h;
@@ -14618,11 +14629,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   };
   const AP_BUILDER_STEPS = ['builder_page_view', 'builder_started', 'functions_chosen', 'quote_whatsapp_sent', 'pdf_downloaded', 'quote_link_shared', 'quote_link_opened', 'promo_applied', 'compare_opened'];
   const AP_CONTACT_STEPS = ['enquiry_sent', 'whatsapp_tap', 'call_tap'];
-  const AP_GA_SEES = '<b>What Google Analytics sees:</b> the home page and the package builder only, and the builder is also what the app opens as “Plan a shoot”, so some app sessions are in there. Nothing on the sign-in pages or inside the client, crew and partner areas is measured — the privacy page promises that. Visitors who block tracking are missing, so every number is a minimum.';
+  const AP_GA_SEES = 'Google Analytics sees the home page and the package builder only. The builder is also what the app opens as “Plan a shoot”, so some app visits are in there. Nothing on the sign-in pages or inside the client, crew and partner areas is measured — the privacy page promises that. Visitors who block tracking are missing, so every number is a minimum.';
 
   function apGaData(w){
     const T = w.totals || null, now = T && T.now, bef = T && T.before, busy = _apBusy === 'web';
-    let h = `<div class="aps-row"><span class="what">Last ${apN(w.rangeDays || 28)} days · property ${esc(w.propertyId || _apGaId)}<span>as of ${esc(apDateTime(w.atMs))}</span></span>
+    let h = `<div class="aps-row"><span class="what">Last ${apN(w.rangeDays || 28)} days<span>as of ${esc(apDateTime(w.atMs))} · property ${esc(w.propertyId || _apGaId)}</span></span>
       <button type="button" class="btn btn--sm btn--ghost" data-apweb${busy ? ' disabled' : ''}>${busy ? 'Reading…' : '↻ Refresh'}</button></div>`;
     /* the last time Google was asked and said no (a revoked permission, a busy moment): the figures below are then older */
     const said = apGaSay(_apWebInfo);
@@ -14642,7 +14653,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const bars = (title, rows, label, right, key) => {
       if(!Array.isArray(rows) || !rows.length) return '';
       const mx = Math.max(1, ...rows.map(r=>r[key]));
-      return `<div class="finh" style="margin-top:.7rem">${title}</div>` + rows.map(r=>apBar(label(r), right(r), r[key] / mx, 'gold')).join('');
+      return `<div class="finh">${title}</div>` + rows.map(r=>apBar(label(r), right(r), r[key] / mx, 'gold')).join('');
     };
     h += bars('How people found the site', w.channels, r=>esc(r.k), r=>apPlural(r.s, 'visit'), 's');
     h += bars('Phone, computer or tablet', w.devices, r=>esc(r.k.charAt(0).toUpperCase() + r.k.slice(1)), r=>apN(r.u), 'u');
@@ -14654,10 +14665,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const bs = stepRows(AP_BUILDER_STEPS), cs = stepRows(AP_CONTACT_STEPS);
     const emx = Math.max(1, ...bs.map(x=>x.n), ...cs.map(x=>x.n));
     const stepBar = x=>apBar(esc(AP_EVENT_NAMES[x.k]) + ` <em>${apN(x.u)} ${x.u === 1 ? 'person' : 'people'}</em>`, apN(x.n), x.n / emx);
-    h += `<div class="finh" style="margin-top:.7rem">In the package builder</div>` + bs.map(stepBar).join('')
-       + `<div class="finh" style="margin-top:.7rem">Getting in touch from the website</div>` + cs.map(stepBar).join('')
-       + apNote('These count actions, not people: one person can do the same thing twice. “Tapped a WhatsApp / Call button” and “Sent the enquiry form” count from the day the website update that adds them goes live; before that they read zero.');
-    h += apNote(AP_GA_SEES);
+    h += `<div class="finh">In the package builder</div>` + bs.map(stepBar).join('')
+       + `<div class="finh">Getting in touch from the website</div>` + cs.map(stepBar).join('');
+    h += apHelp('ga', 'The last two lists count actions, not people: one person can do the same thing twice. “Tapped a WhatsApp / Call button” and “Sent the enquiry form” count from the day the website update that adds them goes live; before that they read zero. ' + AP_GA_SEES);
     return h;
   }
 
@@ -14685,7 +14695,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <input id="apGaId" class="input" inputmode="numeric" autocomplete="off" placeholder="e.g. 123456789" value="${esc(draft)}" />
       <button type="button" class="btn btn--primary" data-apgasave${busy ? ' disabled' : ''}>${busy ? 'Testing…' : 'Save and test'}</button></div>`;
     if(_apGaId) h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${busy ? ' disabled' : ''}>Test the connection again</button></div>`;
-    return h + apNote(AP_GA_SEES);
+    return h + apHelp('gasetup', AP_GA_SEES, 'What Google Analytics can see');
   }
   function apGaHTML(m){
     if(_apWeb) return apSafe('ga', ()=>apGaData(_apWeb));
@@ -14696,12 +14706,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     return apSafe('gasetup', apGaSetup);
   }
+  /* the one line the Website card's header shows before it is opened */
+  function apGaAnswer(){
+    const w = _apWeb, now = w && w.totals && w.totals.now, bef = w && w.totals && w.totals.before;
+    if(now) return `${apPlural(now.u, 'visitor')} in ${apN(w.rangeDays || 28)} days${bef && bef.u ? ' · ' + esc(apChange(now.u, bef.u)) : ''}`;
+    if(_apWebState === 'idle' || _apWebState === 'loading') return 'Reading…';
+    if(_apGaId) return 'Google Analytics is not answering yet — open to see why';
+    return 'Not connected yet — a five-minute set-up, once';
+  }
 
   /* what the owner types about the store releases (config/appStore). The form only appears once the saved copy has been
      read — a Save from a blank form would overwrite notes that were never on screen. What is typed is kept in _apDraft so
      a redraw (a new enquiry arriving, say) never loses it, and the section stays open while it is being edited. */
   function apStoreHTML(){
-    if(_apStoreState === 'err') return apNote('⚠ Could not read the release notes you typed. Tap ↻ Re-check when you are back online.');
+    if(_apStoreState === 'err') return apNote('⚠ Could not read the release notes you typed. Tap ↻ Check again when you are back online.');
     if(_apStoreState !== 'ok') return apNote('Reading…');
     const s = _apStore || {}, a = s.android || {}, i = s.ios || {};
     const typed = apMs(s.typedAt);
@@ -14716,11 +14734,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <label class="aps-lab" for="${id}s">Status</label><select id="${id}s" class="input">${opt(id + 's', o.status)}</select>
       <label class="aps-lab" for="${id}n">Installs so far</label><input id="${id}n" class="input" inputmode="numeric" placeholder="from the store" value="${esc(String(dv(id + 'n', o.installs === null || o.installs === undefined ? '' : o.installs)))}" /></div>`;
     return (line('Android — Google Play', a) + line('iPhone — App Store', i) || apNote('Nothing typed yet.'))
-      + (typed ? apNote(`Typed by you on ${esc(apDateTime(typed))}. These are not read from the stores: update them when you look at the consoles.`) : '')
+      + (typed ? apNote(`Typed by you on ${esc(apDateTime(typed))}. The panel cannot read the stores, so update these when you look at the consoles.`) : '')
       + `<details class="aps-more"${_apStoreOpen ? ' open' : ''}><summary>${typed ? 'Edit what I typed' : 'Type the version and install count'}</summary>
           ${side('apA', 'Android', a)}${side('apI', 'iPhone', i)}
           <div class="aps-links"><button type="button" class="btn btn--primary" data-apstore>Save</button></div></details>`;
   }
+  const apStoreAnswer = ()=>{
+    if(_apStoreState !== 'ok') return _apStoreState === 'err' ? 'Could not read what you typed' : 'Reading…';
+    const s = _apStore || {}, one = (name, o)=>o && (o.version || o.status) ? name + ' ' + [o.version, o.status].filter(Boolean).map(esc).join(' · ') : '';
+    const bits = [one('Android', s.android), one('iPhone', s.ios)].filter(Boolean);
+    return bits.length ? bits.join(' — ') : 'Type the version and installs from the store consoles';
+  };
 
   function apAppHTML(m){
     const tv = n => m.tokOK ? apN(n) : (_apTokState === 'loading' ? '…' : '—');
@@ -14728,179 +14752,230 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     let h = apLoadNote(m);
     if(_apTokState === 'err') h += errBox(_apTokErr, 'apps');
     else if(_apTokState === 'loading' && !m.tokOK) h += apNote('Reading the phone list…');
-    if(m.tokOK && _apTokPartial) h += apNote('⚠ This phone is offline, so these figures are what it had saved and may be out of date. Tap ↻ Re-check when you are back online.');
+    if(m.tokOK && _apTokPartial) h += apNote('⚠ This phone is offline, so these figures are what it had saved and may be out of date. Tap ↻ Check again when you are back online.');
     if(m.tokOK && _apTokCapped) h += apNote(`⚠ Only the first ${apN(APPS_TOK_CAP)} phones were read; there are more, so every figure here is “at least”.`);
 
+    /* the one question the page exists for, answered in a sentence, then the four figures behind it */
+    h += `<div class="aps-lead">${m.tokOK
+      ? `<b>${apPlural(m.union, 'person uses', 'people use')} the app.</b> ${apN(m.active7)} opened it this week.`
+      : (_apTokState === 'loading' ? 'Counting who has the app…' : 'The phone list has not been read yet.')}</div>`;
     h += `<div class="fintiles">
-      ${apTile(tv(m.union), 'app users, at least', m.tokOK ? `${apN(m.people)} registered with alerts on${m.profOnly ? ` · +${apN(m.profOnly)} via the profile step only` : ''}` : 'alerts on, plus the profile step')}
-      ${apTile(tv(m.active7), 'opened in 7 days', m.tokOK ? `of ${apN(m.people)} registered` : '')}
-      ${apTile(tv(m.dev.ios), 'iPhones', m.tokOK ? 'registered with alerts on' : '')}
-      ${apTile(tv(m.dev.android), 'Android phones', m.tokOK && m.dev.app ? `+ ${apN(m.dev.app)} that did not say` : (m.tokOK ? 'registered with alerts on' : ''))}
+      ${apTile(tv(m.union), 'people use the app', m.tokOK ? `${apN(m.people)} with alerts on${m.profOnly ? ` · ${apN(m.profOnly)} signed in, alerts off` : ''}` : '')}
+      ${apTile(tv(m.active7), 'opened it this week', m.tokOK ? `${apN(m.active30)} in the last 30 days` : '')}
+      ${apTile(tv(m.dev.ios), 'iPhones', m.tokOK ? 'with alerts on' : '')}
+      ${apTile(tv(m.dev.android), 'Android phones', m.tokOK && m.dev.app ? `+ ${apN(m.dev.app)} that did not say which` : (m.tokOK ? 'with alerts on' : ''))}
     </div>`;
-    h += apNote('<b>How to read this.</b> A phone is listed once it has the store app <i>and</i> alerts allowed, and it stays listed until an alert to it fails — so someone who uninstalled can still be counted for a while'
+    h += apHelp('users', 'A phone counts once it has the store app <i>and</i> alerts allowed, and stays counted until an alert to it fails — so someone who uninstalled can still be counted for a while'
       + (m.tokOK ? ` (<b>${apN(m.stale)}</b> ${m.stale === 1 ? 'phone has' : 'phones have'} not been opened in over 30 days)` : '')
-      + '. Anyone who said No to alerts, and everyone who only uses the website, is not in these numbers. Real installs, ratings and crashes live in the store consoles — buttons at the bottom.');
+      + '. Someone who signed in but said No to alerts is counted from the profile step in the app. Anyone who only uses the website is not in these numbers, so every figure is “at least”. Real installs, ratings and crashes live in the store consoles — see the last card.', 'How these are counted');
 
-    h += apH('Who has the app, by role');
-    h += apSafe('roles', ()=>[
-      ['🎬 Crew', m.coverCrew, 'crew members on your team'],
-      ['🏢 Partner studios', m.coverStu, 'active partner studios'],
-      ['👤 Clients with a booked job', m.coverCl, 'booked, or delivered in the last 90 days'],
-    ].map(([lab, c, what])=>apBar(`${lab} <em>${esc(what)}</em>`, (m.tokOK && m.ready) ? `${apN(c.has)} of ${apN(c.total)}` : '—', frac(c.has, c.total), 'gold')).join('')
-      + apNote('Matched by phone number. “Has the app” also counts anyone who reached the app’s profile step, even if they tapped Later. Each role is shown against its own total — they are not added together.')
-      + ((m.auth && m.ready) ? apNote(`From the login list (${esc(apDateTime(m.auth.at))}) — <b>never signed in anywhere:</b> crew ${apN(m.auth.crew[0])} of ${apN(m.auth.crew[1])} checked, partner studios ${apN(m.auth.studios[0])} of ${apN(m.auth.studios[1])}, clients ${apN(m.auth.clients[0])} of ${apN(m.auth.clients[1])}. Anyone added since was not asked about.`) : ''));
+    /* who has it, by role */
+    h += apSafe('roles', ()=>{
+      const rows = [['🎬 Crew', m.coverCrew, 'crew members on your team'], ['🏢 Partner studios', m.coverStu, 'active partner studios'], ['👤 Clients with a booked job', m.coverCl, 'booked, or delivered in the last 90 days']];
+      const okAll = m.tokOK && m.ready;
+      const ans = okAll ? `Crew ${apN(m.coverCrew.has)} of ${apN(m.coverCrew.total)} · partners ${apN(m.coverStu.has)} of ${apN(m.coverStu.total)} · clients ${apN(m.coverCl.has)} of ${apN(m.coverCl.total)}` : 'Shown once the lists have loaded';
+      const body = rows.map(([lab, c, what])=>apBar(`${lab} <em>${esc(what)}</em>`, okAll ? `${apN(c.has)} of ${apN(c.total)}` : '—', frac(c.has, c.total), 'gold')).join('')
+        + ((m.auth && m.ready) ? apNote(`<b>Never signed in anywhere</b> (checked ${esc(apDateTime(m.auth.at))}): crew ${apN(m.auth.crew[0])} of ${apN(m.auth.crew[1])}, partner studios ${apN(m.auth.studios[0])} of ${apN(m.auth.studios[1])}, clients ${apN(m.auth.clients[0])} of ${apN(m.auth.clients[1])}. Anyone added since was not checked.`) : '')
+        + apHelp('roles', 'Matched by phone number. “Has the app” also counts anyone who reached the app’s profile step, even if they tapped Later. Each role is shown against its own total — they are not added together.');
+      return apCard('roles', 'Who has the app?', ans, body, { open: true });
+    });
 
-    h += apH('When they last opened it');
-    h += m.tokOK ? apSafe('recency', ()=>{
-      const mx = Math.max(1, m.rec.d1, m.rec.d7, m.rec.d30, m.rec.older);
-      return apBar('Today or yesterday', apN(m.rec.d1), m.rec.d1 / mx)
-        + apBar('2–7 days ago', apN(m.rec.d7), m.rec.d7 / mx)
-        + apBar('8–30 days ago', apN(m.rec.d30), m.rec.d30 / mx)
-        + apBar('Longer ago', apN(m.rec.older), m.rec.older / mx)
-        + apNote('People, not devices. This is the last time a signed-in page ran with alerts on — a resume from the background does not count. A quiet client is normal when the wedding is months away, so names are listed below only for crew and partners who have no app at all.'
-          + (m.offBooks ? ` <b>${apPlural(m.offBooks, 'phone')}</b> ${m.offBooks === 1 ? 'belongs' : 'belong'} to numbers that are no longer on your books (a former crew member, a deleted booking, a changed number).` : ''));
-    }) : apNote('Shown once the phone list has been read.');
-
-    h += apH('Signed-in devices per day') + apSafe('daily', ()=>apDailyHTML(m));
-
-    h += `<div id="apNudge"></div>` + apH('Who to nudge');
+    /* who to nudge: the one list on this tab that asks for something */
     h += apSafe('nudge', ()=>{
-      if(!m.ready) return apNote('Worked out once everything above has loaded.');
-      if(!m.nudge.length) return m.tokOK ? apNote('✓ Every active crew member and partner studio has a usable number and has been seen in the app.')
-                                         : apNote('Everyone has a usable number. Who has the app is shown once the phone list has been read.');
+      const n = m.nudge.length;
+      const ans = !m.ready ? 'Worked out once everything has loaded' : n ? `${apN(n)} ${n === 1 ? 'person' : 'people'} — tap to see who` : (m.tokOK ? '✓ Everyone is set up' : 'Everyone has a number · app check pending');
       const text = p => 'Hi ' + (String(p.name).split(/\s+/)[0] || '') + ', this is Fantasy Studio. '
         + (p.never ? 'Please open https://www.fantasystudio.in/start/ (or install our app) and sign in with this number, so your shoots and alerts reach you.'
                    : 'Please install our app and allow notifications, so your shoot alerts reach your phone.');
-      return m.nudge.map(p=>`<div class="aps-row">
+      let body = '';
+      if(!m.ready) body = apNote('Worked out once everything above has loaded.');
+      else if(!n) body = m.tokOK ? apNote('✓ Every active crew member and partner studio has a usable number and has been seen in the app.')
+                                 : apNote('Everyone has a usable number. Who has the app is shown once the phone list has been read.');
+      else body = m.nudge.map(p=>`<div class="aps-row">
         <span class="what"><b>${esc(p.name)}</b><span>${esc(p.kind)} · ${esc(p.sub)} — ${esc(p.reason)}</span></span>
         ${p.wa ? `<a class="icon-btn icon-btn--ring" href="https://wa.me/${esc(p.wa)}?text=${encodeURIComponent(text(p))}" target="_blank" rel="noopener" title="WhatsApp ${esc(p.name)}" aria-label="WhatsApp ${esc(p.name)}">💬</a>` : ''}
       </div>`).join('')
         + (m.auth ? '' : `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apstat${_apBusy === 'stats' ? ' disabled' : ''}>Check who has never signed in</button></div>`)
-        + apNote('Their assignment and booking alerts go to nobody until they sign in on the app and allow notifications. “No app seen” can also mean they allowed nothing, or use the website only — the app is the only thing that sends alerts.'
-          + (m.auth ? '' : ' “Check who has never signed in” asks Firebase whether each number has an account, and tells you apart the ones who never logged in from the ones who use the website.'));
+        + apHelp('nudge', 'Their shoot and booking alerts go to nobody until they sign in on the app and allow notifications. “No app seen” can also mean they allowed nothing, or use the website only — the app is the only thing that sends alerts. Tap 💬 to send them a ready-made WhatsApp message.'
+          + (m.auth ? '' : ' “Check who has never signed in” asks Firebase whether each number has an account, and tells apart the ones who never logged in from the ones who use the website.'));
+      return apCard('nudge', 'Not getting alerts yet', ans, body, { open: n > 0, warn: n > 0 });
     });
 
-    h += apH('Alerts this month') + apSafe('alerts', ()=>apAlertsHTML(m));
+    /* when they last opened it */
+    h += apSafe('recency', ()=>{
+      if(!m.tokOK) return apCard('recency', 'When did they last open it?', 'Shown once the phone list has been read', apNote('Shown once the phone list has been read.'));
+      const mx = Math.max(1, m.rec.d1, m.rec.d7, m.rec.d30, m.rec.older);
+      const body = apBar('Today or yesterday', apN(m.rec.d1), m.rec.d1 / mx)
+        + apBar('2–7 days ago', apN(m.rec.d7), m.rec.d7 / mx)
+        + apBar('8–30 days ago', apN(m.rec.d30), m.rec.d30 / mx)
+        + apBar('Longer ago', apN(m.rec.older), m.rec.older / mx)
+        + apHelp('recency', 'People, not phones. This is the last time a signed-in page ran with alerts on — bringing the app back from the background does not count. A quiet client is normal when the wedding is months away.'
+          + (m.offBooks ? ` <b>${apPlural(m.offBooks, 'phone')}</b> ${m.offBooks === 1 ? 'belongs' : 'belong'} to numbers that are no longer on your books (a former crew member, a deleted booking, a changed number).` : ''));
+      return apCard('recency', 'When did they last open it?', `${apN(m.rec.d1 + m.rec.d7)} this week · ${apN(m.rec.d30)} this month · ${apN(m.rec.older + m.rec.nodate)} quiet for over a month`, body);
+    });
 
-    h += apH('The profile step in the app');
-    h += `<div class="fintiles">${apTile(apN(m.prof.done), 'added a profile', '')}${apTile(apN(m.prof.empty), 'skipped it (Later)', '')}</div>`
-       + apNote('Profiles are only offered inside the app, so this also shows people who reached it. Crew without an emergency contact are flagged on their Team card.');
+    /* the daily count */
+    h += apSafe('daily', ()=>{
+      const d = m.daily, n7 = d.ios7 + d.and7 + d.web7;
+      const ans = _apDailyState === 'ok' ? (d.any ? `${apN(d.today.n)} today · ${apN(n7)} opens in the last 7 days` : 'Nothing counted yet') : _apDailyState === 'err' || _apDailyState === 'offline' ? 'Could not be read' : 'Reading…';
+      return apCard('daily', 'How many open it each day?', ans, apDailyHTML(m));
+    });
 
-    h += apH('Releases and store numbers') + apSafe('store', apStoreHTML);
-    h += `<div class="aps-links">
-      ${apLink('https://play.google.com/console', 'Play Console')}
-      ${apLink('https://appstoreconnect.apple.com/', 'App Store Connect')}
-      ${apLink('https://play.google.com/store/apps/details?id=in.fantasystudio.app', 'Play Store page')}
-    </div>` + apNote('Installs, uninstalls, ratings, crashes and reviews exist only there. The panel cannot read them without a key kept on a server.');
+    /* alerts */
+    h += apSafe('alerts', ()=>{
+      const c = m.pushNow;
+      const ans = _apPushState === 'ok' ? (c ? `${apPlural(c.alerts || 0, 'alert')} · ${apN(c.sent || 0)} phones reached${c.failed ? ' · ' + apN(c.failed) + ' did not get through' : ''}` : (m.pushPrev ? 'None yet this month' : 'Nothing counted yet')) : _apPushState === 'err' ? 'Could not be read' : 'Reading…';
+      return apCard('alerts', 'Alerts sent this month', ans, apAlertsHTML(m), { warn: !!(c && (c.nodevice || c.badphone)) });
+    });
+
+    /* profiles */
+    h += apCard('prof', 'Profiles filled in', `${apN(m.prof.done)} added · ${apN(m.prof.empty)} skipped`,
+      `<div class="fintiles">${apTile(apN(m.prof.done), 'added a profile', 'photo, name, emergency contact')}${apTile(apN(m.prof.empty), 'skipped it (Later)', '')}</div>`
+      + apHelp('prof', 'The profile is only offered inside the app, so this also shows who reached it. Crew without an emergency contact are flagged on their Team card.'));
+
+    /* the stores */
+    h += apSafe('store', ()=>apCard('store', 'App Store and Play Store', apStoreAnswer(),
+      apStoreHTML() + `<div class="aps-links">
+        ${apLink('https://play.google.com/console', 'Play Console')}
+        ${apLink('https://appstoreconnect.apple.com/', 'App Store Connect')}
+        ${apLink('https://play.google.com/store/apps/details?id=in.fantasystudio.app', 'Play Store page')}
+      </div>` + apHelp('store', 'Installs, uninstalls, ratings, crashes and reviews exist only in the two store consoles. The panel cannot read them without a key kept on a server, so what you type above is a note to yourself.')));
     return h;
   }
 
   function apPeopleHTML(m){
-    let h = apLoadNote(m) + apH('Waiting on you');
-    h += apSafe('waiting', ()=>m.waiting.map(w=>`<div class="aps-row">
+    let h = apLoadNote(m);
+
+    /* what is waiting */
+    h += apSafe('waiting', ()=>{
+      const wt = m.waitTotal;
+      const body = m.waiting.map(w=>`<div class="aps-row">
         <span class="what"><b>${w.icon} ${apN(w.n)}</b> ${w.n === 1 ? w.one : w.many}${w.n && w.old ? `<span>${esc(apOld(w.old))}</span>` : ''}</span>
         ${w.n ? `<button type="button" class="btn btn--sm btn--ghost" data-apgo="${w.go}">Open ›</button>` : ''}
-      </div>`).join('') + apNote('These are the same inboxes as on Home, Leads, Team and Partner studios — this is only the total and how long the oldest has waited.'));
+      </div>`).join('') + apHelp('waiting', 'These are the same inboxes as on Home, Leads, Team and Partner studios — this is only the total and how long the oldest has waited.');
+      return apCard('waiting', 'Waiting on you', wt ? `${apPlural(wt, 'thing', 'things')} to deal with` : (m.ready ? '✓ Nothing waiting' : 'Loading…'), body, { open: wt > 0, warn: wt > 0 });
+    });
 
-    h += `<div id="apAuth"></div>` + apH('Everyone who has logged in') + apSafe('auth', ()=>apAuthHTML(m));
+    /* everyone who has logged in */
+    h += apSafe('auth', ()=>{
+      const s = _apStats;
+      const ans = s ? `${apPlural(s.total, 'account')} · ${apN(s.new7)} new this week` : (_apBusy === 'stats' ? 'Reading…' : 'Tap ↻ inside to read the numbers');
+      return apCard('auth', 'How many people have an account?', ans, apAuthHTML(m), { open: true, warn: !!m.trip });
+    });
 
-    h += apH('Crew: have they confirmed their shoots?');
+    /* crew confirmations */
     h += apSafe('crew', ()=>{
-      if(!m.ready) return apNote('Worked out once the crew and assignments have loaded.');
+      if(!m.ready) return apCard('crew', 'Have the crew confirmed their shoots?', 'Worked out once the crew and assignments have loaded', apNote('Worked out once the crew and assignments have loaded.'));
+      const un = m.unseen.length, up = m.upcoming.length;
       /* one row per person per shoot: a wedding day with four crew is four of these, not one shoot */
-      let c = `<div class="fintiles">${apTile(apN(m.upcoming.length), 'crew bookings ahead', 'one per person per shoot')}${apTile(apN(m.unseen.length), 'not confirmed yet', m.unseen.length ? 'the crew member has not tapped Confirm' : 'everyone has confirmed', m.unseen.length ? 'warn' : '')}</div>`;
-      if(m.unseen.length){
+      let c = `<div class="fintiles">${apTile(apN(up), 'crew bookings ahead', 'one per person per shoot')}${apTile(apN(un), 'not confirmed yet', un ? 'the crew member has not tapped Confirm' : 'everyone has confirmed', un ? 'warn' : '')}</div>`;
+      if(un){
         c += m.unseen.slice(0, 8).map(a=>`<div class="aps-row"><span class="what"><b>${esc(a.memberName || 'Crew member')}</b><span>${esc(a.eventTitle || 'Event')} · ${esc(dmy(a.date))}</span></span></div>`).join('');
-        if(m.unseen.length > 8) c += apNote(`…and ${apN(m.unseen.length - 8)} more. They are on the Crew screen under each shoot.`);
+        if(un > 8) c += apNote(`…and ${apN(un - 8)} more. They are on the Crew screen under each shoot.`);
       }
       if(m.rates.length){
-        c += `<div class="finh" style="margin-top:.7rem">Confirm rate — lowest first</div>`
+        c += `<div class="finh">Who confirms, who does not — lowest first</div>`
           + m.rates.slice(0, 8).map(x=>apBar(`${esc(x.mm.name || 'Crew member')} <em>${apN(x.st.acks)} of ${apN(x.st.list.length)}</em>`, x.st.rate + '%', x.st.rate / 100, x.st.rate < 60 ? '' : 'gold')).join('');
       }
-      return c + apNote('“Confirmed” is the crew member tapping Confirm on the assignment, on the crew page or app or from the alert — the Crew screen shows it as “✓ seen”. Opening it without tapping does not count, and editing an assignment clears it, so a shoot can go back to “not confirmed” after a change.');
+      c += apHelp('crew', '“Confirmed” is the crew member tapping Confirm on the assignment — on the crew page, in the app or from the alert. The Crew screen shows it as “✓ seen”. Opening it without tapping does not count, and editing an assignment clears it, so a shoot can go back to “not confirmed” after a change.');
+      return apCard('crew', 'Have the crew confirmed their shoots?', un ? `${apN(un)} of ${apN(up)} not confirmed yet` : (up ? `✓ All ${apN(up)} confirmed` : 'No shoots ahead'), c, { open: un > 0, warn: un > 0 });
     });
 
-    h += apH('Partner studios: booking requests, last 90 days');
+    /* partner studios */
     h += apSafe('partners', ()=>{
-      if(!m.ready) return apNote('Worked out once the partner studios and their requests have loaded.');
-      if(!m.stuUse.length) return apNote('No active partner studios yet.');
+      const q = 'Are partner studios sending requests?';
+      if(!m.ready) return apCard('partners', q, 'Worked out once the partner studios have loaded', apNote('Worked out once the partner studios and their requests have loaded.'));
+      if(!m.stuUse.length) return apCard('partners', q, 'No active partner studios yet', apNote('No active partner studios yet.'));
       const mx = Math.max(1, ...m.stuUse.map(x=>x.n));
       const used = m.stuUse.filter(x=>x.n), idle = m.stuUse.filter(x=>!x.ever);
-      return (used.length ? used.map(x=>apBar(`${esc(x.s.name || 'Studio')} <em>${apN(x.acc)} accepted · ${apN(x.dec)} declined${x.wait ? ' · ' + apN(x.wait) + ' waiting' : ''}</em>`, apN(x.n), x.n / mx, 'gold')).join('')
-                          : apNote('No partner has sent a booking request in the last 90 days.'))
-        + (idle.length ? apNote(`<b>No request on file:</b> ${idle.map(x=>esc(x.s.name || 'Studio')).join(', ')}.`) : '')
-        + apNote('Counted from the newest 300 requests that still exist, so an old request can fall off the end, and one the partner cancelled or you deleted is not counted.');
+      const total = used.reduce((s, x)=>s + x.n, 0);
+      const body = (used.length ? used.map(x=>apBar(`${esc(x.s.name || 'Studio')} <em>${apN(x.acc)} accepted · ${apN(x.dec)} declined${x.wait ? ' · ' + apN(x.wait) + ' waiting' : ''}</em>`, apN(x.n), x.n / mx, 'gold')).join('')
+                                : apNote('No partner has sent a booking request in the last 90 days.'))
+        + (idle.length ? apNote(`<b>Never sent one:</b> ${idle.map(x=>esc(x.s.name || 'Studio')).join(', ')}.`) : '')
+        + apHelp('partners', 'Booking requests from the partner page, last 90 days. Counted from the newest 300 requests that still exist, so an old request can fall off the end, and one the partner cancelled or you deleted is not counted.');
+      return apCard('partners', q, `${apPlural(total, 'request')} in 90 days from ${apN(used.length)} of ${apN(m.stuUse.length)} studios`, body);
     });
 
-    h += apH('Sign-ups and where people are');
+    /* where people are */
     h += apSafe('countries', ()=>{
       const entries = Object.entries(m.countries).sort((a, b)=>b[1] - a[1]);
       const mx = Math.max(1, ...entries.map(e=>e[1]));
-      return `<div class="fintiles">${apTile(apN(m.sups.length), 'new sign-ups', 'waiting in Leads')}${apTile(apN(m.countries && Object.values(m.countries).reduce((s, n)=>s + n, 0)), 'people on record', 'enquiries and sign-ups, one per number')}</div>`
+      const onRecord = entries.reduce((s, e)=>s + e[1], 0);
+      const body = `<div class="fintiles">${apTile(apN(m.sups.length), 'new sign-ups', 'waiting in Leads')}${apTile(apN(onRecord), 'people on record', 'enquiries and sign-ups, one per number')}</div>`
         + entries.map(([k, n])=>apBar(esc(k), apN(n), n / mx)).join('')
-        + apNote('By the number’s dialling code — not where someone lives. <b>Sign-in opened to everyone on 6 Oct 2026</b>; before that only numbers you had set up could log in, so sign-up figures start low and are not comparable with earlier months.');
+        + apHelp('countries', 'By the phone number’s country code — not where someone lives. Sign-in opened to everyone on 6 Oct 2026; before that only numbers you had set up could log in, so sign-up figures start low.');
+      return apCard('countries', 'Where are people’s numbers from?', entries.slice(0, 3).map(([k, n])=>`${esc(k)} ${apN(n)}`).join(' · ') || 'Nobody on record yet', body);
     });
 
-    if(m.caps.length) h += apH('Data health') + apNote('⚠ ' + m.caps.map(c=>`${esc(c[0])} (${apN(c[1])} of ${apN(c[2])})`).join(', ') + ' — nearly full, so every figure built from it is “at least”. Backup &amp; export reads everything.');
+    if(m.caps.length) h += apCard('caps', 'Data health', 'Some lists are nearly full', apNote('⚠ ' + m.caps.map(c=>`${esc(c[0])} (${apN(c[1])} of ${apN(c[2])})`).join(', ') + ' — nearly full, so every figure built from it is “at least”. Backup &amp; export reads everything.'), { open: true, warn: true });
     return h;
   }
 
   function apWebHTML(m){
-    let h = apLoadNote(m) + apH('Website visitors — Google Analytics') + apGaHTML(m) + apH('Enquiries to the studio');
-    const people = i => m.months[i].size, docs = i => m.monthDocs[i];
-    const oldLead = m.waiting[0].old;
-    h += `<div class="fintiles">
-      ${apTile(apN(people(0)), 'enquirers this month', apPlural(docs(0), 'enquiry', 'enquiries'))}
-      ${apTile(apN(people(1)), 'enquirers last month', apPlural(docs(1), 'enquiry', 'enquiries'))}
-      ${apTile(apN(m.leadsNew.length), 'waiting for an answer', m.leadsNew.length ? (esc(apOld(oldLead)) || 'not answered yet') : (m.ready ? 'all answered' : ''), m.leadsNew.length ? 'warn' : '')}
-      ${apTile(apN(m.fromBuilder), 'came from the builder', m.liveN ? Math.round(100 * m.fromBuilder / m.liveN) + '% of all enquiries' : '')}
-    </div>`;
-    h += apNote('Everything in Leads counts here, including calls asked for at sign-in and leads you added by hand. One person counts once, matched on the last 10 digits of their number — a quote sent twice is two enquiries but one enquirer. Dates come from the visitor’s phone, or from this device when you add a lead.' + (m.undated ? ` ${apPlural(m.undated, 'enquiry', 'enquiries')} carry no usable date and are left out of the weeks.` : ''));
+    let h = apLoadNote(m);
 
-    h += apH('Last 8 weeks');
-    h += apSafe('weeks', ()=>{
-      const mx = Math.max(1, ...m.weeks.map(w=>w.people.size));
-      const mon = apMonday(Date.now());
-      return m.weeks.map((w, i)=>{ const d = new Date(mon); d.setDate(d.getDate() - 7 * i);
-        return apBar(i === 0 ? 'This week' : 'Week of ' + d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), `${apN(w.people.size)} · ${apN(w.docs)}`, w.people.size / mx, i === 0 ? 'gold' : ''); }).join('')
-        + apNote('Each row: people · enquiries.');
+    /* Google Analytics */
+    h += apCard('ga', 'Who visits the website?', apGaAnswer(), apGaHTML(m), { open: true });
+
+    /* enquiries */
+    h += apSafe('enq', ()=>{
+      const people = i => m.months[i].size, docs = i => m.monthDocs[i];
+      const nw = m.leadsNew.length, oldLead = m.waiting[0].old;
+      let body = `<div class="fintiles">
+        ${apTile(apN(people(0)), 'enquirers this month', apPlural(docs(0), 'enquiry', 'enquiries'))}
+        ${apTile(apN(people(1)), 'enquirers last month', apPlural(docs(1), 'enquiry', 'enquiries'))}
+        ${apTile(apN(nw), 'waiting for an answer', nw ? (esc(apOld(oldLead)) || 'not answered yet') : (m.ready ? 'all answered' : ''), nw ? 'warn' : '')}
+        ${apTile(apN(m.fromBuilder), 'came from the builder', m.liveN ? Math.round(100 * m.fromBuilder / m.liveN) + '% of all enquiries' : '')}
+      </div>`;
+      if(nw) body += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apgo="leads">Answer them in Leads ›</button></div>`;
+      body += apSafe('weeks', ()=>{
+        const mx = Math.max(1, ...m.weeks.map(w=>w.people.size));
+        const mon = apMonday(Date.now());
+        return `<div class="finh">Last 8 weeks — people · enquiries</div>` + m.weeks.map((w, i)=>{ const d = new Date(mon); d.setDate(d.getDate() - 7 * i);
+          return apBar(i === 0 ? 'This week' : 'Week of ' + d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), `${apN(w.people.size)} · ${apN(w.docs)}`, w.people.size / mx, i === 0 ? 'gold' : ''); }).join('');
+      });
+      body += apHelp('enq', 'Everything in Leads counts here, including calls asked for at sign-in and leads you added by hand. One person counts once, matched on the last 10 digits of their number — a quote sent twice is two enquiries but one enquirer. Dates come from the visitor’s phone, or from this device when you add a lead.' + (m.undated ? ` ${apPlural(m.undated, 'enquiry', 'enquiries')} carry no usable date and are left out of the weeks.` : ''));
+      return apCard('enq', 'How many enquiries are coming in?', `${apPlural(people(0), 'person', 'people')} this month${nw ? ` · ${apN(nw)} waiting for an answer` : ' · all answered'}`, body, { open: true, warn: nw > 0 });
     });
 
-    h += apH('What people ask for in the builder');
+    /* the builder */
     h += apSafe('builder', ()=>{
-      if(!m.ql.length) return apNote('No enquiry has come from the package builder yet.');
-      return `<div class="fintiles">
+      const q = 'What do people ask for in the builder?';
+      if(!m.ql.length) return apCard('builder', q, 'No enquiry has come from the package builder yet', apNote('No enquiry has come from the package builder yet.'));
+      const body = `<div class="fintiles">
         ${apTile(m.avgFns.toFixed(1), 'functions per quote', 'only functions with a service chosen')}
         ${apTile(m.medVal ? inrShort(m.medVal) : '—', 'typical quote', 'the middle one, before any discount you give')}
         ${apTile(apN(m.promoTotal), 'used a promo code', `of ${apPlural(m.ql.length, 'quote')}`)}
         ${apTile(apN(m.ql.length), 'quotes counted', 'with at least one service chosen')}
       </div>`
-        + (m.services.length ? `<div class="finh" style="margin-top:.7rem">Services asked for — share of quotes</div>`
+        + (m.services.length ? `<div class="finh">Services asked for — share of quotes</div>`
             + m.services.map(([k, n])=>apBar(esc(SERVICE_LABELS[k]), Math.round(100 * n / m.ql.length) + '%', n / m.services[0][1], 'gold')).join('') : '')
-        + (m.promos.length ? `<div class="finh" style="margin-top:.7rem">Promo codes</div>`
+        + (m.promos.length ? `<div class="finh">Promo codes</div>`
             + m.promos.map(([c, n])=>apBar(esc(c), apPlural(n, 'quote'), n / m.promos[0][1])).join('')
             + (m.promoKinds > m.promos.length ? apNote(`+ ${apPlural(m.promoKinds - m.promos.length, 'other code')} not listed.`) : '') : '')
-        + apNote('Taken from the quote each visitor sent from the builder. It is what people <i>asked for</i>; what actually sold is under Money › Insights.');
+        + `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apgo="insights">What actually sold — Insights ›</button></div>`
+        + apHelp('builder', 'Taken from the quote each visitor sent from the builder. It is what people <i>asked for</i>; what actually sold is under Money › Insights.');
+      return apCard('builder', q, `Typical quote ${m.medVal ? inrShort(m.medVal) : '—'} · ${m.avgFns.toFixed(1)} functions · ${apPlural(m.ql.length, 'quote')}`, body);
     });
-    h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apgo="insights">Where the work comes from — Insights ›</button></div>`;
 
-    h += apH('More website tools');
-    h += `<div class="aps-links">
-      ${apLink('https://analytics.google.com/analytics/web/', 'Google Analytics')}
-      ${apLink('https://search.google.com/search-console', 'Search Console')}
-      ${apLink('https://business.google.com/', 'Google Business')}
-    </div>` + apNote('Search Console shows what people searched to find you; Google Business shows calls, directions and views from Google Maps. Neither is in the panel.');
+    /* other tools */
+    h += apCard('tools', 'More website tools', 'Google Analytics · Search Console · Google Business',
+      `<div class="aps-links">
+        ${apLink('https://analytics.google.com/analytics/web/', 'Google Analytics')}
+        ${apLink('https://search.google.com/search-console', 'Search Console')}
+        ${apLink('https://business.google.com/', 'Google Business')}
+      </div>` + apNote('Search Console shows what people searched to find you; Google Business shows calls, directions and views from Google Maps. Neither is in the panel.'));
     return h;
   }
 
   function apAttnHTML(m){
     const chips = [];
     if(m.trip) chips.push(`<button type="button" class="aps-chip warn" data-apgo="auth"><b>${apN(m.trip.today)}</b> new accounts today — usually about ${esc(String(m.trip.avg7))}. Check the SMS bill<i>›</i></button>`);
-    if(m.nudge.length) chips.push(`<button type="button" class="aps-chip warn" data-apgo="nudge"><b>${apN(m.nudge.length)}</b> ${m.nudge.length === 1 ? 'crew member or partner' : 'crew and partners'} may miss alerts<i>›</i></button>`);
+    if(m.nudge.length) chips.push(`<button type="button" class="aps-chip warn" data-apgo="nudge"><b>${apN(m.nudge.length)}</b> ${m.nudge.length === 1 ? 'crew member or partner is' : 'crew / partners are'} not getting alerts<i>›</i></button>`);
     if(m.leadsNew.length) chips.push(`<button type="button" class="aps-chip warn" data-apgo="leads"><b>${apN(m.leadsNew.length)}</b> ${m.leadsNew.length === 1 ? 'enquiry' : 'enquiries'} waiting${m.waiting[0].old ? ' — ' + esc(apOld(m.waiting[0].old)) : ''}<i>›</i></button>`);
     if(m.sups.length) chips.push(`<button type="button" class="aps-chip" data-apgo="leads"><b>${apN(m.sups.length)}</b> new sign-up${m.sups.length === 1 ? '' : 's'} to say hello to<i>›</i></button>`);
     const other = m.waitTotal - m.leadsNew.length - m.sups.length;
-    if(other > 0) chips.push(`<button type="button" class="aps-chip" data-apgo="people"><b>${apN(other)}</b> request${other === 1 ? '' : 's'} waiting — see People<i>›</i></button>`);
+    if(other > 0) chips.push(`<button type="button" class="aps-chip" data-apgo="people"><b>${apN(other)}</b> request${other === 1 ? '' : 's'} waiting<i>›</i></button>`);
     if(chips.length) return chips.join('');
     /* "all clear" is only true once the lists behind it have arrived */
     const age = _apStats && _apStats.atMs ? Date.now() - _apStats.atMs : Infinity;
@@ -14918,8 +14993,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#appsBody').innerHTML = '<div class="empty">This page could not be worked out. Try ↻ Re-check, or reload the panel.</div>';
       return;
     }
-    const who = `<span>${_apTokAt ? 'Phones read at ' + esc(apTime(_apTokAt)) + (_apTokState === 'ok' && _apTokPartial ? ' (offline copy — may be out of date)' : '') + '. ' : ''}Figures are “at least”, never a headcount.</span>`
-      + `<button type="button" class="btn btn--sm btn--ghost" data-apre${_apTokState === 'loading' ? ' disabled' : ''}>↻ Re-check phones</button>`;
+    const who = `<span>${_apTokAt ? 'Last checked ' + esc(apTime(_apTokAt)) + (_apTokState === 'ok' && _apTokPartial ? ' (offline copy — may be out of date)' : '') : (_apTokState === 'loading' ? 'Checking…' : 'Not checked yet')}</span>`
+      + `<button type="button" class="btn btn--sm btn--ghost" data-apre${_apTokState === 'loading' ? ' disabled' : ''}>↻ Check again</button>`;
     const whoEl = $('#appsWho'); if(whoEl && whoEl.dataset.sig !== who){ whoEl.innerHTML = who; whoEl.dataset.sig = who; }
     const att = apAttnHTML(m);
     const attEl = $('#appsAttn'); if(attEl && attEl.dataset.sig !== att){ attEl.innerHTML = att; attEl.dataset.sig = att; }
@@ -14961,13 +15036,17 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const g = e.target.closest('[data-apgo]'); if(!g) return;
     const k = g.dataset.apgo;
     if(k === 'nudge'){
-      if(_apTab !== 'app'){ _apTab = 'app'; viewSet('apTab', _apTab); renderApps(); }
-      const t = $('#apNudge'); if(t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      _apOpen.nudge = true;
+      if(_apTab !== 'app'){ _apTab = 'app'; viewSet('apTab', _apTab); }
+      renderApps();
+      const t = $('#apc-nudge'); if(t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }else if(k === 'people'){
       _apTab = 'people'; viewSet('apTab', _apTab); renderApps(); scrollTopNow();
     }else if(k === 'auth'){
-      if(_apTab !== 'people'){ _apTab = 'people'; viewSet('apTab', _apTab); renderApps(); }
-      const t = $('#apAuth'); if(t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      _apOpen.auth = true;
+      if(_apTab !== 'people'){ _apTab = 'people'; viewSet('apTab', _apTab); }
+      renderApps();
+      const t = $('#apc-auth'); if(t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }else go(k, (ROUTES[k] && ROUTES[k].up) ? { fromMore: true } : undefined);   /* a screen under More: its arrow comes back here */
   });
   if($('#appsView')){
@@ -14977,7 +15056,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     on('#appsView', 'input', keep);
     on('#appsView', 'change', keep);
     /* `toggle` does not bubble: captured, so the release-notes section stays open through a redraw */
-    on('#appsView', 'toggle', e=>{ if(e.target && e.target.matches && e.target.matches('details.aps-more')) _apStoreOpen = !!e.target.open; }, true);
+    on('#appsView', 'toggle', e=>{
+      const t = e.target; if(!t || !t.matches) return;
+      if(t.matches('details.aps-more')) _apStoreOpen = !!t.open;
+      else if(t.matches('details[data-apc]')) _apOpen[t.dataset.apc] = !!t.open;   /* a card or a ⓘ fold: kept as the owner left it */
+    }, true);
     on('#appsView', 'keydown', e=>{
       if(e.key === 'Enter' && e.target && e.target.id === 'apGaId'){
         e.preventDefault();
