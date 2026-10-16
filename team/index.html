@@ -458,8 +458,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .hq-lb{display:flex;align-items:center;gap:.6rem;margin-top:.6rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.07)}
 .hq-lb .lbl{flex:1;min-width:0;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
 .hq-lb .lbl b{display:block;font-size:.76rem;letter-spacing:.01em;text-transform:none;color:var(--text);font-weight:500;margin-top:.12rem}
-.hq-lb .pos{flex:0 0 auto;font-family:var(--serif);font-size:1.4rem;color:var(--gold-b);line-height:1;white-space:nowrap}
-.hq-lb .pos em{font-style:normal;font-family:var(--sans);font-size:.7rem;color:var(--mut);margin-left:.3rem;letter-spacing:.02em}
 /* Month · Year · All — the three places the panel writes (lb.m / lb.y /
    lb.all), so a member can see how they did this month, this year and
    overall. Same gold-pill look as the chips under it. */
@@ -763,7 +761,6 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       <div id="hqLbWrap" hidden>
         <div class="hq-lb" id="hqLb">
           <span class="lbl"><span id="hqLbTtl">🏆 Crew leaderboard</span><b id="hqLbSub"></b></span>
-          <span class="pos" id="hqLbPos"></span>
         </div>
         <div class="hq-lbtog" id="hqLbTog" role="group" aria-label="Leaderboard period">
           <button type="button" data-lb="m" aria-pressed="false">Month</button>
@@ -2268,12 +2265,14 @@ if(!CONFIGURED){
        when the place predates the split) */
     const unit = ((cat || ME.cat) === 'office' ? 'job' : 'shoot') + (n === 1 ? '' : 's');
     if(!(r.pos > 0)){
-      $('#hqLbPos').innerHTML = `—`;
       $('#hqLbSub').textContent = `No ${unit} ${LB_LABEL[_lbPeriod]} yet`;
       return;
     }
-    const medal = r.pos === 1 ? '🥇 ' : r.pos === 2 ? '🥈 ' : r.pos === 3 ? '🥉 ' : '';
-    $('#hqLbPos').innerHTML = `${medal}#${Number(r.pos)}<em>of ${Number(r.of)||1}</em>`;
+    /* The place itself — "#2 of 8", with a medal for the top three — is not
+       shown to the member (owner, 17 Oct 2026): the panel still writes
+       lb.pos / lb.of and this card still opens only once a place exists,
+       but a crew member sees their own earnings and count for the period,
+       not where that puts them against the others. */
     /* the board is ordered by earnings, so say the earnings first */
     $('#hqLbSub').textContent = `${amt > 0 ? inr(amt) + ' · ' : ''}${n} ${unit} ${LB_LABEL[_lbPeriod]}`;
   }
