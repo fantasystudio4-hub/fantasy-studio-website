@@ -10185,6 +10185,24 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function studioById(id){ return STUDIOS.find(s=>s.id===id) || null; }
   const isStudioJob = x => !!x && (x.clientType||'direct') === 'studio';
   const studioJobs = id => livePkgs().filter(p=>isStudioJob(p) && p.studioId === id);
+  /* Which half of a partner's account a confirmed job sits in — the same rule
+     the partner portal draws its two balance tiles from (studio/index.html,
+     jobPhase), so the two sides never show the studio different figures.
+     'upcoming' = nothing shot yet (first dated event still ahead, or no dates);
+     'ongoing' = a day shot and a day still to come; 'done' = last day behind
+     us, or marked delivered. */
+  function stuJobPhase(x){
+    if((x.status||'draft') === 'delivered') return 'done';
+    const t = todayISO();
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+    if(!ds.length || ds[0] > t) return 'upcoming';
+    return ds[ds.length-1] >= t ? 'ongoing' : 'done';
+  }
+  const stuBal = x => Math.max(0, Number((x.totals||{}).balance)||0);
+  function stuDueSplit(conf){
+    const shot = conf.filter(x=>stuJobPhase(x) !== 'upcoming'), up = conf.filter(x=>stuJobPhase(x) === 'upcoming');
+    return { shot, up, shotDue: shot.reduce((n,x)=>n + stuBal(x), 0), upDue: up.reduce((n,x)=>n + stuBal(x), 0) };
+  }
 
   /* ---- partner portal: mirror each studio job's crew onto its package ----
      The /studio/ portal must never read assignments (they carry crew pay),
@@ -11327,6 +11345,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const billed = conf.reduce((n,x)=>n + (Number((x.totals||{}).finalPrice)||0), 0);
     const paid   = conf.reduce((n,x)=>n + Math.max(0,Number((x.totals||{}).advance)||0), 0);
     const due    = conf.reduce((n,x)=>n + Math.max(0,Number((x.totals||{}).balance)||0), 0);
+    /* the outstanding figure is given in its two halves — work already shot
+       and events still ahead — the same split the partner sees on their page */
+    const sp = stuDueSplit(conf);
     const lines = [
       `*Fantasy Studio — account statement*`,
       `${s2.name||''}`.trim(),
@@ -11334,12 +11355,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       `Jobs (booked & delivered): ${conf.length}`,
       `Billed: ${inr(billed)}`,
       `Received: ${inr(paid)}`,
-      due > 0 ? `*Outstanding: ${inr(due)}*` : `Outstanding: nil — thank you`,
+      `Due for shot work: ${sp.shotDue > 0 ? inr(sp.shotDue) : 'nil'}`,
+      `Due for upcoming events: ${sp.upDue > 0 ? inr(sp.upDue) : 'nil'}`,
+      due > 0 ? `*Total outstanding: ${inr(due)}*` : `Outstanding: nil — thank you`,
     ];
-    const open = conf.filter(x=>Math.max(0,Number((x.totals||{}).balance)||0) > 0);
+    const open = conf.filter(x=>stuBal(x) > 0);
     if(open.length){
       lines.push('', 'Open items:');
-      open.forEach(x=>lines.push(`· ${x.quoteNo||'—'} — ${inr(Math.max(0,Number((x.totals||{}).balance)||0))}`));
+      open.forEach(x=>lines.push(`· ${x.quoteNo||'—'} — ${inr(stuBal(x))}${stuJobPhase(x) === 'upcoming' ? ' (upcoming)' : ''}`));
     }
     openWa('https://wa.me/' + String(normPhoneFull(s2.phone)).replace(/\D/g,'')
            + '?text=' + encodeURIComponent(lines.join('\n')));
@@ -11569,6 +11592,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     const totBilled = led.reduce((n,r)=>n + r.billed, 0);
     const totPaid   = led.reduce((n,r)=>n + r.got, 0);
+    const dueSp     = stuDueSplit(conf);   /* outstanding, in its two halves */
 
     /* Every dated event across this studio's confirmed jobs, newest first —
        what was actually shot for them, and whether anyone was on it. */
@@ -11701,7 +11725,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <div class="stu-money">
             <div class="stat"><b title="${inr(totBilled)}">${inrShort(totBilled)}</b><span>billed</span></div>
             <div class="stat stutx" data-stutx="*" role="button" tabindex="0" title="${inr(totPaid)} — double-tap to see every payment"><b style="color:var(--ok)">${inrShort(totPaid)}</b><span>paid</span></div>
-            <div class="stat ${run>0?'warn':''}"><b title="${inr(run)}">${inrShort(run)}</b><span>outstanding</span></div>
+            <!-- outstanding is two figures: owed for work already shot, and owed
+                 ahead of the upcoming shoots — the partner's own page shows the
+                 same two, from the same rule -->
+            <div class="stat ${dueSp.shotDue>0?'warn':''}"><b title="${inr(dueSp.shotDue)}">${inrShort(dueSp.shotDue)}</b><span>due · shot work</span></div>
+            <div class="stat ${dueSp.upDue>0?'warn':''}"><b title="${inr(dueSp.upDue)}">${inrShort(dueSp.upDue)}</b><span>due · upcoming</span></div>
           </div>
           <div class="ledrow hd stuled-hd"><span class="l-ev">Job</span><b>Billed</b><b>Received</b><b>Due</b></div>
           <!-- The job column used to be one nowrap line, so the quote number —
@@ -11715,7 +11743,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <i class="lq">${esc(r.x.quoteNo||'—')}<span class="chev" aria-hidden="true">›</span></i>
               <span>${esc([dmy(jobDate(r.x)),
                            ((r.x.events||[])[0]||{}).title || 'Job',
-                           r.x.endClientName].filter(Boolean).join(' · '))}</span>
+                           r.x.endClientName,
+                           { upcoming:'upcoming', ongoing:'ongoing' }[stuJobPhase(r.x)] || ''].filter(Boolean).join(' · '))}</span>
             </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" class="stutx" data-stutx="${esc(r.x.id)}" style="color:var(--ok)" title="${inr(r.got)} — double-tap for this job's payments">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
           <h4 class="shotlist-h ${_stuEvOpen?'':'closed'}" data-stuevtog role="button" tabindex="0" aria-expanded="${_stuEvOpen}">

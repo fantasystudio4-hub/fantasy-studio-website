@@ -1647,7 +1647,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    The three figures that answer "how does this partner stand with us" —
    billed, paid, outstanding — above the per-job rows that explain them.
    ========================================================================= */
-.stu-money{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);margin:0 0 .8rem}
+.stu-money{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-2);margin:0 0 .8rem}
+@media (max-width:420px){.stu-money{grid-template-columns:repeat(2,1fr)}}
 .stu-money .stat{margin:0}
 /* the "paid" tile and a ledger row's Received figure answer a double-tap with
    the transactions list; manipulation stops the browser's own double-tap zoom

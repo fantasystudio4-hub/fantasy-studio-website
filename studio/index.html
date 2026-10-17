@@ -123,6 +123,10 @@ button.crewlink{width:100%;background:none;border:0;border-top:1px dashed var(--
 .tile span{font-size:.7rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
 .tile.due b{color:#e5b57f}
 .tile.ok b{color:var(--ok)}
+/* the two balance tiles: what the figure is made of, under the label */
+.tile em{display:block;font-style:normal;font-size:.72rem;color:var(--mut);margin-top:.2rem;text-transform:none;letter-spacing:0}
+.tile-tot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;font-size:.8rem;color:var(--mut);padding:0 .25rem;margin-top:-.15rem}
+.tile-tot b{color:#e5b57f;font-variant-numeric:tabular-nums;font-size:.95rem}
 
 h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .secl small{font-family:var(--sans);font-size:.72rem;color:var(--mut);font-weight:400;margin-left:.4rem}
@@ -260,6 +264,16 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .ledrow .owed{color:#e5b57f}
 .ledrow .zero{color:var(--ok)}
 .ledfoot{display:flex;justify-content:space-between;padding:.7rem 1rem;border-top:1px solid var(--line);font-size:.92rem}
+/* the ledger is two groups — shot work, then upcoming — each with its own
+   subtotal, so the partner sees what is owed for work already done apart
+   from what is owed ahead of the shoot */
+.ledgrp{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;padding:.6rem 1rem .35rem;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-b);border-top:1px solid var(--line);background:rgba(255,255,255,.02)}
+.ledhead + .ledgrp{border-top:0}
+.ledgrp small{font-size:.66rem;letter-spacing:.04em;text-transform:none;color:var(--mut)}
+.ledsub{display:flex;justify-content:flex-end;align-items:center;gap:.7rem;padding:.5rem 1rem .65rem;font-size:.82rem;color:var(--mut);border-bottom:1px solid var(--line)}
+.ledsub b{color:#e5b57f;font-variant-numeric:tabular-nums;font-size:.9rem}
+.ledsub.clear b{color:var(--ok)}
+.ledsub .mini{min-height:34px;padding:.3rem .7rem;color:var(--gold-b);border-color:rgba(226,194,117,.45)}
 .ledfoot b{color:#e5b57f;font-variant-numeric:tabular-nums}
 .ledfoot.clear b{color:var(--ok)}
 
@@ -1164,9 +1178,10 @@ function demoStudio(){
       ],
       /* shot, and the data is ready to collect: the green stage */
       get delivery(){ return ticks(iso(-4), iso(-1)); },
-      totals: money(56000, 6000, 50000),
+      /* part-paid after the shoot, so the "due · shot work" tile has a figure */
+      totals: money(56000, 6000, 40000),
       payments:[ { id:'lp3', amount:25000, date: iso(-38), mode:'online' },
-                 { id:'lp4', amount:25000, date: iso(-8),  mode:'cash' } ] },
+                 { id:'lp4', amount:15000, date: iso(-8),  mode:'cash' } ] },
     { ...base, id:'lwc-3', status:'delivered', whiteLabel:true, endClientName:'Meher & Zaid',
       quoteNo: quote(912, iso(-80)), quoteDate: iso(-80), deliveredAt: iso(-44),
       events:[
@@ -1384,6 +1399,40 @@ function nextEventDate(x){
 function lastEventDate(x){
   return (x.events||[]).map(e=>e.date).filter(isDate).sort().slice(-1)[0] || '';
 }
+function firstEventDate(x){
+  return (x.events||[]).map(e=>e.date).filter(isDate).sort()[0] || '';
+}
+/* Which box of the account a confirmed job sits in. One partner can have ten
+   jobs with us, and one total hid whether the money was owed for weddings we
+   had already shot or for ones still weeks away. 'upcoming' = nothing has
+   been shot yet (the first dated event is still ahead, or there are no dates
+   yet); 'ongoing' = a multi-day job with a day shot and a day still to come;
+   'done' = the last day is behind us, or the job is marked delivered. The
+   admin's studio page and the WhatsApp statement use the same rule, so both
+   sides always show the partner the same two figures. */
+function jobPhase(x){
+  if((x.status||'draft') === 'delivered') return 'done';
+  const t = todayISO(), first = firstEventDate(x);
+  if(!first || first > t) return 'upcoming';
+  return lastEventDate(x) >= t ? 'ongoing' : 'done';
+}
+const jobBal = x => Math.max(0, Number((x.totals||{}).balance)||0);
+/* the two halves of the account, from the confirmed jobs in the order given */
+function acctSplit(jobs){
+  const t = todayISO();
+  const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
+  const shot = conf.filter(x=>jobPhase(x) !== 'upcoming');
+  const up   = conf.filter(x=>jobPhase(x) === 'upcoming');
+  return {
+    shot, up,
+    shotDue: shot.reduce((s,x)=>s + jobBal(x), 0),
+    upDue:   up.reduce((s,x)=>s + jobBal(x), 0),
+    done:    shot.filter(x=>jobPhase(x) === 'done').length,
+    ongoing: shot.filter(x=>jobPhase(x) === 'ongoing').length,
+    upEvents: up.reduce((n,x)=>n + (x.events||[]).filter(e=>isDate(e.date) && e.date >= t).length, 0),
+  };
+}
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
 let _cdT = null;
 
@@ -1697,12 +1746,22 @@ function renderTiles(jobs){
   const conf = jobs.filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
   const upEv = jobs.reduce((n,x)=>n + (x.events||[]).filter(e=>isDate(e.date) && e.date >= t).length, 0);
   const open = jobs.filter(x=>['sent','unconfirmed','booked'].includes(x.status||'draft')).length;
-  const due  = conf.reduce((s,x)=>s + Math.max(0, Number((x.totals||{}).balance)||0), 0);
+  /* the balance is two tiles, not one: what is owed for work already shot
+     (finished or mid-way) and what is owed ahead of the upcoming shoots —
+     the partner used to get one figure and had to open the ledger to learn
+     which weddings it was for. The grand total sits under them. */
+  const sp = acctSplit(conf);
+  const total = sp.shotDue + sp.upDue;
+  const shotSub = [sp.done ? plural(sp.done, 'job') + ' done' : '', sp.ongoing ? sp.ongoing + ' ongoing' : '']
+    .filter(Boolean).join(' · ') || 'nothing shot yet';
+  const upSub = sp.up.length ? plural(sp.up.length, 'job') + ' · ' + plural(sp.upEvents, 'event') : 'nothing booked ahead';
   $('#tilesBox').innerHTML = `
     <div class="tiles">
       <div class="tile"><b>${upEv}</b><span>upcoming events</span></div>
       <div class="tile"><b>${open}</b><span>open jobs</span></div>
-      <div class="tile wide ${due>0?'due':'ok'}"><b>${due>0 ? shMoney(due) : '✓ Clear'}</b><span>${due>0?'balance to pay':'account settled'}</span></div>
+      <div class="tile ${sp.shotDue>0?'due':'ok'}"><b>${sp.shotDue>0 ? shMoney(sp.shotDue) : '✓ Clear'}</b><span>due · shot work</span><em>${shotSub}</em></div>
+      <div class="tile ${sp.upDue>0?'due':'ok'}"><b>${sp.upDue>0 ? shMoney(sp.upDue) : '✓ Clear'}</b><span>due · upcoming</span><em>${upSub}</em></div>
+      ${total > 0 ? `<div class="tile-tot"><span>Total to pay</span><b>${inr(total)}</b></div>` : ''}
     </div>`;
 }
 
@@ -1961,13 +2020,20 @@ function renderJobs(jobs){
    money to get wrong, so it follows the balance. */
 function syncOpenPaySheet(jobs){
   if(!$('#paySheet').classList.contains('open') || !_payJobId) return;
-  const x = jobs.find(j=>j.id === _payJobId);
-  /* the job is gone from the list entirely — closed, or the studio switched
-     off. Shut the sheet, but do not claim it was paid. */
-  if(!x){ closePay(); return; }
-  const bal = Math.max(0, Number((x.totals||{}).balance)||0);
+  let bal;
+  if(_payJobId.startsWith('grp:')){
+    /* a whole group of the account: its subtotal, from the same jobs */
+    const sp = acctSplit(jobs);
+    bal = _payJobId === 'grp:shot' ? sp.shotDue : sp.upDue;
+  }else{
+    const x = jobs.find(j=>j.id === _payJobId);
+    /* the job is gone from the list entirely — closed, or the studio switched
+       off. Shut the sheet, but do not claim it was paid. */
+    if(!x){ closePay(); return; }
+    bal = Math.max(0, Number((x.totals||{}).balance)||0);
+  }
   if(bal === _payFullAmt) return;
-  if(bal <= 0){ closePay(); toast('That job is now fully settled ✓'); return; }
+  if(bal <= 0){ closePay(); toast(_payJobId.startsWith('grp:') ? 'That is now fully settled ✓' : 'That job is now fully settled ✓'); return; }
   const typed = Number($('#payAmt').value)||0;
   const wasPrefill = typed === _payFullAmt;   /* untouched since it opened */
   _payFullAmt = bal;
@@ -1985,27 +2051,52 @@ function renderLedger(jobs){
     box.innerHTML = FS_APP ? '<div class="empty"><h2>No account yet</h2>Your first confirmed job opens your account with Fantasy Studio here.</div>' : '';
     return;
   }
-  let run = 0;
-  const rows = conf.map(x=>{
+  const row = x=>{
     const t = x.totals||{};
     const billed = Number(t.finalPrice)||0;
     const got = Math.max(0, Number(t.advance)||0);
     const out = Math.max(0, Number(t.balance)||0);
-    run += out;
+    const ph = jobPhase(x);
     return `<div class="ledrow">
-      <span class="who"><b>${esc(jobLabel(x))}</b><i>${esc(x.quoteNo||'')}${x.quoteDate ? ' · ' + esc(dmy(x.quoteDate)) : ''}</i></span>
+      <span class="who"><b>${esc(jobLabel(x))}</b><i>${esc(x.quoteNo||'')}${x.quoteDate ? ' · ' + esc(dmy(x.quoteDate)) : ''}${ph === 'ongoing' ? ' · ongoing' : ''}</i></span>
       <span>${inr(billed)}</span><span>${inr(got)}</span>
       <span class="${out>0?'owed':'zero'}">${out>0 ? inr(out) : '✓'}</span>
     </div>`;
-  }).join('');
+  };
+  /* two groups, each with its own subtotal — and, where Pay now is on, a Pay
+     button for just that group, so finished work can be cleared on its own */
+  const sp = acctSplit(conf);
+  const canPay = !!(CONTACT.upi || CONTACT.upiAlt);
+  const group = (key, title, list, due) => !list.length ? '' : `
+      <div class="ledgrp"><span>${title}</span><small>${plural(list.length, 'job')}</small></div>
+      ${list.map(row).join('')}
+      <div class="ledsub ${due>0?'':'clear'}"><span>${due>0 ? 'Due for ' + title.toLowerCase() : title + ' · settled'}</span><b>${due>0 ? inr(due) : '✓'}</b>${due>0 && canPay ? `<button class="mini" type="button" data-paygrp="${key}">Pay</button>` : ''}</div>`;
+  const run = sp.shotDue + sp.upDue;
   box.innerHTML = `
     <h2 class="secl">Account with Fantasy Studio <small>confirmed jobs</small></h2>
     <div class="ledger">
       <div class="ledhead"><span>Job</span><span>Billed</span><span>Paid</span><span>Due</span></div>
-      ${rows}
+      ${group('shot', 'Shot work', sp.shot, sp.shotDue)}
+      ${group('up', 'Upcoming events', sp.up, sp.upDue)}
       <div class="ledfoot ${run>0?'':'clear'}"><span>${run>0 ? 'Outstanding balance' : 'Account settled'}</span><b>${run>0 ? inr(run) : '✓ Nothing due'}</b></div>
     </div>`;
 }
+/* Pay one whole group of the account — the shot work, or the upcoming events —
+   in one go. The sheet keeps a group id instead of a job id, so the live
+   re-render can keep the amount honest the same way it does for one job. The
+   WhatsApp note names the quotes, so the office knows which jobs to book the
+   money against. */
+function payGroup(key){
+  const sp = acctSplit(allJobs());
+  const list = key === 'shot' ? sp.shot : sp.up, due = key === 'shot' ? sp.shotDue : sp.upDue;
+  if(!(due > 0)) return;
+  const q = (key === 'shot' ? 'shot work' : 'upcoming events') + ' (' + list.filter(x=>jobBal(x) > 0).map(x=>x.quoteNo||'').filter(Boolean).join(', ') + ')';
+  openPay(due, q, 'grp:' + key);
+}
+$('#ledgerBox').addEventListener('click', e=>{
+  const b = e.target.closest('[data-paygrp]');
+  if(b) payGroup(b.dataset.paygrp);
+});
 
 function renderRates(){
   const box = $('#ratesBox');
