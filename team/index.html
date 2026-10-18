@@ -177,6 +177,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .asg .ln span:first-child{color:var(--mut);flex:0 0 auto}
 .asg .ln span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
 .asg .lines{margin-top:.5rem}
+.asg .ln.with span:last-child{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:.15rem .7rem}
+.asg .ln.with .w1{white-space:nowrap}
+.asg .ln.with .w1 b{font-weight:500;color:var(--text)}
+.asg .ln.with .w1 em{font-style:normal;color:var(--mut);font-size:.86em}
 .asg .notes{margin-top:.5rem;background:rgba(184,144,43,.08);border:1px dashed var(--line);border-radius:10px;padding:.5rem .7rem;font-size:.82rem;color:var(--text)}
 .asg .notes b{color:var(--gold-b);font-weight:500}
 /* ---- the shoot card (crew who go out, not editors) ----
@@ -1605,10 +1609,14 @@ if(!CONFIGURED){
          Their fees are "after your upcoming shoots", not owed (payUpcoming) */
       { id: 'smp-a1', ...SI, kind: '', role: 'photography', eventTitle: 'Haldi', date: iso(5), slot: 'morning',
         callTime: '06:30', venue: 'Golkonda Resorts, Gandipet', status: 'assigned',
-        notes: 'The bride gets ready from 6. Be at her suite by 6:30 for the getting-ready photos.', pay: pay(4500) },
+        notes: 'The bride gets ready from 6. Be at her suite by 6:30 for the getting-ready photos.', pay: pay(4500),
+        team: [{ name: 'Vikas Sharma', role: 'cinematography', heads: 1 }] },
       { id: 'smp-a2', ...SI, kind: '', role: 'candid photography', eventTitle: 'Reception', date: iso(6), slot: 'evening',
         callTime: '18:00', venue: 'N Convention, Madhapur', ...ok(-1),
-        notes: 'Stage portraits first, then the family groups. Carry spare batteries for both flashes.', pay: pay(5000) },
+        notes: 'Stage portraits first, then the family groups. Carry spare batteries for both flashes.', pay: pay(5000),
+        /* one person in two roles, and a member who brings a second shooter */
+        team: [{ name: 'Sandeep Kumar', role: 'photography', heads: 1 }, { name: 'Sandeep Kumar', role: 'drone', heads: 1 },
+               { name: 'Imran Qureshi', role: 'cinematography', heads: 2 }] },
       { id: 'smp-a3', ...NS, kind: '', role: 'cinematography', eventTitle: 'Wedding', date: iso(34), slot: 'full',
         callTime: '08:30', venue: 'Taj Falaknuma Palace', status: 'assigned',
         notes: 'Full day, from the baraat to the send-off.', pay: pay(8000) },
@@ -1616,7 +1624,8 @@ if(!CONFIGURED){
          Every pay state is here: unpaid and owed (a4), part-paid (a5), paid
          in one go and paid in two instalments (a10) */
       { id: 'smp-a4', ...PK, kind: '', role: 'photography', eventTitle: 'Wedding', date: iso(-9), slot: 'full',
-        callTime: '08:00', venue: 'Park Hyatt, Banjara Hills', ...ok(-14), notes: '', pay: pay(6000) },
+        callTime: '08:00', venue: 'Park Hyatt, Banjara Hills', ...ok(-14), notes: '', pay: pay(6000),
+        team: [{ name: 'Vikas Sharma', role: 'cinematography', heads: 1 }, { name: 'Ravi Teja', role: 'drone', heads: 1 }] },
       { id: 'smp-a5', ...PK, kind: '', role: 'candid photography', eventTitle: 'Sangeet', date: iso(-10), slot: 'evening',
         callTime: '18:30', venue: 'Park Hyatt, Banjara Hills', ...ok(-14), ...fin(-10), notes: '',
         pay: pay(4500, [[2000, -5, 'online']]) },
@@ -1803,6 +1812,30 @@ if(!CONFIGURED){
   const calOn = () => !!(inApp() && window.FSApp && FSApp.calendar && FSApp.calendar.available());
   const calBtn = a => calOn() && /^\d{4}-\d{2}-\d{2}$/.test(a.date||'')
     ? `<div class="fs-app-only calrow"><button type="button" class="calbtn" data-cal="${esc(a.id)}">📅 Add to calendar</button></div>` : '';
+  /* Who else is on this function. This page can read only the member's own
+     rows, so the panel mirrors the OTHER crew onto each one as
+     team: [{ name, role, heads }] — names and roles, never their pay
+     (syncAsgTeam in the panel). One person in two roles is one name with
+     both; a row that carries a second shooter shows ×2. Nothing written
+     yet, or nobody else on it, and the line simply is not there. */
+  const roleCap = r => String(r||'').replace(/\b\w/g, c=>c.toUpperCase());
+  function withYou(a){
+    const by = new Map();
+    (Array.isArray(a.team) ? a.team : []).forEach(t => {
+      if(!t || typeof t !== 'object') return;
+      const name = (typeof t.name === 'string' ? t.name : '').trim();
+      if(!name) return;
+      const r = by.get(name) || { roles: [], heads: 1 };
+      const role = roleCap(typeof t.role === 'string' ? t.role : '');
+      if(role && !r.roles.includes(role)) r.roles.push(role);
+      r.heads = Math.max(r.heads, Math.min(5, Math.round(Number(t.heads) || 1)));
+      by.set(name, r);
+    });
+    if(!by.size) return '';
+    const who = [...by].map(([name, r]) =>
+      `<span class="w1"><b>${esc(name)}</b>${r.heads > 1 ? ` ×${r.heads}` : ''}${r.roles.length ? ` <em>${esc(r.roles.join(' + '))}</em>` : ''}</span>`);
+    return `<div class="ln with"><span>With you</span><span>${who.join('')}</span></div>`;
+  }
   function asgCard(a, past){
     const seen = a.status === 'acknowledged';
     /* the member's own sign-off, from the DAY of the shoot — a wedding is
@@ -1824,6 +1857,7 @@ if(!CONFIGURED){
         ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
         <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
         ${(Number(a.heads)||1) > 1 ? `<div class="ln"><span>People</span><span>You + ${Number(a.heads) - 1} — ${Number(a.heads)} of you on this</span></div>` : ''}
+        ${withYou(a)}
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
       ${past ? '' : (seen

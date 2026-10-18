@@ -3512,6 +3512,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         _pkgsLoaded = true; bootFullSoon();
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
         syncStudioCrew();   /* partner portal reads crew off the package doc */
+        syncAsgTeam();      /* evCrew tells functions apart by the package's events */
         renderPkgList();
         renderCalendar();
         renderEditTab();    /* the editing list is derived from these packages */
@@ -5752,6 +5753,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           _asgsLoaded = true; bootFullSoon();
           if(!snap.metadata.fromCache) _asgsFresh = true;
           syncStudioCrew();   /* partner portal reads crew off the package doc */
+          syncAsgTeam();      /* crew page reads who else is on the function off their own row */
           syncCrewRanks();    /* each member's leaderboard place, onto their team doc */
           renderTeam();
           renderEditTab();    /* who is on an edit, and whether they signed off */
@@ -10242,6 +10244,50 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }finally{
         _crewSyncBusy = false;
         if(_crewSyncAgain){ _crewSyncAgain = false; syncStudioCrew(); }
+      }
+    }, 1200);
+  }
+  /* ---- crew page: who else is on the function, onto each assignment ----
+     /team/ reads only the member's own assignment docs (the rule pins the
+     read to their phone), so a member had no way to see who is shooting
+     beside them. The OTHER crew on the same function — name, role, heads,
+     never pay — lives on each shoot assignment as `team`, kept the way
+     syncStudioCrew keeps packages.crew: recomputed after every assignments /
+     packages snapshot, written only when it changed, left alone past the
+     listener's window. Same function = evCrew's rule (pkgId + date, the
+     title when two functions share a day); the member's own rows are left
+     out, so one person in two roles is not told about themself. Editing
+     rows carry none — an edit is not crew on the day. A `team`-only update
+     raises no push: alerts.js speaks only to a new row, a new member or new
+     money. The sample panel never writes (DEMO). */
+  let _teamSyncT = null, _teamSyncBusy = false, _teamSyncAgain = false;
+  const _teamKey = list => (Array.isArray(list) ? list : [])
+    .map(c => [c.name, c.role, c.heads].map(v => String(v || '')).join('|'))
+    .sort().join('~');
+  function syncAsgTeam(){
+    if(DEMO || !_pkgsFresh || !_asgsFresh) return;
+    clearTimeout(_teamSyncT);
+    _teamSyncT = setTimeout(async ()=>{
+      if(_teamSyncBusy){ _teamSyncAgain = true; return; }
+      _teamSyncBusy = true;
+      try{
+        const _capped = ASGS.length >= ASGS_CAP;
+        const _horizon = _capped && ASGS.length ? String(ASGS[ASGS.length-1].date || '') : '';
+        for(const a of ASGS){
+          if(a.kind === 'edit' || !a.pkgId || !a.date) continue;
+          if(_capped && String(a.date) <= _horizon) continue;
+          const want = evCrew(a.pkgId, a.date, a.eventTitle)
+            .filter(o => o.id !== a.id && !(o.memberId && o.memberId === a.memberId))
+            .map(o => ({ name: o.memberName || '', role: o.role || '', heads: headsOf(o) }));
+          /* nothing to say and nothing said: no write (most old rows) */
+          if(!want.length && !Array.isArray(a.team)) continue;
+          if(_teamKey(want) === _teamKey(a.team)) continue;
+          a.team = want;   /* keep the local copy in step — no rewrite on the echo snapshot */
+          await settle(updateDoc(doc(db,'assignments',a.id), { team: want }));
+        }
+      }finally{
+        _teamSyncBusy = false;
+        if(_teamSyncAgain){ _teamSyncAgain = false; syncAsgTeam(); }
       }
     }, 1200);
   }
