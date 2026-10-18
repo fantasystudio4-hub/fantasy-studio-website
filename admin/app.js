@@ -13792,7 +13792,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(kind === 'ask') return { kind, draft: askDemoAnswer(String((payload && payload.text) || ''), (payload && payload.facts) || askTables(), fx.ask || {}), model: 'demo' };
     const f = (payload && payload.facts) || {};
     const money = v => inr(v);
-    const text = String(fx[kind] || '').replace(/\{(\w+)\}/g, (_, k)=>{
+    /* the quote check has two sentences: with and without a decided job at this price level */
+    const text = String(fx[(kind === 'quotecheck' && !f.levelLast) ? 'quotecheckNoLevel' : kind] || '').replace(/\{(\w+)\}/g, (_, k)=>{
       const v = f[k];
       if(v == null) return '';
       if(/total|balance|amount|billed|received|due/i.test(k) && typeof v === 'number') return money(v);
@@ -14920,6 +14921,135 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const fb = (fx && fx.fallback) || { answer: 'That is not in the books.', figures: [], basis: 'not_in_books' };
     return { answer: fb.answer, figures: fb.figures || [], basis: fb.basis || 'not_in_books' };
   }
+
+  /* ============================================================
+     Quote sanity check — under the quotation editor's totals (Phase 4 of
+     the AI plan, 18 Oct 2026)
+
+     While a quotation is being built, the panel compares it with the
+     studio's own recent packages, DETERMINISTICALLY: direct-client jobs
+     whose first event is within the last 18 months (or ahead), with the
+     same number of functions give or take one, split into WON (booked,
+     delivered) and LOST (sent or not confirmed, and either the first
+     function date has passed or the quotation has waited 30+ days with no
+     answer — a quotation sent last week is still open, not lost). From
+     those: counts, the typical (median) total of each side and the won
+     range, where this quote sits against what was won, and how many of the
+     last five at this price level (within 15%) were lost. The figures are
+     drawn as soon as they exist; hidden while there are fewer than three
+     comparable jobs, for a partner studio's job (negotiated rates), or
+     while the total is ₹0. Recomputed on every computePkg() through a
+     debounce; the AI sentence (kind 'quotecheck', facts = these figures
+     only, never the client) is fetched ONLY on an explicit ✨ tap, so
+     typing never spends a call, and is marked stale when the figures
+     change under it. ADVISORY only: the owner decides the price.
+     ============================================================ */
+  const QC_MONTHS = 18, QC_LOST_DAYS = 30, QC_LEVEL = 0.15, QC_LAST = 5, QC_MIN = 3;
+  let _qcTimer = null, _qcStats = null, _qcKey = '', _qcAi = null, _qcAiKey = '', _qcSeq = 0, _qcBusy = false;
+  const qcBox = () => $('#qcBox');
+  const qcMedian = a => { const v = a.slice().sort((p,q)=>p - q); return v.length ? v[Math.floor(v.length / 2)] : 0; };
+  function qcFirstDate(x){
+    const ds = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+    return ds[0] || '';
+  }
+  /* the comparison, or null when there is nothing honest to say */
+  function qcStats(form){
+    if(_bStudioId) return null;
+    const total = Number((form.totals||{}).finalPrice) || 0;
+    const n = (form.events||[]).length;
+    if(!total || !n) return null;
+    const today = todayISO();
+    const cut = new Date(); cut.setMonth(cut.getMonth() - QC_MONTHS);
+    const cutIso = cut.toLocaleDateString('en-CA');
+    const won = [], lost = [];
+    livePkgs().forEach(x=>{
+      if(x.id === editingId || isStudioJob(x)) return;
+      const evN = (x.events||[]).length;
+      if(Math.abs(evN - n) > 1) return;
+      const first = qcFirstDate(x);
+      if(!first || first < cutIso) return;
+      const v = Number((x.totals||{}).finalPrice) || 0; if(!v) return;
+      const st = x.status||'draft';
+      const row = { v, first, status: st };
+      if(st === 'booked' || st === 'delivered') won.push(row);
+      else if(st === 'sent' || st === 'unconfirmed'){
+        const waited = askDaysSince(x.sentAt || x.updatedAt || x.createdAt);
+        if(first < today || (waited != null && waited >= QC_LOST_DAYS)) lost.push(row);
+      }
+    });
+    if(won.length + lost.length < QC_MIN) return null;
+    const wonVals = won.map(r=>r.v), lostVals = lost.map(r=>r.v);
+    const wonMed = qcMedian(wonVals), lostMed = qcMedian(lostVals);
+    const diff = wonMed ? Math.round(100 * (total - wonMed) / wonMed) : null;
+    const position = diff == null ? 'nothing won to compare with'
+      : Math.abs(diff) < 5 ? 'about the same as what you won'
+      : (Math.abs(diff) + '% ' + (diff > 0 ? 'above' : 'below') + ' what you won');
+    /* the last five decided jobs within 15% of this price, newest first */
+    const level = [...won.map(r=>({ ...r, lost: false })), ...lost.map(r=>({ ...r, lost: true }))]
+      .filter(r=>Math.abs(r.v - total) <= QC_LEVEL * total)
+      .sort((a,b)=>b.first.localeCompare(a.first)).slice(0, QC_LAST);
+    return {
+      events: n, thisTotal: total, windowMonths: QC_MONTHS,
+      wonCount: won.length, wonTypicalTotal: wonMed, wonLowTotal: wonVals.length ? Math.min(...wonVals) : 0, wonHighTotal: wonVals.length ? Math.max(...wonVals) : 0,
+      lostCount: lost.length, lostTypicalTotal: lostMed,
+      levelLast: level.length, levelLost: level.filter(r=>r.lost).length,
+      position, diff,
+    };
+  }
+  function qcSchedule(){
+    clearTimeout(_qcTimer);
+    _qcTimer = setTimeout(qcRecompute, 350);
+  }
+  function qcReset(){
+    clearTimeout(_qcTimer); _qcStats = null; _qcKey = ''; _qcAi = null; _qcAiKey = ''; _qcSeq++; _qcBusy = false;
+    const box = qcBox(); if(box) delete box.dataset.drawn;   /* the last quotation's figures must not survive into this one */
+    qcRecompute();
+  }
+  function qcRecompute(){
+    const box = qcBox(); if(!box || $('#pkgEditView').hidden) return;
+    let s = null;
+    try{ s = qcStats(readForm()); }catch(err){ console.error('[quote check]', err); }
+    const key = s ? JSON.stringify(s) : '';
+    if(key === _qcKey && box.dataset.drawn) return;
+    _qcStats = s; _qcKey = key; box.dataset.drawn = '1';
+    qcRender();
+  }
+  function qcRender(){
+    const box = qcBox(), s = _qcStats; if(!box) return;
+    box.hidden = !s;
+    if(!s) return;
+    const stale = _qcAi && _qcAiKey !== _qcKey;
+    const tone = s.diff == null ? '' : s.diff >= 20 ? 'high' : s.diff <= -20 ? 'low' : 'ok';
+    box.dataset.tone = tone;
+    box.innerHTML = `
+      <div class="qc-h">📐 Against your own quotes <small>· ${s.events}-function packages, last ${s.windowMonths} months</small></div>
+      <div class="qc-row"><span>Won</span><b>${s.wonCount}</b><span>${s.wonCount ? 'typical ' + inr(s.wonTypicalTotal) + (s.wonCount > 1 ? ' · ' + inrShort(s.wonLowTotal) + '–' + inrShort(s.wonHighTotal) : '') : '—'}</span></div>
+      <div class="qc-row"><span>Lost</span><b>${s.lostCount}</b><span>${s.lostCount ? 'typical ' + inr(s.lostTypicalTotal) : '—'}</span></div>
+      <div class="qc-row qc-this"><span>This one</span><span class="qc-tv"><b>${inr(s.thisTotal)}</b><em>${esc(s.position)}</em></span></div>
+      ${s.levelLast ? `<p class="qc-level">${s.levelLost} of your last ${s.levelLast} within 15% of this price ${s.levelLast === 1 ? 'was' : 'were'} lost.</p>` : `<p class="qc-level">Nothing decided yet within 15% of this price.</p>`}
+      <div class="qc-ai">
+        <button type="button" class="btn btn--sm btn--ghost" id="qcAsk" ${_qcBusy ? 'disabled' : ''} aria-label="Ask the AI to read these figures">✨ ${_qcAi ? (stale ? 'Figures changed — read again' : 'Read again') : 'Read this for me'}</button>
+        ${_qcBusy ? `<p class="qc-sent mut" role="status">✨ Reading…</p>` : _qcAi ? `<p class="qc-sent${stale ? ' stale' : ''}" role="status">${esc(_qcAi)}${stale ? ' <i>(before the last change)</i>' : ''}</p>` : ''}
+      </div>`;
+  }
+  async function qcAsk(){
+    const s = _qcStats; if(!s || _qcBusy) return;
+    const seq = ++_qcSeq, key = _qcKey;
+    _qcBusy = true; qcRender();
+    try{
+      const { diff, ...facts } = s;   /* the model gets the words, not the raw sign */
+      const r = await aiCall('quotecheck', { facts });
+      if(seq !== _qcSeq) return;
+      _qcAi = (r && r.text) ? String(r.text).trim() : 'Nothing came back — the figures above still stand.';
+      _qcAiKey = key;
+    }catch(err){
+      if(seq !== _qcSeq) return;
+      _qcAi = '⚠ ' + aiWhy(err) + ' The figures above still stand.'; _qcAiKey = key;
+    }finally{
+      if(seq === _qcSeq){ _qcBusy = false; qcRender(); }
+    }
+  }
+  on('#pkgEditView', 'click', e=>{ if(e.target.closest('#qcAsk')){ buzz(); qcAsk(); } });
 
   /* ---------- quick actions — the ⚡ button on Home ---------- */
   function openQa(){
@@ -16859,6 +16989,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#pkgListView').hidden = true; $('#pkgEditView').hidden = false;
     syncFabs();
     computePkg();
+    qcReset();   /* a fresh comparison for this quotation; the last one's AI sentence is dropped */
     scrollTopNow();
     /* a saved booking's address names it; a new quote has no id until its first save */
     pushView('pkgedit', fullHash('pkgedit', editingId), false, editingId ? { id: editingId } : null);
@@ -16960,6 +17091,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#ppFinal').textContent = inr(d.totals.finalPrice);
     $('#ppBalance').textContent = inr(d.totals.balance);
     const st = $('#stickyTotal'); if(st) st.textContent = inr(d.totals.finalPrice);
+    qcSchedule();   /* the sanity check follows the totals, a beat behind the typing */
   }
   /* typing a title by hand hides that card's name chips */
   on('#pkgEditView', 'input', e=>{

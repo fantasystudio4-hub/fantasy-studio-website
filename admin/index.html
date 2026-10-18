@@ -366,6 +366,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <div class="prow big"><span>Final price</span><b id="ppFinal">₹0</b></div>
         <div class="prow"><label>Advance received (₹)</label><input id="ppAdvance" type="number" min="0" inputmode="numeric" value="0" /></div>
         <div class="prow"><span>Balance</span><b id="ppBalance">₹0</b></div>
+        <!-- Quote sanity check (AI, Phase 4, 18 Oct 2026): this quotation against
+             the studio's own won and lost packages of the same size — drawn by
+             qcRender in app.js once there are three comparable jobs; the AI
+             sentence only on ✨. Advisory: the owner decides the price. -->
+        <div class="qc" id="qcBox" hidden></div>
       </div>
       <div class="sec" data-retail-only>
         <h3><span class="stepnum">6</span>Terms on this PDF</h3>

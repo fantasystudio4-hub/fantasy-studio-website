@@ -2668,3 +2668,25 @@ details.aps-help>.insnote{margin-top:0}
 .ask-qa[data-basis="partly"] .ask-foot{color:var(--warn)}
 .ask-old{margin-top:.6rem}
 .ask-old summary{font-size:var(--fs-sm);color:var(--mut);cursor:pointer;min-height:32px;display:flex;align-items:center}
+
+/* ---- Quote sanity check (Phase 4, 18 Oct 2026): under the editor's totals ---- */
+.qc{margin-top:.8rem;padding:.7rem .8rem;border:1px dashed var(--line);border-radius:var(--r-md);background:rgba(var(--gold-rgb),.06)}
+.qc[data-tone="high"]{border-color:var(--state-pending-ln);background:var(--state-pending-bg)}
+.qc-h{font-size:var(--fs-sm);letter-spacing:.08em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.4rem}
+.qc-h small{font-size:var(--fs-xs);letter-spacing:.02em;text-transform:none;color:var(--mut)}
+.qc-row{display:grid;grid-template-columns:4.2em 2.2em 1fr;align-items:baseline;gap:.4rem;padding:.2rem 0;font-size:var(--fs-md);color:var(--mut)}
+.qc-row b{font-family:var(--serif);color:var(--text);font-size:var(--fs-base)}
+.qc-row span:last-child{overflow-wrap:anywhere}
+.qc-this{grid-template-columns:4.2em 1fr;border-top:1px dashed var(--line);margin-top:.2rem;padding-top:.4rem;color:var(--text)}
+.qc-tv{display:flex;flex-wrap:wrap;align-items:baseline;gap:.15rem .6rem;min-width:0}
+.qc-this b{color:var(--gold-b);white-space:nowrap;font-size:var(--fs-lg)}
+.qc-tv em{font-style:normal;color:var(--mut);overflow-wrap:anywhere}
+.qc[data-tone="high"] .qc-tv em{color:var(--warn)}
+.qc[data-tone="low"] .qc-tv em{color:var(--ok)}
+.qc-level{font-size:var(--fs-md);color:var(--text);margin:.45rem 0 0;line-height:1.45}
+.qc-ai{margin-top:.55rem}
+.qc-ai .btn{margin-top:0}
+.qc-sent{font-size:var(--fs-md);line-height:1.5;color:var(--text);margin:.5rem 0 0;overflow-wrap:anywhere}
+.qc-sent.mut{color:var(--mut)}
+.qc-sent.stale{color:var(--mut)}
+.qc-sent i{font-style:normal;font-size:var(--fs-xs);color:var(--mut)}

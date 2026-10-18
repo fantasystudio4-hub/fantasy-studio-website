@@ -925,6 +925,10 @@ export const aiDrafts = {
         detail: 'Aisha & Faizan (client area) · Rahul V (website)', go: { r: 'reviews' }, ids: ['rv01', 'rv02'] },
     ],
   },
+  /* Quote sanity check (Phase 4): the one sentence over the editor's own
+     comparison; the money keys are formatted by the demo's generic path */
+  quotecheck: 'Similar {events}-function packages you won typically closed at {wonTypicalTotal} ({wonCount} won, {lostCount} lost in {windowMonths} months); this one is {thisTotal}, {position} — {levelLost} of your last {levelLast} at this level were lost.',
+  quotecheckNoLevel: 'Similar {events}-function packages you won typically closed at {wonTypicalTotal} ({wonCount} won, {lostCount} lost in {windowMonths} months); this one is {thisTotal}, {position} — nothing has been decided at this price level yet.',
   /* Ask the books (Phase 4): the demo reads the month, season, crew member
      or balance the question names off the panel's own tables (askDemoAnswer
      in app.js) and phrases it with these sentences; a question it cannot
