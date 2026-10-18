@@ -877,4 +877,25 @@ export const aiDrafts = {
   followup: 'Salaam {clientName}, hope the preparations are going well. Just checking whether you had a moment to look at quotation {quoteNo} ({packageTotal}). If anything in the package should change — a function, a service, the album — say so and we will adjust it.\n\nFantasy Studio',
   receipt: '*Fantasy Studio* — payment received ✅\n\nThank you {clientName}. We have received your payment against quotation {quoteNo}. Remaining balance: *{balance}*. The dates are held for you.\n\nFantasy Studio',
   statement: '*Fantasy Studio — account statement*\n{studioName}\n\nJobs: {jobs} · Billed: {billed} · Received: {received}\nDue for shot work: {dueShotWork}\nDue for upcoming events: {dueUpcoming}\n*Total outstanding: {totalOutstanding}*\n\nThank you for working with us — do let us know if any figure needs checking.\n\nFantasy Studio',
+  /* Quick entry (Phase 2): what one spoken or typed line becomes. The demo
+     takes the first example whose `when` matches the line, else `fallback`
+     (a plain expense). A 0 amount or a blank mode is read off the line
+     itself, and `person` / `job` / `role` give way to a crew or client name,
+     a function title or a role word found in the line — so any line typed
+     in the demo opens something that fits the demo data. */
+  entry: {
+    examples: [
+      { when: '\\b(paid|pay|gave|diya|settled)\\b',
+        draft: { type: 'payment', direction: 'out', amount: 0, mode: '', date: iso(0), person: 'Vikas', job: 'Haldi',
+                 role: '', heads: 1, category: '', note: 'haldi shoot', confidence: 'high' } },
+      { when: '\\b(received|got|aaya|advance|from|balance)\\b',
+        draft: { type: 'payment', direction: 'in', amount: 0, mode: '', date: iso(0), person: 'Vikram', job: '',
+                 role: '', heads: 1, category: '', note: 'GPay', confidence: 'high' } },
+      { when: 'shooter|photo|candid|cine|video|drone|\\bled\\b|assign|assist|editor|edit',
+        draft: { type: 'assignment', direction: '', amount: 0, mode: '', date: '', person: 'Sandeep', job: 'Sangeet',
+                 role: 'photography', heads: 1, category: '', note: 'second shooter', confidence: 'medium' } },
+    ],
+    fallback: { type: 'expense', direction: '', amount: 0, mode: '', date: iso(0), person: '', job: '',
+                role: '', heads: 1, category: '', note: '', confidence: 'medium' },
+  },
 };

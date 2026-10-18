@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4b" />
-<link rel="stylesheet" href="app.css?v=p5c" />
+<link rel="stylesheet" href="app.css?v=p5d" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -452,6 +452,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="fchips" id="workTabs"></div>
       <div id="workBody">
         <div id="workUp">
+          <!-- Quick entry (AI, 18 Oct 2026): "Sandeep second shooter Sangeet
+               23rd 4000" opens the assign sheet with the member, the function,
+               the role and the fee filled in. Drawn by qeMount in app.js. -->
+          <div class="qe" data-qe="crew"></div>
           <!-- the person first: tick all their events, one save -->
           <button class="addrow" id="maAdd" type="button" style="margin:0 0 .7rem">👤 One person → many events</button>
           <p class="sub" id="workHint"></p>
@@ -692,6 +696,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <!-- search, main action and filters sit OUTSIDE #txBody on purpose: that
            box is rebuilt on every packages, assignments or expenses snapshot,
            which would wipe a half-typed search from under the owner's thumb -->
+      <!-- Quick entry (AI, 18 Oct 2026): one spoken or typed line — "Received
+           50,000 GPay from Vikram", "Paid Vikas 3000 cash for Haldi", "Cab to
+           Falaknuma 4200" — opens the payment, crew-pay or expense sheet filled
+           in. Drawn by qeMount in app.js; nothing is saved from here. -->
+      <div class="qe" data-qe="money"></div>
       <div class="txbar">
         <input id="txSearch" type="search" autocomplete="off" placeholder="Search" aria-label="Search transactions by name, note, quote number or amount" />
         <button class="btn btn--primary" id="txAddPay" type="button">＋ Record payment</button>
@@ -1104,7 +1113,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5c"></script>
+<script type="module" src="app.js?v=p5d"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

@@ -13785,6 +13785,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const d = fx.lead ? JSON.parse(JSON.stringify(fx.lead)) : { clientName:'', careOf:'', eventType:'', events:[], budgetHint:0, notes:'', language:'en', confidence:'low', questions:[] };
       return { kind, draft: d, model: 'demo' };
     }
+    if(kind === 'entry') return { kind, draft: qeDemoDraft(String((payload && payload.text) || ''), fx.entry || {}), model: 'demo' };
     const f = (payload && payload.facts) || {};
     const money = v => inr(v);
     const text = String(fx[kind] || '').replace(/\{(\w+)\}/g, (_, k)=>{
@@ -14093,6 +14094,432 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.id === 'aiText') _aiEdited = true;
     if(e.target.id === 'aiPaste') _aiPaste = e.target.value;
   });
+
+
+  /* ============================================================
+     Quick entry — say it or type it (Phase 2 of the AI plan, 18 Oct 2026)
+
+     One line on the Money page or the Crew page:
+       "Paid Vikas 3000 cash for haldi shoot"      → the crew pay sheet
+       "Received 50,000 GPay from Priya"           → the payment sheet
+       "Cab to Falaknuma 4200"                     → the expense sheet
+       "Sandeep second shooter Sangeet 23rd 4000"  → the assign sheet
+     The line goes to the studio's `ai` function (kind 'entry') and comes
+     back as the fields of ONE entry: type, amount, mode, a date resolved
+     against today in Hyderabad, the person named, a hint at the job, a
+     role and heads for an assignment, a category for an expense. The
+     function knows nobody — THIS side matches the person against the
+     roster (TEAM) or the bookings (PKGS), and the job against quotation
+     numbers, client names and function titles: whole words, a prefix, or
+     a one-letter slip (qeNameScore). Then it opens the sheet the panel
+     already has — openPay, openCrewPay, openExpForm, openAs — with those
+     fields filled. When a name or a function could mean two things it
+     asks with chips instead of guessing. Nothing is written here: the
+     sheet's own Save is the only way anything is saved, and a wrong read
+     is fixed on the sheet, or by editing the line and pressing ✨ again.
+
+     Speech is the browser's own SpeechRecognition (free; on a phone the
+     OS's own service does the hearing): tap 🎤, say it, it stops on
+     silence and the line is read at once. Where the browser has no speech
+     the mic is simply absent, and typing works everywhere — the store
+     app's WebView included. Phone numbers are masked before the line
+     leaves the phone (aiMask), as for a pasted chat. In the demo panel
+     the answer comes from _demo-data.js (aiDrafts.entry) via qeDemoDraft.
+     ============================================================ */
+  const QE_SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const QE_EG = {
+    money: ['Received 50,000 GPay from Vikram', 'Paid Vikas 3000 cash for Haldi', 'Cab to Falaknuma 4200'],
+    crew:  ['Sandeep second shooter Sangeet 4000', 'Imran cinematography Nikah 25000', 'Naveen drone Wedding tomorrow'],
+  };
+  const _qe = {};   /* per page: { text, draft, seq, rec, pick } */
+  const qeState = scope => _qe[scope] || (_qe[scope] = { text:'', draft:null, seq:0, rec:null, pick:{} });
+  const qeBox = scope => $(`[data-qe="${scope}"]`);
+  function qeMount(){
+    $$('[data-qe]').forEach(el=>{
+      if(el.dataset.qeReady) return;
+      el.dataset.qeReady = '1';
+      const scope = el.dataset.qe, eg = QE_EG[scope] || QE_EG.money;
+      el.innerHTML = `
+        <div class="qe-row">
+          <input class="qe-in" type="text" id="qeIn-${esc(scope)}" autocomplete="off" autocapitalize="sentences" enterkeyhint="go" maxlength="300"
+                 placeholder="✨ Say or type — “${esc(eg[0])}”" aria-label="Quick entry — say or type one line" />
+          ${QE_SR ? `<button type="button" class="qe-mic" data-qe-mic aria-label="Speak it" title="Speak it" aria-pressed="false">🎤</button>` : ''}
+          <button type="button" class="qe-go" data-qe-go aria-label="Read it and open the sheet" title="Read it">✨</button>
+        </div>
+        <p class="qe-status" id="qeStatus-${esc(scope)}" role="status"></p>`;
+      qeHint(scope);
+    });
+  }
+  function qeHint(scope){
+    const eg = QE_EG[scope] || QE_EG.money;
+    qeSay(scope, (QE_SR ? 'Tap 🎤 and say it, or type it' : 'Type one line') + ' — e.g. ' + eg.slice(1).map(x=>'“' + x + '”').join(' · ') + '. The sheet opens filled in; nothing is saved until you press Save there.');
+  }
+  function qeSay(scope, text, html){
+    const el = $('#qeStatus-' + scope); if(!el) return;
+    el.innerHTML = html || esc(text);
+  }
+  function qeBusy(scope, on){
+    const box = qeBox(scope); if(!box) return;
+    const i = box.querySelector('.qe-in'), g = box.querySelector('[data-qe-go]');
+    if(i) i.disabled = !!on;
+    if(g) g.disabled = !!on;
+  }
+
+  /* ---- matching a spoken name to a record ----
+     lower-case, accents off, letters and digits only; then each word of what
+     was said against each word of the name: the same word (85 when it is the
+     first name, 75 otherwise), a prefix of three or more letters (60), or a
+     slip of one letter — two in a long word — (50). Every word said found in
+     the name is as good as the whole name (90). 0 = no resemblance. */
+  function qeNorm(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function qeLev(a, b){
+    if(Math.abs(a.length - b.length) > 2) return 3;
+    const prev = Array.from({ length: b.length + 1 }, (_, j)=>j);
+    for(let i = 1; i <= a.length; i++){
+      let diag = prev[0]; prev[0] = i;
+      for(let j = 1; j <= b.length; j++){
+        const tmp = prev[j];
+        prev[j] = Math.min(prev[j] + 1, prev[j-1] + 1, diag + (a[i-1] === b[j-1] ? 0 : 1));
+        diag = tmp;
+      }
+    }
+    return prev[b.length];
+  }
+  function qeNameScore(said, name){
+    const Q = qeNorm(said), N = qeNorm(name);
+    if(!Q || !N) return 0;
+    if(Q === N) return 100;
+    const qt = Q.split(' ').filter(w=>w.length >= 2), nt = N.split(' ');
+    if(!qt.length) return 0;
+    let best = 0;
+    qt.forEach(w=>nt.forEach((t, i)=>{
+      let sc = 0;
+      if(t === w) sc = i === 0 ? 85 : 75;
+      else if(w.length >= 3 && t.startsWith(w)) sc = 60;
+      else if(w.length >= 3 && t.length >= 3 && w.startsWith(t)) sc = 55;
+      else if(w.length >= 4 && qeLev(w, t) <= (w.length >= 6 ? 2 : 1)) sc = 50;
+      best = Math.max(best, sc);
+    }));
+    if(Q.length >= 3 && N.includes(Q)) best = Math.max(best, 70);
+    if(qt.length > 1 && qt.every(w=>nt.some(t=>t === w || (w.length >= 3 && t.startsWith(w))))) best = Math.max(best, 90);
+    return best;
+  }
+  /* the best few, and whether the top one is clear enough to take without asking */
+  function qeRank(rows){
+    const r = rows.filter(x=>x.s > 0).sort((a,b)=>b.s - a.s).slice(0, 4);
+    const sure = r.length > 0 && (r.length === 1 ? r[0].s >= 50 : (r[0].s >= 70 && r[0].s - r[1].s >= 15));
+    return { rows: r, sure };
+  }
+  const qeQuoteHit = (hint, quoteNo) => {
+    const q = qeNorm(hint).replace(/\s/g,''), n = qeNorm(quoteNo).replace(/\s/g,'');
+    return !!(q && n && q.length >= 3 && (n === q || n.endsWith(q)));   /* "041", "2026041", "fs2026041" */
+  };
+  const qeFirst = m => String((m && m.name) || '').trim().split(/\s+/)[0] || 'them';
+  const qeMembers = () => TEAM.filter(m=>m.active !== false);
+  function qeRankMembers(said){
+    const r = qeRank(qeMembers().map(m=>({ x: m, s: qeNameScore(said, m.name) })));
+    /* a name only an inactive member has: offer them rather than nobody */
+    if(!r.rows.length) return qeRank(TEAM.filter(m=>m.active === false).map(m=>({ x: m, s: qeNameScore(said, m.name) })));
+    return r;
+  }
+  /* a booking for a payment in: the client's name, the quotation number, or a
+     function the booking has; a balance still due breaks ties */
+  function qeRankPkgs(d){
+    const rows = livePkgs().map(pk=>{
+      let s = 0;
+      if(qeQuoteHit(d.job, pk.quoteNo) || qeQuoteHit(d.person, pk.quoteNo)) s = 100;
+      s = Math.max(s, qeNameScore(d.person, pk.clientName), qeNameScore(d.job, pk.clientName),
+                      qeNameScore(d.person, pk.endClientName), qeNameScore(d.job, pk.endClientName), qeNameScore(d.job, pk.studioName));
+      if(d.job && (pk.events||[]).some(ev=>qeNameScore(d.job, ev.title) >= 60)) s = Math.max(s, 55);
+      if(s > 0 && Number((pk.totals||{}).balance) > 0) s += 5;
+      if(s > 0 && (pk.status||'draft') === 'booked') s += 3;
+      return { x: pk, s };
+    });
+    return qeRank(rows);
+  }
+  const qePkgLabel = pk => {
+    const bal = Math.max(0, Number((pk.totals||{}).balance)||0);
+    return `${pk.clientName||'—'}${pk.quoteNo ? ' · ' + pk.quoteNo : ''}${bal ? ' · ' + inr(bal) + ' due' : ''}`;
+  };
+  /* one of a member's assignments for a payment out: the function or the
+     client named; what is still owed first; the date on the line is the
+     payment's date, never the event's, so it does not count here */
+  function qeRankAsgs(m, d){
+    const rows = ASGS.filter(a=>a.memberId === m.id).map(a=>{
+      const pk = PKGS.find(p=>p.id === a.pkgId) || {};
+      let s = Math.max(qeNameScore(d.job, a.eventTitle), qeNameScore(d.job, pk.clientName), qeNameScore(d.job, pk.endClientName), qeQuoteHit(d.job, pk.quoteNo) ? 100 : 0);
+      if(!d.job) s = 30;
+      if(s > 0){ if(payDue(a) > 0) s += 15; else s -= 10; if((a.date||'') <= todayISO()) s += 5; }
+      return { x: a, s, pk };
+    });
+    return qeRank(rows);
+  }
+  const qeAsgLabel = (a, pk) => {
+    const due = payDue(a);
+    return `${a.eventTitle||'Event'} · ${(pk||{}).clientName||'—'} · ${stepDate(a.date)||a.date||'no date'} · ${due > 0 ? inr(due) + ' due' : 'paid'}`;
+  };
+  /* a function for an assignment: its title, the client, the quote, and the
+     date if one was said; else the nearest one ahead */
+  function qeRankEvents(d){
+    const today = todayISO(), rows = [];
+    livePkgs().forEach(pk=>{
+      (pk.events||[]).forEach((ev, idx)=>{
+        if(!ISO_RE.test(ev.date||'')) return;
+        const ts = qeNameScore(d.job, ev.title);
+        const cs = Math.max(qeNameScore(d.job, pk.clientName), qeNameScore(d.job, pk.endClientName), qeQuoteHit(d.job, pk.quoteNo) ? 100 : 0);
+        let s = d.job ? Math.max(ts, cs) + (ts && cs ? 10 : 0) : 30;
+        if(!s) return;
+        if(d.date) s += ev.date === d.date ? 30 : -25;
+        else s += ev.date >= today ? 10 : -15;
+        if((pk.status||'draft') === 'booked') s += 8;
+        if((pk.status||'draft') === 'delivered') s -= 10;
+        rows.push({ x: { pk, ev, idx }, s, when: ev.date });
+      });
+    });
+    /* nothing said about the function and no date: the next few ahead, to pick from */
+    if(!d.job && !d.date){
+      const up = rows.filter(r=>r.when >= today).sort((a,b)=>a.when < b.when ? -1 : 1).slice(0, 4);
+      return { rows: up, sure: false };
+    }
+    const r = qeRank(rows);
+    /* a tie on the same day is settled by the nearer date, not the list order */
+    r.rows.sort((a,b)=>b.s - a.s || (a.when < b.when ? -1 : 1));
+    return r;
+  }
+  const qeEvLabel = ({ pk, ev }) => `${ev.title||'Function'} · ${pk.clientName||'—'} · ${stepDate(ev.date)}`;
+  const qeEvCtx = ({ pk, ev }) => ({ pkgId: pk.id, quoteNo: pk.quoteNo||'', clientName: pk.clientName||'',
+                                    eventTitle: ev.title||'', slot: ev.slot||'', date: ev.date||'', venue: ev.venue||'' });
+
+  /* ---- the sheets, filled ---- */
+  function qeOpenPay(pk, d){
+    openPay(pk);
+    if(d.amount > 0) $('#payAmt').value = d.amount;
+    if(ISO_RE.test(d.date||'')) $('#payDate').value = d.date;
+    if(d.mode) setPayMode(d.mode);
+    if(d.note) $('#payNote').value = d.note.slice(0, 80);
+  }
+  function qeOpenCrewPay(a, d){
+    openCrewPay(a);
+    if(d.amount > 0) $('#cpAmt').value = d.amount;
+    if(ISO_RE.test(d.date||'')) $('#cpDate').value = d.date;
+    if(d.mode) setCpMode(d.mode);
+    if(d.note) $('#cpNote').value = d.note.slice(0, 80);
+  }
+  function qeOpenExpense(d, lead){
+    openExpForm(null);
+    if(!$('#expModal').classList.contains('open')) return false;
+    if(d.amount > 0) $('#exAmt').value = d.amount;
+    if(d.category && EXP_LABEL[d.category]) _exCat = d.category;
+    if(d.mode) _exMode = d.mode;
+    syncExPills();
+    if(ISO_RE.test(d.date||'')) $('#exDate').value = d.date;
+    const note = [lead, d.note].filter(Boolean).join(' — ').slice(0, 120);
+    if(note) $('#exNote').value = note;
+    syncExMore();
+    if(note || $('#exDate').value !== todayISO()) setExMore(true);
+    return true;
+  }
+  function qeOpenAssign(m, evx, d){
+    openAs(qeEvCtx(evx), null);
+    _asPicked = new Set([m.id]);
+    renderAsPick();
+    $('#asRole').value = TEAM_ROLES.includes(d.role) ? d.role : (TEAM_ROLES.includes(m.role) ? m.role : TEAM_ROLES[0]);
+    $('#asAmt').value = d.amount > 0 ? d.amount : (m.defaultRate || '');
+    $('#asHeads').value = String(Math.min(5, Math.max(1, Number(d.heads)||1)));
+    if(d.note) $('#asNotes').value = d.note.slice(0, 300);
+    syncAsUI(); refreshAsConflict();
+  }
+
+  /* what was read, in one line under the bar */
+  function qeReadAs(d, who){
+    const bits = [{ expense:'💸 Expense', payment: d.direction === 'out' ? '🎬 Paid to crew' : '➕ Payment received', assignment:'👤 Assignment' }[d.type] || d.type];
+    if(who) bits.push(who);
+    if(d.amount > 0) bits.push(inr(d.amount));
+    if(d.type === 'assignment' && d.role) bits.push(roleLabel(d.role) + (d.heads > 1 ? ' ×' + d.heads : ''));
+    if(d.type === 'expense' && d.category) bits.push(catName(d.category));
+    if(d.mode) bits.push(d.mode);
+    if(d.date) bits.push(d.date === todayISO() ? 'today' : dmy(d.date));
+    return bits.join(' · ');
+  }
+  function qeDone(scope, d, who){
+    qeSay(scope, '', `✨ Read as <b>${esc(qeReadAs(d, who))}</b> — check the sheet, then Save.`
+      + (d.confidence === 'low' ? ' <span class="warn">Not sure of this one — check every field.</span>' : ''));
+  }
+  function qeAsk(scope, question, options, extra){
+    qeSay(scope, '', `${esc(question)}<span class="qe-picks">${options.map(o=>`<button type="button" class="qchip" data-qe-pick="${esc(o.id)}">${esc(o.label)}</button>`).join('')}${extra||''}</span>`);
+  }
+  const QE_EXP_CHIP = `<button type="button" class="qchip" data-qe-pick="x:exp">💸 Record it as an expense</button>`;
+
+  /* the draft → the right sheet, asking only where the line could mean two things */
+  function qeResolve(scope){
+    const st = qeState(scope), d = st.draft, pick = st.pick;
+    if(!d) return;
+    if(d.type === 'expense' || pick.exp){
+      /* a payment out that found no crew member becomes an expense: the
+         sheet and the line under the bar both say so */
+      const lead = pick.exp && d.person ? 'Paid ' + d.person : '';
+      if(qeOpenExpense(d, lead)) qeDone(scope, pick.exp ? { ...d, type: 'expense', direction: '' } : d, lead);
+      return;
+    }
+    if(d.type === 'payment' && d.direction !== 'out'){
+      let pk = pick.pkg ? PKGS.find(x=>x.id === pick.pkg) : null;
+      if(!pk){
+        if(!d.person && !d.job){
+          const open = livePkgs().filter(x=>Number((x.totals||{}).balance) > 0).sort((a,b)=>(b.updatedAt&&b.updatedAt.seconds||0) - (a.updatedAt&&a.updatedAt.seconds||0)).slice(0, 4);
+          qeAsk(scope, `Received ${d.amount ? inr(d.amount) : 'a payment'} — from whom? Say the client's name, or pick:`, open.map(x=>({ id:'p:' + x.id, label: qePkgLabel(x) })));
+          return;
+        }
+        const r = qeRankPkgs(d);
+        if(r.sure) pk = r.rows[0].x;
+        else if(r.rows.length){ qeAsk(scope, `Which booking is “${d.person || d.job}”?`, r.rows.map(o=>({ id:'p:' + o.x.id, label: qePkgLabel(o.x) }))); return; }
+        else { qeAsk(scope, `No booking has a client called “${d.person || d.job}”. Check the name and press ✨ again.`, []); return; }
+      }
+      qeOpenPay(pk, d); qeDone(scope, d, pk.clientName || pk.quoteNo);
+      return;
+    }
+    /* a payment out or an assignment: the crew member first */
+    let m = pick.member ? memberById(pick.member) : null;
+    if(!m){
+      if(!d.person){
+        qeAsk(scope, d.type === 'payment' ? 'Paid whom? Say the name — or:' : 'Assign whom? Say the name and the function.', [], d.type === 'payment' ? QE_EXP_CHIP : '');
+        return;
+      }
+      const r = qeRankMembers(d.person);
+      if(r.sure) m = r.rows[0].x;
+      else if(r.rows.length){ qeAsk(scope, `Who is “${d.person}”?`, r.rows.map(o=>({ id:'m:' + o.x.id, label: o.x.name })), d.type === 'payment' ? QE_EXP_CHIP : ''); return; }
+      else { qeAsk(scope, `Nobody on the team is called “${d.person}”.` + (d.type === 'payment' ? '' : ' Check the name and press ✨ again.'), [], d.type === 'payment' ? QE_EXP_CHIP : ''); return; }
+    }
+    if(d.type === 'payment'){
+      let a = pick.asg ? ASGS.find(x=>x.id === pick.asg) : null;
+      if(!a){
+        const r = qeRankAsgs(m, d);
+        if(r.sure) a = r.rows[0].x;
+        else if(r.rows.length){ qeAsk(scope, `Which of ${qeFirst(m)}'s events is this for?`, r.rows.map(o=>({ id:'a:' + o.x.id, label: qeAsgLabel(o.x, o.pk) })), QE_EXP_CHIP); return; }
+        else { qeAsk(scope, `${m.name} has no assignment to pay against yet.`, [], QE_EXP_CHIP); return; }
+      }
+      qeOpenCrewPay(a, d); qeDone(scope, d, `${m.name} · ${a.eventTitle||'event'}`);
+      return;
+    }
+    /* an assignment: then the function */
+    let evx = null;
+    if(pick.ev){
+      const [pid, idx] = pick.ev.split('|'), pk = PKGS.find(x=>x.id === pid), ev = pk && (pk.events||[])[Number(idx)];
+      if(pk && ev) evx = { pk, ev, idx: Number(idx) };
+    }
+    if(!evx){
+      const r = qeRankEvents(d);
+      if(r.sure) evx = r.rows[0].x;
+      else if(r.rows.length){ qeAsk(scope, d.job ? `Which function is “${d.job}”?` : `Which function is ${qeFirst(m)} on?`, r.rows.map(o=>({ id:'e:' + o.x.pk.id + '|' + o.x.idx, label: qeEvLabel(o.x) }))); return; }
+      else { qeAsk(scope, `No booked function matches “${d.job || d.date || '?'}”. Open the function in the list and tap ＋ Assign there.`, []); return; }
+    }
+    qeOpenAssign(m, evx, d); qeDone(scope, d, `${m.name} · ${evx.ev.title||'function'} · ${evx.pk.clientName||''}`);
+  }
+
+  async function qeRun(scope){
+    const st = qeState(scope), inp = $('#qeIn-' + scope);
+    const text = ((inp && inp.value) || '').trim();
+    if(!text){ qeSay(scope, 'Say or type one line first — e.g. “' + (QE_EG[scope] || QE_EG.money)[0] + '”.'); if(inp) inp.focus(); return; }
+    const seq = ++st.seq;
+    st.pick = {}; st.draft = null; st.text = text;   /* ✨ always reads afresh; the chips only steer one reading */
+    qeBusy(scope, true); qeSay(scope, '✨ Reading it…');
+    try{
+      const r = await aiCall('entry', { text: aiMask(text).masked, scope });
+      if(seq !== st.seq) return;
+      const d = r && r.draft;
+      if(!d || !d.type){ qeSay(scope, 'Could not make that out — say the name, the amount and the function, then try again.'); return; }
+      st.draft = d;
+      qeResolve(scope);
+    }catch(err){
+      if(seq === st.seq) qeSay(scope, '⚠ ' + aiWhy(err));
+    }finally{
+      if(seq === st.seq) qeBusy(scope, false);
+    }
+  }
+  function qePick(scope, token){
+    const st = qeState(scope); if(!st.draft) return;
+    const [k, id] = [token.slice(0, 1), token.slice(2)];
+    if(k === 'm') st.pick.member = id;
+    else if(k === 'p') st.pick.pkg = id;
+    else if(k === 'a') st.pick.asg = id;
+    else if(k === 'e') st.pick.ev = id;
+    else if(k === 'x') st.pick.exp = true;
+    qeResolve(scope);
+  }
+  function qeListen(scope){
+    const st = qeState(scope), box = qeBox(scope), inp = $('#qeIn-' + scope);
+    const btn = box && box.querySelector('[data-qe-mic]');
+    if(!QE_SR || !inp || !btn) return;
+    if(st.rec){ try{ st.rec.stop(); }catch(e){} return; }     /* tap again = done talking */
+    let rec;
+    try{ rec = new QE_SR(); }catch(e){ qeSay(scope, 'Speech is not available here — type it instead.'); return; }
+    rec.lang = 'en-IN'; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
+    let heard = '', failed = false;
+    const off = ()=>{ st.rec = null; btn.classList.remove('on'); btn.setAttribute('aria-pressed', 'false'); };
+    rec.onresult = e=>{ heard = Array.from(e.results).map(r=>r[0].transcript).join(' ').replace(/\s+/g,' ').trim(); inp.value = heard; };
+    rec.onerror = e=>{
+      failed = e.error !== 'aborted';
+      if(!failed) return;
+      qeSay(scope, { 'not-allowed':'The microphone was refused — allow it for this site, or type it.', 'service-not-allowed':'Speech is switched off on this phone — type it instead.',
+        'no-speech':'Heard nothing — tap 🎤 and try again, or type it.', 'audio-capture':'No microphone found — type it instead.',
+        'network':'Speech needs a connection — type it instead.' }[e.error] || ('Speech failed (' + e.error + ') — type it instead.'));
+    };
+    rec.onend = ()=>{ off(); if(heard && !failed){ inp.value = heard; qeRun(scope); } };
+    st.rec = rec; btn.classList.add('on'); btn.setAttribute('aria-pressed', 'true');
+    qeSay(scope, '🎤 Listening… say who, how much and which function. Tap 🎤 again when done.');
+    try{ rec.start(); }catch(e){ off(); qeSay(scope, 'Could not start the microphone — type it instead.'); }
+  }
+  document.addEventListener('click', e=>{
+    const box = e.target.closest('[data-qe]'); if(!box) return;
+    const scope = box.dataset.qe;
+    if(e.target.closest('[data-qe-go]')){ qeRun(scope); return; }
+    if(e.target.closest('[data-qe-mic]')){ qeListen(scope); return; }
+    const p = e.target.closest('[data-qe-pick]'); if(p){ qePick(scope, p.dataset.qePick); }
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Enter' || !e.target.classList || !e.target.classList.contains('qe-in')) return;
+    const box = e.target.closest('[data-qe]'); if(!box) return;
+    e.preventDefault(); qeRun(box.dataset.qe);
+  });
+  qeMount();
+
+  /* The demo's stand-in for the function: the fixture whose `when` matches
+     the line, with the blanks read off the line itself — the biggest number
+     as the amount ("50,000", "3k"), cash / an app name as the mode, a crew or
+     client name, a function title and a role word swapped in when the line
+     has one — so any line typed on /admin/?demo opens something that fits
+     the demo data. Not a parser the live panel uses. */
+  function qeDemoDraft(t, fx){
+    const hit = (fx.examples || []).find(x=>{ try{ return new RegExp(x.when, 'i').test(t); }catch(e){ return false; } });
+    const d = JSON.parse(JSON.stringify((hit && hit.draft) || fx.fallback || { type:'expense', direction:'', amount:0, mode:'', date: todayISO(), person:'', job:'', role:'', heads:1, category:'', note:'', confidence:'low' }));
+    const nums = (t.match(/\d[\d,]*(?:\.\d+)?\s*(?:k|l|lakh|lac)?\b/gi) || []).map(x=>{
+      const n = parseFloat(x.replace(/[^\d.]/g,'')) || 0;
+      return Math.round(n * (/k$/i.test(x.trim()) ? 1000 : /l|lakh|lac/i.test(x) ? 100000 : 1));
+    }).filter(n=>n > 31 || n === 0);   /* "23rd", "4th" are days, not rupees */
+    if(!d.amount && nums.length) d.amount = Math.max(...nums);
+    if(!d.mode) d.mode = /\b(cash|nakad)\b/i.test(t) ? 'cash' : (/gpay|phonepe|paytm|upi|online|bank|transfer|neft|card|cheque/i.test(t) ? 'online' : '');
+    const words = t.split(/\s+/).map(w=>w.replace(/[^\w]/g,'')).filter(w=>w.length >= 3);
+    const people = [...TEAM.map(m=>m.name), ...PKGS.map(p=>p.clientName)];
+    const who = words.find(w=>people.some(n=>qeNameScore(w, n) >= 75));
+    if(who) d.person = who;
+    const titles = new Set(PKGS.flatMap(p=>(p.events||[]).map(ev=>qeNorm(ev.title).split(' ')[0])).filter(x=>x.length >= 4));
+    const job = words.map(qeNorm).find(w=>titles.has(w));
+    d.job = job || (who ? '' : d.job);   /* a line that names a person but no function points at none */
+    if(hit && d.note && !new RegExp(d.note.split(' ')[0], 'i').test(t)) d.note = '';   /* the fixture's note is not this line's */
+    if(d.type === 'assignment'){
+      const role = [['candid photography', /candid/i], ['cinematography', /cine|film/i], ['videography', /video/i], ['drone', /drone|aerial/i], ['led', /\bled\b|screen/i],
+                    ['editor', /edit/i], ['assistant', /assist|helper/i], ['photography', /photo|shooter|stills/i]].find(([, re])=>re.test(t));
+      if(role) d.role = role[0];
+      const hm = t.match(/\+\s*(\d)|with\s+(\d|one|two|three)\b|brings?\s+(\d|one|two|three)\b/i);
+      if(hm){ const n = { one:1, two:2, three:3 }[(hm[1]||hm[2]||hm[3]||'').toLowerCase()] || Number(hm[1]||hm[2]||hm[3]); if(n) d.heads = Math.min(5, 1 + n); }
+    }
+    if(d.type === 'expense'){
+      const cat = [['rent', /rent/i], ['food', /food|lunch|dinner|biryani|chai|tea|snack/i], ['ads', /ads?\b|instagram|google|marketing|print/i], ['salary', /salary/i],
+                   ['gear', /lens|camera|batter|card|light|tripod|gimbal|drone part|memory/i], ['travel', /fuel|petrol|diesel|cab|uber|ola|auto|toll|train|flight|travel|taxi/i]].find(([, re])=>re.test(t));
+      if(cat) d.category = cat[0];
+      if(!hit) d.note = t.slice(0, 80);
+    }
+    return d;
+  }
 
   /* ---------- quick actions — the ⚡ button on Home ---------- */
   function openQa(){
