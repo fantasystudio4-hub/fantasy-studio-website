@@ -276,6 +276,8 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .ledsub .mini{min-height:34px;padding:.3rem .7rem;color:var(--gold-b);border-color:rgba(226,194,117,.45)}
 .ledfoot b{color:#e5b57f;font-variant-numeric:tabular-nums}
 .ledfoot.clear b{color:var(--ok)}
+.ledacts{margin-top:.6rem;display:flex}
+.ledacts .mini{width:100%;color:var(--text)}
 
 .help{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;margin-top:1.6rem}
 .help p{color:var(--mut);font-size:.84rem;margin-bottom:.6rem}
@@ -2079,7 +2081,8 @@ function renderLedger(jobs){
       ${group('shot', 'Shot work', sp.shot, sp.shotDue)}
       ${group('up', 'Upcoming events', sp.up, sp.upDue)}
       <div class="ledfoot ${run>0?'':'clear'}"><span>${run>0 ? 'Outstanding balance' : 'Account settled'}</span><b>${run>0 ? inr(run) : '✓ Nothing due'}</b></div>
-    </div>`;
+    </div>
+    <div class="ledacts"><button class="mini" type="button" data-txall>🧾 Transactions — every payment on your account</button></div>`;
 }
 /* Pay one whole group of the account — the shot work, or the upcoming events —
    in one go. The sheet keeps a group id instead of a job id, so the live
@@ -2094,6 +2097,7 @@ function payGroup(key){
   openPay(due, q, 'grp:' + key);
 }
 $('#ledgerBox').addEventListener('click', e=>{
+  if(e.target.closest('[data-txall]')){ openTxSheet('*'); return; }
   const b = e.target.closest('[data-paygrp]');
   if(b) payGroup(b.dataset.paygrp);
 });
@@ -2226,8 +2230,9 @@ $('#vpaCopy').addEventListener('click', async ()=>{
    the ledger and the panel all read. */
 let _txJobId = '';
 function renderTxSheet(){
-  const x = allJobs().find(j=>j.id === _txJobId);
   const body = $('#txBody'); if(!body) return;
+  if(_txJobId === '*'){ renderTxAll(body); return; }
+  const x = allJobs().find(j=>j.id === _txJobId);
   if(!x){ body.innerHTML = '<div class="empty" style="padding:.6rem 0">This job is no longer on your account.</div>'; return; }
   const tt = x.totals||{};
   const paid = Math.max(0, Number(tt.advance)||0);
@@ -2247,6 +2252,32 @@ function renderTxSheet(){
       `<div class="payrow"><span>${esc(isDate(pm.date) ? dmy(pm.date) : 'Date not recorded')} · ${esc(pm.mode||'—')}${pm.note ? `<em>${esc(pm.note)}</em>` : ''}</span><b>+ ${inr(pm.amount)}</b></div>`).join('')}</div>`
     : '<div class="empty" style="padding:.6rem 0">No payments recorded on this job yet.</div>'}
     ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-jid="${esc(x.id)}" style="margin-top:.7rem">Pay ${inr(bal)} now</button>` : ''}`;
+}
+/* The whole account in one list (owner, 18 Oct 2026): every payment this
+   studio has made to Fantasy Studio, across all its confirmed jobs, newest
+   first, each row naming the job it was booked against — the per-job list
+   above needed a double-tap on one job's tiles, and there was no way to see
+   the payments side by side. Same figures as the account ledger: billed,
+   paid and due are summed over the same confirmed jobs. */
+function renderTxAll(body){
+  const conf = allJobs().filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
+  const rows = [];
+  conf.forEach(x=>(x.payments||[]).filter(Boolean).forEach(pm=>rows.push({ ...pm, job: x })));
+  rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const billed = conf.reduce((n,x)=>n + (Number((x.totals||{}).finalPrice)||0), 0);
+  const paid = conf.reduce((n,x)=>n + Math.max(0, Number((x.totals||{}).advance)||0), 0);
+  const due = conf.reduce((n,x)=>n + Math.max(0, Number((x.totals||{}).balance)||0), 0);
+  $('#txTitle').textContent = 'Transactions';
+  $('#txWho').textContent = `Every payment on your account · ${plural(rows.length, 'payment')} across ${plural(conf.length, 'confirmed job')}`;
+  body.innerHTML = `
+    <div class="txsum">
+      <div><b>${inr(billed)}</b><span>billed</span></div>
+      <div><b>${inr(paid)}</b><span>paid</span></div>
+      <div class="${due>0?'due2':''}"><b>${due>0 ? inr(due) : '✓ Paid'}</b><span>${due>0?'you owe':'all clear'}</span></div>
+    </div>
+    ${rows.length ? `<div class="txlist">${rows.map(pm=>
+      `<div class="payrow"><span>${esc(isDate(pm.date) ? dmy(pm.date) : 'Date not recorded')} · ${esc(pm.mode||'—')}<em>${esc(pm.job.quoteNo||'')}${pm.job.quoteNo ? ' · ' : ''}${esc(jobLabel(pm.job))}${pm.note ? ' · ' + esc(pm.note) : ''}</em></span><b>+ ${inr(pm.amount)}</b></div>`).join('')}</div>`
+    : '<div class="empty" style="padding:.6rem 0">No payments recorded on your account yet.</div>'}`;
 }
 function openTxSheet(jobId){
   _txJobId = jobId || '';

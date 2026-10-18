@@ -10260,6 +10260,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      rows carry none — an edit is not crew on the day. A `team`-only update
      raises no push: alerts.js speaks only to a new row, a new member or new
      money. The sample panel never writes (DEMO). */
+  /* The venue rides along. An assignment copies the event's venue when it is
+     made and nothing refreshed it, so a venue typed onto the booking AFTER the
+     crew were assigned never reached their cards — the crew page showed no
+     location at all. The function is found the way the re-sync button finds
+     it: the package's one event on that date, or the one with the row's
+     title when two share a day; a row whose event cannot be told is left as
+     it is (staleCrew flags it instead). */
+  const evOfAsg = a => {
+    const pk = PKGS.find(p=>p.id===a.pkgId); if(!pk) return null;
+    const same = (pk.events||[]).filter(e=>e.date===a.date);
+    if(same.length === 1) return same[0];
+    const t = String(a.eventTitle||'').trim().toLowerCase();
+    const hit = same.filter(e=>String(e.title||'').trim().toLowerCase() === t);
+    return hit.length === 1 ? hit[0] : null;
+  };
   let _teamSyncT = null, _teamSyncBusy = false, _teamSyncAgain = false;
   const _teamKey = list => (Array.isArray(list) ? list : [])
     .map(c => [c.name, c.role, c.heads].map(v => String(v || '')).join('|'))
@@ -10279,11 +10294,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           const want = evCrew(a.pkgId, a.date, a.eventTitle)
             .filter(o => o.id !== a.id && !(o.memberId && o.memberId === a.memberId))
             .map(o => ({ name: o.memberName || '', role: o.role || '', heads: headsOf(o) }));
+          const patch = {};
           /* nothing to say and nothing said: no write (most old rows) */
-          if(!want.length && !Array.isArray(a.team)) continue;
-          if(_teamKey(want) === _teamKey(a.team)) continue;
-          a.team = want;   /* keep the local copy in step — no rewrite on the echo snapshot */
-          await settle(updateDoc(doc(db,'assignments',a.id), { team: want }));
+          if((want.length || Array.isArray(a.team)) && _teamKey(want) !== _teamKey(a.team)) patch.team = want;
+          const ev = evOfAsg(a);
+          if(ev && String(ev.venue||'') !== String(a.venue||'')) patch.venue = String(ev.venue||'');
+          if(!Object.keys(patch).length) continue;
+          Object.assign(a, patch);   /* keep the local copy in step — no rewrite on the echo snapshot */
+          await settle(updateDoc(doc(db,'assignments',a.id), patch));
         }
       }finally{
         _teamSyncBusy = false;
@@ -11357,6 +11375,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-stuevtog]')){ _stuEvOpen = !_stuEvOpen; renderStudioDetail(); return; }
     if(e.target.closest('[data-stucsv]')){ exportStudioLedger(); return; }
     if(e.target.closest('[data-stustmt]')){ sendStudioStatement(); return; }
+    if(e.target.closest('[data-stutxall]')){ openStuTx('*'); return; }
   });
 
   /* One studio's ledger, in the same shape as the other CSVs so it opens the
@@ -11762,6 +11781,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${led.length ? `
           <!-- its two actions first: they were under every row of the ledger -->
           <div class="ev-acts stu-ledacts">
+            <!-- every payment this studio has made, across its jobs — the list
+                 the "paid" tile opens on a double-tap, as a button one can see -->
+            <button class="btn btn--sm btn--ghost" type="button" data-stutxall>🧾 Transactions</button>
             <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
             ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>` : ''}
           </div>
