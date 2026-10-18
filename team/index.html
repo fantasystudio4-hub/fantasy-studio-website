@@ -434,8 +434,8 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* ==== Crew HQ: rank, countdown, badges ====
    Everything here is computed from the member's OWN assignment docs — no extra
    reads, no new writes, nothing the firestore rules don't already allow. */
-/* Medium, not a hero. This and the countdown under it came to 328px of a
-   900px phone before a single assignment showed — and this one is the
+/* Medium, not a hero. This and the countdown card that used to sit under it
+   came to 328px of a 900px phone before a single assignment showed — and this one is the
    scoreboard, not the work. The ring loses 22px, the padding a third, and
    the two chips that repeated the tiles below are gone. */
 .hq{background:linear-gradient(150deg,rgba(201,163,71,.16),rgba(36,30,18,.9) 55%);border:1px solid rgba(226,194,117,.4);border-radius:16px;padding:.7rem .85rem;margin:0 0 .7rem;box-shadow:0 10px 26px rgba(0,0,0,.28)}
@@ -470,27 +470,18 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .hq-lbtog button[aria-pressed="true"]{background:rgba(184,144,43,.18);border-color:rgba(226,194,117,.55);color:var(--gold-b);font-weight:600}
 .hq-lbtog button:focus-visible{outline:2px solid var(--gold-b);outline-offset:2px}
 
-/* next shoot — a live countdown, because "in 3 days" is the whole question */
-/* Medium, like the rank card above it. The clock was three 1.45rem numerals
-   in their own boxes with a rem of padding round the lot — a hero for a fact
-   that is read in a second. Same three numbers, two thirds the height. */
-.cdown{background:var(--panel);border:1px solid rgba(226,194,117,.45);border-radius:16px;padding:.7rem .85rem;margin:0 0 .7rem;box-shadow:0 10px 26px rgba(0,0,0,.22)}
-.cd-h{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;margin-bottom:.45rem}
-.cd-lbl{font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
-.cd-h b{font-family:var(--serif);color:#fff;font-size:.95rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cd-clock{display:flex;gap:.4rem}
+/* next shoot — a live countdown, because "in 3 days" is the whole question.
+   It used to be a card of its own above the list, with the shoot's title,
+   date, call time, venue, client and Confirm button — and the first card of
+   Upcoming events repeated every one of them a few lines down, so the same
+   shoot read as two (owner, 18 Oct 2026). Now the clock sits INSIDE that
+   first card, under its title, and the card says "Next shoot": one event,
+   one place. */
+.cd-clock{display:flex;gap:.4rem;margin:.55rem 0 .1rem}
 .cd-clock div{flex:1;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.35rem .2rem;text-align:center}
 .cd-clock b{display:block;font-family:var(--serif);font-size:1.15rem;color:var(--gold-b);line-height:1.15;font-variant-numeric:tabular-nums}
 .cd-clock span{font-size:.48rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .cd-clock.live b{color:#ffb054}
-.cd-meta{margin-top:.45rem;font-size:.76rem;color:var(--mut);display:flex;flex-wrap:wrap;
-  align-items:center;gap:.15rem .7rem}
-/* the venue link keeps the 44px tap floor, so it is a flex item taller than its
-   own text: centre it, and underline the TEXT rather than border the box, or the
-   rule lands at the bottom of the tap area as a stray line across the card */
-.cd-meta a{color:var(--gold-b);display:inline-flex;align-items:center;
-  text-decoration:underline dotted rgba(226,194,117,.55);text-underline-offset:3px}
-.cd-now{margin-top:.6rem;text-align:center;color:#ffb054;font-size:.85rem;font-weight:500}
 
 /* badges — earned ones lit, locked ones show how far off they are */
 .badges{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.3rem}
@@ -522,9 +513,11 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .crewhelp a{flex:1;min-width:130px;text-align:center;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.7em 1em;font-size:.85rem;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
 .crewhelp a:active{background:rgba(184,144,43,.2)}
 @media(hover:hover){ .crewhelp a:hover{background:var(--gold);color:#fff} }
-/* the very next event stands out from the rest of the schedule */
-#upList .asg:first-child{border-color:rgba(226,194,117,.55)}
-#upList .asg:first-child .asg-d .when{font-size:1.1rem}
+/* the very next shoot stands out from the rest of the schedule — it is the
+   card that carries the countdown, and it says so */
+#upList .asg.next{border-color:rgba(226,194,117,.55);box-shadow:0 10px 26px rgba(0,0,0,.22)}
+#upList .asg.next .asg-d .when{font-size:1.1rem}
+.asg .nextlbl{font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-b);font-weight:600;white-space:nowrap}
 
 /* ==== the store app (html.fs-app, set by the first script in <head>;
    app-shell.css/js draw the bottom tab bar) ====
@@ -533,7 +526,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    onSnapshot listeners run exactly as on the website. The greeting stays on
    every tab. A browser never has html.fs-app and matches none of this. */
 html.fs-app[data-tab]:not([data-tab="shoots"]) #roleSw,
-html.fs-app[data-tab]:not([data-tab="shoots"]) #cdCard,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upHead,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #ackAll,
 html.fs-app[data-tab]:not([data-tab="shoots"]) #upList,
@@ -773,14 +765,6 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
         </div>
       </div>
       <div class="hq-chips" id="hqChips"></div>
-    </div>
-
-    <!-- the next shoot, counting down -->
-    <div class="cdown" id="cdCard" hidden>
-      <div class="cd-h"><span class="cd-lbl">Next shoot</span><b id="cdTitle"></b></div>
-      <div class="cd-clock" id="cdClock"></div>
-      <div class="cd-meta" id="cdMeta"></div>
-      <div id="cdCta"></div>
     </div>
 
     <div class="stats2" id="crewStats" hidden></div>
@@ -1836,21 +1820,22 @@ if(!CONFIGURED){
       `<span class="w1"><b>${esc(name)}</b>${r.heads > 1 ? ` ×${r.heads}` : ''}${r.roles.length ? ` <em>${esc(r.roles.join(' + '))}</em>` : ''}</span>`);
     return `<div class="ln with"><span>With you</span><span>${who.join('')}</span></div>`;
   }
-  function asgCard(a, past){
+  function asgCard(a, past, next){
     const seen = a.status === 'acknowledged';
     /* the member's own sign-off, from the DAY of the shoot — a wedding is
        finished that night, not the next morning when the card moves to Past */
     const done = (a.date||'') <= todayISO();
     /* call time first, then where, then who: the order the day is read in */
     return `
-    <div class="asg ${past?'past':''}">
+    <div class="asg ${past?'past':''}${next?' next':''}">
       <div class="asg-d">
-        <span class="when">${esc(fmtDay(a.date))}</span>${past ? '' : dayTag(a.date)}
+        ${next ? '<span class="nextlbl">Next shoot</span>' : ''}<span class="when">${esc(fmtDay(a.date))}</span>${past ? '' : dayTag(a.date)}
         ${past
           ? (seen ? '<span class="chip seen">✓ confirmed</span>' : '')
           : `<span class="chip ${seen?'seen':'wait'}">${seen ? '✓ confirmed' : 'please confirm'}</span>`}
       </div>
       <div class="asg-t"><b>${esc(a.eventTitle||'Event')}</b>${slotTag(a.slot)}</div>
+      ${next ? '<div class="cd-clock" id="cdClock"></div>' : ''}
       <div class="lines">
         ${a.callTime ? `<div class="ln"><span>Call time</span><span class="ct">${esc(fmtTime(a.callTime))}</span></div>` : ''}
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
@@ -2360,25 +2345,16 @@ if(!CONFIGURED){
 
   /* ---------- next shoot, counting down ---------- */
   let _cdAsg = null, _cdTimer = null;
+  /* The clock is drawn into #cdClock, which render() puts inside the next
+     shoot's own card (asgCard with next = true) — the title, call time, venue,
+     client and Confirm are that card's, so nothing is said twice. */
   function renderCountdown(list){
     const a = list[0] || null;
     _cdAsg = a;
     widgetNext(list);
-    $('#cdCard').hidden = !a;
-    if(!a) return;
-    $('#cdTitle').textContent = shootTitle(a);
-    $('#cdMeta').innerHTML = [
-      esc(fmtDate(a.date)),
-      a.callTime ? '⏰ ' + esc(fmtTime(a.callTime)) : '',
-      a.venue ? `<a href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a>` : '',
-      a.clientName ? esc(a.clientName) : ''
-    ].filter(Boolean).map(t=>`<span>${t}</span>`).join('');
-    $('#cdCta').innerHTML = (a.status === 'acknowledged'
-      ? '<div class="ackdone">✓ Confirmed — the studio knows you are on it</div>'
-      : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)
-      + calBtn(a);
-    tickCountdown();
     clearInterval(_cdTimer);
+    if(!a) return;
+    tickCountdown();
     _cdTimer = setInterval(tickCountdown, 30000);
   }
   function tickCountdown(){
@@ -2506,9 +2482,10 @@ if(!CONFIGURED){
     const today = todayISO();
     const done = ASGS.filter(a=>(a.date||'') && a.date < today);
     const up = ASGS.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
-    /* the countdown is the one card that matters before there is any history;
-       the app's is the widget's list, a browser's the same card as ever */
-    renderCountdown(inApp() ? nextShoots() : up);
+    /* the countdown matters before there is any history; its clock is drawn
+       into the next shoot's card, which render() rebuilds AFTER this runs, so
+       render() ticks it again once the card exists */
+    renderCountdown(nextShoots());
     if(!has){
       $('#hqCard').hidden = true; $('#bdgWrap').hidden = true;
       clearInterval(_cdTimer);
@@ -2572,7 +2549,14 @@ if(!CONFIGURED){
        group and sort by their deadline */
     const shoots = ASGS.filter(a=>a.kind !== 'edit');
     const edits = ASGS.filter(a=>a.kind === 'edit').sort(edOrder);
-    const up = shoots.filter(a=>(a.date||'') >= today).sort((a,b)=>a.date<b.date?-1:1);
+    /* in start order — two shoots on one day go morning before evening — so
+       the card the clock counts down to is the first one, not merely the
+       first by date */
+    const startKey = a => { const t = shootStart(a).getTime(); return isNaN(t) ? Infinity : t; };
+    const up = shoots.filter(a=>(a.date||'') >= today)
+      .sort((a,b)=>startKey(a) - startKey(b) || slotRank(a.slot) - slotRank(b.slot));
+    /* the shoot the clock counts to: the next one not already over today */
+    const nxt = nextShoots()[0] || null;
     const past = shoots.filter(a=>(a.date||'') < today).sort((a,b)=>a.date<b.date?1:-1);
     $('#editWrap').hidden = !edits.length;
     if(edits.length){
@@ -2600,9 +2584,10 @@ if(!CONFIGURED){
       + (openEdits ? ` · ${openEdits} edit${openEdits===1?'':'s'} to finish` : '');
     $('#upHead').hidden = !up.length;
     $('#upCount').textContent = up.length;
-    $('#upList').innerHTML = up.length ? up.map(a=>asgCard(a, false)).join('')
+    $('#upList').innerHTML = up.length ? up.map(a=>asgCard(a, false, !!nxt && a.id === nxt.id)).join('')
       : (_asgsLoaded ? '<div class="empty">Nothing scheduled yet — new assignments from Fantasy Studio will appear here.</div>'
                      : '<div class="skel"></div><div class="skel"></div>');
+    tickCountdown();   /* the card that holds #cdClock was just rebuilt */
     renderAckAll(up);
     $('#pastWrap').hidden = !past.length;
     $('#pastCount').textContent = past.length;
@@ -3047,7 +3032,6 @@ if(!CONFIGURED){
 
   /* the ONE write a member can make: acknowledge an assignment. Confirm sits
      both in the countdown card and on every upcoming card — one handler. */
-  $('#cdCta').addEventListener('click', ackClick);
   $('#upList').addEventListener('click', ackClick);
   async function ackClick(e){
     const b = e.target.closest('[data-ack]'); if(!b || b.disabled) return;
@@ -3161,7 +3145,7 @@ if(!CONFIGURED){
   }
 
   /* the calendar button on the countdown card and on the upcoming cards */
-  if(inApp()){ $('#cdCta').addEventListener('click', calClick); $('#upList').addEventListener('click', calClick); }   /* browsers never get a calendar button */
+  if(inApp()) $('#upList').addEventListener('click', calClick);   /* browsers never get a calendar button */
   async function calClick(e){
     const b = e.target.closest('[data-cal]'); if(!b || b.disabled) return;
     const a = ASGS.find(v=>v.id===b.dataset.cal); if(!a) return;
