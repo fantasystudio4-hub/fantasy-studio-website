@@ -11717,6 +11717,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stuaddev>＋ Add event</button>
+          <!-- every payment this studio has made, across its jobs — always on
+               the page, not only once a ledger exists (owner, 18 Oct 2026) -->
+          <button class="btn btn--sm btn--ghost" type="button" data-stutxall>🧾 Transactions</button>
         </div>
         ${profOpen ? `
         <p class="sub">${esc([s.ownerName, s.city].filter(Boolean).join(' · '))}${s.gst ? ' · GST ' + esc(s.gst) : ''}</p>
@@ -11781,9 +11784,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         ${led.length ? `
           <!-- its two actions first: they were under every row of the ledger -->
           <div class="ev-acts stu-ledacts">
-            <!-- every payment this studio has made, across its jobs — the list
-                 the "paid" tile opens on a double-tap, as a button one can see -->
-            <button class="btn btn--sm btn--ghost" type="button" data-stutxall>🧾 Transactions</button>
             <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
             ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>` : ''}
           </div>
