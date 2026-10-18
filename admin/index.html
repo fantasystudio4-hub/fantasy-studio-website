@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4b" />
-<link rel="stylesheet" href="app.css?v=p5e" />
+<link rel="stylesheet" href="app.css?v=p5f" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -181,6 +181,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button class="btn btn--primary" id="leadAdd" type="button">＋ Lead</button>
     </div>
     <div class="fchips" id="leadChips"></div>
+    <!-- lead score (AI, Phase 4, 18 Oct 2026): newest first, or the hot ones on top -->
+    <div class="mode-pills lsort" id="leadSort" role="group" aria-label="Order of the list">
+      <button type="button" data-ls="new" aria-label="Newest first">Newest first</button>
+      <button type="button" data-ls="hot" aria-label="Hot leads first" title="Hot, then warm, then cold — who to call first">🔥 Hot first</button>
+    </div>
     <div class="stats" id="stats"></div>
     <div id="leadList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
   </div>
@@ -1129,7 +1134,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5e"></script>
+<script type="module" src="app.js?v=p5f"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

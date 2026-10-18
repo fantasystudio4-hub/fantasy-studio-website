@@ -1545,6 +1545,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(id === 'tabCal' && typeof renderB2B === 'function') renderB2B();
     if(id === 'tabTeam' && typeof renderTeam === 'function') renderTeam();
     if(id === 'tabApps' && typeof appsOpen === 'function') appsOpen();
+    if(id === 'tabLeads' && typeof lsBatch === 'function') lsBatch();   /* the lead scores' one AI batch per panel open */
     if(id === 'tabHome'){
       if(typeof renderHome === 'function') renderHome();
       if(typeof renderCalendar === 'function') renderCalendar();   /* the calendar lives on Home now */
@@ -1945,6 +1946,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const p = normPhone(l.phone);
       if(p.length === 10) (_leadDups[p] = _leadDups[p] || []).push(l);
     });
+    /* 🔥 Hot first: by score, then by the rules' points, then newest; leads
+       that are already done go under the open ones (after _leadDups — the
+       score counts sibling enquiries) */
+    if(_leadSort === 'hot'){
+      const tsMs = l => (l.createdAt && l.createdAt.toMillis) ? l.createdAt.toMillis() : 0;
+      const rank = l => { const s = leadScore(l); return s ? s.rank : -1; };
+      list.sort((a,b)=>rank(b) - rank(a) || tsMs(b) - tsMs(a));
+    }
     if(!list.length){
       /* Three different nothings, three different answers. "Still loading",
          "your filter hides them all" and "there are genuinely none" used to
@@ -2008,6 +2017,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <span class="card__title">${esc(l.name||'—')}</span>
               ${(l.createdAt && l.createdAt.toDate && l.createdAt.toDate().getTime() > _seenBefore) ? '<span class="newb">NEW</span>' : ''}
               ${sib.length ? `<span class="dupb" title="This number has ${sib.length + 1} enquiries — open the card to see the others">↩ ${sib.length + 1}×</span>` : ''}
+              ${leadScoreChip(l)}
             </span>
             <span class="l2">
               <span class="card__meta">${meta}</span>
@@ -2041,6 +2051,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }).join('');
     _restore();
     if(_bulkOn) renderBulkBar();
+    if(!$('#leadsView').hidden && typeof lsBatch === 'function') lsBatch();   /* the AI read of unread messages, once per panel open */
   }
 
   function setBulk(on){
@@ -2149,7 +2160,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
 
   function leadDetailHTML(l){
-    let h = '';
+    let h = leadScoreLine(l);   /* hot / warm / cold and why, first — it is what the owner opens the card to see */
     const sib = leadSiblings(l);
     if(sib.length){
       h += `<h4>↩ Same number, ${sib.length} other enquir${sib.length===1?'y':'ies'}</h4>`
@@ -13790,6 +13801,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(kind === 'entry') return { kind, draft: qeDemoDraft(String((payload && payload.text) || ''), fx.entry || {}), model: 'demo' };
     if(kind === 'ask') return { kind, draft: askDemoAnswer(String((payload && payload.text) || ''), (payload && payload.facts) || askTables(), fx.ask || {}), model: 'demo' };
+    if(kind === 'leadscore') return { kind, draft: lsDemoScore(String((payload && payload.text) || ''), (payload && payload.facts) || {}, fx.leadscore || {}), model: 'demo' };
     const f = (payload && payload.facts) || {};
     const money = v => inr(v);
     /* the quote check has two sentences: with and without a decided job at this price level */
@@ -15050,6 +15062,125 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
   }
   on('#pkgEditView', 'click', e=>{ if(e.target.closest('#qcAsk')){ buzz(); qcAsk(); } });
+
+  /* ============================================================
+     Lead score — hot / warm / cold on every open lead (Phase 4 of the AI
+     plan, 18 Oct 2026)
+
+     Rules first (lsRules), from what the record already holds: a priced
+     quote from the builder (+3; a bare builder visit +1), sibling
+     enquiries from the same number (+2), the function within 90 days (+2;
+     within six months +1; a past date −2), already in conversation (+1),
+     a proper message (+1), still 'new' after two weeks (−1). 4+ is hot,
+     2–3 warm, else cold. Then, once per panel open, at most ten open leads
+     whose message has not been read yet go to the studio's `ai` function
+     as kind 'leadscore' — the message masked by aiMask, the rule signals
+     as FACTS — and come back as a score and one reason. That read is
+     cached in THIS browser (localStorage fs_ls_v1, keyed by lead id and a
+     hash of the message), so a lead is read once and a changed message is
+     read again; nothing is written onto leads/{id} — the rule would let
+     the admin add a key, but the score is advice, not a record. The card
+     shows the chip (the AI's read when cached, else the rules'), the open
+     card the reason, and "🔥 Hot first" sorts the list by it. Converted,
+     booked, shot, delivered and lost leads are not scored — they are done.
+     Demo: _demo-data.js aiDrafts.leadscore scores by a word in the message
+     (lsDemoScore), else keeps the rules' reading with a stock reason.
+     ============================================================ */
+  const LS_KEY = 'fs_ls_v1', LS_BATCH = 10, LS_HOT = 4, LS_WARM = 2;
+  const LS_OPEN = ['new', 'contacted'];
+  const LS_LABEL = { hot: '🔥 hot', warm: '🌤 warm', cold: '❄️ cold' };
+  const LS_RANK = { hot: 2, warm: 1, cold: 0 };
+  let _lsCache = null, _lsBatched = false;
+  let _leadSort = viewGet('leadSort') === 'hot' ? 'hot' : 'new';
+  function lsLoad(){
+    if(_lsCache) return _lsCache;
+    try{ _lsCache = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }catch(e){ _lsCache = null; }
+    if(!_lsCache || typeof _lsCache !== 'object' || Array.isArray(_lsCache)) _lsCache = {};
+    return _lsCache;
+  }
+  function lsSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(_lsCache || {})); }catch(e){} }
+  /* djb2 of the message, base 36: a changed message is a new key */
+  function lsHash(s){ let h = 5381; const t = String(s||''); for(let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+  function lsRules(l){
+    const pts = [], today = todayISO();
+    const add = (n, why) => pts.push({ n, why });
+    const hasQuote = !!(l.quote && Array.isArray(l.quote.events) && l.quote.events.length);
+    if(hasQuote) add(3, 'priced their own quote in the builder' + (l.grandTotal ? ' (' + inrShort(l.grandTotal) + ')' : ''));
+    else if(l.source === 'package_builder') add(1, 'came through the builder');
+    const sib = leadSiblings(l).length;
+    if(sib) add(2, 'enquired ' + (sib + 1) + ' times from this number');
+    const wd = ISO_RE.test(l.weddingDate||'') ? l.weddingDate : '';
+    if(wd){
+      const days = Math.round((new Date(wd + 'T00:00') - new Date(today + 'T00:00')) / 864e5);
+      if(days < 0) add(-2, 'the date has passed');
+      else if(days <= 90) add(2, 'function in ' + days + ' day' + (days === 1 ? '' : 's'));
+      else if(days <= 180) add(1, 'function in about ' + Math.round(days / 30) + ' months');
+      else add(0, 'function ' + Math.round(days / 30) + ' months away');
+    }else add(0, 'no date given');
+    if((l.status||'new') === 'contacted') add(1, 'already in conversation');
+    const age = askDaysSince(l.createdAt);
+    if((l.status||'new') === 'new' && age != null && age >= 14) add(-1, 'unanswered for ' + age + ' days');
+    if(String(l.message||'').trim().length >= 40) add(1, 'wrote a proper message');
+    const points = pts.reduce((s,p)=>s + p.n, 0);
+    return { score: points >= LS_HOT ? 'hot' : points >= LS_WARM ? 'warm' : 'cold', points, reasons: pts.filter(p=>p.n).map(p=>p.why) };
+  }
+  /* what the card shows: the AI's read when it is cached for this very
+     message, else the rules'; null for a lead that is already done */
+  function leadScore(l){
+    if(!l || !LS_OPEN.includes(l.status||'new')) return null;
+    const rules = lsRules(l);
+    const c = lsLoad()[l.id];
+    if(c && c.s && LS_RANK[c.s] != null && c.h === lsHash(l.message||''))
+      return { score: c.s, reason: c.r || '', by: 'ai', rules, rank: LS_RANK[c.s] * 1000 + rules.points };
+    return { score: rules.score, reason: rules.reasons.join(' · ') || 'nothing much to go on yet', by: 'rules', rules, rank: LS_RANK[rules.score] * 1000 + rules.points };
+  }
+  function leadScoreChip(l){
+    const s = leadScore(l); if(!s) return '';
+    return `<span class="lsb" data-score="${s.score}" title="${esc(s.reason)}">${LS_LABEL[s.score]}</span>`;
+  }
+  function leadScoreLine(l){
+    const s = leadScore(l); if(!s) return '';
+    return `<div class="ln ls-ln"><span>Lead score</span><span><span class="lsb" data-score="${s.score}">${LS_LABEL[s.score]}</span> ${esc(s.reason)}<i>${s.by === 'ai' ? '✨ read from their message' : 'from the signals on the record'}</i></span></div>`;
+  }
+  function lsSyncSort(){
+    $$('#leadSort [data-ls]').forEach(b=>b.classList.toggle('on', b.dataset.ls === _leadSort));
+  }
+  on('#leadSort', 'click', e=>{
+    const b = e.target.closest('[data-ls]'); if(!b || b.dataset.ls === _leadSort) return;
+    _leadSort = b.dataset.ls === 'hot' ? 'hot' : 'new';
+    viewSet('leadSort', _leadSort); lsSyncSort(); buzz(); renderLeads();
+  });
+  lsSyncSort();
+  /* once per panel open: the open leads whose message has not been read
+     yet, ten at most, one call at a time; the cap or a missing function
+     stops the batch and the rules stand */
+  async function lsBatch(){
+    if(_lsBatched || !_leadsLoaded) return;
+    _lsBatched = true;
+    const cache = lsLoad();
+    if(_leadsFresh) Object.keys(cache).forEach(id=>{ if(!LEADS.some(l=>l.id === id)) delete cache[id]; });
+    const todo = liveLeads().filter(l=>LS_OPEN.includes(l.status||'new') && String(l.message||'').trim())
+      .filter(l=>{ const c = cache[l.id]; return !(c && c.h === lsHash(l.message||'')); })
+      .slice(0, LS_BATCH);
+    for(const l of todo){
+      try{
+        const { masked } = aiMask(l.message||'');
+        const rules = lsRules(l);
+        const r = await aiCall('leadscore', { text: masked, facts: {
+          eventType: l.eventType||'', shootDate: l.weddingDate||'', source: l.source||'', status: l.status||'new',
+          enquiredDaysAgo: askDaysSince(l.createdAt), siblings: leadSiblings(l).length, quoteTotal: Number(l.grandTotal)||0, rules } });
+        const d = r && r.draft;
+        if(d && d.score){ cache[l.id] = { h: lsHash(l.message||''), s: d.score, r: d.reason||'', at: Date.now() }; lsSave(); renderLeads(); }
+      }catch(err){ console.warn('[lead score] stopped:', aiWhy(err)); break; }
+    }
+  }
+  function lsDemoScore(text, facts, fx){
+    const t = String(text||'');
+    const hit = ((fx && fx.byWord) || []).find(e=>{ try{ return new RegExp(e.when, 'i').test(t); }catch(err){ return false; } });
+    const fb = (fx && fx.fallback) || {};
+    const rules = (facts && facts.rules) || {};
+    return { score: (hit && hit.score) || fb.score || rules.score || 'warm', reason: (hit && hit.reason) || fb.reason || '' };
+  }
 
   /* ---------- quick actions — the ⚡ button on Home ---------- */
   function openQa(){

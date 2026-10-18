@@ -2690,3 +2690,13 @@ details.aps-help>.insnote{margin-top:0}
 .qc-sent.mut{color:var(--mut)}
 .qc-sent.stale{color:var(--mut)}
 .qc-sent i{font-style:normal;font-size:var(--fs-xs);color:var(--mut)}
+
+/* ---- Lead score (Phase 4, 18 Oct 2026): hot / warm / cold on the lead card, and the sort ---- */
+.lsb{font-size:var(--fs-xs);letter-spacing:.04em;border-radius:var(--r-pill);padding:.2em .55em;font-weight:600;white-space:nowrap;border:1px solid var(--line);color:var(--mut);background:var(--field)}
+.lsb[data-score="hot"]{color:var(--err);border-color:var(--err);background:rgba(var(--state-overdue-rgb),.1)}
+.lsb[data-score="warm"]{color:var(--warn);border-color:var(--state-pending-ln);background:rgba(var(--state-pending-rgb),.1)}
+.lsb[data-score="cold"]{color:var(--mut)}
+.ls-ln span:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .45rem}
+.ls-ln i{font-style:normal;color:var(--mut);font-size:var(--fs-xs);flex:1 0 100%}
+.lsort{margin:-.35rem 0 .8rem}
+.lsort button{font-size:var(--fs-sm);padding:.5em .6em;min-height:36px}

@@ -925,6 +925,17 @@ export const aiDrafts = {
         detail: 'Aisha & Faizan (client area) · Rahul V (website)', go: { r: 'reviews' }, ids: ['rv01', 'rv02'] },
     ],
   },
+  /* Lead score (Phase 4): what the AI's read of the message would say — picked
+     by a word in the message (lsDemoScore in app.js); a blank score keeps the
+     rules' own reading and only lends the reason */
+  leadscore: {
+    byWord: [
+      { when: '3-day|three.day|two.day|\\b(nikah|valima|walima|sangeet|mehndi|mehendi|haldi|reception)\\b.*\\b(nov|dec|jan|feb|mar|apr|may|jun|jul|aug|sep|oct)|wedding in \\w+', score: 'hot', reason: 'Names the functions and a month — a real booking taking shape.' },
+      { when: 'budget|cheap|price|rate|cost|how much', score: 'warm', reason: 'Leads with a budget — wants a figure before anything else.' },
+      { when: 'job|vacancy|hiring|intern|vendor|supply', score: 'cold', reason: 'Not a client — asking for work or selling something.' },
+    ],
+    fallback: { score: '', reason: 'Nothing in the message changes the record\u2019s own reading.' },
+  },
   /* Quote sanity check (Phase 4): the one sentence over the editor's own
      comparison; the money keys are formatted by the demo's generic path */
   quotecheck: 'Similar {events}-function packages you won typically closed at {wonTypicalTotal} ({wonCount} won, {lostCount} lost in {windowMonths} months); this one is {thisTotal}, {position} — {levelLost} of your last {levelLast} at this level were lost.',
