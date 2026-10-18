@@ -2624,3 +2624,22 @@ details.aps-help>.insnote{margin-top:0}
 .qe-status .warn{color:var(--warn)}
 .qe-picks{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
 .qe-picks .qchip{font-size:var(--fs-sm);padding:.42em .8em;min-height:32px}
+
+/* ---- This morning: the brief card on Home (18 Oct 2026) ---- */
+.brief{border-color:rgba(var(--gold-rgb),.45);background:linear-gradient(180deg,var(--gold-t1),transparent 60%),var(--panel)}
+.brief h3{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem}
+.brief h3 .br-at{margin-left:auto;font-family:var(--sans);font-weight:400;font-size:var(--fs-xs);color:var(--mut);white-space:nowrap}
+.brief h3 .br-x{margin-left:.2rem;background:none;border:0;color:var(--mut);font-size:var(--fs-base);line-height:1;padding:.35em .45em;cursor:pointer;border-radius:var(--r-sm);min-width:32px;min-height:32px}
+.brief h3 .br-x:active{background:var(--gold-t2)}
+.br-text{font-size:var(--fs-base);line-height:1.5;color:var(--text);margin:0 0 .55rem;overflow-wrap:anywhere}
+.br-text.rules{color:var(--mut)}
+.br-row{display:flex;align-items:flex-start;gap:.55rem;width:100%;text-align:left;background:none;border:0;border-top:1px dashed var(--line);padding:.55rem 0;min-height:var(--tap);cursor:pointer;color:var(--text);font-family:var(--sans);font-size:var(--fs-md);line-height:1.4}
+.br-row:active{background:var(--gold-t1)}
+.br-row .dot{flex:0 0 auto;margin-top:.45em}
+.br-row .dot.hot{background:var(--err)}
+.br-row .dot.warm{background:var(--warn)}
+.br-row .dot.info{background:var(--mut)}
+.br-row .br-what{flex:1;min-width:0;overflow-wrap:anywhere}
+.br-row .br-what small{display:block;color:var(--mut);font-size:var(--fs-xs);margin-top:.15rem;overflow-wrap:anywhere}
+.br-row .chev2{flex:0 0 auto;color:var(--mut);margin-top:.1em}
+.br-foot{font-size:var(--fs-xs);color:var(--mut);margin-top:.5rem;line-height:1.45}

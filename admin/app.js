@@ -760,6 +760,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       loadLeads(); loadConfig(); loadPkgs(); loadTeam(); loadStudios(); loadExps(); loadEJobs();
       loadStudioReqs();   /* booking requests from the partner page — the B2B tab's badge and inbox */
       loadReviews();      /* reviews from the website and the client area — Home and Website content */
+      loadBrief();        /* this morning's brief (briefs/{today}) — the card at the top of Home */
       loadProfiles();   /* photos + details people added in the app, and account deletions */
       loadAvailability();   /* config/availability (created if missing) + the month the calendar shows */
       import('./pdf-template.js').catch(()=>{});   /* pre-warm so Send ▷ shares within the tap's activation window */
@@ -3814,6 +3815,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(hb){ hb.hidden = !fresh.length; hb.textContent = fresh.length || ''; }
   }
   function renderHome(){
+    renderBrief();
     renderHomeWait();
     renderPkgStats();
     renderUpcoming();
@@ -14095,6 +14097,134 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.id === 'aiPaste') _aiPaste = e.target.value;
   });
 
+  /* ============================================================
+     This morning — the brief card on Home (Phase 3 of the AI plan, 18 Oct 2026)
+
+     At 8 am the studio's morningBrief function (app/backend/functions:
+     brief.js for the rules, index.js for the job) reads the bookings,
+     leads, crew, requests and reviews and writes briefs/{YYYY-MM-DD}:
+       items   the things that need the owner, ranked — a function this
+               week short of crew, an advance still due, quotations
+               unanswered 4+ days, enquiries unanswered 24 hours, partner
+               requests and reviews waiting, crew pay owed on shot events;
+               each with `go`, the screen it is about
+       text    the AI's sentence over those items (source 'ai'), or the
+               plain list when the model was not reached (source 'rules')
+       push    whether the one push went to the owner's phone, or why not
+     This card shows that doc as it is: the panel never recomputes it, so
+     what the card says is what the push said. A line opens its screen with
+     the right filter; ✕ hides the card until tomorrow (this device only).
+     Hidden while there is nothing — no doc yet, or an empty day. The demo
+     panel shows the fixture in _demo-data.js (aiDrafts.brief).
+     ============================================================ */
+  let BRIEF = null, _briefUnsub = null, _briefDay = '', _briefErr = '', _briefAll = false;
+  const BRIEF_N = 5;   /* lines shown before "Show the rest": a season morning can have twelve, and the calendar sits under this card */
+  const briefDay = () => istDayAt(Date.now());   /* the function's day is Hyderabad's, whatever this phone's clock zone */
+  const BRIEF_ICON = { crew_gap:'🎬', crew_gap_more:'🎬', advance_due:'💰', quote_idle:'📤', lead_idle:'⚡',
+                       studio_req:'🏢', crew_pay:'💸', partner_req:'🏢', team_req:'🙋', review:'⭐' };
+  function loadBrief(){
+    if(DEMO) return;   /* the fixture owns it */
+    const day = briefDay();
+    if(_briefUnsub && _briefDay === day){ renderBrief(); return; }
+    try{ if(_briefUnsub) _briefUnsub(); }catch(e){} _briefUnsub = null;
+    _briefDay = day; _briefErr = '';
+    try{
+      _briefUnsub = onSnapshot(doc(db,'briefs',day), snap=>{
+        BRIEF = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+        _briefErr = '';
+        renderBrief();
+      }, err=>{
+        try{ if(_briefUnsub) _briefUnsub(); }catch(e){} _briefUnsub = null;
+        _briefErr = String(err.code || err.message || 'error');
+        BRIEF = null;
+        renderBrief();
+      });
+    }catch(err){ _briefErr = String(err.code || err.message || 'error'); renderBrief(); }
+  }
+  const briefHidden = b => { try{ return !!b && localStorage.getItem('fs_brief_hide') === String(b.day || ''); }catch(e){ return false; } };
+  function briefFoot(b){
+    const out = [];
+    out.push(b.source === 'ai' ? '✨ The AI phrased it; every line is from the panel’s own records.' : 'The plain list — the AI was not reached this morning.');
+    const push = String(b.push || '');
+    if(/^skipped/.test(push)) out.push('No push went to your phone — ' + push.replace(/^skipped:\s*/, '') + '.');
+    else if(push === 'failed') out.push('The push to your phone failed this morning.');
+    return out.join(' ');
+  }
+  function renderBrief(){
+    const sec = $('#briefSec'); if(!sec) return;
+    /* the panel left open past midnight is still listening to yesterday's doc */
+    if(!DEMO && _briefDay && briefDay() !== _briefDay){ loadBrief(); return; }
+    const b = BRIEF;
+    const items = (b && Array.isArray(b.items)) ? b.items.filter(it=>it && typeof it.title === 'string' && it.title) : [];
+    if(!items.length || briefHidden(b)){ sec.hidden = true; sec.innerHTML = ''; return; }
+    const at = b.at && typeof b.at.toMillis === 'function' ? b.at.toMillis() : 0;
+    const shown = _briefAll ? items : items.slice(0, BRIEF_N);
+    const rest = items.length - shown.length;
+    sec.hidden = false;
+    sec.innerHTML = `
+      <h3>☀️ This morning<span class="br-at">${at ? esc(apDateTime(at)) : ''}</span><button type="button" class="br-x" data-brief-x aria-label="Hide for today" title="Hide for today">✕</button></h3>
+      ${b.text ? `<p class="br-text ${b.source === 'ai' ? '' : 'rules'}">${esc(b.text)}</p>` : ''}
+      ${shown.map((it, i)=>`
+      <button type="button" class="br-row" data-brief="${i}">
+        <i class="dot ${['hot','warm','info'].includes(it.sev) ? it.sev : 'info'}"></i>
+        <span class="br-what">${BRIEF_ICON[it.k] || '•'} ${esc(it.title)}${it.detail ? `<small>${esc(it.detail)}</small>` : ''}</span>
+        <span class="chev2">›</span>
+      </button>`).join('')}
+      ${rest > 0 ? `<button type="button" class="upall" data-brief-more>Show ${rest} more ›</button>` : ''}
+      <p class="br-foot">${esc(briefFoot(b))}</p>`;
+  }
+  /* a line opens the screen it is about, filtered the way the Home tiles filter */
+  function briefGo(it){
+    const g = (it && it.go) || {};
+    switch(g.r){
+      case 'leads': {
+        leadFilterVal = g.f || 'new'; viewSet('leadF', leadFilterVal);
+        const s = $('#leadSearch'); if(s) s.value = '';
+        go('leads'); renderStats(); renderLeads();
+        return;
+      }
+      case 'bookings': {
+        if(!canLeaveEditor()) return;
+        pkgFilterVal = g.f || ''; viewSet('pkgF', pkgFilterVal);
+        const s = $('#pkgSearch'); if(s) s.value = '';
+        if(g.id && PKGS.some(x=>x.id === g.id)) expandedPkg = g.id;
+        go('bookings'); renderPkgList();
+        return;
+      }
+      case 'crew': {
+        /* the function's day decides the tab: today's shoots, or the upcoming ones */
+        _teamTab = (g.date && g.date <= todayISO()) ? 'today' : 'up'; viewSet('workTab', _teamTab);
+        go('crew');
+        if(viewShown('teamView')){ renderWorkTabs(); renderTeamEvents(); }
+        return;
+      }
+      case 'paytrack': go('paytrack'); return;
+      case 'studios':  go('studios'); return;
+      case 'members':  go('members'); return;
+      case 'reviews': {
+        /* the review cards sit further down this same screen; when none is drawn there, the inbox under Website content has them */
+        const el = $('#homeRevs');
+        if(el && el.children.length && !$('#homeWait').hidden){ el.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+        go('cfgWeb', { fromMore: true });
+        return;
+      }
+      default: go('home');
+    }
+  }
+  on('#briefSec', 'click', e=>{
+    if(e.target.closest('[data-brief-x]')){
+      try{ localStorage.setItem('fs_brief_hide', String((BRIEF && BRIEF.day) || '')); }catch(err){}
+      renderBrief();
+      toast('Hidden until tomorrow');
+      return;
+    }
+    if(e.target.closest('[data-brief-more]')){ _briefAll = true; renderBrief(); return; }
+    const row = e.target.closest('[data-brief]'); if(!row) return;
+    const items = (BRIEF && Array.isArray(BRIEF.items)) ? BRIEF.items.filter(it=>it && typeof it.title === 'string' && it.title) : [];
+    const it = items[Number(row.dataset.brief)];
+    if(it) briefGo(it);
+  });
+
 
   /* ============================================================
      Quick entry — say it or type it (Phase 2 of the AI plan, 18 Oct 2026)
@@ -16879,6 +17009,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         /* the server's numbers (Phase 2 + 3): everything but the Google Analytics link is connected; saving a Property ID
            in the demo connects it (or shows one of Google's refusals — see gaDemoFailures in _demo-data.js) */
         _apDemo = d;
+        /* this morning's brief: what the morningBrief function would have written over these fixtures */
+        BRIEF = (d.aiDrafts && d.aiDrafts.brief) ? { ...d.aiDrafts.brief } : null;
         _apDaily = (d.appDaily || []).map(x=>({ ...x })); _apDailyState = 'ok';
         _apStats = d.authStats ? { ...d.authStats } : null; _apStatsState = _apStats ? 'ok' : 'none';
         /* ?demo&sms shows the warning for a jump in new accounts (the SMS-spend tripwire) */

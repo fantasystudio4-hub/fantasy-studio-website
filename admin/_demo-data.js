@@ -855,6 +855,10 @@ export const config = {
    `ai` function. The lead is what a pasted chat becomes; the five texts stand
    in for the drafted WhatsApp messages, with {facts} filled from the record
    the way the real draft is written from them (amounts are formatted). */
+/* a day as the brief names it: today, tomorrow, or "Tue 20 Oct" */
+const when = n => n === 0 ? 'today' : n === 1 ? 'tomorrow'
+  : new Date(base.getTime() + n * DAY).toLocaleDateString('en-IN', { weekday: 'short' }) + ' '
+    + new Date(base.getTime() + n * DAY).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 export const aiDrafts = {
   lead: {
     clientName: 'Farhan & Sameera', careOf: 'Sameera’s brother Imran',
@@ -877,6 +881,50 @@ export const aiDrafts = {
   followup: 'Salaam {clientName}, hope the preparations are going well. Just checking whether you had a moment to look at quotation {quoteNo} ({packageTotal}). If anything in the package should change — a function, a service, the album — say so and we will adjust it.\n\nFantasy Studio',
   receipt: '*Fantasy Studio* — payment received ✅\n\nThank you {clientName}. We have received your payment against quotation {quoteNo}. Remaining balance: *{balance}*. The dates are held for you.\n\nFantasy Studio',
   statement: '*Fantasy Studio — account statement*\n{studioName}\n\nJobs: {jobs} · Billed: {billed} · Received: {received}\nDue for shot work: {dueShotWork}\nDue for upcoming events: {dueUpcoming}\n*Total outstanding: {totalOutstanding}*\n\nThank you for working with us — do let us know if any figure needs checking.\n\nFantasy Studio',
+  /* The morning brief (Phase 3): what the morningBrief function writes to
+     briefs/{today} at 8 am, as the Home card reads it — the items the rules
+     in app/backend/functions/brief.js find in THESE fixtures (run over them:
+     today's Haldi and Sangeet and tomorrow's Wedding short of crew, the
+     partner job on Tuesday short a cinematographer, Aisha Fatima's three
+     functions with nobody on them, two quotations unanswered, four enquiries
+     waiting, three partner requests, ₹34,000 of crew pay owed, Nova Weddings
+     asking to join, two reviews) and the sentence the model made of them.
+     Dates are relative, so the card reads right on any day. */
+  brief: {
+    day: iso(0), n: 12, source: 'ai', push: 'sent to ••••0000', at: ts(0),
+    text: 'Today\u2019s Haldi for Vikram Rao is still one photographer short, and the Sangeet tonight needs a photographer and an LED operator. Tomorrow\u2019s Wedding is short 2 photographers and 2 cinematographers. Lumiere\u2019s Wedding on Tuesday needs 1 cinematographer, and Aisha Fatima\u2019s Mehendi, Nikah and Walima have no crew yet. Sneha Reddy\u2019s quotation has waited 11 days; 4 enquiries are unanswered, 3 partner requests and 2 reviews are waiting, and ₹34,000 of crew pay is owed.',
+    items: [
+      { k: 'crew_gap', sev: 'hot', n: 1, score: 95, title: 'Haldi today (Vikram Rao) still needs 1 photographer',
+        detail: 'Taj Krishna, Banjara Hills · FS-2026-041', go: { r: 'crew', id: 'pk01', date: iso(0) }, ids: ['pk01'] },
+      { k: 'crew_gap', sev: 'hot', n: 2, score: 95, title: 'Sangeet today (Vikram Rao) still needs 1 photographer + 1 LED operator',
+        detail: 'Taj Krishna, Banjara Hills · FS-2026-041', go: { r: 'crew', id: 'pk01', date: iso(0) }, ids: ['pk01'] },
+      { k: 'crew_gap', sev: 'hot', n: 4, score: 91, title: 'Wedding tomorrow (Vikram Rao) still needs 2 photographers + 2 cinematographers',
+        detail: 'Taj Krishna, Banjara Hills · FS-2026-041', go: { r: 'crew', id: 'pk01', date: iso(1) }, ids: ['pk01'] },
+      { k: 'crew_gap', sev: 'hot', n: 1, score: 87, title: `Wedding (crew on hire) ${when(2)} (Rohit & Deepika) still needs 1 cinematographer`,
+        detail: 'Ramoji Film City · FS-2026-044', go: { r: 'crew', id: 'pk04', date: iso(2) }, ids: ['pk04'] },
+      { k: 'crew_gap', sev: 'warm', n: 1, score: 79, title: `Mehendi ${when(4)} (Aisha Fatima) still needs 1 photographer`,
+        detail: 'FS-2026-029', go: { r: 'crew', id: 'pk03', date: iso(4) }, ids: ['pk03'] },
+      { k: 'crew_gap_more', sev: 'warm', n: 2, score: 75, title: `2 more functions this week short of crew — Nikah ${when(5)}, Walima ${when(5)}`,
+        detail: `Nikah ${when(5)} (Aisha Fatima) still needs 3 photographers + 2 cinematographers · Walima ${when(5)} (Aisha Fatima) still needs 2 photographers + 1 cinematographer`,
+        go: { r: 'crew', id: 'pk03', date: iso(5) }, ids: ['pk03'] },
+      { k: 'quote_idle', sev: 'hot', n: 2, score: 71, title: '2 quotations unanswered for 4+ days — Sneha Reddy (FS-2026-047) 11d, Harshavardhan Reddy (FS-2026-048) 4d',
+        detail: 'Sneha Reddy (FS-2026-047) · sent 11 days ago · Harshavardhan Reddy (FS-2026-048) · sent 4 days ago',
+        go: { r: 'bookings', f: 'sent', id: 'pk06' }, ids: ['pk06', 'pk07'] },
+      { k: 'lead_idle', sev: 'hot', n: 4, score: 67, title: '4 enquiries not answered in 24 hours — Tarun Chowdary 4d, Sai Charan 2d, Zainab Khan 2d +1 more',
+        detail: 'Tarun Chowdary · waiting 4 days · Sai Charan · waiting 2 days · Zainab Khan · waiting 2 days · Priya & Arjun · waiting 1 day',
+        go: { r: 'leads', f: 'new' }, ids: ['ld08', 'ld03', 'ld12', 'ld01'] },
+      { k: 'studio_req', sev: 'warm', n: 3, score: 50, title: `3 partner booking requests waiting — Lumiere Weddings (Reception, ${when(13)}), Lumiere Weddings (Wedding — muhurtham and…, ${when(10)}), Aperture Films (Mehndi +2, ${when(21)})`,
+        detail: `Lumiere Weddings · Reception · ${when(13)} · Lumiere Weddings · Wedding — muhurtham and lunch reception · ${when(10)} · Aperture Films · Mehndi + Nikah + Reception · ${when(21)}`,
+        go: { r: 'studios' }, ids: ['rq01', 'rq02', 'rq04'] },
+      { k: 'crew_pay', sev: 'warm', n: 2, score: 43, title: '₹34,000 crew pay owed on 2 shot events — Imran Qureshi ₹25,000, Vikas Sharma ₹9,000',
+        detail: 'Vikas Sharma ₹9,000 (Wedding, 90 days ago) · Imran Qureshi ₹25,000 (Wedding, 90 days ago)',
+        go: { r: 'paytrack' }, ids: ['as14', 'as15'] },
+      { k: 'partner_req', sev: 'info', n: 1, score: 35, title: '1 studio asking to be added as a partner — Nova Weddings',
+        detail: 'Nova Weddings, Warangal', go: { r: 'studios' }, ids: ['pr01'] },
+      { k: 'review', sev: 'info', n: 2, score: 30, title: '2 reviews waiting for your approval — Aisha & Faizan ★5, Rahul V ★4',
+        detail: 'Aisha & Faizan (client area) · Rahul V (website)', go: { r: 'reviews' }, ids: ['rv01', 'rv02'] },
+    ],
+  },
   /* Quick entry (Phase 2): what one spoken or typed line becomes. The demo
      takes the first example whose `when` matches the line, else `fallback`
      (a plain expense). A 0 amount or a blank mode is read off the line

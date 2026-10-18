@@ -906,6 +906,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // THE MORNING BRIEF (18 Oct 2026): briefs/{YYYY-MM-DD} = { day, n, items,
+    // text, source, push, at }, written at 8 am by the morningBrief Cloud
+    // Function (admin SDK, so these rules never see that write) and read by
+    // the admin panel's Home card. Read-only for you; nothing signed in to a
+    // browser may write, change or delete a brief — the default-deny match
+    // below would have let the admin login write one, and there is no reason
+    // it ever should. Items name clients, crew and amounts, so never anyone
+    // but the admin.
+    match /briefs/{day} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // everything else (incl. legacy lenscal_* data): admin only — default deny
     match /{document=**} {
       allow read, write: if isAdmin();
