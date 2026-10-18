@@ -849,3 +849,32 @@ export const config = {
   city: 'Hyderabad',
   upiVpa: 'fantasystudio@upi',
 };
+
+/* ------------------------------------------------------------- AI drafts
+   What the ✨ buttons show in the demo panel instead of calling the studio's
+   `ai` function. The lead is what a pasted chat becomes; the five texts stand
+   in for the drafted WhatsApp messages, with {facts} filled from the record
+   the way the real draft is written from them (amounts are formatted). */
+export const aiDrafts = {
+  lead: {
+    clientName: 'Farhan & Sameera', careOf: 'Sameera’s brother Imran',
+    eventType: 'Mehndi + Nikah + Valima',
+    events: [
+      { title: 'Mehndi', date: iso(26), slot: 'evening', venue: 'Home, Tolichowki',
+        services: [{ key: 'traditionalPhoto', qty: 1 }, { key: 'ladyShooter', qty: 1 }] },
+      { title: 'Nikah', date: iso(27), slot: 'evening', venue: 'Taj Krishna, Banjara Hills',
+        services: [{ key: 'traditionalPhoto', qty: 2 }, { key: 'traditionalVideo', qty: 2 }, { key: 'cinematography', qty: 1 }, { key: 'drone', qty: 1 }] },
+      { title: 'Valima', date: iso(28), slot: 'evening', venue: '',
+        services: [{ key: 'traditionalPhoto', qty: 2 }, { key: 'cinematography', qty: 1 }, { key: 'ledScreen8x12', qty: 1 }] },
+    ],
+    budgetHint: 250000,
+    notes: 'Wants a cinematic teaser within a week of the Valima and a 30-sheet album. Ladies’ side needs a female photographer at the Mehndi. Found us through the Rafiq family’s wedding.',
+    language: 'mixed', confidence: 'medium',
+    questions: ['Which hall is the Valima at?', 'How many ladies-side shooters for the Nikah?', 'Is the album for the couple only, or two copies?'],
+  },
+  reply: 'Salaam {clientName}! Thank you for writing to Fantasy Studio about your {eventType}. We would be glad to cover it — the whole team has shot many functions at this time of year. Could you share the exact dates and the venue, so we can send you a proper quotation?\n\nFantasy Studio',
+  quote: '*Fantasy Studio* — Quotation {quoteNo}\n\nSalaam {clientName}, here is the quotation we discussed. Package total: *{packageTotal}*. 50% advance confirms your dates, 40% after the event before editing starts, 10% on delivery. If any function or service needs changing, tell us and we will send a fresh copy.\n\nFantasy Studio',
+  followup: 'Salaam {clientName}, hope the preparations are going well. Just checking whether you had a moment to look at quotation {quoteNo} ({packageTotal}). If anything in the package should change — a function, a service, the album — say so and we will adjust it.\n\nFantasy Studio',
+  receipt: '*Fantasy Studio* — payment received ✅\n\nThank you {clientName}. We have received your payment against quotation {quoteNo}. Remaining balance: *{balance}*. The dates are held for you.\n\nFantasy Studio',
+  statement: '*Fantasy Studio — account statement*\n{studioName}\n\nJobs: {jobs} · Billed: {billed} · Received: {received}\nDue for shot work: {dueShotWork}\nDue for upcoming events: {dueUpcoming}\n*Total outstanding: {totalOutstanding}*\n\nThank you for working with us — do let us know if any figure needs checking.\n\nFantasy Studio',
+};

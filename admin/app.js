@@ -1136,7 +1136,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* 'gs' (search) and 'fee' (edit fee) were missing: each pushed its own entry
      and closed through history.back(), but nothing here knew them, so the
      first ✕ or Back only dropped the entry and left the sheet on screen. */
-  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','masheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp','stx'];
+  const MODAL_VIEWS = ['pay','stsheet','tmsheet','assheet','masheet','fin','ins','ev','uplist','qa','stusheet','jt','crewpay','txns','gs','fee','exp','stx','ai'];
   function pushView(view, hash, replace, extra){
     if(_navFromPop) return;
     try{
@@ -1657,6 +1657,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(typeof closeFeeUI === 'function') closeFeeUI();
       if(typeof closeGsUI === 'function') closeGsUI();
       if(typeof closeExpUI === 'function') closeExpUI();
+      if(typeof closeAiUI === 'function') closeAiUI();
       /* Close the editor honestly: prompt ONLY when the form is genuinely
          dirty AND actually on screen. Closing a Home sheet must never raise
          "Discard unsaved changes?" for an editor parked on another tab —
@@ -2026,6 +2027,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="card__actions">
           <a class="btn btn--sm btn--ghost" href="tel:+91${esc(String(l.phone||'').replace(/\D/g,'').slice(-10))}" aria-label="Call ${esc(l.name||'this lead')}">📞 Call</a>
           <a class="btn btn--sm btn--ghost" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬 WhatsApp</a>
+          <button type="button" class="btn btn--sm btn--ghost" data-ai-reply title="Draft a WhatsApp reply from this enquiry" aria-label="Draft a WhatsApp reply to ${esc(l.name||'this lead')}">✨ Draft</button>
           <button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button>
         </div>
         <div class="card__body lead-det" id="ld-${esc(l.id)}" hidden>${leadDetailHTML(l)}</div>
@@ -2241,6 +2243,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       renderStats(); renderLeads(); return;
     }
     if(e.target.closest('[data-refresh-leads]')){ loadLeads(); toast('Checking for new leads…'); return; }
+    if(e.target.closest('[data-ai-reply]')){
+      const l = LEADS.find(x=>x.id===card.dataset.id);
+      if(l) openAiDraft({ lead: l });
+      return;
+    }
     if(e.target.closest('[data-del-lead]')){
       const l = LEADS.find(x=>x.id===card.dataset.id);
       if(!await confirmDialog({
@@ -4327,6 +4334,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button type="button" class="btn btn--sm btn--ghost" data-edit>Edit</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pdfrow>PDF</button>
         <button type="button" class="btn btn--sm btn--ghost" data-wapdf>Send ▷</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-aidraft title="Draft the quotation, follow-up or receipt message" aria-label="Draft a WhatsApp message for ${esc(x.clientName||'this client')}">✨ Draft</button>
         <button type="button" class="btn btn--sm btn--ghost" data-pay title="Record payment" aria-label="Record payment">＋ Pay</button>
         <button type="button" class="btn btn--sm btn--danger" data-delpkg>Delete</button>
       </div>
@@ -4518,6 +4526,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     if(e.target.closest('[data-pdfrow]')){ await makePdf(x); return; }
     if(e.target.closest('[data-wapdf]')){ await makePdf(x, true); return; }
+    if(e.target.closest('[data-aidraft]')){ openAiDraft({ pkg: x }); return; }
     if(e.target.closest('[data-pay]')){ openPay(x); return; }
     if(e.target.closest('[data-delpkg]')){
       if(!await confirmDialog({
@@ -11375,6 +11384,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(e.target.closest('[data-stuevtog]')){ _stuEvOpen = !_stuEvOpen; renderStudioDetail(); return; }
     if(e.target.closest('[data-stucsv]')){ exportStudioLedger(); return; }
     if(e.target.closest('[data-stustmt]')){ sendStudioStatement(); return; }
+    if(e.target.closest('[data-aistmt]')){ const s2 = studioById(_stuDetailId); if(s2) openAiDraft({ studio: s2 }); return; }
     if(e.target.closest('[data-stutxall]')){ openStuTx('*'); return; }
   });
 
@@ -11404,8 +11414,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      client's details. */
   /* Takes a studio so the LIST can send one too — the detail page still calls
      it with nothing and gets the partner whose page is open. */
-  function sendStudioStatement(who){
-    const s2 = who || studioById(_stuDetailId); if(!s2 || !s2.phone) return;
+  /* The figures a statement is made of, in one place: the WhatsApp text
+     below and the AI draft (aiFacts) read the same numbers, so the two can
+     never disagree about what the studio owes. */
+  function studioStatementFacts(s2){
     const conf = studioJobs(s2.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft'));
     const billed = conf.reduce((n,x)=>n + (Number((x.totals||{}).finalPrice)||0), 0);
     const paid   = conf.reduce((n,x)=>n + Math.max(0,Number((x.totals||{}).advance)||0), 0);
@@ -11413,24 +11425,33 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the outstanding figure is given in its two halves — work already shot
        and events still ahead — the same split the partner sees on their page */
     const sp = stuDueSplit(conf);
+    const open = conf.filter(x=>stuBal(x) > 0).map(x=>({ quoteNo: x.quoteNo||'—', due: stuBal(x), phase: stuJobPhase(x) }));
+    return { studioName: (s2.name||'').trim(), jobs: conf.length, billed, received: paid,
+             dueShotWork: sp.shotDue, dueUpcoming: sp.upDue, totalOutstanding: due, openItems: open };
+  }
+  function studioStatementText(s2){
+    const f = studioStatementFacts(s2);
     const lines = [
       `*Fantasy Studio — account statement*`,
-      `${s2.name||''}`.trim(),
+      f.studioName,
       ``,
-      `Jobs (booked & delivered): ${conf.length}`,
-      `Billed: ${inr(billed)}`,
-      `Received: ${inr(paid)}`,
-      `Due for shot work: ${sp.shotDue > 0 ? inr(sp.shotDue) : 'nil'}`,
-      `Due for upcoming events: ${sp.upDue > 0 ? inr(sp.upDue) : 'nil'}`,
-      due > 0 ? `*Total outstanding: ${inr(due)}*` : `Outstanding: nil — thank you`,
+      `Jobs (booked & delivered): ${f.jobs}`,
+      `Billed: ${inr(f.billed)}`,
+      `Received: ${inr(f.received)}`,
+      `Due for shot work: ${f.dueShotWork > 0 ? inr(f.dueShotWork) : 'nil'}`,
+      `Due for upcoming events: ${f.dueUpcoming > 0 ? inr(f.dueUpcoming) : 'nil'}`,
+      f.totalOutstanding > 0 ? `*Total outstanding: ${inr(f.totalOutstanding)}*` : `Outstanding: nil — thank you`,
     ];
-    const open = conf.filter(x=>stuBal(x) > 0);
-    if(open.length){
+    if(f.openItems.length){
       lines.push('', 'Open items:');
-      open.forEach(x=>lines.push(`· ${x.quoteNo||'—'} — ${inr(stuBal(x))}${stuJobPhase(x) === 'upcoming' ? ' (upcoming)' : ''}`));
+      f.openItems.forEach(o=>lines.push(`· ${o.quoteNo} — ${inr(o.due)}${o.phase === 'upcoming' ? ' (upcoming)' : ''}`));
     }
+    return lines.join('\n');
+  }
+  function sendStudioStatement(who){
+    const s2 = who || studioById(_stuDetailId); if(!s2 || !s2.phone) return;
     openWa('https://wa.me/' + String(normPhoneFull(s2.phone)).replace(/\D/g,'')
-           + '?text=' + encodeURIComponent(lines.join('\n')));
+           + '?text=' + encodeURIComponent(studioStatementText(s2)));
   }
 
   on('#studioList', 'click', e=>{
@@ -11785,7 +11806,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <!-- its two actions first: they were under every row of the ledger -->
           <div class="ev-acts stu-ledacts">
             <button class="btn btn--sm btn--ghost" type="button" data-stucsv>⭳ Export ledger</button>
-            ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>` : ''}
+            ${s.phone ? `<button class="btn btn--sm btn--ghost" type="button" data-stustmt>💬 Send statement</button>
+            <button class="btn btn--sm btn--ghost" type="button" data-aistmt title="Draft the statement message, then read it before sending">✨ Draft</button>` : ''}
           </div>
           <!-- The ledger only ever showed what was still OWED. What the studio
                has actually paid across the relationship is the other half of
@@ -13697,6 +13719,381 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#upClose', 'click', closeUpList);
   on('#upBackdrop', 'click', closeUpList);
 
+
+  /* ============================================================
+     AI — drafts, never sends (18 Oct 2026)
+
+     Two things, both behind ✨ buttons, both ending in a box the owner
+     reads and edits:
+
+       Paste an enquiry   Leads › ✨ Paste, and inside the quotation editor.
+                          A WhatsApp chat goes to the studio's `ai` function
+                          and comes back as the fields of an enquiry —
+                          client, functions with dates, services, notes, the
+                          questions still to ask. From there: open it in the
+                          quotation editor, save it as a lead, or fill the
+                          quotation that is already open. Nothing is written
+                          until the owner presses the editor's own Save.
+       Draft a message    ✨ Draft on a lead card (first reply), a package
+                          card (quotation · follow-up · receipt) and a
+                          partner studio's ledger (statement). The box opens
+                          at once holding the panel's usual template, so a
+                          message can go even when the function is not
+                          published or the day's AI cap is spent; the AI
+                          draft replaces the template when it arrives — but
+                          never over text the owner has started editing.
+                          Open WhatsApp is the same wa.me link the panel has
+                          always used. The panel never sends on its own.
+
+     Privacy: phone numbers are masked here, before the text leaves this
+     phone, and remembered so the draft can still carry the number the model
+     never saw. The function (app/backend/functions/ai.js) masks again, is
+     admin-only, holds the key in Secret Manager and stops at a daily cap.
+     In the demo panel every answer comes from _demo-data.js (aiDrafts);
+     nothing is called.
+     ============================================================ */
+  const AI_KINDS = { reply:'Reply', quote:'Quote', followup:'Follow-up', receipt:'Receipt', statement:'Statement' };
+  let _aiMode = null, _aiTarget = 'lead', _aiCtx = null, _aiKind = '', _aiDraft = null, _aiPhones = [];
+  let _aiSeq = 0, _aiEdited = false, _aiPaste = '';
+  /* an Indian mobile however it is written — 9848011223, 98480 11223,
+     98480-11223, +91 98480 11223, 919848011223, 0091… A date (2026-11-14)
+     never matches; a rupee amount under ten digits does not either. */
+  const AI_PHONE_RE = /(?:\+\s?\d{1,3}[ -]?)?(?:\d{5}[ -]\d{5}|\d{10,13})(?!\d)/g;
+  function aiMask(text){
+    const phones = [];
+    const masked = String(text||'').replace(AI_PHONE_RE, m=>{
+      const d = m.replace(/\D/g,'');
+      if(d.length < 10) return m;
+      const ten = d.slice(-10);
+      if(!phones.some(p=>p.ten === ten)) phones.push({ ten, full: normPhoneFull(m) });
+      return '[number ending ' + d.slice(-4) + ']';
+    });
+    return { masked, phones };
+  }
+  /* the studio's own numbers turn up in every pasted chat; they are not the client's */
+  const aiOwnPhones = () => new Set(['8686868803', normPhone((pdfContact()||{}).phone||'')].filter(Boolean));
+  async function aiCall(kind, payload){
+    if(DEMO){
+      await new Promise(r=>setTimeout(r, 900));
+      return aiDemoAnswer(kind, payload);
+    }
+    return apCallable('ai', Object.assign({ kind }, payload));
+  }
+  function aiDemoAnswer(kind, payload){
+    const fx = (_apDemo && _apDemo.aiDrafts) || {};
+    if(kind === 'lead'){
+      const d = fx.lead ? JSON.parse(JSON.stringify(fx.lead)) : { clientName:'', careOf:'', eventType:'', events:[], budgetHint:0, notes:'', language:'en', confidence:'low', questions:[] };
+      return { kind, draft: d, model: 'demo' };
+    }
+    const f = (payload && payload.facts) || {};
+    const money = v => inr(v);
+    const text = String(fx[kind] || '').replace(/\{(\w+)\}/g, (_, k)=>{
+      const v = f[k];
+      if(v == null) return '';
+      if(/total|balance|amount|billed|received|due/i.test(k) && typeof v === 'number') return money(v);
+      return String(v);
+    });
+    return { kind, text, model: 'demo' };
+  }
+  /* the function's own sentence when it has one (cap reached, declined, key
+     missing); the panel's usual wording for the plumbing failures */
+  function aiWhy(e){
+    const c = String((e && e.code) || '').replace(/^functions\//, '');
+    const msg = String((e && e.message) || '').trim();
+    if(['resource-exhausted','failed-precondition','invalid-argument','unavailable'].includes(c) && msg && msg !== c) return msg;
+    return apWhy(e);
+  }
+  function openAiUI(){
+    const was = $('#aiModal').classList.contains('open');
+    $('#aiModal').classList.add('open'); $('#aiBackdrop').classList.add('open');
+    if(!was) pushView('ai', '#ai');
+  }
+  function closeAiUI(){ $('#aiModal').classList.remove('open'); $('#aiBackdrop').classList.remove('open'); _aiSeq++; }
+  function closeAi(){ backFrom('ai', closeAiUI); }
+
+  /* ---- paste an enquiry ---- */
+  function openAiPaste(target){
+    _aiMode = 'paste'; _aiTarget = target; _aiDraft = null; _aiPhones = [];
+    $('#aiTitle').textContent = '✨ Paste an enquiry';
+    $('#aiWho').textContent = target === 'pkg'
+      ? 'The chat fills this quotation — client, functions, dates, services. Check it, then Save as usual.'
+      : 'Paste the WhatsApp chat. Phone numbers are masked before it leaves this phone; nothing is saved until you say so.';
+    renderAiPaste();
+    openAiUI();
+    setTimeout(()=>{ const t = $('#aiPaste'); if(t) t.focus({ preventScroll:true }); }, 60);
+  }
+  function renderAiPaste(status){
+    const busy = /Reading/.test(status||'');
+    $('#aiBody').innerHTML = `
+      <div class="field">
+        <label class="field__label" for="aiPaste">The conversation</label>
+        <textarea class="input ai-paste" id="aiPaste" rows="8" placeholder="Paste the WhatsApp chat here — Hinglish, Urdu, Telugu, anything." ${busy ? 'disabled' : ''}>${esc(_aiPaste)}</textarea>
+        <span class="field__hint">Numbers become “[number ending 1234]” before anything is sent. The client's number is kept here for the lead.</span>
+      </div>
+      ${status ? `<p class="ai-status" role="status">${esc(status)}</p>` : ''}
+      <div class="ai-acts">
+        <button type="button" class="btn btn--ghost" data-ai-close>Cancel</button>
+        <button type="button" class="btn btn--primary" id="aiRead" ${busy ? 'disabled' : ''}>✨ Read it</button>
+      </div>`;
+  }
+  async function aiReadPaste(){
+    const ta = $('#aiPaste'); _aiPaste = ((ta && ta.value) || '').trim();
+    if(!_aiPaste){ toast('Paste the chat first'); return; }
+    const { masked, phones } = aiMask(_aiPaste);
+    const own = aiOwnPhones();
+    _aiPhones = phones.filter(p=>!own.has(p.ten));
+    const seq = ++_aiSeq;
+    renderAiPaste('✨ Reading the chat…');
+    try{
+      const r = await aiCall('lead', { text: masked });
+      if(seq !== _aiSeq) return;
+      _aiDraft = (r && r.draft) || null;
+      if(!_aiDraft){ renderAiPaste('Nothing came back — try again.'); return; }
+      renderAiLead();
+    }catch(err){
+      if(seq === _aiSeq) renderAiPaste('⚠ ' + aiWhy(err));
+    }
+  }
+  const aiSvcLine = ev => (ev.services||[]).map(s=>`${SERVICE_LABELS[s.key]||s.key}${s.qty>1 ? ' ×'+s.qty : ''}`).join(', ');
+  function renderAiLead(){
+    const d = _aiDraft, ph = _aiPhones[0];
+    const evs = (d.events||[]).map(ev=>{
+      const when = [ev.date ? dmy(ev.date) : '', slotName(ev.slot)].filter(Boolean).join(' · ');
+      return `<div class="ln"><span>${esc(ev.title||'Function')}${when ? ' · ' + esc(when) : ''}</span><span>${esc(aiSvcLine(ev) || '—')}</span></div>`
+        + (ev.venue ? `<div class="ln ai-venue"><span>📍 ${esc(ev.venue)}</span><span></span></div>` : '');
+    }).join('');
+    const conf = { high:'Read clearly', medium:'Some of it is inferred — check the dates', low:'Not much to go on — check everything' }[d.confidence] || 'Check everything';
+    $('#aiBody').innerHTML = `
+      <div class="lead-det ai-sum">
+        <div class="ln"><span>Client</span><span>${esc(d.clientName||'—')}${d.careOf ? ' · c/o ' + esc(d.careOf) : ''}</span></div>
+        <div class="ln"><span>Phone</span><span>${ph ? esc(ph.ten) + ' <i>from the chat</i>' : '<i>not in the chat — type it</i>'}${_aiPhones.length > 1 ? ` <i>(+${_aiPhones.length - 1} more)</i>` : ''}</span></div>
+        ${d.eventType ? `<div class="ln"><span>Events</span><span>${esc(d.eventType)}</span></div>` : ''}
+        ${evs ? `<h4>Functions</h4>${evs}` : ''}
+        ${d.budgetHint ? `<div class="ln"><span>Budget mentioned</span><span>${inr(d.budgetHint)}</span></div>` : ''}
+        ${d.notes ? `<h4>Notes</h4><div class="ai-notes">${esc(d.notes)}</div>` : ''}
+        ${(d.questions||[]).length ? `<h4>Still to ask</h4><ul class="ai-q">${d.questions.map(q=>`<li>${esc(q)}</li>`).join('')}</ul>` : ''}
+        <p class="sub ai-conf" data-conf="${esc(d.confidence||'low')}">✨ ${esc(conf)} — nothing is saved yet.</p>
+      </div>
+      <div class="ai-acts ai-acts--col">
+        ${_aiTarget === 'pkg'
+          ? `<button type="button" class="btn btn--primary" data-ai-fill>Fill this quotation</button>`
+          : `<button type="button" class="btn btn--primary" data-ai-topkg>📦 Open in the quotation editor</button>
+             <button type="button" class="btn btn--ghost" data-ai-tolead>👤 Save as a lead</button>`}
+        <button type="button" class="btn btn--ghost" data-ai-again>← Paste again</button>
+      </div>`;
+  }
+  /* the draft in the package editor's own shape; rates from the rate card
+     the editor is on (a studio job keeps its negotiated card) */
+  function aiDraftToPkg(d){
+    const ph = _aiPhones[0];
+    const full = ph ? String(ph.full||'').replace(/\D/g,'') : '';
+    const nri = full.length > 10 && full.slice(0, -10) !== '91';
+    const events = (d.events||[]).map(ev=>({
+      title: String(ev.title||'').toUpperCase(), date: ev.date||'', slot: ev.slot||'', venue: ev.venue||'',
+      items: (ev.services||[]).map(sv=>{
+        const r = leadServiceRate(sv.key, SERVICE_LABELS[sv.key] || sv.key);
+        return { service: r.service, qty: Number(sv.qty)||1, rate: r.rate };
+      })
+    }));
+    return {
+      leadId: null, clientName: d.clientName||'', careOf: d.careOf||'',
+      clientPhone: ph ? (nri ? '+' + full : ph.ten) : '', clientPhoneFull: full,
+      quoteDate: todayISO(),
+      events: events.length ? events : [{ title:'', date:'', venue:'', items:[] }],
+      album: { sheets:0, perSheet:0, price:0 }, addons: [], totals: {}
+    };
+  }
+  /* The sheet's history entry is reused by what opens next (pushView
+     replaces a sheet's entry), the way ⚡ › Quotation does — no Back is
+     needed, and Back afterwards still means the screen before the sheet. */
+  function aiOpenInEditor(){
+    if(!_aiDraft || !canLeaveEditor()) return;
+    _bStudioId = null;   /* a pasted enquiry is a direct client — never a studio's rate card */
+    const pkg = aiDraftToPkg(_aiDraft);
+    closeAiUI();
+    if($('#pkgView').hidden) $('#tabPkgs').click();
+    openPkgEdit(pkg);
+    $('#pkgEditTitle').textContent = `New Package — from a pasted chat`;
+    toast(pkg.clientPhone ? 'Check names, dates and rates, then Save' : 'No number in the chat — add the phone, check rates, then Save');
+  }
+  function aiSaveAsLead(){
+    const d = _aiDraft; if(!d) return;
+    const ph = _aiPhones[0];
+    const first = (d.events||[]).map(e=>e.date).filter(Boolean).sort()[0] || '';
+    const lines = [];
+    if(d.notes) lines.push(d.notes);
+    (d.events||[]).forEach(ev=>{
+      const svc = aiSvcLine(ev);
+      lines.push(`${ev.title||'Function'}${ev.date ? ' ' + dmy(ev.date) : ''}${slotName(ev.slot) ? ' (' + slotName(ev.slot) + ')' : ''}${ev.venue ? ' @ ' + ev.venue : ''}${svc ? ' — ' + svc : ''}`);
+    });
+    if(d.budgetHint) lines.push('Budget mentioned: ' + inr(d.budgetHint));
+    if((d.questions||[]).length) lines.push('Still to ask: ' + d.questions.join(' · '));
+    const pre = { message: ('From a pasted chat — AI summary:\n' + lines.join('\n')).slice(0, 1900), weddingDate: first };
+    closeAiUI();
+    openQaLead();
+    _qaPrefill = pre;   /* after openQaLead: closeQaUI (which clears it) may run inside */
+    $('#qlName').value = d.clientName || '';
+    $('#qlPhone').value = ph ? ph.ten : '';
+    $('#qlType').value = d.eventType || '';
+    toast(ph ? 'Check the name and number, then Save lead' : 'Type the number, then Save lead');
+  }
+  /* into the quotation already open: empty client fields are filled, the
+     chat's functions replace an empty event list or go under the ones typed */
+  function aiFillEditor(){
+    const d = _aiDraft; if(!d) return;
+    const pkg = aiDraftToPkg(d);
+    if(!$('#pcName').value.trim() && pkg.clientName) $('#pcName').value = pkg.clientName;
+    if(!$('#pcPhone').value.trim() && pkg.clientPhone) $('#pcPhone').value = pkg.clientPhone;
+    if(!$('#pcCareOf').value.trim() && pkg.careOf) $('#pcCareOf').value = pkg.careOf;
+    const had = readForm().events.length;
+    const html = pkg.events.map(evCardHTML).join('');
+    if(!had) $('#pkgEvents').innerHTML = html; else $('#pkgEvents').insertAdjacentHTML('beforeend', html);
+    refreshAllSvcChips(); computePkg(); syncPkgSave();
+    closeAi();
+    toast(had ? 'Functions from the chat added under yours — check rates, then Save' : 'Filled from the chat — check rates, then Save');
+  }
+
+  /* ---- draft a WhatsApp message ---- */
+  function aiKindsFor(ctx){
+    if(ctx.lead) return ['reply'];
+    if(ctx.studio) return ['statement'];
+    const x = ctx.pkg, st = x.status||'draft', k = ['quote'];
+    if(st === 'sent' || st === 'unconfirmed') k.unshift('followup');   /* a sent quotation is most often chased, not re-sent */
+    if((x.payments||[]).length) k.push('receipt');
+    return k;
+  }
+  const aiWho = ctx => ctx.lead ? (ctx.lead.name||'this lead') : ctx.studio ? (ctx.studio.name||'the studio') : (ctx.pkg.clientName||'the client');
+  const aiDays = ts => {
+    const ms = ts && ts.toMillis ? ts.toMillis() : (ts && ts.seconds ? ts.seconds*1000 : (typeof ts === 'number' ? ts : 0));
+    return ms ? Math.max(0, Math.floor((Date.now() - ms)/864e5)) : null;
+  };
+  const aiLastPayment = x => {
+    const pays = (x.payments||[]).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+    return pays[pays.length - 1] || null;
+  };
+  /* only the record's own figures — never a phone number */
+  function aiFacts(kind, ctx){
+    const c = pdfContact() || {};
+    const base = { studio: 'Fantasy Studio', studioPhone: c.phone||'', website: c.website||'' };
+    if(ctx.lead){
+      const l = ctx.lead;
+      return { ...base, clientName: l.name||'', theirMessage: l.message||'', eventType: l.eventType||'', shootDate: l.weddingDate||'',
+        enquiredDaysAgo: aiDays(l.createdAt), source: l.source||'', ownerNotes: l.notes||'',
+        missing: [!l.weddingDate && 'the function dates', !l.eventType && 'which functions', 'the venue'].filter(Boolean) };
+    }
+    if(ctx.studio) return { ...base, ...studioStatementFacts(ctx.studio) };
+    const x = ctx.pkg, tt = x.totals||{};
+    const f = { ...base, clientName: x.clientName||'', quoteNo: x.quoteNo||'', status: x.status||'draft',
+      events: (x.events||[]).map(ev=>({ title: ev.title||'', date: ev.date||'', timeOfDay: slotName(ev.slot)||'', venue: ev.venue||'' })),
+      packageTotal: Number(tt.finalPrice)||0, received: Math.max(0, Number(tt.advance)||0), balance: Math.max(0, Number(tt.balance)||0),
+      paymentTerms: '50% advance confirms your dates · 40% after the event, before editing starts · 10% on delivery',
+      firstFunctionDate: nextShootDate(x)||'' };
+    if(kind === 'followup') f.sentDaysAgo = aiDays(x.sentAt || x.updatedAt || x.createdAt);
+    if(kind === 'receipt'){ const pm = aiLastPayment(x) || {}; f.payment = { amount: Number(pm.amount)||0, mode: pm.mode||'', date: pm.date||'' }; }
+    return f;
+  }
+  /* the panel's usual words, shown at once */
+  function aiTemplate(kind, ctx){
+    if(ctx.lead){
+      const l = ctx.lead;
+      return `Salaam ${l.name||''}! Thank you for reaching out to Fantasy Studio${l.eventType ? ' about your ' + l.eventType : ''}. We would be glad to cover it. Could you share the function dates and the venue, so we can send you a quotation?\n\nFantasy Studio`;
+    }
+    if(ctx.studio) return studioStatementText(ctx.studio);
+    const x = ctx.pkg;
+    if(kind === 'followup') return waFollowupText(x);
+    if(kind === 'receipt'){ const pm = aiLastPayment(x) || { amount:0, mode:'', date:'' }; return waReceiptText(x, pm, Math.max(0, Number((x.totals||{}).balance)||0)); }
+    return waQuoteText(x);
+  }
+  function aiWaUrl(text){
+    const c = _aiCtx;
+    if(c.lead) return `https://wa.me/${c.lead.phoneFull || ('91' + String(c.lead.phone||''))}?text=${encodeURIComponent(text)}`;
+    if(c.studio) return 'https://wa.me/' + String(normPhoneFull(c.studio.phone)).replace(/\D/g,'') + '?text=' + encodeURIComponent(text);
+    return waLink(c.pkg, text);
+  }
+  const AI_NOTE = {
+    template: 'Your usual template — the AI version replaces it in a moment.',
+    busy: '✨ Writing…',
+    ai: '✨ Drafted by AI from this record’s facts — read it before you send.',
+  };
+  function openAiDraft(ctx){
+    _aiMode = 'draft'; _aiCtx = ctx; _aiEdited = false;
+    _aiKind = aiKindsFor(ctx)[0];
+    $('#aiTitle').textContent = '✨ Draft a WhatsApp message';
+    $('#aiWho').textContent = `To ${aiWho(ctx)} — read it, change anything, then open WhatsApp. Nothing is sent from here.`;
+    renderAiDraft(aiTemplate(_aiKind, ctx), 'template');
+    openAiUI();
+    aiFetchDraft();
+  }
+  function renderAiDraft(text, state){
+    const kinds = aiKindsFor(_aiCtx);
+    $('#aiBody').innerHTML = `
+      ${kinds.length > 1 ? `<div class="mode-pills ai-kinds">${kinds.map(k=>`<button type="button" data-ai-kind="${k}" class="${k===_aiKind?'on':''}">${AI_KINDS[k]}</button>`).join('')}</div>` : ''}
+      <div class="field">
+        <label class="field__label" for="aiText">Message</label>
+        <textarea class="input ai-text" id="aiText" rows="9">${esc(text)}</textarea>
+      </div>
+      <p class="ai-status" id="aiStatus" role="status">${esc(AI_NOTE[state] || '')}</p>
+      <div class="ai-acts">
+        <button type="button" class="btn btn--primary" data-ai-wa>💬 Open WhatsApp</button>
+        <button type="button" class="btn btn--ghost" data-ai-copy>Copy</button>
+        <button type="button" class="btn btn--ghost" data-ai-redo ${state === 'busy' ? 'disabled' : ''}>↻ Redraft</button>
+      </div>`;
+  }
+  const aiSay = t => { const el = $('#aiStatus'); if(el) el.textContent = t; };
+  async function aiFetchDraft(){
+    const seq = ++_aiSeq, kind = _aiKind, ctx = _aiCtx;
+    aiSay(AI_NOTE.busy);
+    const redo = $('[data-ai-redo]'); if(redo) redo.disabled = true;
+    try{
+      const r = await aiCall(kind, { facts: aiFacts(kind, ctx) });
+      if(seq !== _aiSeq || kind !== _aiKind) return;
+      const ta = $('#aiText');
+      if(!ta || !r || !r.text){ aiSay('Nothing came back — your usual template is below.'); return; }
+      /* never over the owner's own typing: they take it with ↻ Redraft */
+      if(_aiEdited){ aiSay('✨ The AI draft is ready — press ↻ Redraft to take it, or keep yours.'); return; }
+      ta.value = r.text;
+      aiSay(AI_NOTE.ai);
+    }catch(err){
+      if(seq !== _aiSeq) return;
+      aiSay('⚠ ' + aiWhy(err) + ' Your usual template is below — you can still send it.');
+    }finally{
+      const r2 = $('[data-ai-redo]'); if(r2 && seq === _aiSeq) r2.disabled = false;
+    }
+  }
+  on('#aiClose', 'click', closeAi);
+  on('#aiBackdrop', 'click', closeAi);
+  on('#leadPaste', 'click', ()=>openAiPaste('lead'));
+  on('#pkgPaste', 'click', ()=>openAiPaste('pkg'));
+  on('#aiBody', 'click', async e=>{
+    if(e.target.closest('[data-ai-close]')){ closeAi(); return; }
+    if(e.target.closest('#aiRead')){ aiReadPaste(); return; }
+    if(e.target.closest('[data-ai-again]')){ renderAiPaste(); return; }
+    if(e.target.closest('[data-ai-topkg]')){ aiOpenInEditor(); return; }
+    if(e.target.closest('[data-ai-tolead]')){ aiSaveAsLead(); return; }
+    if(e.target.closest('[data-ai-fill]')){ aiFillEditor(); return; }
+    const kb = e.target.closest('[data-ai-kind]');
+    if(kb){
+      if(kb.dataset.aiKind !== _aiKind){ _aiKind = kb.dataset.aiKind; _aiEdited = false; renderAiDraft(aiTemplate(_aiKind, _aiCtx), 'template'); aiFetchDraft(); }
+      return;
+    }
+    if(e.target.closest('[data-ai-wa]')){
+      const t = (($('#aiText')||{}).value||'').trim();
+      if(!t){ toast('Nothing to send'); return; }
+      openWa(aiWaUrl(t));
+      return;
+    }
+    if(e.target.closest('[data-ai-copy]')){
+      try{ await navigator.clipboard.writeText((($('#aiText')||{}).value||'')); toast('Copied'); }
+      catch(err){ toast('Could not copy — select the text instead'); }
+      return;
+    }
+    if(e.target.closest('[data-ai-redo]')){ _aiEdited = false; aiFetchDraft(); return; }
+  });
+  on('#aiBody', 'input', e=>{
+    if(e.target.id === 'aiText') _aiEdited = true;
+    if(e.target.id === 'aiPaste') _aiPaste = e.target.value;
+  });
+
   /* ---------- quick actions — the ⚡ button on Home ---------- */
   function openQa(){
     renderQaMain();
@@ -13704,7 +14101,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#qaModal').classList.add('open'); $('#qaBackdrop').classList.add('open');
     if(!wasOpen) pushView('qa', '#quick');
   }
-  function closeQaUI(){ $('#qaModal').classList.remove('open'); $('#qaBackdrop').classList.remove('open'); }
+  function closeQaUI(){ $('#qaModal').classList.remove('open'); $('#qaBackdrop').classList.remove('open'); _qaPrefill = null; }
+  /* set by the ✨ paste sheet before it opens this form: the AI's summary
+     goes into the lead's message and the first function date into
+     weddingDate — two keys the leads rule already allows the website to
+     write, so the shape stays the website's own */
+  let _qaPrefill = null;
   function closeQa(){
     backFrom('qa', closeQaUI);
   }
@@ -13839,9 +14241,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const btn = $('#qlSave'); btn.disabled = true; btn.textContent = 'Saving…';
     try{
       const ref = doc(collection(db,'leads'));
+      const pre = _qaPrefill || {};
       const res = await settle(setDoc(ref, {
         name, phone: ten, phoneFull: normPhoneFull(raw),
-        eventType: type, message: '', notes: '',
+        eventType: type, message: String(pre.message||'').slice(0, 2000), notes: '',
+        ...(/^\d{4}-\d{2}-\d{2}$/.test(pre.weddingDate||'') ? { weddingDate: pre.weddingDate } : {}),
         status: 'new', source: 'contact_form', createdAt: serverTimestamp()
       }));
       if(res === 'denied'){

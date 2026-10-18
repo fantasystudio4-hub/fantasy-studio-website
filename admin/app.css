@@ -2579,3 +2579,28 @@ details.aps-help>summary::-webkit-details-marker{display:none}
 details.aps-help>summary::before{content:'ⓘ';font-size:var(--fs-base)}
 details.aps-help[open]>summary::before{content:'ⓘ'}
 details.aps-help>.insnote{margin-top:0}
+
+/* ---- AI drafts (18 Oct 2026): the ✨ sheet ------------------------------
+   Reuses the sheet chrome (.pay-modal.fin) and the lead detail's .ln rows;
+   only the paste box, the status line and the button rows are its own. */
+.ai-paste{min-height:9.5rem;font-size:var(--fs-input);line-height:1.45}
+.ai-text{min-height:11rem;font-size:var(--fs-input);line-height:1.5;white-space:pre-wrap}
+.ai-status{font-size:var(--fs-sm);color:var(--mut);margin:.2rem 0 .6rem;line-height:1.45;min-height:1.2em;overflow-wrap:anywhere}
+.ai-acts{display:flex;gap:var(--sp-2);margin-top:var(--sp-3);flex-wrap:wrap}
+.ai-acts .btn{flex:1 1 40%;min-height:var(--tap)}
+.ai-acts--col{flex-direction:column}
+.ai-acts--col .btn{flex:1 1 auto;width:100%}
+.ai-sum .ln{gap:.6rem;align-items:flex-start}
+.ai-sum .ln span:first-child{flex:1 1 48%;min-width:0;overflow-wrap:break-word}
+.ai-sum .ln span:last-child{flex:1 1 52%;text-align:right;min-width:0;overflow-wrap:anywhere}
+.ai-sum .ln i{font-style:normal;color:var(--mut);font-size:var(--fs-sm)}
+.ai-sum .ai-venue{padding-top:0;margin-top:-.1rem}
+.ai-sum .ai-venue span:first-child{color:var(--mut);font-size:var(--fs-sm)}
+.ai-notes{color:var(--text);font-size:var(--fs-md);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.ai-q{margin:.1rem 0 .2rem;padding-left:1.1rem;color:var(--text);font-size:var(--fs-md);line-height:1.5}
+.ai-q li{margin:.15rem 0}
+.ai-conf{margin:.7rem 0 .2rem;color:var(--gold-b)}
+.ai-conf[data-conf="low"]{color:var(--warn)}
+.ai-kinds{margin-bottom:.7rem}
+.ai-kinds button{font-size:var(--fs-md);padding:.5em .4em}
+.pkg-paste{width:100%;margin:.2rem 0 .3rem;white-space:normal;line-height:1.3}
