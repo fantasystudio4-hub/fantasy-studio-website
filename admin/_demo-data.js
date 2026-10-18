@@ -925,6 +925,25 @@ export const aiDrafts = {
         detail: 'Aisha & Faizan (client area) · Rahul V (website)', go: { r: 'reviews' }, ids: ['rv01', 'rv02'] },
     ],
   },
+  /* Ask the books (Phase 4): the demo reads the month, season, crew member
+     or balance the question names off the panel's own tables (askDemoAnswer
+     in app.js) and phrases it with these sentences; a question it cannot
+     place gets `fallback`, exactly as the function answers when the tables
+     do not hold it. {label} {booked} {events} {enq} {billed} {received}
+     {spent} for a month or season; {name} {role} {since} {days} {worked}
+     {next} for the crew; {n} {total} {top} {topBal} for balances;
+     {key:one|many} picks the noun by the number. */
+  ask: {
+    phrasing: {
+      month: 'Booked for {label}: {booked:function|functions} over {events:shooting day|shooting days}, from {enq:enquiry|enquiries} that landed that month. Billed {billed}, received {received} so far.',
+      billed: 'Billed {billed} in {label} across {booked:booked function|booked functions}; {received} of it has come in. Crew pay and expenses in the same months came to {spent}.',
+      idle: '{name} ({role}) has been idle longest — last on a shoot {since}, {days:day|days} ago, with {worked:shoot day|shoot days} in the last 24 months. Next shoot: {next}.',
+      idleNever: '{name} ({role}) has been idle longest — not one shoot day in the last 24 months. Next shoot: {next}.',
+      due: '{n:booked job|booked jobs} still carry a balance, {total} in all. The largest is {top} at {topBal}.',
+      dueNone: 'Nothing is due — every booked job is settled.',
+    },
+    fallback: { answer: 'That is not in the books. The tables hold the last 24 months by month (enquiries, quotations, bookings, billed, received, crew pay, expenses), the service mix, the venues, crew days and the open balances — ask about one of those.', figures: [], basis: 'not_in_books' },
+  },
   /* Quick entry (Phase 2): what one spoken or typed line becomes. The demo
      takes the first example whose `when` matches the line, else `fallback`
      (a plain expense). A 0 amount or a blank mode is read off the line

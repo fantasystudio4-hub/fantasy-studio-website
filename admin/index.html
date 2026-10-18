@@ -743,6 +743,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 
     <div class="mpane" id="insModal" aria-label="Business insights">
       <button class="pay-close" id="insClose" type="button" aria-label="Close" hidden>&times;</button>
+      <!-- Ask the books (AI, Phase 4, 18 Oct 2026): one question — "How many
+           weddings in November?" — answered from aggregated tables the panel
+           builds here (months, services, venues, crew, balances by quotation
+           number). Drawn by askMount in app.js; advisory only, nothing writes. -->
+      <div class="ask" id="askBox"></div>
       <div class="who" id="insWho"></div>
       <div id="insBody"></div>
     </div>

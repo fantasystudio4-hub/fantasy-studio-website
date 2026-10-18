@@ -12828,6 +12828,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function closeIns(){ backFrom('ins', closeInsUI); }
 
   function renderIns(){
+    askMount();   /* the question box above the page: drawn once, never rebuilt with the body */
     const d = insData();
     const pc = (a,b) => b ? Math.round(100*a/b) + '%' : '—';
     /* One bar component for the whole sheet: a labelled row whose fill is the
@@ -13788,6 +13789,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return { kind, draft: d, model: 'demo' };
     }
     if(kind === 'entry') return { kind, draft: qeDemoDraft(String((payload && payload.text) || ''), fx.entry || {}), model: 'demo' };
+    if(kind === 'ask') return { kind, draft: askDemoAnswer(String((payload && payload.text) || ''), (payload && payload.facts) || askTables(), fx.ask || {}), model: 'demo' };
     const f = (payload && payload.facts) || {};
     const money = v => inr(v);
     const text = String(fx[kind] || '').replace(/\{(\w+)\}/g, (_, k)=>{
@@ -14649,6 +14651,274 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(!hit) d.note = t.slice(0, 80);
     }
     return d;
+  }
+
+  /* ============================================================
+     Ask the books — a question box on Money › Insights (Phase 4 of the AI
+     plan, 18 Oct 2026)
+
+     "How many weddings in November?" · "What did we bill last Dussehra
+     season?" · "Which crew member has been idle longest?" — questions the
+     owner used to answer by exporting a CSV. The panel builds compact,
+     AGGREGATED tables from the data it already holds (askTables: per-month
+     enquiries / quotes sent / booked / events / billed / received / crew
+     paid / expenses for the last 24 months, the service mix, the top
+     venues, crew utilisation, open balances by quotation number, the
+     pipeline and today) and sends those with the question to the studio's
+     `ai` function as kind 'ask'. No client names, no phone numbers, no
+     messages leave the phone — a quotation number stands for a job, and a
+     number typed into the question is masked like any other. The answer
+     comes back with the figures it leaned on and a basis: from the books,
+     partly, or "not in the books" — the function is told to say so rather
+     than guess. The last five questions of this session are kept in memory
+     under the box (nothing stored). ADVISORY only: nothing here writes.
+     In the demo panel askDemoAnswer() reads the month, season, crew or
+     balance the question names off the same tables and phrases it with the
+     fixture's sentences (_demo-data.js aiDrafts.ask); nothing is called.
+     ============================================================ */
+  /* 24 months back and 6 ahead: "how many weddings in November?" asked in
+     October is about the season coming, and booked functions sit on future
+     dates. ASK_MAX mirrors MAX_FACTS_ASK in ai.js. */
+  const ASK_MONTHS = 24, ASK_AHEAD = 6, ASK_MAX = 24000, ASK_KEEP = 5;
+  const ASK_EG = ['How many weddings in November?', 'What did we bill last Dussehra season?', 'Which crew member has been idle longest?'];
+  let _askLog = [], _askSeq = 0, _askBusy = false;
+  const askBox = () => $('#askBox');
+  function askMount(){
+    const el = askBox(); if(!el || el.dataset.ready) return;
+    el.dataset.ready = '1';
+    el.innerHTML = `
+      <div class="qe-row">
+        <input class="qe-in" type="text" id="askIn" autocomplete="off" autocapitalize="sentences" enterkeyhint="go" maxlength="300"
+               placeholder="✨ Ask the books — “${esc(ASK_EG[0])}”" aria-label="Ask a question about the business — answered from the panel's own figures" />
+        <button type="button" class="qe-go" id="askGo" aria-label="Ask" title="Ask the books">✨</button>
+      </div>
+      <div class="ask-egs" id="askEgs">${ASK_EG.map(q=>`<button type="button" class="qchip" data-ask-eg="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <p class="qe-status" id="askHint">Answered only from the figures on this page and the ledgers — no names or numbers leave the phone. When the books cannot answer, it says so.</p>
+      <div id="askOut"></div>`;
+  }
+  /* days since an ISO date, a Timestamp or ms; null when unreadable */
+  function askDaysSince(v){
+    const ms = v && typeof v.toMillis === 'function' ? v.toMillis()
+      : (v && v.seconds) ? v.seconds * 1000
+      : typeof v === 'number' ? v
+      : ISO_RE.test(String(v||'').slice(0, 10)) ? new Date(String(v).slice(0, 10) + 'T00:00').getTime() : 0;
+    return ms ? Math.max(0, Math.floor((Date.now() - ms) / 864e5)) : null;
+  }
+  /* The books, as the model sees them. Aggregates only: a month row, a
+     service, a venue, a crew member, a quotation number with a balance.
+     Packages are anchored to their FIRST event date, the same anchor
+     Insights and the money table use. Capped at ASK_MAX by trimming the
+     long lists (open balances, pipeline, venues) before anything else. */
+  function askTables(){
+    const today = todayISO();
+    const ym = d => String(d||'').slice(0, 7);
+    const tsIso = t => (t && typeof t.toDate === 'function') ? t.toDate().toLocaleDateString('en-CA') : '';
+    const keys = [];
+    { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + ASK_AHEAD); for(let i = 0; i < ASK_MONTHS + ASK_AHEAD; i++){ keys.push(d.toLocaleDateString('en-CA').slice(0, 7)); d.setMonth(d.getMonth() - 1); } }
+    const rows = Object.create(null);
+    keys.forEach(k=>{ rows[k] = { m: k, enq: 0, sent: 0, booked: 0, events: 0, billed: 0, received: 0, crewPaid: 0, expenses: 0 }; });
+    const inWin = iso => ISO_RE.test(iso||'') && !!rows[ym(iso)];
+    const add = (iso, k, v) => { const r = ISO_RE.test(iso||'') ? rows[ym(iso)] : null; if(r) r[k] += (v === undefined ? 1 : v); };
+    const first = x => {
+      const ds = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
+      return ds[0] || (ISO_RE.test(x.quoteDate||'') ? x.quoteDate : tsIso(x.createdAt));
+    };
+    const val = x => Number((x.totals||{}).finalPrice) || 0;
+    liveLeads().forEach(l=>add(tsIso(l.createdAt), 'enq'));
+    const pk = livePkgs();
+    const won = pk.filter(x=>['booked','delivered'].includes(x.status||'draft'));
+    pk.forEach(x=>{
+      if(['sent','unconfirmed','booked','delivered'].includes(x.status||'draft'))
+        add(ISO_RE.test(x.sentAt||'') ? x.sentAt : (ISO_RE.test(x.quoteDate||'') ? x.quoteDate : tsIso(x.createdAt)), 'sent');
+      (x.payments||[]).forEach(p=>{ if(p) add(String(p.date||''), 'received', Number(p.amount)||0); });
+    });
+    won.forEach(x=>{
+      const f = first(x);
+      add(f, 'booked'); add(f, 'billed', val(x));
+      (x.events||[]).forEach(ev=>add(ev.date, 'events'));
+    });
+    ASGS.forEach(a=>payEvents(a).forEach(p=>add(p.date, 'crewPaid', p.amount)));
+    EXPS.forEach(e=>add(String(e.date||''), 'expenses', Number(e.amount)||0));
+    /* what sold, where it was shot */
+    const svc = Object.create(null);
+    won.forEach(x=>{
+      if(!inWin(first(x))) return;
+      (x.events||[]).forEach(ev=>(ev.items||[]).forEach(it=>{
+        const n = String(it.service||'').trim(); if(!n) return;
+        const o = svc[n] = svc[n] || { service: n, qty: 0, jobs: new Set(), value: 0 };
+        const q = Number(it.qty)||0; o.qty += q; o.value += q * (Number(it.rate)||0); o.jobs.add(x.id);
+      }));
+    });
+    const services = Object.values(svc).map(o=>({ service: o.service, qty: o.qty, jobs: o.jobs.size, value: o.value })).sort((a,b)=>b.value - a.value).slice(0, 12);
+    const ven = Object.create(null);
+    won.forEach(x=>(x.events||[]).forEach(ev=>{
+      if(!inWin(ev.date)) return;
+      const v = String(ev.venue||'').replace(/\s+/g,' ').trim(); if(!v) return;
+      const o = ven[v.toLowerCase()] = ven[v.toLowerCase()] || { venue: v, events: 0 }; o.events++;
+    }));
+    let venues = Object.values(ven).sort((a,b)=>b.events - a.events).slice(0, 10);
+    /* the crew: shoot rows only (editing is not a day out), days as distinct dates */
+    const crew = activeTeam().map(m=>{
+      const mine = ASGS.filter(a=>a.memberId === m.id && a.kind !== 'edit' && ISO_RE.test(a.date||''));
+      const past = mine.filter(a=>a.date <= today).map(a=>a.date).sort();
+      const fut = mine.filter(a=>a.date > today).map(a=>a.date).sort();
+      return { name: m.name||'', role: m.role||'',
+               days: new Set(past.filter(inWin)).size, last: past[past.length - 1] || '', next: fut[0] || '',
+               fees: mine.filter(a=>inWin(a.date)).reduce((s,a)=>s + payFee(a), 0),
+               owed: ASGS.filter(a=>a.memberId === m.id).reduce((s,a)=>s + payOwed(a), 0) };
+    }).sort((a,b)=>b.days - a.days);
+    /* jobs by quotation number — never a name */
+    let open = won.filter(x=>(Number((x.totals||{}).balance)||0) > 0)
+      .map(x=>({ quote: x.quoteNo||'', first: first(x), total: val(x), balance: Number((x.totals||{}).balance)||0, status: x.status||'', ...(isStudioJob(x) ? { partner: true } : {}) }))
+      .sort((a,b)=>b.balance - a.balance);
+    let pipeline = pk.filter(x=>['sent','unconfirmed'].includes(x.status||'draft'))
+      .map(x=>({ quote: x.quoteNo||'', first: first(x), total: val(x), status: x.status||'', sentDaysAgo: askDaysSince(x.sentAt || x.updatedAt || x.createdAt) }))
+      .sort((a,b)=>(b.sentDaysAgo||0) - (a.sentDaysAgo||0));
+    const leads = Object.create(null);
+    liveLeads().forEach(l=>{ const s = l.status||'new'; if(s === 'new' || s === 'contacted') leads[s] = (leads[s]||0) + 1; });
+    const t = { today, months: keys.map(k=>rows[k]), services, venues, crew, open, pipeline, leads: { ...leads },
+                notes: 'months newest first, the next ' + ASK_AHEAD + ' months (bookings ahead) then the last ' + ASK_MONTHS + '; money in rupees; booked and billed by a job\'s first event date; events by event date; received by payment date; crew days are distinct shoot dates in the window; open and pipeline are by quotation number' };
+    /* keep under the function's cap: the long lists go first, the months never */
+    for(let i = 0; i < 6 && JSON.stringify(t).length > ASK_MAX; i++){
+      t.open = t.open.slice(0, Math.max(10, Math.floor(t.open.length / 2)));
+      t.pipeline = t.pipeline.slice(0, Math.max(10, Math.floor(t.pipeline.length / 2)));
+      t.venues = t.venues.slice(0, 6);
+      t.crew = t.crew.slice(0, 25);
+      t.trimmed = true;
+    }
+    return t;
+  }
+  const ASK_BASIS = {
+    books: '✨ Answered from the books — every figure is the panel\'s own.',
+    partly: '✨ Partly from the books — read the assumption in the answer before you lean on it.',
+    not_in_books: 'The books do not hold this one.',
+  };
+  function askRender(){
+    const out = $('#askOut'); if(!out) return;
+    const qa = (e, old) => `
+      <div class="ask-qa${old ? ' old' : ''}" data-basis="${esc(e.basis||'')}">
+        <div class="ask-q">${esc(e.q)}</div>
+        ${e.busy ? `<p class="ask-a mut" role="status">✨ Reading the books…</p>`
+         : e.err ? `<p class="ask-a warn" role="status">⚠ ${esc(e.err)}</p>`
+         : `<p class="ask-a">${esc(e.answer)}</p>
+            ${(e.figures||[]).length ? `<div class="ask-figs">${e.figures.map(f=>`<span class="ask-fig"><span>${esc(f.label)}</span><b>${esc(f.value)}</b></span>`).join('')}</div>` : ''}
+            <p class="ask-foot">${esc(ASK_BASIS[e.basis] || ASK_BASIS.not_in_books)}${e.model === 'demo' ? ' · demo answer' : ''}</p>`}
+      </div>`;
+    const [latest, ...older] = _askLog;
+    out.innerHTML = !latest ? '' : qa(latest, false)
+      + (older.length ? `<details class="ask-old"><summary>Earlier this session (${older.length})</summary>${older.map(e=>qa(e, true)).join('')}</details>` : '');
+  }
+  function askBusy(on){
+    const i = $('#askIn'), g = $('#askGo');
+    if(i) i.disabled = !!on;
+    if(g) g.disabled = !!on;
+  }
+  async function askRun(q){
+    q = String(q||'').replace(/\s+/g,' ').trim();
+    if(!q){ toast('Type a question first'); return; }
+    if(_askBusy) return;
+    const entry = { q, busy: true, answer: '', figures: [], basis: '', model: '' };
+    _askLog = [entry, ..._askLog].slice(0, ASK_KEEP);
+    _askBusy = true; askBusy(true); askRender();
+    const seq = ++_askSeq;
+    try{
+      const tables = askTables();
+      const { masked } = aiMask(q);   /* a number typed into the question never leaves the phone */
+      const r = await aiCall('ask', { text: masked, facts: tables });
+      if(seq !== _askSeq) return;
+      const d = (r && r.draft) || null;
+      if(!d || !d.answer) entry.err = 'Nothing came back — ask again.';
+      else Object.assign(entry, { answer: d.answer, figures: d.figures || [], basis: d.basis || 'not_in_books', model: (r && r.model) || '' });
+    }catch(err){
+      if(seq === _askSeq) entry.err = aiWhy(err);
+    }finally{
+      if(seq === _askSeq){ entry.busy = false; _askBusy = false; askBusy(false); askRender(); }
+    }
+  }
+  on('#askBox', 'click', e=>{
+    const eg = e.target.closest('[data-ask-eg]');
+    if(eg){ const i = $('#askIn'); if(i) i.value = eg.dataset.askEg; buzz(); askRun(eg.dataset.askEg); return; }
+    if(e.target.closest('#askGo')){ askRun(($('#askIn')||{}).value); }
+  });
+  on('#askBox', 'keydown', e=>{
+    if(e.target.id === 'askIn' && e.key === 'Enter'){ e.preventDefault(); askRun(e.target.value); }
+  });
+  /* The demo's stand-in: the month, season, crew member or balance the
+     question names, read off the SAME tables the function would get, and
+     phrased with the fixture's sentences — so any question typed on
+     /admin/?demo gets an answer that fits the demo data. Never run live. */
+  function askDemoAnswer(q, t, fx){
+    const ql = qeNorm(q);
+    const ph = (fx && fx.phrasing) || {};
+    const MN = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const MF = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const name = k => MF[Number(k.slice(5, 7)) - 1] + ' ' + k.slice(0, 4);
+    /* {key} prints the value; {key:one|many} prints it with the right noun */
+    const tpl = (k, v) => String(ph[k]||'').replace(/\{(\w+)(?::([^|}]+)\|([^}]+))?\}/g, (_, n, one, many)=>{
+      const x = v[n] == null ? '' : v[n];
+      return one ? x + ' ' + (Number(x) === 1 ? one : many) : String(x);
+    });
+    const sum = (ms, k) => ms.reduce((s,r)=>s + (Number(r[k])||0), 0);
+    const yr = (ql.match(/\b(20\d\d)\b/) || [])[1] || '';
+    /* crew */
+    if(/\b(idle|longest|free|least busy|not worked|crew member|who has|which crew)\b/.test(ql) && t.crew.length){
+      const c = t.crew.slice().sort((a,b)=>String(a.last||'0').localeCompare(String(b.last||'0')))[0];
+      const days = c.last ? askDaysSince(c.last) : null;
+      const v = { name: c.name, role: roleLabel(c.role), since: c.last ? dmy(c.last) : 'no shoot on record', days: days == null ? '—' : days, worked: c.days, next: c.next ? dmy(c.next) : 'nothing booked' };
+      return { answer: tpl(c.last ? 'idle' : 'idleNever', v), basis: 'books', figures: [{ label: c.name + ' · last shoot', value: v.since }, { label: 'Idle for', value: days == null ? 'always' : days + ' days' }, { label: 'Shoot days in 24 months', value: String(c.days) }] };
+    }
+    /* balances */
+    if(/\b(balance|balances|due|owed|outstanding|pending|collect)\b/.test(ql)){
+      const n = t.open.length, total = t.open.reduce((s,o)=>s + o.balance, 0), top = t.open[0];
+      return { answer: tpl(n ? 'due' : 'dueNone', { n, total: inr(total), top: top ? top.quote : '—', topBal: top ? inr(top.balance) : '' }), basis: 'books',
+               figures: [{ label: 'Jobs with a balance', value: String(n) }, { label: 'Total due', value: inr(total) }, ...(top ? [{ label: top.quote || 'Largest', value: inr(top.balance) }] : [])] };
+    }
+    /* a month by name, a season, or a year */
+    const mi = MN.findIndex(m=>new RegExp('\\b' + m + '[a-z]*\\b').test(ql));
+    const season = /dussehra|dasara|navratri/.test(ql) ? { k: 'Dussehra season', months: [9, 10] }
+      : /diwali|deepavali/.test(ql) ? { k: 'Diwali', months: [10, 11] }
+      : /wedding season|\bseason\b|winter/.test(ql) ? { k: 'wedding season', months: [11, 12, 1, 2] }
+      : /summer/.test(ql) ? { k: 'summer', months: [4, 5, 6] } : null;
+    const money = /\b(bill|billed|billing|revenue|earn|earned|earnings|make|turnover|income|receive|received|collected|how much)\b/.test(ql);
+    let pick = [], label = '';
+    if(mi >= 0){
+      const want = String(mi + 1).padStart(2, '0');
+      pick = t.months.filter(r=>r.m.slice(5) === want && (!yr || r.m.slice(0, 4) === yr));
+      /* no year said: the occurrence nearest to today — the coming one in the
+         season ahead, else the most recent past one */
+      const mAbs = k => Number(k.slice(0, 4)) * 12 + Number(k.slice(5, 7)), nowM = mAbs(t.today.slice(0, 7));
+      if(pick.length > 1 && !yr) pick = [pick.slice().sort((a,b)=>Math.abs(mAbs(a.m) - nowM) - Math.abs(mAbs(b.m) - nowM) || (mAbs(b.m) - mAbs(a.m)))[0]];
+      label = pick.length ? name(pick[0].m) : MF[mi];
+    }else if(season){
+      /* the most recent run of those months that has ended */
+      const runs = []; let cur = [];
+      t.months.slice().reverse().forEach(r=>{ if(season.months.includes(Number(r.m.slice(5)))){ cur.push(r); } else if(cur.length){ runs.push(cur); cur = []; } });
+      if(cur.length) runs.push(cur);
+      const ended = runs.filter(run=>run.every(r=>r.m < t.today.slice(0, 7)));
+      const has = run=>run.some(r=>r.booked || r.billed || r.enq);
+      /* "last Dussehra" is the one that has ended — unless the books hold nothing
+         for it and the one under way does (the demo's short history) */
+      const lastEnded = ended[ended.length - 1], current = runs.find(run=>run.some(r=>r.m === t.today.slice(0, 7)));
+      pick = (yr ? runs.find(run=>run.some(r=>r.m.startsWith(yr))) : ((lastEnded && has(lastEnded)) ? lastEnded : (current && has(current)) ? current : lastEnded || runs[runs.length - 1])) || [];
+      label = season.k + (pick.length ? ' (' + MF[Number(pick[0].m.slice(5)) - 1].slice(0, 3) + '–' + MF[Number(pick[pick.length - 1].m.slice(5)) - 1].slice(0, 3) + ' ' + pick[pick.length - 1].m.slice(0, 4) + ')' : '');
+    }else if(yr){
+      pick = t.months.filter(r=>r.m.startsWith(yr)); label = yr;
+    }else if(/last month|this month/.test(ql)){
+      const i = t.months.findIndex(r=>r.m === t.today.slice(0, 7)) + (/last month/.test(ql) ? 1 : 0);
+      pick = i >= 0 ? t.months.slice(i, i + 1) : []; label = pick.length ? name(pick[0].m) : 'that month';
+    }else if(money){
+      pick = t.months.filter(r=>r.m <= t.today.slice(0, 7)).slice(0, 12); label = 'the last 12 months';
+    }
+    if(pick.length){
+      const v = { label, booked: sum(pick, 'booked'), events: sum(pick, 'events'), enq: sum(pick, 'enq'), sent: sum(pick, 'sent'),
+                  billed: inr(sum(pick, 'billed')), received: inr(sum(pick, 'received')), spent: inr(sum(pick, 'expenses') + sum(pick, 'crewPaid')) };
+      const figs = money
+        ? [{ label: 'Billed · ' + label, value: v.billed }, { label: 'Received', value: v.received }, { label: 'Booked functions', value: String(v.booked) }]
+        : [{ label: 'Booked functions · ' + label, value: String(v.booked) }, { label: 'Shooting days', value: String(v.events) }, { label: 'Enquiries', value: String(v.enq) }, { label: 'Billed', value: v.billed }];
+      return { answer: tpl(money ? 'billed' : 'month', v), basis: 'books', figures: figs };
+    }
+    const fb = (fx && fx.fallback) || { answer: 'That is not in the books.', figures: [], basis: 'not_in_books' };
+    return { answer: fb.answer, figures: fb.figures || [], basis: fb.basis || 'not_in_books' };
   }
 
   /* ---------- quick actions — the ⚡ button on Home ---------- */

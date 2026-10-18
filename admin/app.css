@@ -2643,3 +2643,28 @@ details.aps-help>.insnote{margin-top:0}
 .br-row .br-what small{display:block;color:var(--mut);font-size:var(--fs-xs);margin-top:.15rem;overflow-wrap:anywhere}
 .br-row .chev2{flex:0 0 auto;color:var(--mut);margin-top:.1em}
 .br-foot{font-size:var(--fs-xs);color:var(--mut);margin-top:.5rem;line-height:1.45}
+
+/* ---- Ask the books (Phase 4, 18 Oct 2026): the question box on Money › Insights ----
+   The quick-entry row (.qe-row / .qe-in / .qe-go) is reused for the input;
+   under it the example chips, then the latest answer with the figures it
+   leaned on, and the earlier questions of this session folded away. */
+.ask{margin:0 0 1rem;padding-bottom:.9rem;border-bottom:1px solid var(--line)}
+.ask-egs{display:flex;gap:.35rem;overflow-x:auto;margin:.45rem 0 0;padding-bottom:2px;scrollbar-width:none}
+.ask-egs::-webkit-scrollbar{display:none}
+.ask-egs .qchip{flex:0 0 auto;font-size:var(--fs-sm);padding:.42em .8em;min-height:32px;white-space:nowrap}
+.ask-qa{margin-top:.75rem;padding:.7rem .8rem;border:1px solid rgba(var(--gold-rgb),.45);border-radius:var(--r-md);background:linear-gradient(180deg,var(--gold-t1),transparent 70%),var(--panel)}
+.ask-qa.old{margin-top:.5rem;border-color:var(--line);background:var(--panel)}
+.ask-q{font-size:var(--fs-sm);color:var(--mut);margin-bottom:.3rem;overflow-wrap:anywhere}
+.ask-q::before{content:"Q · "}
+.ask-a{font-size:var(--fs-base);line-height:1.5;color:var(--text);margin:0;overflow-wrap:anywhere}
+.ask-a.mut{color:var(--mut)}
+.ask-a.warn{color:var(--warn)}
+.ask-qa[data-basis="not_in_books"] .ask-a{color:var(--mut)}
+.ask-figs{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.55rem}
+.ask-fig{display:inline-flex;flex-direction:column;gap:.1rem;min-width:0;max-width:100%;padding:.35rem .6rem;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--field)}
+.ask-fig span{font-size:var(--fs-xs);color:var(--mut);letter-spacing:.02em;overflow-wrap:anywhere}
+.ask-fig b{font-family:var(--serif);font-size:var(--fs-base);color:var(--gold-b);overflow-wrap:anywhere}
+.ask-foot{font-size:var(--fs-xs);color:var(--mut);margin:.5rem 0 0;line-height:1.45}
+.ask-qa[data-basis="partly"] .ask-foot{color:var(--warn)}
+.ask-old{margin-top:.6rem}
+.ask-old summary{font-size:var(--fs-sm);color:var(--mut);cursor:pointer;min-height:32px;display:flex;align-items:center}
