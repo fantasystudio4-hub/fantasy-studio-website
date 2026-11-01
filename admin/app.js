@@ -10401,7 +10401,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_studiosUnsub) _studiosUnsub(); }catch(e){} _studiosUnsub = null;
         _studiosErr = 'Could not load studios (' + (err.code||err.message) + ')'
-          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : '');
+          + ((err.code||'').includes('permission') ? ' — permission refused; sign in again.' : '');
         renderStudioList();
       });
     }catch(err){ _studiosErr = 'Could not load studios (' + (err.code||err.message) + ')'; renderStudioList(); }
@@ -10504,7 +10504,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_revsUnsub) _revsUnsub(); }catch(e){} _revsUnsub = null;
         _revsErr = 'Could not load reviews (' + (err.code||err.message) + ')'
-          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : '');
+          + ((err.code||'').includes('permission') ? ' — permission refused; sign in again.' : '');
         renderReviews();
       });
     }catch(err){ _revsErr = 'Could not load reviews (' + (err.code||err.message) + ')'; renderReviews(); }
@@ -10533,7 +10533,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <blockquote class="rv-quote">${esc(revText(r.text, 1000))}</blockquote>
       ${loc || who.sub ? `<div class="rv-meta">${esc(loc)}${loc && who.sub ? ' · ' : ''}${esc(who.sub)}</div>` : ''}
       <div class="rq-acts">
-        <button type="button" class="btn btn--sm btn--primary" data-rvok="${esc(r.id)}"${dis}>${_revBusy === r.id ? 'Working…' : 'Approve → on the website'}</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-rvok="${esc(r.id)}"${dis}>${_revBusy === r.id ? 'Working…' : 'Approve → on the website'}</button>
         <button type="button" class="btn btn--sm btn--danger" data-rvno="${esc(r.id)}"${dis}>Decline</button>
       </div>
     </article>`;
@@ -10550,7 +10550,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="rv-stars" role="img" aria-label="${n} out of 5 stars">${revStars(n)}</div>
       <blockquote class="rv-quote">${esc(revText(r.text, 1000))}</blockquote>
       <div class="rq-acts">
-        <button type="button" class="btn btn--sm btn--ghost" data-rvdel="${esc(r.id)}">Delete</button>
+        <button type="button" class="btn btn--sm btn--danger" data-rvdel="${esc(r.id)}">Delete</button>
       </div>
     </article>`;
   }
@@ -10685,7 +10685,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_sreqsUnsub) _sreqsUnsub(); }catch(e){} _sreqsUnsub = null;
         _sreqsErr = 'Could not load booking requests (' + (err.code||err.message) + ')'
-          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules from the console first.' : '');
+          + ((err.code||'').includes('permission') ? ' — permission refused; sign in again.' : '');
         renderStuReqs();
       });
     }catch(err){ _sreqsErr = 'Could not load booking requests (' + (err.code||err.message) + ')'; renderStuReqs(); }
@@ -10700,7 +10700,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_preqsUnsub) _preqsUnsub(); }catch(e){} _preqsUnsub = null;
         _preqsErr = 'Could not load partner requests (' + (err.code||err.message) + ')'
-          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules first.' : '');
+          + ((err.code||'').includes('permission') ? ' — permission refused; sign in again.' : '');
         renderPartnerReqs();
       });
     }catch(err){ _preqsErr = 'Could not load partner requests (' + (err.code||err.message) + ')'; renderPartnerReqs(); }
@@ -10754,7 +10754,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }, err=>{
         try{ if(_supsUnsub) _supsUnsub(); }catch(e){} _supsUnsub = null;
         _supsErr = 'Could not load new sign-ups (' + (err.code||err.message) + ')'
-          + ((err.code||'').includes('permission') ? ' — publish the updated firestore.rules first.' : '');
+          + ((err.code||'').includes('permission') ? ' — permission refused; sign in again.' : '');
         renderSignups();
       });
     }catch(err){ _supsErr = 'Could not load new sign-ups (' + (err.code||err.message) + ')'; renderSignups(); }
@@ -10981,7 +10981,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           + `<div class="rq-items"><div class="tot"><span>All ${members.length} functions, estimate</span><b>${esc(inr(total))}</b></div></div>`
         : sreqFnHTML(r, stu)}
       <div class="rq-acts">
-        <button type="button" class="btn btn--sm btn--primary" data-rqok="${esc(r.id)}"${dis}>${_sreqBusy === r.id ? 'Working…' : many ? `Accept all ${members.length} → one draft job` : 'Accept → draft job'}</button>
+        <button type="button" class="btn btn--sm btn--ghost" data-rqok="${esc(r.id)}"${dis}>${_sreqBusy === r.id ? 'Working…' : many ? `Accept all ${members.length} → one draft job` : 'Accept → draft job'}</button>
         <button type="button" class="btn btn--sm btn--danger" data-rqno="${esc(r.id)}"${dis}>${many ? 'Decline all' : 'Decline'}</button>
         ${tel ? `<a class="icon-btn icon-btn--ring" href="tel:${esc(tel)}" aria-label="Call ${esc(name)}" title="Call ${esc(name)}">📞</a>` : ''}
       </div>
@@ -13879,7 +13879,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#aiTitle').textContent = '✨ Paste an enquiry';
     $('#aiWho').textContent = target === 'pkg'
       ? 'The chat fills this quotation — client, functions, dates, services. Check it, then Save as usual.'
-      : 'Paste the WhatsApp chat. Phone numbers are masked before it leaves this phone; nothing is saved until you say so.';
+      : 'Nothing is saved until you say so.';
     renderAiPaste();
     openAiUI();
     setTimeout(()=>{ const t = $('#aiPaste'); if(t) t.focus({ preventScroll:true }); }, 60);
@@ -13894,7 +13894,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>
       ${status ? `<p class="ai-status" role="status">${esc(status)}</p>` : ''}
       <div class="ai-acts">
-        <button type="button" class="btn btn--ghost" data-ai-close>Cancel</button>
         <button type="button" class="btn btn--primary" id="aiRead" ${busy ? 'disabled' : ''}>✨ Read it</button>
       </div>`;
   }
@@ -14341,7 +14340,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   function qeHint(scope){
     const eg = QE_EG[scope] || QE_EG.money;
-    qeSay(scope, (QE_SR ? 'Tap 🎤 and say it, or type it' : 'Type one line') + ' — e.g. ' + eg.slice(1).map(x=>'“' + x + '”').join(' · ') + '. The sheet opens filled in; nothing is saved until you press Save there.');
+    qeSay(scope, (QE_SR ? 'Tap 🎤 and say it, or type it' : 'Type one line') + ' — e.g. “' + (eg[1] || eg[0]) + '”. Nothing is saved until you press Save.');
   }
   function qeSay(scope, text, html){
     const el = $('#qeStatus-' + scope); if(!el) return;
@@ -14746,11 +14745,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     el.innerHTML = `
       <div class="qe-row">
         <input class="qe-in" type="text" id="askIn" autocomplete="off" autocapitalize="sentences" enterkeyhint="go" maxlength="300"
-               placeholder="✨ Ask the books — “${esc(ASK_EG[0])}”" aria-label="Ask a question about the business — answered from the panel's own figures" />
+               placeholder="✨ Ask the books…" aria-label="Ask a question about the business — answered from the panel's own figures" />
         <button type="button" class="qe-go" id="askGo" aria-label="Ask" title="Ask the books">✨</button>
       </div>
       <div class="ask-egs" id="askEgs">${ASK_EG.map(q=>`<button type="button" class="qchip" data-ask-eg="${esc(q)}">${esc(q)}</button>`).join('')}</div>
-      <p class="qe-status" id="askHint">Answered only from the figures on this page and the ledgers — no names or numbers leave the phone. When the books cannot answer, it says so.</p>
+      <p class="qe-status" id="askHint">Answered only from your own figures — no names or numbers leave the phone.</p>
       <div id="askOut"></div>`;
   }
   /* days since an ISO date, a Timestamp or ms; null when unreadable */
@@ -16217,10 +16216,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* signed-in devices per day (appDaily) and which build of the app they run */
   function apDailyHTML(m){
     const d = m.daily;
-    if(_apDailyState === 'err') return apNote('⚠ Could not read the daily count. It needs the updated rules published first.');
-    if(_apDailyState === 'offline') return apNote('⚠ Could not read the daily count — this phone looks offline. Tap ↻ Check again when you are back online.');
+    if(_apDailyState === 'err') return apNote('⚠ Could not read the daily count.');
+    if(_apDailyState === 'offline') return apNote('⚠ Could not read the daily count — this phone looks offline. Tap ↻ Refresh when you are back online.');
     if(_apDailyState !== 'ok') return apNote('Reading the daily count…');
-    if(!d.any) return apNote('Nothing is counted yet. From the day the update that adds it goes live, every signed-in phone or browser counts once a day.');
+    if(!d.any) return apNote('Nothing is counted yet. Every signed-in phone or browser counts once a day.');
     const t = d.today, n7 = d.ios7 + d.and7 + d.web7, mx7 = Math.max(1, d.ios7, d.and7, d.web7);
     const r7 = d.roles7, rmx = Math.max(1, r7.client, r7.crew, r7.studio, r7.none);
     let h = `<div class="fintiles">
@@ -16250,7 +16249,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_apPushState === 'err') return apNote('⚠ Could not read the alert tallies.');
     if(_apPushState !== 'ok') return apNote('Reading the alert tallies…');
     const c = m.pushNow, p = m.pushPrev;
-    if(!c && !p) return apNote('No alert has been counted yet. From the day the update that adds it goes live, every alert the studio sends is tallied here: how many went out, how many phones took them, and how many had nobody to go to.');
+    if(!c && !p) return apNote('No alert has been counted yet. Every alert the studio sends is tallied here: how many went out, how many phones took them, and how many had nobody to go to.');
     const monthName = ym => new Date(ym + '-01T00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     const n = o => (k)=>apN((o || {})[k] || 0);
     const cur = n(c);
@@ -16270,7 +16269,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* Firebase Auth totals (adminStats) — everyone who has ever logged in */
   function apAuthHTML(m){
     const s = _apStats, busy = _apBusy === 'stats';
-    const btn = `<button type="button" class="btn btn--sm btn--ghost" data-apstat${busy ? ' disabled' : ''}>${busy ? 'Reading…' : '↻ ' + (s ? 'Refresh' : 'Read the numbers')}</button>`;
+    const btn = `<button type="button" class="btn btn--sm btn--ghost" data-apstat${busy ? ' disabled' : ''}>${busy ? 'Reading…' : '↻ Refresh'}</button>`;
     let h = '';
     if(_apStatsMsg) h += apWarn('⚠ ' + esc(_apStatsMsg));
     if(!s){
@@ -16384,7 +16383,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     <div class="aps-form"><label for="apGaId">Property ID</label>
       <input id="apGaId" class="input" inputmode="numeric" autocomplete="off" placeholder="e.g. 123456789" value="${esc(draft)}" />
       <button type="button" class="btn btn--primary" data-apgasave${busy ? ' disabled' : ''}>${busy ? 'Testing…' : 'Save and test'}</button></div>`;
-    if(_apGaId) h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${busy ? ' disabled' : ''}>Test the connection again</button></div>`;
+    if(_apGaId) h += `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${busy ? ' disabled' : ''}>↻ Refresh</button></div>`;
     return h + apHelp('gasetup', AP_GA_SEES, 'What Google Analytics can see');
   }
   function apGaHTML(m){
@@ -16392,7 +16391,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(_apWebState === 'idle' || _apWebState === 'loading') return apNote('Reading…');
     if(_apWebState === 'err' && _apGaId && !_apWebInfo){
       return apWarn('⚠ Could not read the saved Google Analytics numbers just now — this phone may be offline.')
-        + `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${_apBusy === 'web' ? ' disabled' : ''}>${_apBusy === 'web' ? 'Asking…' : '↻ Ask Google again'}</button></div>`;
+        + `<div class="aps-links"><button type="button" class="btn btn--ghost" data-apweb${_apBusy === 'web' ? ' disabled' : ''}>${_apBusy === 'web' ? 'Asking…' : '↻ Refresh'}</button></div>`;
     }
     return apSafe('gasetup', apGaSetup);
   }
@@ -16409,7 +16408,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      read — a Save from a blank form would overwrite notes that were never on screen. What is typed is kept in _apDraft so
      a redraw (a new enquiry arriving, say) never loses it, and the section stays open while it is being edited. */
   function apStoreHTML(){
-    if(_apStoreState === 'err') return apNote('⚠ Could not read the release notes you typed. Tap ↻ Check again when you are back online.');
+    if(_apStoreState === 'err') return apNote('⚠ Could not read the release notes you typed. Tap ↻ Refresh when you are back online.');
     if(_apStoreState !== 'ok') return apNote('Reading…');
     const s = _apStore || {}, a = s.android || {}, i = s.ios || {};
     const typed = apMs(s.typedAt);
@@ -16442,7 +16441,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     let h = apLoadNote(m);
     if(_apTokState === 'err') h += errBox(_apTokErr, 'apps');
     else if(_apTokState === 'loading' && !m.tokOK) h += apNote('Reading the phone list…');
-    if(m.tokOK && _apTokPartial) h += apNote('⚠ This phone is offline, so these figures are what it had saved and may be out of date. Tap ↻ Check again when you are back online.');
+    if(m.tokOK && _apTokPartial) h += apNote('⚠ This phone is offline, so these figures are what it had saved and may be out of date. Tap ↻ Refresh when you are back online.');
     if(m.tokOK && _apTokCapped) h += apNote(`⚠ Only the first ${apN(APPS_TOK_CAP)} phones were read; there are more, so every figure here is “at least”.`);
 
     /* the one question the page exists for, answered in a sentence, then the four figures behind it */
@@ -16493,7 +16492,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     /* when they last opened it */
     h += apSafe('recency', ()=>{
-      if(!m.tokOK) return apCard('recency', 'When did they last open it?', 'Shown once the phone list has been read', apNote('Shown once the phone list has been read.'));
+      if(!m.tokOK) return apCard('recency', 'When did they last open it?', 'Shown once the phone list has been read', '');
       const mx = Math.max(1, m.rec.d1, m.rec.d7, m.rec.d30, m.rec.older);
       const body = apBar('Today or yesterday', apN(m.rec.d1), m.rec.d1 / mx)
         + apBar('2–7 days ago', apN(m.rec.d7), m.rec.d7 / mx)
@@ -16555,7 +16554,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
     /* crew confirmations */
     h += apSafe('crew', ()=>{
-      if(!m.ready) return apCard('crew', 'Have the crew confirmed their shoots?', 'Worked out once the crew and assignments have loaded', apNote('Worked out once the crew and assignments have loaded.'));
+      if(!m.ready) return apCard('crew', 'Have the crew confirmed their shoots?', 'Worked out once the crew and assignments have loaded', '');
       const un = m.unseen.length, up = m.upcoming.length;
       /* one row per person per shoot: a wedding day with four crew is four of these, not one shoot */
       let c = `<div class="fintiles">${apTile(apN(up), 'crew bookings ahead', 'one per person per shoot')}${apTile(apN(un), 'not confirmed yet', un ? 'the crew member has not tapped Confirm' : 'everyone has confirmed', un ? 'warn' : '')}</div>`;
@@ -16574,8 +16573,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* partner studios */
     h += apSafe('partners', ()=>{
       const q = 'Are partner studios sending requests?';
-      if(!m.ready) return apCard('partners', q, 'Worked out once the partner studios have loaded', apNote('Worked out once the partner studios and their requests have loaded.'));
-      if(!m.stuUse.length) return apCard('partners', q, 'No active partner studios yet', apNote('No active partner studios yet.'));
+      if(!m.ready) return apCard('partners', q, 'Worked out once the partner studios have loaded', '');
+      if(!m.stuUse.length) return apCard('partners', q, 'No active partner studios yet', '');
       const mx = Math.max(1, ...m.stuUse.map(x=>x.n));
       const used = m.stuUse.filter(x=>x.n), idle = m.stuUse.filter(x=>!x.ever);
       const total = used.reduce((s, x)=>s + x.n, 0);
@@ -16631,7 +16630,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the builder */
     h += apSafe('builder', ()=>{
       const q = 'What do people ask for in the builder?';
-      if(!m.ql.length) return apCard('builder', q, 'No enquiry has come from the package builder yet', apNote('No enquiry has come from the package builder yet.'));
+      if(!m.ql.length) return apCard('builder', q, 'No enquiry has come from the package builder yet', '');
       const body = `<div class="fintiles">
         ${apTile(m.avgFns.toFixed(1), 'functions per quote', 'only functions with a service chosen')}
         ${apTile(m.medVal ? inrShort(m.medVal) : '—', 'typical quote', 'the middle one, before any discount you give')}
@@ -16684,7 +16683,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return;
     }
     const who = `<span>${_apTokAt ? 'Last checked ' + esc(apTime(_apTokAt)) + (_apTokState === 'ok' && _apTokPartial ? ' (offline copy — may be out of date)' : '') : (_apTokState === 'loading' ? 'Checking…' : 'Not checked yet')}</span>`
-      + `<button type="button" class="btn btn--sm btn--ghost" data-apre${_apTokState === 'loading' ? ' disabled' : ''}>↻ Check again</button>`;
+      + `<button type="button" class="btn btn--sm btn--ghost" data-apre${_apTokState === 'loading' ? ' disabled' : ''}>↻ Refresh</button>`;
     const whoEl = $('#appsWho'); if(whoEl && whoEl.dataset.sig !== who){ whoEl.innerHTML = who; whoEl.dataset.sig = who; }
     const att = apAttnHTML(m);
     const attEl = $('#appsAttn'); if(attEl && attEl.dataset.sig !== att){ attEl.innerHTML = att; attEl.dataset.sig = att; }
