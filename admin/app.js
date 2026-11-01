@@ -2920,7 +2920,15 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          one's edits. Re-read first and refuse if the doc moved under us. */
       let fresh = null;
       try{ fresh = await getDoc(doc(db,'config','site')); }catch(e){ fresh = null; }
-      if(fresh && fresh.exists()){
+      /* a failed re-read cannot prove the doc did not move — and this write is a
+         full overwrite, so going ahead blind is exactly the lost-edit case */
+      if(!fresh){
+        $('#saveMsg').textContent = 'Could not check the saved settings just now. Check your connection, then Save again.';
+        $('#saveMsg').style.color = 'var(--err)';
+        toast('Not saved — could not check for changes made elsewhere.');
+        return;
+      }
+      if(fresh.exists()){
         const serverAt = fresh.data().updatedAt || null;
         if(_cfgLoadedAt && serverAt && serverAt !== _cfgLoadedAt){
           $('#saveMsg').textContent = 'Config was changed on another device since you opened this tab. Reload before saving so you do not overwrite those edits.';
@@ -10594,7 +10602,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       let fresh = null;
       try{ fresh = await getDoc(doc(db,'config','site')); }catch(e){ fresh = null; }
-      const live = fresh && fresh.exists() ? fresh.data() : null;
+      /* No answer at all is not "nothing changed": the list below would then be
+         rebuilt from this tab's copy and written over another device's edits —
+         the very thing the check exists to stop. (Offline, getDoc answers from
+         the cache; it only throws on a real error.) */
+      if(!fresh){ toast('Not approved — could not check the website settings. Check your connection, then approve again.'); return; }
+      const live = fresh.exists() ? fresh.data() : null;
       if(live && _cfgLoadedAt && live.updatedAt && live.updatedAt !== _cfgLoadedAt){
         toast('Not approved — the website settings were changed on another device. Reload, then approve.');
         return;
