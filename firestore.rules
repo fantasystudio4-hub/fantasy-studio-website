@@ -12,7 +12,12 @@ service cloud.firestore {
     // you, signed in to the admin panel
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in ['fantasystudio4@gmail.com'];
+        && request.auth.token.email in ['fantasystudio4@gmail.com']
+        // the address alone is only a claim: a password or email-link account,
+        // or an email added to a phone account, can carry it unverified. The
+        // admin signs in with Google, so require exactly that.
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     // last 10 characters of the signed-in user's verified phone number —

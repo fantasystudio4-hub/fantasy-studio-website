@@ -10,7 +10,12 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in ['fantasystudio4@gmail.com'];
+        && request.auth.token.email in ['fantasystudio4@gmail.com']
+        // the address alone is only a claim: a password or email-link account,
+        // or an email added to a phone account, can carry it unverified. The
+        // admin signs in with Google, so require exactly that.
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
     match /portfolio/{file} {
       allow read: if isAdmin();
