@@ -1737,32 +1737,45 @@ function rvSync(user, pkgs, name){
   _rvCtx = { user, last10, sample, pkgId: String((pkgs[0] && pkgs[0].id) || '').slice(0, 64) };
   const nm = $('#rvName');
   if(nm && !nm.value && name) nm.value = String(name).slice(0, 80);
-  card.hidden = false;
-  if(sample){ if(!_rvKey){ _rvKey = 'sample'; rvShowForm(); } return; }
+  if(sample){ if(!_rvKey){ _rvKey = 'sample'; rvShowForm(); } }
   /* the same number again (a snapshot repainting the bookings): the listener is already up */
-  if(_rvKey === last10 && _rvUnsub) return;
-  rvOff(); _rvKey = last10;
-  rvShowForm();
-  try{
-    _rvUnsub = onSnapshot(query(collection(db,'reviews'), where('phone10','==', last10)), snap=>{
-      const mine = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-      if(!mine.length){ rvShowForm(); return; }
-      /* the latest, if there is somehow more than one */
-      mine.sort((a,b)=>((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
-      rvShowDone(mine[0]);
-    }, err=>{
-      /* the card still works without the read-back: the rules were not
-         published, or the tunnel dropped — a sent review says so on its own */
-      console.warn('[review] could not read the review back', err && err.code);
-      rvOff(); _rvKey = last10;
-    });
-  }catch(e){ _rvUnsub = null; }
+  else if(!(_rvKey === last10 && _rvUnsub)){
+    /* Only the listener goes here, never the card. This used to call rvOff(),
+       which hid the card and the Me row again and dropped _rvCtx right after
+       they were shown, so a signed-in client never saw either, and the form
+       had no context to send with (since 145952b, 14 Oct 2026; bug B1 in
+       the 1 Nov 2026 UI audit). */
+    rvStop(); _rvKey = last10;
+    rvShowForm();
+    try{
+      _rvUnsub = onSnapshot(query(collection(db,'reviews'), where('phone10','==', last10)), snap=>{
+        const mine = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        if(!mine.length){ rvShowForm(); return; }
+        /* the latest, if there is somehow more than one */
+        mine.sort((a,b)=>((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
+        rvShowDone(mine[0]);
+      }, err=>{
+        /* the card still works without the read-back: the rules were not
+           published, or the tunnel dropped — a sent review says so on its own */
+        console.warn('[review] could not read the review back', err && err.code);
+        rvStop(); _rvKey = last10;
+      });
+    }catch(e){ _rvUnsub = null; }
+  }
+  card.hidden = false;
+  const row = $('#meReview'); if(row) row.hidden = false;
 }
-function rvOff(){
+/* the review read-back's listener alone; the card stays as it is */
+function rvStop(){
   if(_rvUnsub){ try{ _rvUnsub(); }catch(e){} }
-  _rvUnsub = null; _rvKey = ''; _rvCtx = null;
+  _rvUnsub = null; _rvKey = '';
+}
+/* signed out, routed again, or no booking: the listener, the context and
+   the card all go, and the Me row with them (rvSync shows them again) */
+function rvOff(){
+  rvStop(); _rvCtx = null;
   const card = $('#rvCard'); if(card) card.hidden = true;
-  const row = $('#meReview'); if(row) row.hidden = true;   /* nothing to rate yet (set again by rvSync) */
+  const row = $('#meReview'); if(row) row.hidden = true;
 }
 $('#rvForm').addEventListener('submit', async e=>{
   e.preventDefault();
