@@ -787,7 +787,7 @@ export function mountPhoneSignIn(rootEl, opts = {}){
     <div data-step="otp" hidden>
       <div class="fld otpto"><label>Enter the OTP sent to <b data-otp-to></b></label></div>
       <div class="otp" data-otp-boxes role="group" aria-label="One-time password">${boxes}</div>
-      <button class="gbtn" data-verify type="button">Verify &amp; Sign In</button>
+      <button class="gbtn" data-verify type="button">Verify</button>
       <div class="acts">
         <button class="mini" data-resend type="button">Resend OTP</button>
         <button class="mini" data-back type="button">← Change number</button>
@@ -1043,7 +1043,7 @@ export function mountPhoneSignIn(rootEl, opts = {}){
         showErr('That code could not be used in the app. Tap Resend OTP and we will send a fresh one.' + errRef(err));
       }else showErr(err);
     }
-    finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify & Sign In'; }
+    finally{ btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Verify'; }
     if(!cred) return;
     if(conf.native) nativeSwitchOn();   /* it worked on this phone: forget any earlier trouble */
     endSend();

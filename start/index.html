@@ -117,8 +117,9 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
 <style>
 :root{
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
-  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.28);
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
   --text:#f3ecdc; --mut:#b3a98f; --err:#e07a6a;
+  --grad-gold:linear-gradient(135deg,#C9A347,#8E6E1E);   /* the primary button's gold, written once */
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -151,8 +152,8 @@ h1{font-family:var(--serif);font-weight:600;font-size:1.65rem;line-height:1.15;c
 .welbox label{display:block;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin:.7rem 0 .3rem}
 .welbox label:first-child{margin-top:0}
 .welbox label em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut)}
-.welbox input{display:block;width:100%;min-height:48px;background:#14110a;border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;color:var(--text);font-family:inherit;font-size:16px}
-.welbox input:focus{outline:none;border-color:var(--gold-b)}
+.welbox input{display:block;width:100%;min-height:48px;background:#171309;border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;color:var(--text);font-family:inherit;font-size:16px}
+.welbox input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
 .welbox .btn{margin-top:.9rem}
 .welfoot{margin:1rem 0 .6rem;font-size:.84rem}
 .welpend{text-align:center;border-color:rgba(226,194,117,.5)}
@@ -202,8 +203,7 @@ html[data-view="signin"] .plan, html[data-view="error"] .plan{display:flex}
 html.fs-checking .plan{display:none}
 .plan .t b{font-family:var(--sans);font-weight:500;font-size:1rem}
 
-.btn{display:block;width:100%;min-height:48px;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-family:inherit;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
-.btn{margin-bottom:.4rem}
+.btn{display:block;width:100%;min-height:48px;margin-bottom:.4rem;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.9em;font-family:inherit;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .btn:active{transform:scale(.98)}
 .pair{display:flex;gap:.5rem;margin-bottom:.4rem}
 .pair a{flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;text-decoration:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.5em .6em;font-size:.9rem}
@@ -268,7 +268,7 @@ footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.
     <p class="sub">You're signed in as <b id="noneWho"></b>. What would you like to do?</p>
     <a class="opt wel" href="../builder/">
       <span class="ic" aria-hidden="true">✨</span>
-      <span class="t"><b>Plan your shoot</b><em>Build a package and see the price live</em></span>
+      <span class="t"><b>Build a package</b><em>See the price live and get a quote</em></span>
       <span class="go" aria-hidden="true">→</span>
     </a>
     <a class="opt wel" href="../portfolio/">
@@ -334,7 +334,7 @@ footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.
       <div class="pair"><button class="mini" type="button" id="wpCheck">Check again</button><button class="mini" type="button" id="wpWithdraw">Withdraw request</button></div>
     </div>
     <p class="sub welfoot">Questions? Reach us:</p>
-    <div class="pair"><a id="noneCall" href="tel:+918686868803">📞 Call</a><a id="noneWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a></div>
+    <div class="pair"><a id="noneCall" href="tel:+918686868803">📞 Call</a><a id="noneWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">💬 WhatsApp</a></div>
     <button class="mini" type="button" data-signout>Sign out</button>
   </section>
 
@@ -375,7 +375,7 @@ footer a{color:var(--gold-b);text-decoration:none;display:inline-block;padding:.
 
   <a class="opt plan" href="../builder/">
     <span class="ic" aria-hidden="true">✨</span>
-    <span class="t"><b>Plan a shoot — get a quote</b><em>Build a package and see the price live</em></span>
+    <span class="t"><b>Build a package</b><em>See the price live and get a quote</em></span>
     <span class="go" aria-hidden="true">→</span>
   </a>
 
@@ -747,7 +747,10 @@ function signedOut(){
   welReset();
   if(!box){
     $('#box').textContent = '';   /* the placeholder */
-    box = FS.mountPhoneSignIn($('#box'), { precheck: PRECHECK, onSignedIn: signedIn });
+    /* note '': fs-auth's default "Use the mobile number Fantasy Studio has
+       for you." no longer holds with PRECHECK off, and .sub above already
+       says what to type */
+    box = FS.mountPhoneSignIn($('#box'), { precheck: PRECHECK, onSignedIn: signedIn, note: '' });
   }else box.reset();
   show('signin');
 }
