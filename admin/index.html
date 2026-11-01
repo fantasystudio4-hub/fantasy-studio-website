@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4c" />
-<link rel="stylesheet" href="app.css?v=p5j" />
+<link rel="stylesheet" href="app.css?v=p5k" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -204,7 +204,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
          which is nearly always; filled by renderDelReqs -->
     <div class="sec" id="delReqSec" hidden>
       <h3>🗑 Account deletions</h3>
-      <p class="sub">Asked with <b>Delete my account</b> in the app, which removes their profile and sign-in. Bookings, crew history and partner jobs stay here. A number still on an active crew card or partner studio can sign in again — deactivate it if they should not. <b>Done</b> clears the note.</p>
+      <p class="sub">They used <b>Delete my account</b> in the app. Bookings and history stay here — deactivate their crew card or partner studio if they should not sign in again.</p>
       <div id="delReqs"></div>
     </div>
     <div class="sec">
@@ -292,7 +292,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     </div>
     <div class="sec upco" id="upcoming" hidden></div>
     <div class="sec" id="bookingsSec">
-      <h3>📸 Bookings <span class="swipehint">swipe</span></h3>
+      <h3>📸 Bookings</h3>
       <div class="fchips" id="homeTabs"></div>
       <div id="homeBooked"><div class="skeleton"></div><div class="skeleton"></div></div>
     </div>
@@ -1134,7 +1134,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5j"></script>
+<script type="module" src="app.js?v=p5k"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

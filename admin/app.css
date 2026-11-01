@@ -803,9 +803,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    All of it is derived from the assignment docs the tab already holds. */
 /* swipe between the booking tabs, the way every other app on the phone does */
 #bookingsSec{touch-action:pan-y}
-.swipehint{font-family:var(--sans);font-size:var(--fs-2xs);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:var(--r-md);padding:.18em .6em;vertical-align:3px;margin-left:.4em}
-.swipehint::before{content:"↔ "}
-@media(min-width:700px){ .swipehint{display:none} }
 @keyframes slideL{from{opacity:.2;transform:translateX(26px)}to{opacity:1;transform:none}}
 @keyframes slideR{from{opacity:.2;transform:translateX(-26px)}to{opacity:1;transform:none}}
 #homeBooked.sl-l,#pkgList.sl-l,#workBody.sl-l{animation:slideL .22s ease-out}
@@ -1399,7 +1396,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .qchip{min-height:var(--tap);display:inline-flex;align-items:center}
 
   /* 8.8px is not a readable label */
-  .swipehint{font-size:var(--fs-xs)}
 
   /* ---- team event card ----
      A long function name squeezed the client line to 35px of the 262 it
@@ -2598,7 +2594,7 @@ details.aps-help>.insnote{margin-top:0}
 .brief{border-color:rgba(var(--gold-rgb),.45);background:linear-gradient(180deg,var(--gold-t1),transparent 60%),var(--panel)}
 .brief h3{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem}
 .brief h3 .br-at{margin-left:auto;font-family:var(--sans);font-weight:400;font-size:var(--fs-xs);color:var(--mut);white-space:nowrap}
-.brief h3 .br-x{margin-left:.2rem;background:none;border:0;color:var(--mut);font-size:var(--fs-base);line-height:1;padding:.35em .45em;cursor:pointer;border-radius:var(--r-sm);min-width:32px;min-height:32px}
+.brief h3 .br-x{margin-left:.2rem;background:none;border:0;color:var(--mut);font-size:var(--fs-base);line-height:1;padding:.35em .45em;cursor:pointer;border-radius:var(--r-sm);min-width:var(--tap);min-height:var(--tap)}
 .brief h3 .br-x:active{background:var(--gold-t2)}
 .br-text{font-size:var(--fs-base);line-height:1.5;color:var(--text);margin:0 0 .55rem;overflow-wrap:anywhere}
 .br-text.rules{color:var(--mut)}

@@ -3792,7 +3792,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="what">${esc(e.title)} <span>· ${esc(e.client)}</span></span>
         <i class="dot ${e.status}"></i>
       </div>`).join('');
-    const more = _upEvents.length - hero.length - rest.length;
     el.innerHTML = `<h3>📅 Next shoot${_upEvents.length>1 ? `<button class="upmore" data-uplist type="button">${_upEvents.length} upcoming ›</button>` : ''}</h3>
       <div class="up-hero">
         <div class="uh-head">
@@ -3804,8 +3803,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </div>
         <div class="uh-rows">${heroRows}</div>
       </div>
-      ${rows}
-      ${more > 0 ? `<button class="upall" data-uplist type="button">＋ ${more} more — complete list</button>` : ''}`;
+      ${rows}`;
     if($('#evModal').classList.contains('open')){
       /* live data landed while the sheet was open — re-find the SAME shoot in
          the rebuilt list so the sheet never silently switches events */
@@ -3991,7 +3989,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const lim = (keep >= 0 && keep >= cut) ? keep + 1 : cut;
     el.innerHTML = show.slice(0, lim).map(x=>pkgCardHTML(x, expandedHome === x.id)).join('')
       + (show.length > cut
-          ? `<button class="upall" type="button" data-hbmore>＋ View all ${show.length} — ${show.length - lim} more</button>`
+          ? `<button class="upall" type="button" data-hbmore>View all ${show.length} ›</button>`
           : (_homeBookedAll && show.length > HOME_BOOKED_N
               ? '<button class="upall" type="button" data-hbless>− Show fewer</button>' : ''));
   }
@@ -5037,7 +5035,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
     };
     return `<div class="av-box">
-      <div class="av-hd"><b>Public calendar</b><span>What clients, crew and partner studios see for this date — colours only, never names. Red from ${availFull()} event${availFull()===1?'':'s'} in a half; Blocked and Open override that.</span></div>
+      <div class="av-hd"><b>Public calendar</b><span>The colours clients, crew and partners see — red from ${availFull()} event${availFull()===1?'':'s'} in a half.</span></div>
       ${err ? `<div class="av-err">${esc(err)}</div>` : ''}
       ${row('m','🌅 Morning')}${row('e','🌆 Evening')}
     </div>`;
