@@ -785,7 +785,7 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 }
 </script>
 <script type="module">
-import { esc, inr, todayISO, jobPhase, jobBalance } from '../fs-shared.js';
+import { STUDIO_PHONE, esc, inr, todayISO, jobPhase, jobBalance } from '../fs-shared.js';
 const $  = s => document.querySelector(s);
 
 let toastT;
@@ -867,7 +867,7 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ---------- contact: hardcoded fallback, upgraded from config/site ---------- */
-const DEFAULT_PHONE = '+91 86868 68803';
+const DEFAULT_PHONE = STUDIO_PHONE;
 let CONTACT = { phone: DEFAULT_PHONE, upi: '', upiAlt: '' };
 /* UPI payments are switched off for now (owner, 24 Sep 2026): the UPI IDs in
    Site Config are not picked up, so "Pay now" never shows. Set this to true to

@@ -16,6 +16,12 @@
 
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/* The studio's number when the live contact (config/site, edited in the admin)
+   has not loaded. The pages' plain tel: / wa.me links stay hardcoded in their
+   HTML on purpose — they must work before any script runs. */
+export const STUDIO_PHONE = '+91 86868 68803';
+export const STUDIO_PHONE10 = STUDIO_PHONE.replace(/\D/g, '').slice(-10);
+
 /* text into innerHTML — every name, note and message written by a client, crew
    member, partner or the public goes through this (null/undefined → '') */
 export const esc = t => String(t == null ? '' : t)

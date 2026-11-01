@@ -1,4 +1,4 @@
-import { esc, inr, todayISO, payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
+import { STUDIO_PHONE, STUDIO_PHONE10, esc, inr, todayISO, payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 /* compact rupees for tiles too narrow for the full figure — ₹8.4L, ₹1.2Cr.
@@ -230,7 +230,7 @@ const DEFAULTS = {
     'Candid Photography': 0,
     'Cinematography': 0
   },
-  contact: { phone: '+91 86868 68803', website: 'www.fantasystudio.in' },
+  contact: { phone: STUDIO_PHONE, website: 'www.fantasystudio.in' },
   deliverySteps: ['All events shot','Photo pendrive ready','Photo pendrive delivered','Cinematic teasers ready','Video editing details received','Video edited','Video delivered','Album selection received','Album designed','Album delivered','All delivered — package closed'],
   /* partner-studio jobs: they collect the footage and do their own post */
   b2bDeliverySteps: ['All events shot','Data ready to collect from office','Data delivered — job closed'],
@@ -13780,7 +13780,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     return { masked, phones };
   }
   /* the studio's own numbers turn up in every pasted chat; they are not the client's */
-  const aiOwnPhones = () => new Set(['8686868803', normPhone((pdfContact()||{}).phone||'')].filter(Boolean));
+  const aiOwnPhones = () => new Set([STUDIO_PHONE10, normPhone((pdfContact()||{}).phone||'')].filter(Boolean));
   async function aiCall(kind, payload){
     if(DEMO){
       await new Promise(r=>setTimeout(r, 900));

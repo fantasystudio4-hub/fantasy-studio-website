@@ -912,7 +912,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 <!-- the store app's tab bar; a classic script, so FSApp exists before the module runs -->
 <script src="../app-shell.js"></script>
 <script type="module">
-import { esc, inr, todayISO, payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
+import { STUDIO_PHONE, esc, inr, todayISO, payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -1076,7 +1076,7 @@ if(!CONFIGURED){
      question about a call time had nothing to tap. The number comes from Site
      Config like everywhere else, with the printed one as the fallback so the
      links work even if that read fails. */
-  const DEFAULT_PHONE = '+91 86868 68803';
+  const DEFAULT_PHONE = STUDIO_PHONE;
   /* the same digits, kept for the not-set-up card's links (wireNotCrew) */
   let _studioNo = DEFAULT_PHONE.replace(/\D/g,'');
   function wireHelp(phone){

@@ -2,6 +2,8 @@
    Exports buildQuotePdf(pkg, contact, terms) -> jsPDF document.
    Embeds Noto Sans for the ₹ glyph; falls back to "Rs." if that fails. */
 
+import { STUDIO_PHONE } from '../fs-shared.js';
+
 const GOLD  = [184, 144, 43];
 const GOLDD = [142, 110, 30];
 const CREAM = [251, 246, 234];
@@ -168,7 +170,7 @@ export async function buildQuotePdf(pkg, contact, terms){
     doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...DARK);
     doc.text('FANTASY STUDIO', PAGE_W/2, FOOT_NAME, { align: 'center' });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...GOLD);
-    doc.text(String((contact && contact.phone) || '+91 86868 68803'), PAGE_W/2, FOOT_PHONE, { align: 'center' });
+    doc.text(String((contact && contact.phone) || STUDIO_PHONE), PAGE_W/2, FOOT_PHONE, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GOLD);
     doc.text(String((contact && contact.website) || 'www.fantasystudio.in'), PAGE_W/2, FOOT_BASE, { align: 'center' });
   };
