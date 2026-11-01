@@ -35,6 +35,9 @@
      through it, and "changes asked" / "waiting" read in plain text colour.
      Define both here rather than rewriting the rules that use them. */
   --card:var(--panel); --warn:#ffb054;
+  /* the gold of every primary button, written once (UI rulebook, 1 Nov 2026;
+     the admin uses the same name) */
+  --grad-gold:linear-gradient(135deg,#C9A347,#8E6E1E);
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 
@@ -73,7 +76,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .login h1{font-size:1.35rem;margin:.6rem 0 .15rem}
 .login p{color:var(--mut);font-size:.85rem;margin-bottom:1.3rem}
 .login p b{color:var(--text);font-weight:500;white-space:nowrap}
-.gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.gbtn{width:100%;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .gbtn:active{transform:scale(.98)}
 .gbtn:disabled{opacity:.7;cursor:default}
 .gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
@@ -296,9 +299,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 }
 /* iOS zooms the page into any field under 16px and leaves the sheet zoomed */
 html.fs-app .ejt-new textarea{font-size:16px}
-.ackbtn{width:100%;margin-top:.8rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.75em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
+.ackbtn{width:100%;margin-top:.8rem;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.75em;font-size:.85rem;letter-spacing:.05em;cursor:pointer}
 .ackbtn:active{transform:scale(.98)}
 .ackbtn:disabled{opacity:.7;cursor:default}
+/* the second action on a card that still shows the gold Confirm (on shoot
+   day "Mark event completed", on an edit "Mark editing completed"): an
+   outline, like Send price under it, so one card never shows two gold
+   buttons (UI rulebook R1, 1 Nov 2026) */
+.ackbtn.ack2{background:none;border:1px solid rgba(184,144,43,.6);color:var(--gold-b);box-shadow:none}
+.ackbtn.ack2:active{background:rgba(184,144,43,.16);box-shadow:none}
 .ackdone{margin-top:.8rem;text-align:center;color:var(--ok);font-size:.82rem}
 .undobtn{background:none;border:0;color:var(--mut);text-decoration:underline;cursor:pointer;font-size:.76rem;padding:.2em .4em}
 /* Confirm all: the studio can put one member on every function of a wedding
@@ -338,14 +347,15 @@ html.fs-app .ejt-new textarea{font-size:16px}
 .paytotal b{color:var(--gold-b);font-family:var(--serif)}
 
 /* member analytics — stat tiles + a single-series monthly column chart */
-/* Four across, always. Two-by-two put the money on a second row where the
-   two counts above it read as the important pair — they are not; what you
+/* One row, always. Two-by-two put the money on a second row where the
+   counts above it read as the important pair — they are not; what you
    have earned and what you are still owed is the half a crew member opens
-   this page for. At 380px each tile is ~83px. The money is the full figure
-   (owner, 15 Sep 2026: "5000, not 5k"): up to ₹1,50,000 at the tile's size,
-   then one step smaller per two more characters (.n2 / .n3, set by
-   fullMoney()) so ₹12,50,000 still fits without being cut. */
-.stats2{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .9rem}
+   this page for. Three tiles since 1 Nov 2026: the "upcoming" count went,
+   because the Upcoming events heading already says it. The money is the
+   full figure (owner, 15 Sep 2026: "5000, not 5k"): up to ₹1,50,000 at the
+   tile's size, then one step smaller per two more characters (.n2 / .n3,
+   set by fullMoney()) so ₹12,50,000 still fits without being cut. */
+.stats2{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin:0 0 .9rem}
 .stats2 .stat{padding:.55rem .25rem;min-width:0}
 .stats2 .stat b{font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stats2 .stat b.n2{font-size:.86rem}
@@ -393,6 +403,8 @@ html.fs-app .ejt-new textarea{font-size:16px}
 .rolechips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem}
 .rolechips b{background:rgba(184,144,43,.10);border:1px solid var(--line);color:var(--gold-b);border-radius:20px;padding:.25em .8em;font-size:.72rem;font-weight:500}
 .rolechips.yrs{margin-top:.65rem;padding-top:.65rem;border-top:1px dashed var(--line)}
+.rolechips.yrs em{font-style:normal;opacity:.75}   /* a year's "to receive", quieter than what arrived */
+.paycard .note{margin-top:.6rem}
 /* the money tiles jump you straight to the payments list */
 .stat[data-pay]{cursor:pointer;transition:border-color .2s,transform .12s}
 .stat[data-pay]:active{transform:scale(.97)}
@@ -500,7 +512,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* the chart switches series instead of shipping two charts */
 .chtog{margin-left:auto;display:inline-flex;gap:.3rem}
 .chtog button{background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.22em .7em;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:var(--sans)}
-.chtog button.on{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent;color:#fff}
+.chtog button.on{background:var(--grad-gold);border-color:transparent;color:#fff}
 .paycard h3{display:flex;align-items:center;gap:.5rem}
 .bars{overflow-x:auto;scrollbar-width:none}
 .bars::-webkit-scrollbar{display:none}
@@ -552,7 +564,7 @@ html.fs-app .fs-app-only.grp{display:flex}
    one row per action */
 html.fs-app .mewho{display:flex;align-items:center;gap:.8rem;padding-bottom:.7rem;border-bottom:1px dashed var(--line)}
 html.fs-app .meav{flex:0 0 auto;width:60px;height:60px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
-  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:2px solid rgba(226,194,117,.55)}
+  background:var(--grad-gold);border:2px solid rgba(226,194,117,.55)}
 html.fs-app .meav img{width:100%;height:100%;object-fit:cover;display:block}
 html.fs-app .meav i{font-style:normal;font-family:var(--serif);color:#fff;font-size:1.35rem;letter-spacing:.02em}
 html.fs-app .mewho-t{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .5rem}
@@ -577,7 +589,7 @@ html.fs-app .merow.lockrow{position:relative}
 html.fs-app .lockrow input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
 html.fs-app .lockrow .sw{flex:0 0 auto;width:46px;height:28px;border-radius:28px;background:rgba(255,255,255,.14);border:1px solid var(--line);position:relative;transition:background .18s}
 html.fs-app .lockrow .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#f3ecdc;transition:transform .18s}
-html.fs-app .lockrow input:checked + .sw{background:linear-gradient(135deg,#C9A347,#8E6E1E);border-color:transparent}
+html.fs-app .lockrow input:checked + .sw{background:var(--grad-gold);border-color:transparent}
 html.fs-app .lockrow input:checked + .sw::after{transform:translateX(18px)}
 html.fs-app .lockrow input:focus-visible + .sw{outline:2px solid var(--gold);outline-offset:2px}
 /* one tap into the phone's calendar, on the countdown card and each upcoming
@@ -617,7 +629,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
        whole portal, sign-in included, is script-driven. Say so, and give the
        one thing that still works — a way to reach a human. -->
   <style>
-    #loadingView,#notCrewView,#appView,#errorView,.hdr,header{display:none!important}
+    #loadingView,#notCrewView,#appView,#errorView,header{display:none!important}
     .ns-portal{max-width:34rem;margin:22vh auto 0;padding:0 1.3rem;text-align:center;
       font-family:'Jost',system-ui,sans-serif;color:#f3ecdc}
     .ns-portal h1{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:#fff;margin:0 0 .6rem}
@@ -629,8 +641,8 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
   <div class="ns-portal">
     <h1>This page needs JavaScript</h1>
     <p>Signing in and showing your schedule is done in your browser, so it cannot load with scripting switched off. Turn it on, or reach us directly and we will tell you anything you need.</p>
-    <a href="tel:+918686868803">Call 8686868803</a>
-    <a href="https://wa.me/918686868803?text=Salaam!%20I%20need%20to%20check%20my%20crew%20assignments.">WhatsApp us</a>
+    <a href="tel:+918686868803">📞 Call 8686868803</a>
+    <a href="https://wa.me/918686868803?text=Salaam!%20I%20need%20to%20check%20my%20crew%20assignments.">💬 WhatsApp</a>
   </div>
 </noscript>
 
@@ -661,8 +673,8 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       <h1>This number isn't set up as crew yet</h1>
       <p>The studio has not added <b id="ncPhone"></b> to its crew list. If they have a different number for you, sign in with that one — or reach us and we'll help you right away.</p>
       <div class="crewhelp">
-        <a id="ncCall" href="#">📞 Call the studio</a>
-        <a id="ncWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+        <a id="ncCall" href="#">📞 Call</a>
+        <a id="ncWa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
       </div>
       <div class="note">The moment the studio adds this number, this page opens by itself.</div>
       <!-- a number that is a client or a partner studio as well: those pages
@@ -685,7 +697,10 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
       <h1>Couldn't load your crew page</h1>
       <p id="errWhat"></p>
       <button class="gbtn" id="errRetry" type="button">Try again</button>
-      <div class="note">If this keeps happening, tell the studio directly — it's a problem on our side, not with your account.</div>
+      <!-- the studio a tap away, as on the partner page's error view; the
+           printed number until Site Config's arrives (wireHelp) -->
+      <div class="crewhelp"><a id="errCall" href="tel:+918686868803">📞 Call</a></div>
+      <div class="note">If this keeps happening, call the studio — it's a problem on our side, not with your account.</div>
     </div>
   </div>
 
@@ -804,17 +819,19 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     <div class="paycard" id="payCard" hidden>
       <h3>💰 My payments</h3>
       <div id="payRows"></div>
-      <div class="paytotal"><span>Received so far</span><b id="payGot"></b></div>
-      <div class="paytotal"><span>Still to receive</span><b id="payDue"></b></div>
+      <!-- the same three words as the tiles on top: received · to receive ·
+           after upcoming shoots -->
+      <div class="paytotal"><span>Received</span><b id="payGot"></b></div>
+      <div class="paytotal"><span>To receive</span><b id="payDue"></b></div>
       <div class="paytotal soon" id="payUpRow" hidden><span>After upcoming shoots</span><b id="payUp"></b></div>
-      <div class="note" style="margin-top:.6rem">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
+      <div class="note">Payments are recorded by the studio. If something looks off, talk to Fantasy Studio directly.</div>
     </div>
     <!-- the store app's Me tab titles the contact block (app-shell.css keeps
          .fs-app-only from browsers); the block itself is the same on the web -->
     <div class="grp fs-app-only" id="meHelpHead">Contact the studio</div>
     <div class="crewhelp">
-      <a id="crewCall" href="#">📞 Call the studio</a>
-      <a id="crewWa" href="#" target="_blank" rel="noopener">WhatsApp the studio</a>
+      <a id="crewCall" href="#">📞 Call</a>
+      <a id="crewWa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
     </div>
     <!-- the rest of the Me tab: the account rows a store listing has to
          offer (who is signed in is #meTop, at the top of the tab). Delete my
@@ -939,6 +956,8 @@ const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
 const show = id => { ['loadingView','notCrewView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
+/* the error view's Call works even when the sign-in module never loaded */
+$('#errCall').href = 'tel:+' + STUDIO_PHONE.replace(/\D/g,'');
 /* +91 90000 00001, the way /start/ and the partner page print it */
 const prettyPhone = p => String(p||'').replace(/^\+91(\d{5})(\d{5})$/, '+91 $1 $2');
 const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}).replace(/,\s*(\d{4})$/, ' $1') : (d||'—');   /* "Thu, 22 Oct 2026", not "22 Oct, 2026" */
@@ -1039,9 +1058,10 @@ if(!CONFIGURED){
   }
   function refreshInstall(){
     const ok = installable();
-    $('#installBtn').hidden = !ok;
     /* the card belongs on the dashboard only — never over the sign-in screen */
     $('#instCard').hidden = !ok || snoozed() || $('#appView').hidden;
+    /* one Install at a time: the header's steps aside while the card offers it */
+    $('#installBtn').hidden = !ok || !$('#instCard').hidden;
     if(ok && isIOS() && !window.__bipEvent)
       $('#instWhy').textContent = 'Tap Share ⬆ at the bottom of Safari, then “Add to Home Screen” — your schedule opens in one tap, and the last one you loaded still opens with no signal.';
   }
@@ -1063,6 +1083,7 @@ if(!CONFIGURED){
     /* out of the way for a month, not for ever — they may want it next season */
     try{ localStorage.setItem(INST_SNOOZE, String(Date.now() + 30*864e5)); }catch(e){}
     $('#instCard').hidden = true;
+    $('#installBtn').hidden = !installable();   /* the header's Install takes over */
   });
   window.addEventListener('bip-ready', refreshInstall);
   window.addEventListener('appinstalled', ()=>{
@@ -1082,7 +1103,7 @@ if(!CONFIGURED){
   function wireHelp(phone){
     const p = String(phone||DEFAULT_PHONE).replace(/\D/g,'');
     _studioNo = p;
-    $('#crewCall').href = 'tel:+' + p;
+    $('#crewCall').href = $('#errCall').href = 'tel:+' + p;
     $('#crewWa').href = 'https://wa.me/' + p + '?text=' + encodeURIComponent('Salaam! This is about my crew assignment — ');
   }
   wireHelp(DEFAULT_PHONE);
@@ -1577,7 +1598,7 @@ if(!CONFIGURED){
       { id: 'smp-a3', ...NS, kind: '', role: 'cinematography', eventTitle: 'Wedding', date: iso(34), slot: 'full',
         callTime: '08:30', venue: 'Taj Falaknuma Palace', status: 'assigned',
         notes: 'Full day, from the baraat to the send-off.', pay: pay(8000) },
-      /* done: the latest one still waits for "Mark this event completed".
+      /* done: the latest one still waits for "Mark event completed".
          Every pay state is here: unpaid and owed (a4), part-paid (a5), paid
          in one go and paid in two instalments (a10) */
       { id: 'smp-a4', ...PK, kind: '', role: 'photography', eventTitle: 'Wedding', date: iso(-9), slot: 'full',
@@ -1812,18 +1833,18 @@ if(!CONFIGURED){
         ${a.callTime ? `<div class="ln"><span>Call time</span><span class="ct">${esc(fmtTime(a.callTime))}</span></div>` : ''}
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
         ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
-        <div class="ln"><span>Your role</span><span>${esc(String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase()))}</span></div>
+        <div class="ln"><span>Your role</span><span>${esc(roleCap(a.role))}</span></div>
         ${(Number(a.heads)||1) > 1 ? `<div class="ln"><span>People</span><span>You + ${Number(a.heads) - 1} — ${Number(a.heads)} of you on this</span></div>` : ''}
         ${withYou(a)}
       </div>
       ${a.notes ? `<div class="notes"><b>Note from the studio:</b> ${esc(a.notes)}</div>` : ''}
       ${past ? '' : (seen
         ? `<div class="ackdone">✓ You confirmed this${fmtTs(a.ackAt) ? ' on ' + fmtTs(a.ackAt) : ''}</div>`
-        : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this assignment</button>`)}
+        : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this</button>`)}
       ${past ? '' : calBtn(a)}
       ${done ? (a.workDone
         ? `<div class="ackdone">✓ Event completed${fmtTs(a.workDoneAt) ? ' on ' + fmtTs(a.workDoneAt) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
-        : `<button class="ackbtn" data-workdone="${a.id}">✓ Mark this event completed</button>`) : ''}
+        : `<button class="ackbtn${past || seen ? '' : ' ack2'}" data-workdone="${a.id}">✓ Mark event completed</button>`) : ''}
     </div>`;
   }
 
@@ -1936,13 +1957,10 @@ if(!CONFIGURED){
   const ejBare = j => !j || !(ejSafeUrl(j.driveLink) || j.brief || j.footage
     || ejHasScope(j)
     || (Array.isArray(j.comments) && j.comments.some(ejNoteOk)));
+  /* One line each (1 Nov 2026): what is missing and who can fix it. */
   const EJ_NONE = () => _ejErr === 'permission-denied'
-    ? `<p class="ejnone ejnone--x">This job's details are not open to you. Your number has to be on
-       the job for the server to release the footage link, the brief and the notes — ask the studio
-       to open it from their Editing tab.</p>`
-    : `<p class="ejnone">No details from the studio yet — no footage link,
-       brief or scope. Confirming and naming your price still work; ask them to open this
-       job from their Editing tab.</p>`;
+    ? `<p class="ejnone ejnone--x">This job's details aren't open to your number yet — ask the studio to add you to it.</p>`
+    : `<p class="ejnone">No footage link or brief from the studio yet — ask them to fill in this job.</p>`;
 
   function ejBlock(a){
     const j = EJOBS[a.pkgId];
@@ -2100,26 +2118,20 @@ if(!CONFIGURED){
      not belong in a schedule of shoot days. */
   function editCard(a){
     const seen = a.status === 'acknowledged';
-    const today = todayISO();
-    let tag = '<span class="chip wait">no date</span>';
-    const due = asgDue(a);
-    if(ISO_D.test(due)){
-      const d = Math.round((new Date(due+'T00:00') - new Date(today+'T00:00'))/864e5);
-      const cls = a.workDone ? 'seen' : d < 0 ? 'late' : 'wait';
-      const txt = a.workDone ? '✓ done' : d < 0 ? Math.abs(d) + 'd late' : d === 0 ? 'due today' : d === 1 ? 'due tomorrow' : 'due in ' + d + 'd';
-      tag = `<span class="chip ${cls}">${txt}</span>`;
-    }
     const shot = edShots(a);
+    /* the client's name is the sheet's title, right above this card, so
+       Booking says only which booking and which part of it */
+    const booking = [a.quoteNo, a.scope === 'package' ? 'all functions' : a.eventTitle].filter(Boolean);
     return `
     <div class="asg ${a.workDone?'past':''}">
       <div class="asg-h">
         <span class="when">${esc(edWhen(a))}</span>
         <b>${esc(a.deliver || 'Editing')}</b>
-        ${tag}
+        ${edDueChip(a)}
       </div>
       ${edUrg(a) ? '<p class="ejurg">⚡ Urgent — the studio needs this one first</p>' : ''}
       <div class="lines">
-        <div class="ln"><span>Booking</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName||'—')}${a.scope === 'package' ? ' · all functions' : (a.eventTitle ? ' · ' + esc(a.eventTitle) : '')}</span></div>
+        <div class="ln"><span>Booking</span><span>${booking.length ? esc(booking.join(' · ')) : '—'}</span></div>
         ${asgDue(a) ? `<div class="ln"><span>Deadline</span><span>${esc(fmtDate(asgDue(a)))}</span></div>` : ''}
         <div class="ln"><span>${shot.label}</span><span>${esc(shot.text)}</span></div>
       </div>
@@ -2128,7 +2140,7 @@ if(!CONFIGURED){
       ${seen ? '' : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this</button>`}
       ${a.workDone
         ? `<div class="ackdone">✓ Editing completed${fmtTs(a.workDoneAt) ? ' on ' + fmtTs(a.workDoneAt) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
-        : `<button class="ackbtn" data-workdone="${a.id}">✓ Mark editing complete</button>`}
+        : `<button class="ackbtn${seen ? '' : ' ack2'}" data-workdone="${a.id}">✓ Mark editing completed</button>`}
     </div>`;
   }
 
@@ -2202,9 +2214,10 @@ if(!CONFIGURED){
     const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
     const streak = monthStreak(done);
     const thisMonth = done.filter(a=>(a.date||'').slice(0,7) === todayISO().slice(0,7)).length;
-    /* "🎬 N done" and "⏭ N ahead" are the first two stat tiles directly
-       below this card, word for word. What is left is what the tiles do not
-       say: the streak, how many weddings that adds up to, and this month. */
+    /* "🎬 N done" and "⏭ N ahead" went: the events-done tile and the
+       Upcoming events heading say them. What is left is what those do not
+       say: the streak, how many weddings that adds up to (only here — the
+       chart's role chips no longer repeat it), and this month. */
     const lbm = (ME.lb || {}).m || {};
     $('#hqChips').innerHTML =
       (lbm.pos ? `<b>🏆 #${lbm.pos} this month</b>` : '')
@@ -2336,7 +2349,7 @@ if(!CONFIGURED){
     let ms = target - new Date();
     if(ms <= 0){
       box.className = 'cd-clock live';
-      box.innerHTML = `<div style="flex:1"><b>Today</b><span>it's shoot day</span></div>`;
+      box.innerHTML = `<div><b>Today</b><span>it's shoot day</span></div>`;
       return;
     }
     const d = Math.floor(ms/864e5), h = Math.floor(ms/36e5)%24, m = Math.floor(ms/6e4)%60;
@@ -2468,20 +2481,19 @@ if(!CONFIGURED){
        event; until then its fee is the one line under the tiles, in full. */
     const due = ASGS.reduce((s,a)=>s + payOwed(a), 0);
     const soon = ASGS.reduce((s,a)=>s + payUpcoming(a), 0);
+    /* the upcoming count is the Upcoming events heading's (1 Nov 2026) */
     $('#crewStats').innerHTML = `
       <div class="stat"><b>${done.length}</b><span>events done</span></div>
-      <div class="stat"><b>${up.length}</b><span>upcoming</span></div>
       <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(received))} received — tap for the detail">${fullMoney(received)}<span>received</span></div>
       <div class="stat" data-pay role="button" tabindex="0" title="${esc(inr(due))} to receive now — tap for the detail">${fullMoney(due)}<span>to receive</span></div>${
       soon > 0 ? `
-      <p class="statnote" id="statSoon"><b>${esc(inr(soon))}</b> after your upcoming shoots</p>` : ''}`;
+      <p class="statnote" id="statSoon"><b>${esc(inr(soon))}</b> after upcoming shoots</p>` : ''}`;
     renderBars();
+    /* roles only: "💍 N weddings" is the rank card's chip */
     const roles = {};
     ASGS.forEach(a=>{ const r = String(a.role||'').trim(); if(r) roles[r] = (roles[r]||0) + 1; });
-    const weddings = new Set(ASGS.map(a=>a.pkgId).filter(Boolean)).size;
-    $('#anaRoles').innerHTML = `<b>💍 ${weddings} wedding${weddings===1?'':'s'}</b>`
-      + Object.entries(roles).sort((a,b)=>b[1]-a[1])
-          .map(([r,n])=>`<b>${esc(r.replace(/\b\w/g,c=>c.toUpperCase()))} × ${n}</b>`).join('');
+    $('#anaRoles').innerHTML = Object.entries(roles).sort((a,b)=>b[1]-a[1])
+      .map(([r,n])=>`<b>${esc(roleCap(r))} × ${n}</b>`).join('');
     /* year-wise earnings — every year the member has worked, newest first.
        Received, like the tiles and the chart; anything still owed is named
        separately rather than folded into the same figure. Owed as the tiles
@@ -2498,7 +2510,7 @@ if(!CONFIGURED){
     $('#anaYears').hidden = yrs.length < 1;
     $('#anaYears').innerHTML = yrs
       .map(y=>`<b>📆 ${y} · ${inr(byYr[y].got)} · ${byYr[y].n} event${byYr[y].n===1?'':'s'}${
-        byYr[y].due ? ` · <em style="font-style:normal;opacity:.75">${inr(byYr[y].due)} to receive</em>` : ''}</b>`).join('');
+        byYr[y].due ? ` · <em>${inr(byYr[y].due)} to receive</em>` : ''}</b>`).join('');
   }
 
   /* a shoot's fee falls due the day after the event, so a page left open
@@ -2548,9 +2560,12 @@ if(!CONFIGURED){
     }
     const toConfirm = up.filter(a=>a.status !== 'acknowledged').length;
     const openEdits = edits.filter(a=>!a.workDone).length;
-    $('#helloSub').textContent = (up.length
-      ? `${up.length} upcoming event${up.length===1?'':'s'}${toConfirm ? ` — ${toConfirm} waiting for your confirmation` : ' — all confirmed ✓'}`
-      : 'No upcoming events assigned to you right now.')
+    /* No counts here (1 Nov 2026): how many are coming is the Upcoming
+       events heading's, and how many want a Confirm is Confirm all's */
+    $('#helloSub').textContent = (!up.length ? 'No upcoming events assigned to you right now.'
+      : toConfirm === 1 ? 'A shoot is waiting for your confirmation'
+      : toConfirm ? 'Shoots are waiting for your confirmation'
+      : 'All your shoots are confirmed ✓')
       + (openEdits ? ` · ${openEdits} edit${openEdits===1?'':'s'} to finish` : '');
     $('#upHead').hidden = !up.length;
     $('#upCount').textContent = up.length;
@@ -2571,7 +2586,6 @@ if(!CONFIGURED){
     $('#payCard').hidden = !withPay.length;
     if(withPay.length){
       $('#payRows').innerHTML = withPay.map(a=>{
-        const p = a.pay||{};
         const st = payState(a);
         const evs = payEvents(a);
         /* what actually arrived, and when — a shoot can be settled in parts */
@@ -2582,7 +2596,8 @@ if(!CONFIGURED){
         /* a shoot that has not happened yet is not "due": the studio pays
            after the event, so the row says so and steps back */
         const upc = payUpcoming(a) > 0;
-        const pill = st === 'paid' ? `paid${p.paidDate ? ' ' + fmtShort(p.paidDate) : ''}`
+        /* "paid", not "paid 3 Oct": the dates are in the history line under it */
+        const pill = st === 'paid' ? 'paid'
                    : upc ? (st === 'part' ? `${inr(payDue(a))} after the shoot` : 'After the shoot')
                    : st === 'part' ? `${inr(payDue(a))} left`
                    : 'due';
@@ -2705,7 +2720,7 @@ if(!CONFIGURED){
     $('#meName').textContent = given || 'Crew member';
     $('#mePhone').textContent = prettyPhone(_pretty);
     const role = String((ME && ME.role) || '').trim();
-    $('#meRole').textContent = 'Crew' + (role ? ' · ' + role.replace(/\b\w/g,c=>c.toUpperCase()) : '');
+    $('#meRole').textContent = 'Crew' + (role ? ' · ' + roleCap(role) : '');
     const photo = prof && typeof prof.photo === 'string' && PHOTO_OK.test(prof.photo) ? prof.photo : '';
     const img = $('#meAvImg');
     if(photo){ if(img.getAttribute('src') !== photo) img.src = photo; img.hidden = false; }
@@ -3030,7 +3045,7 @@ if(!CONFIGURED){
       render();
       toast(msg || 'Confirmed ✓ — the studio can see it');
     }catch(err){
-      if(b){ b.disabled = false; b.textContent = "✓ Confirm — I've seen this assignment"; }
+      if(b){ b.disabled = false; b.textContent = "✓ Confirm — I've seen this"; }
       toast(navigator.onLine ? 'Could not confirm — try again' : 'You are offline — try again with signal');
     }
   }
@@ -3137,7 +3152,7 @@ if(!CONFIGURED){
       title: (a.eventTitle || 'Event') + (a.clientName ? ' — ' + a.clientName : ''),
       start, end: new Date(start.getTime() + 4*3600000),
       location: a.venue || '',
-      notes: [a.quoteNo, String(a.role||'').replace(/\b\w/g,c=>c.toUpperCase())].filter(Boolean).join(' · ')
+      notes: [a.quoteNo, roleCap(a.role)].filter(Boolean).join(' · ')
     }).catch(()=>'error');
     b.disabled = false;
     toast(r === 'ok' ? 'Added to your Calendar ✓'
