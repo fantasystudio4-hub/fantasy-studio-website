@@ -397,6 +397,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       new Promise(res=>setTimeout(()=>res(failed ? 'denied' : 'queued'), 2500))
     ]);
   }
+  /* rejects with code 'timeout' when p has not settled in ms (p itself runs on) */
+  function withTimeout(p, ms){
+    let t;
+    return Promise.race([p, new Promise((_, rej)=>{ t = setTimeout(()=>rej(Object.assign(new Error('timeout'), { code:'timeout' })), ms); })])
+      .finally(()=>clearTimeout(t));
+  }
   /* one place that decides what the owner is told about a write */
   function settleMsg(res, okMsg, queuedMsg){
     if(res === 'denied') return { ok:false, msg:'NOT saved — the server refused this write. Check your connection and sign-in, then try again.' };
@@ -5497,26 +5503,56 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     try{
       let res, okMsg;
       if(_qeMode === 'existing'){
-        const events = [...(pk.events||[]), ...evs];
-        const patch = { events, updatedAt: serverTimestamp() };
-        /* A priced event has to move the money with it, or the booking keeps
-           its old total: the balance would be wrong, the payment sheet would
-           ask for too little and the money reports would under-count. Same
-           sum the builder computes — every event's services plus the album,
-           less the discount already agreed; recorded payments stay put. */
-        if(items.length){
-          const gross = events.reduce((s,e)=>s + itemsGross(e.items||[]), 0)
-                      + (Number((pk.album||{}).price)||0);
-          const t = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, pk.totals||{});
-          const discount = Math.min(gross, Math.max(0, Number(t.discount)||0));
-          const finalPrice = gross - discount;
-          const advance = Math.max(0, Number(t.advance)||0);
-          patch.totals = { gross, discount, finalPrice, advance, balance: finalPrice - advance };
+        /* The new dates go onto the booking AS IT IS ON THE SERVER, not this
+           phone's copy: events, album and totals.advance read from a copy that
+           had not yet caught up (a payment or an edit made on another phone)
+           were written back over the newer values. Online, a transaction
+           re-reads the booking and appends inside it; offline a transaction
+           cannot run, and this phone's copy is all there is, so the write is
+           queued from it as before. */
+        const build = cur => {
+          const events = [...(cur.events||[]), ...evs];
+          const patch = { events };
+          /* A priced event has to move the money with it, or the booking keeps
+             its old total: the balance would be wrong, the payment sheet would
+             ask for too little and the money reports would under-count. Same
+             sum the builder computes — every event's services plus the album,
+             less the discount already agreed; recorded payments stay put. */
+          if(items.length){
+            const gross = events.reduce((n,e)=>n + itemsGross(e.items||[]), 0)
+                        + (Number((cur.album||{}).price)||0);
+            const t = Object.assign({ gross:0, discount:0, finalPrice:0, advance:0, balance:0 }, cur.totals||{});
+            const discount = Math.min(gross, Math.max(0, Number(t.discount)||0));
+            const finalPrice = gross - discount;
+            const advance = Math.max(0, Number(t.advance)||0);
+            patch.totals = { gross, discount, finalPrice, advance, balance: finalPrice - advance };
+          }
+          return patch;
+        };
+        const ref = doc(db,'packages',pk.id);
+        let patch;
+        if(navigator.onLine){
+          try{
+            await withTimeout(runTransaction(db, async tx=>{
+              const snap = await tx.get(ref);
+              if(!snap.exists()) throw Object.assign(new Error('This booking no longer exists'), { code:'not-found' });
+              patch = build(snap.data());
+              tx.update(ref, { ...patch, updatedAt: serverTimestamp() });
+            }), 15000);
+            res = 'ok';
+          }catch(err){
+            /* a timed-out transaction may still land: say so, rather than invite
+               a second tap that would add the same dates twice */
+            if(err && err.code === 'timeout'){ toast('Could not confirm the save — check this booking before adding the dates again'); return; }
+            res = 'denied';
+          }
+        }else{
+          patch = build(pk);
+          res = await settle(updateDoc(ref, { ...patch, updatedAt: serverTimestamp() }));
         }
-        res = await settle(updateDoc(doc(db,'packages',pk.id), patch));
-        if(res !== 'denied'){ pk.events = events; if(patch.totals) pk.totals = patch.totals; }
+        if(res !== 'denied'){ pk.events = patch.events; if(patch.totals) pk.totals = patch.totals; }
         okMsg = `${evs.length > 1 ? evs.length + ' dates added to' : 'Added to'} ${pk.quoteNo ? pk.quoteNo + ' · ' : ''}${pk.clientName||''}`
-              + (items.length ? ` — ${inr(patch.totals.finalPrice)} total` : '');
+              + (items.length && patch && patch.totals ? ` — ${inr(patch.totals.finalPrice)} total` : '');
       }else{
         const b2b = _qeMode === 'studio';
         const d = {
