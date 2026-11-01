@@ -13117,7 +13117,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const row3 = (label, o, cls='', attrs='') => `
       <div class="ledrow finled ${cls}" ${attrs}><span class="l-ev">${label}</span><b>${amt(o.billed)}</b><b class="hl-ok">${amt(o.recv)}</b><b class="${o.due>0?'neg':''}">${amt(o.due)}</b></div>`;
     const HD = '<div class="ledrow finled hd"><span class="l-ev">Period</span><b>Billed</b><b>Collected</b><b>Balance</b></div>';
-    $('#finWho').textContent = 'Financial-year view (Apr–Mar) — billed / collected / balance per period, from confirmed bookings by event date';
+    $('#finWho').textContent = 'Apr–Mar · confirmed bookings by event date';
     /* data-fv marks which Money page a part belongs to: "an" = Analytics,
        "ex" = Expenses; a part with neither shows on both (the year switch, the
        category totals, a load error). Every figure and formula below is
@@ -13180,7 +13180,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${MONEY_PAGES ? `<button class="upall" type="button" data-goexp style="margin:.9rem 0 0">💸 Expenses · ${fyLabel(y)} — ${expInFy.length} entr${expInFy.length === 1 ? 'y' : 'ies'}, ${inr(expFy)} ›</button>` : ''}
       </div>
       <div data-fv="ex">
-      <div class="finh">Expenses · ${fyLabel(y)} <button class="btn btn--sm btn--ghost" type="button" id="expAdd">＋ Add expense</button></div>
+      <div class="finh">Expenses · ${fyLabel(y)} <button class="btn btn--sm btn--ghost" type="button" id="expAdd">＋ Expense</button></div>
       ${expInFy.length ? expInFy.slice(0, (_expAll || MONEY_PAGES) ? 500 : 8).map(x=>`
         <div class="up-ev exprow">
           <span class="when">${esc(dmy(x.date))}</span>
@@ -13189,7 +13189,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button class="icon-btn icon-btn--danger" data-exdel="${esc(x.id)}" title="Delete this expense">✕</button>
         </div>`).join('')
         + (expInFy.length > 8 && !MONEY_PAGES ? `<button class="upall" type="button" id="expAll">${_expAll ? '− Show fewer' : `＋ See all ${expInFy.length}`}</button>` : '')
-      : `<div class="empty empty--tight">${_expsLoaded ? `Nothing recorded for this year yet — tap ${MONEY_PAGES ? '＋ Expense' : '＋ Add expense'}.` : 'Loading…'}</div>`}
+      : `<div class="empty empty--tight">${_expsLoaded ? `Nothing recorded for this year yet — tap ＋ Expense.` : 'Loading…'}</div>`}
       </div>
       <div data-fv="an">
       <div class="finh">Annual · financial years</div>
