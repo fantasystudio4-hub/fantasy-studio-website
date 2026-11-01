@@ -2465,8 +2465,10 @@ $('#leadForm').addEventListener('submit', async e=>{
   const sub = $('#leadSubmit');
   if(sub && sub.disabled) return;   /* phone double-tap → one lead, one tab */
   if(sub) sub.disabled = true;
-  setTimeout(()=>{ if(sub) sub.disabled = false; }, 3000);
-
+  /* re-enabled when the send has actually finished, not after a fixed 3 s:
+     waiting for Firebase (up to 4 s) and the write (2.5 s) can take longer,
+     and a second tap in that gap sent a second lead and a second tab */
+  try{
   if(_leadAction === 'pdf'){
     await saveLeadReliably(buildLeadDoc(state, name, phone, ph.e164));
     fireAdsConversion('contact');
@@ -2482,11 +2484,12 @@ $('#leadForm').addEventListener('submit', async e=>{
     else{ opened = !!window.open(url, '_blank', 'noopener'); }
     track('quote_whatsapp_sent', { events: sortedEvents(state).length, total: calcQuote(state).grand });
     fireAdsConversion('contact');
-    clearSavedQuote();   // stored quote is cleared after a successful send
+    if(opened) clearSavedQuote();   // kept when WhatsApp did not open, so a reload to retry still has the package
     closeLeadModal();
     showToast(opened ? "Opening WhatsApp — send the message and we'll reply shortly!"
                      : 'Popup blocked — please allow popups, or WhatsApp us at +91 86868 68803.');
   }
+  }finally{ if(sub) sub.disabled = false; }
 });
 
 /* ============================================================

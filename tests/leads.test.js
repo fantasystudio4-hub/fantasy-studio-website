@@ -17,6 +17,23 @@ test('LEAD_LIMITS in catalog.js match the caps in firestore.rules', () => {
   assert.equal(C.LEAD_LIMITS.name, ruleCap('name'));
   assert.equal(C.LEAD_LIMITS.phone, ruleCap('phone'));
   assert.equal(C.LEAD_LIMITS.message, ruleCap('message'));
+  const m = RULES.match(/leadField\('eventType', ''\)\.size\(\) <= (\d+)/);
+  assert.equal(C.LEAD_LIMITS.eventType, Number(m[1]));
+  const e = RULES.match(/quote\.get\('events', \[\]\)\.size\(\) <= (\d+)/);
+  assert.equal(C.LEAD_LIMITS.events, Number(e[1]));
+});
+
+test('a builder lead with more functions than the rule allows still fits it', () => {
+  const C = loadCatalog();
+  const events = [];
+  for (let i = 0; i < 15; i++) events.push(C.normalizeEvent({ type: 'Night ' + i, services: { drone: 1 } }));
+  events.push(C.normalizeEvent({ type: 'Empty' }));
+  const doc = C.clampLead(C.buildLeadDoc({ events, promo: '' }, 'Priya', '9876543210', '919876543210'));
+  assert.equal(doc.quote.events.length, C.LEAD_LIMITS.events);
+  assert.ok(doc.quote.events.every((e) => Object.keys(e.services).length));
+  assert.match(doc.message, /^\+3 more functions/);
+  assert.equal(doc.grandTotal, 15 * C.PRICES.drone);
+  assert.ok(doc.eventType.length <= C.LEAD_LIMITS.eventType);
 });
 
 test('clampLead trims and caps every field the rule limits', () => {

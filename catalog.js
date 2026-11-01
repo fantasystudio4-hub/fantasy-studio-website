@@ -545,12 +545,13 @@ var LEAD_QUEUE_KEY = 'fs_lead_queue_v1';
 
    Cutting a long message is a real loss, but a truncated enquiry the studio can
    read and call back on beats a perfect one nobody ever sees. */
-var LEAD_LIMITS = { name: 120, phone: 20, message: 2000 };
+var LEAD_LIMITS = { name: 120, phone: 20, message: 2000, eventType: 200, events: 12 };
 function clampLead(doc){
   var d = Object.assign({}, doc || {});
   d.name    = String(d.name == null ? '' : d.name).trim().slice(0, LEAD_LIMITS.name);
   d.phone   = String(d.phone == null ? '' : d.phone).slice(0, LEAD_LIMITS.phone);
   d.message = String(d.message == null ? '' : d.message).slice(0, LEAD_LIMITS.message);
+  if(d.eventType != null) d.eventType = String(d.eventType).slice(0, LEAD_LIMITS.eventType);
   return d;
 }
 /* the rule also requires a non-empty name, so a doc without one can never land
@@ -616,13 +617,19 @@ async function flushLeadQueue(){
 /* the lead document admin reads, built from a priced package */
 function buildLeadDoc(st, name, phone, phoneFull){
   var evs = sortedEvents(st);
+  /* The rule takes at most LEAD_LIMITS.events functions, and a lead over it was
+     refused, queued and dropped while the visitor saw "sent". Functions with no
+     service add nothing, so only priced ones are kept; past the cap the rest are
+     named in the message (the WhatsApp text and grandTotal still carry them all). */
+  var priced = st.events.filter(function(ev){ return Object.keys(ev.services||{}).length > 0; });
+  var extra = priced.length - LEAD_LIMITS.events;
   return {
     name: name, phone: phone, phoneFull: phoneFull || '',
     eventType: evs.map(function(v){ return v.type; }).join(', '),
     weddingDate: (evs.find(function(v){ return v.date; })||{}).date || '',
-    message: '',
+    message: extra > 0 ? '+' + extra + ' more function' + (extra === 1 ? '' : 's') + ' not listed here — see the WhatsApp message.' : '',
     quote: {
-      events: st.events.map(function(ev){ return { type: ev.type, date: ev.date||'', services: ev.services }; }),
+      events: priced.slice(0, LEAD_LIMITS.events).map(function(ev){ return { type: ev.type, date: ev.date||'', services: ev.services }; }),
       promo: st.promo
     },
     grandTotal: calcQuote(st).grand,
