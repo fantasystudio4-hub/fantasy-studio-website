@@ -2984,9 +2984,16 @@ if(!CONFIGURED){
      rule pins it to exactly that — the key list is fixed and the array has to
      grow by one — so stage, deadline, the drive link and the audit trail stay
      the studio's. */
+  /* jobs with a note on its way. updateDoc paints the new note at once, the
+     listener repaints the card, and the repaint rebuilt Send ENABLED with the
+     text still in the box — a second tap on weak signal posted the note twice.
+     The guard outlives the repaint; the box is emptied before the write and
+     refilled only if it fails. */
+  const _ejSending = new Set();
   async function ejSendClick(e){
     const btn = e.target.closest('[data-ejsend]'); if(!btn || btn.disabled) return;
     const pkgId = btn.dataset.ejsend;
+    if(_ejSending.has(pkgId)) return;
     const box = document.querySelector(`[data-ejnote="${CSS.escape(pkgId)}"]`);
     const text = box ? box.value.trim() : '';
     if(!text){ if(box) box.focus(); return; }
@@ -2999,17 +3006,22 @@ if(!CONFIGURED){
                     by: String((ME && ME.name) || _pretty || 'editor').slice(0,80),
                     text: text.slice(0,1000) };
     btn.disabled = true; btn.textContent = 'Sending…';
+    _ejSending.add(pkgId);
+    const boxes = () => document.querySelectorAll(`[data-ejnote="${CSS.escape(pkgId)}"]`);
+    /* empty the box first, or the repaint puts the sent note back in it */
+    boxes().forEach(b => { b.value = ''; });
     try{
       if(!_demo) await updateDoc(doc(db,'editingJobs',pkgId), { comments: [...had, entry], updatedAt: serverTimestamp() });
       j.comments = [...had, entry];
-      /* empty the box first, or the repaint puts the sent note back in it */
-      document.querySelectorAll(`[data-ejnote="${CSS.escape(pkgId)}"]`).forEach(b => { b.value = ''; });
       render();
       toast('Sent ✓ — the studio can see it');
     }catch(err){
-      btn.disabled = false; btn.textContent = 'Send';
+      /* the card may have been rebuilt meanwhile: refill the live box, not the old one */
+      boxes().forEach(b => { if(!b.value) b.value = text; });
+      const live = document.querySelector(`[data-ejsend="${CSS.escape(pkgId)}"]`) || btn;
+      live.disabled = false; live.textContent = 'Send';
       toast(navigator.onLine ? 'Could not send — try again' : 'You are offline — try again with signal');
-    }
+    }finally{ _ejSending.delete(pkgId); }
   }
   async function doneClick(e){
     const done = e.target.closest('[data-workdone]');

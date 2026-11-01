@@ -8166,6 +8166,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                                    svc: e.svc.map(v=>({ service: v.service, qty: v.qty })) })) };
   }
   async function ejWrite(pkgId, patch, what){
+    /* A note is APPENDED with arrayUnion, never written as the whole list: the
+       editor can add one from the crew page at any moment, and a list rebuilt
+       from this panel's copy would wipe a note that had not reached it yet. */
+    const comment = patch._comment || null;
+    if(comment){ patch = { ...patch }; delete patch._comment; }
     const now = ejNow(), by = ejWho();
     const entry = what ? { id: ejId(), at: now, by, what } : null;
     const body = { ...patch, pkgId, editors: ejEditorPhones(pkgId), updatedAt: serverTimestamp() };
@@ -8181,6 +8186,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(goesDelivered) body.urgent = 0;
     }
     if(entry) body.audit = arrayUnion(entry);
+    if(comment) body.comments = arrayUnion(comment);
     let cur = ejDoc(pkgId);
     const isNew = !cur;
     if(isNew){ cur = { id: pkgId, pkgId }; EJOBS = [...EJOBS, cur]; body.createdAt = serverTimestamp(); }
@@ -8191,9 +8197,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        but not while the listener is the thing that is down. */
     const before = {};
     Object.keys(patch).forEach(k=>{ before[k] = cur[k]; });
-    const auditBefore = cur.audit;
+    const auditBefore = cur.audit, commentsBefore = cur.comments;
     Object.assign(cur, patch);
     if(entry) cur.audit = [...(Array.isArray(cur.audit) ? cur.audit : []), entry];
+    if(comment) cur.comments = [...(Array.isArray(cur.comments) ? cur.comments : []), comment];
     renderEditTab();
     const res = await settle(setDoc(doc(db,'editingJobs',pkgId), body, { merge: true }));
     if(res === 'denied'){
@@ -8203,6 +8210,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           if(v === undefined) delete cur[k]; else cur[k] = v;
         });
         if(auditBefore === undefined) delete cur.audit; else cur.audit = auditBefore;
+        if(comment){ if(commentsBefore === undefined) delete cur.comments; else cur.comments = commentsBefore; }
       }
       renderEditTab();
     }
@@ -8340,10 +8348,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const text = box.value.trim();
       if(!text){ toast('Type a note first'); box.focus(); return; }
       const entry = { id: ejId(), at: ejNow(), by: ejWho(), text: text.slice(0, 1000) };
-      const cur = ejDoc(_ejOpenId);
-      const had = cur && Array.isArray(cur.comments) ? cur.comments : [];
       box.value = '';
-      const sm = await ejWrite(_ejOpenId, { comments: [...had, entry] }, 'Added a note');
+      const sm = await ejWrite(_ejOpenId, { _comment: entry }, 'Added a note');
       toast(sm.ok ? 'Note added ✓' : sm.msg);
       /* the page has been rebuilt at least once while that was in flight, so
          `box` is a detached node by now — putting the text back on it would
