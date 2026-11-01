@@ -49,7 +49,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Fantasy Studio" />
 <meta property="og:title" content="Fantasy Studio — Wedding Photography & Cinematography in Hyderabad" />
-<meta property="og:description" content="14 years of premium wedding photography & cinematography in Hyderabad. Build your custom package and see your price live." />
+<meta property="og:description" content="Premium wedding photography & cinematography in Hyderabad since 2012. Build your custom package and see your price live." />
 <meta property="og:locale" content="en_IN" />
 <meta property="og:url" content="https://www.fantasystudio.in/" />
 <meta property="og:image" content="https://www.fantasystudio.in/og.png" />
@@ -57,7 +57,7 @@
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Fantasy Studio — Wedding Photography &amp; Cinematography in Hyderabad" />
-<meta name="twitter:description" content="14 years of premium wedding photography & cinematography in Hyderabad. Build your custom package and see your price live." />
+<meta name="twitter:description" content="Premium wedding photography & cinematography in Hyderabad since 2012. Build your custom package and see your price live." />
 <meta name="twitter:image" content="https://www.fantasystudio.in/og.png" />
 
 <!-- Geo -->
@@ -105,7 +105,7 @@
 }
 </script>
 <script type="application/ld+json" id="faqSchema">
-{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How do I book Fantasy Studio for my wedding?", "acceptedAnswer": {"@type": "Answer", "text": "Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due after the event — editing starts once it is cleared — and the final 10% at delivery."}}, {"@type": "Question", "name": "What are the payment terms?", "acceptedAnswer": {"@type": "Answer", "text": "50% advance to confirm your booking, 40% after the event — we begin editing once this is paid — and 10% at the time of delivery. These terms are printed on every quote and PDF."}}, {"@type": "Question", "name": "Do you have female photographers for the bridal side?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are ₹7,500 per head per event (₹5,500 photography charge + ₹2,000 female shooter pardah coverage premium). You can add them to any event directly in the Package Builder."}}, {"@type": "Question", "name": "Will we get the raw photos too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package."}}, {"@type": "Question", "name": "Can I customise a ready-made package?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things."}}, {"@type": "Question", "name": "Which events do you cover?", "acceptedAnswer": {"@type": "Answer", "text": "Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage."}}]}
+{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How do I book Fantasy Studio for my wedding?", "acceptedAnswer": {"@type": "Answer", "text": "Build your package right here on the site and send it to us on WhatsApp. Your dates are reserved once the 50% advance is paid."}}, {"@type": "Question", "name": "What are the payment terms?", "acceptedAnswer": {"@type": "Answer", "text": "50% advance to confirm your booking, 40% after the event — we begin editing once this is paid — and 10% at the time of delivery. These terms are printed on every quote and PDF."}}, {"@type": "Question", "name": "Do you have female photographers for the bridal side?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. We provide dedicated lady shooters for pardah-observing families — a female photographer who covers the ladies’ section exclusively. Lady shooters are ₹7,500 per head per event (₹5,500 photography charge + ₹2,000 female shooter pardah coverage premium). You can add them to any event directly in the Package Builder."}}, {"@type": "Question", "name": "Will we get the raw photos too?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Raw photos along with the fully edited video are delivered on a pendrive with every package."}}, {"@type": "Question", "name": "Can I customise a ready-made package?", "acceptedAnswer": {"@type": "Answer", "text": "Absolutely. Pick any ready-made package as a starting point, then add or remove services per event — the price updates live as you change things."}}, {"@type": "Question", "name": "Which events do you cover?", "acceptedAnswer": {"@type": "Answer", "text": "Manje, Sanchak, Mehndi, Nikah, Ruksati and Valima / Reception — plus engagements and birthdays for single-day coverage."}}]}
 </script>
 
 <style>
@@ -128,6 +128,13 @@
   --ink-soft:    #4A463E;
   --line:        #E7DEC9;
   --white:       #ffffff;
+  /* text on the dark grounds (about, reviews, app card, footer), lightest to
+     dimmest — the values the page already used, named once */
+  --on-dark:       #f3ecdc;
+  --on-dark-soft:  #cabfa8;
+  --on-dark-mut:   #b3a98f;
+  --on-dark-dim:   #a9a088;
+  --on-dark-faint: #8f866f;
   --shadow-sm:   0 4px 18px rgba(40,34,18,.06);
   --shadow-md:   0 18px 50px rgba(40,34,18,.10);
   --shadow-lg:   0 30px 80px rgba(40,34,18,.16);
@@ -187,7 +194,7 @@ section{position:relative}
   text-transform:uppercase;white-space:nowrap;
 }
 .btn-gold{
-  background:linear-gradient(135deg,var(--gold-deep),#7A5E19);
+  background:linear-gradient(135deg,var(--gold-deep),var(--gold-text));
   color:#fff;box-shadow:0 12px 30px rgba(184,144,43,.32);
 }
 .btn-gold:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgba(184,144,43,.42)}
@@ -350,7 +357,7 @@ header.nav.scrolled{
    ABOUT
    ============================================================ */
 .about{
-  color:#f3ecdc;
+  color:var(--on-dark);
   background:
     radial-gradient(60% 50% at 85% 0%,rgba(184,144,43,.14),transparent 60%),
     linear-gradient(180deg,#26200f 0%,#1b160b 45%,#141008 100%);
@@ -361,14 +368,14 @@ header.nav.scrolled{
 .about .eyebrow::before{background:var(--gold-bright)}
 .about .h-section{color:#fff}
 .about .h-section .it{color:var(--gold-bright)}
-.about p{color:#cabfa8}
+.about p{color:var(--on-dark-soft)}
 .about strong{color:var(--gold-bright)}
 .about-grid{max-width:840px;margin:0 auto}
 .about p+p{margin-top:1.1rem}
 .about .lead-2{font-family:var(--serif-2);font-size:1.5rem;font-style:italic;color:#f4ecd9;margin-bottom:1.3rem;line-height:1.4}
 .trust-row{display:flex;flex-wrap:wrap;gap:1.6rem 2.4rem;margin-top:2.2rem;padding-top:1.8rem;border-top:1px solid rgba(226,194,117,.25)}
 .trust-row .ti b{font-family:var(--serif);font-size:1.7rem;color:var(--gold-bright)}
-.trust-row .ti span{display:block;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:#b3a98f}
+.trust-row .ti span{display:block;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-dark-mut)}
 
 /* ============================================================
    SERVICES
@@ -446,9 +453,8 @@ header.nav.scrolled{
 .app-cta-txt .eyebrow{color:var(--gold-soft)}
 .app-cta-txt h3{font-family:var(--serif);font-size:clamp(1.25rem,3vw,1.6rem);color:#fff;margin:.3rem 0 .35rem}
 .app-cta-txt p{color:rgba(244,234,210,.72);font-size:.92rem;max-width:44ch;margin:0}
-.app-cta-act{flex:0 0 auto;text-align:center;position:relative}
+.app-cta-act{flex:0 0 auto;text-align:center;position:relative;display:flex;flex-direction:column;gap:.6rem}
 .app-cta-act .btn{white-space:nowrap}
-.app-cta-act{display:flex;flex-direction:column;gap:.6rem}
 @media(max-width:720px){
   .app-cta{flex-direction:column;text-align:center;gap:1rem}
   .app-cta-txt p{margin:0 auto}
@@ -458,7 +464,7 @@ header.nav.scrolled{
 /* ============================================================
    TESTIMONIALS
    ============================================================ */
-.testi{background:var(--ink);color:#f3ecdc;position:relative;overflow:hidden}
+.testi{background:var(--ink);color:var(--on-dark);position:relative;overflow:hidden}
 .testi::before{content:"";position:absolute;inset:0;background:radial-gradient(50% 50% at 50% 0%,rgba(184,144,43,.14),transparent 60%)}
 .testi .h-section,.testi .eyebrow{color:#fff;position:relative}
 .testi .eyebrow{color:var(--gold-bright)}
@@ -471,18 +477,18 @@ header.nav.scrolled{
 .testi-who{display:flex;align-items:center;gap:.9rem}
 .testi-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold-soft),var(--gold-deep));display:grid;place-items:center;color:#fff;font-family:var(--serif);font-size:1.1rem;flex:0 0 auto}
 .testi-who b{display:block;font-family:var(--serif);font-size:1rem;color:#fff}
-.testi-who span{font-size:.76rem;color:#b3a98f}
+.testi-who span{font-size:.76rem;color:var(--on-dark-mut)}
 /* Write a review — the form under the Kind Words cards, on the same dark
    ground: a card like the quotes, dark fields, gold stars. The stars are
    five radios; the label paints up to the picked one (.on) and, under the
    pointer, up to the hovered one (.hov). */
 .rv-cta{position:relative;z-index:2;text-align:center;margin-top:clamp(28px,4vw,44px)}
-.rv-cta p{color:#b3a98f;font-size:.92rem;margin-bottom:1rem}
+.rv-cta p{color:var(--on-dark-mut);font-size:.92rem;margin-bottom:1rem}
 .rv-form,.rv-done{position:relative;z-index:2;max-width:640px;margin:1.6rem auto 0;background:rgba(255,255,255,.04);border:1px solid rgba(226,194,117,.25);border-radius:12px;padding:clamp(1.3rem,3.5vw,2.2rem)}
 .rv-form .fg label,.rv-rate legend{color:#cdbf9a}
-.rv-form .fg label small{text-transform:none;letter-spacing:0;color:#8f866f}
-.rv-form .fg input,.rv-form .fg textarea{background:rgba(255,255,255,.06);border-color:rgba(226,194,117,.25);color:#f3ecdc}
-.rv-form .fg input::placeholder,.rv-form .fg textarea::placeholder{color:#8f866f}
+.rv-form .fg label small{text-transform:none;letter-spacing:0;color:var(--on-dark-faint)}
+.rv-form .fg input,.rv-form .fg textarea{background:rgba(255,255,255,.06);border-color:rgba(226,194,117,.25);color:var(--on-dark)}
+.rv-form .fg input::placeholder,.rv-form .fg textarea::placeholder{color:var(--on-dark-faint)}
 .rv-form .fg input:focus,.rv-form .fg textarea:focus{background:rgba(255,255,255,.09);border-color:var(--gold-bright);box-shadow:0 0 0 3px rgba(226,194,117,.15)}
 .rv-form .fg textarea{min-height:120px}
 .rv-rate{border:0;padding:0;margin:0 0 1.1rem;min-width:0}
@@ -495,12 +501,12 @@ header.nav.scrolled{
 .rv-stars input:focus-visible + label{outline:2px solid var(--gold-bright);outline-offset:2px;border-radius:6px}
 .rv-stars.bad label{color:#7a4a3a}
 .rv-stars.bad label.on{color:var(--gold-bright)}
-.rv-form .btn-gold{width:100%}
-.rv-note{font-size:.78rem;color:#b3a98f;margin:.9rem 0 0;text-align:center}
+.rv-form .btn-gold,.contact-form .btn-gold{width:100%}
+.rv-note{font-size:.78rem;color:var(--on-dark-mut);margin:.9rem 0 0;text-align:center}
 .rv-done{text-align:center}
 .rv-done .stars{justify-content:center;font-size:1.4rem}
 .rv-done b{display:block;font-family:var(--serif);font-size:1.25rem;color:#fff;margin-bottom:.4rem;font-weight:500}
-.rv-done p{color:#b3a98f;font-size:.9rem;line-height:1.55}
+.rv-done p{color:var(--on-dark-mut);font-size:.9rem;line-height:1.55}
 
 /* ============================================================
    CONTACT
@@ -533,12 +539,12 @@ header.nav.scrolled{
 /* ============================================================
    FOOTER
    ============================================================ */
-footer{background:var(--ink);color:#cabfa8;padding:clamp(48px,8vw,80px) 0 0}
+footer{background:var(--ink);color:var(--on-dark-soft);padding:clamp(48px,8vw,80px) 0 0}
 .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:2.6rem;padding-bottom:3rem}
 footer .logo-text b{color:#fff}
-footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9a088}
+footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:var(--on-dark-dim)}
 .foot-col h3{font-family:var(--serif);font-size:1.05rem;color:#fff;margin-bottom:1.1rem}
-.foot-col a,.foot-col p{display:block;font-size:.9rem;color:#a9a088;padding:.3rem 0;transition:.25s}
+.foot-col a,.foot-col p{display:block;font-size:.9rem;color:var(--on-dark-dim);padding:.3rem 0;transition:.25s}
 .foot-col a:hover{color:var(--gold-bright)}
 .foot-phone{font-family:var(--serif);font-size:1.7rem;color:var(--gold-bright)!important;font-weight:700}
 .foot-social{display:flex;gap:.7rem;margin-top:.4rem}
@@ -548,7 +554,7 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
 .foot-social a:hover svg{color:#fff}
 .foot-bottom{border-top:1px solid rgba(226,194,117,.16);padding:1.5rem 0;text-align:center;font-size:.82rem;color:#8c836d}
 .foot-bottom .gold{color:var(--gold-bright)}
-.foot-bottom .foot-legal{color:#a9a088;border-bottom:1px solid rgba(226,194,117,.28);transition:.25s}
+.foot-bottom .foot-legal{color:var(--on-dark-dim);border-bottom:1px solid rgba(226,194,117,.28);transition:.25s}
 .foot-bottom .foot-legal:hover{color:var(--gold-bright);border-bottom-color:var(--gold-bright)}
 
 /* ---- no-JavaScript fallback ----
@@ -608,7 +614,7 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   .hero .reveal.d3{animation-delay:.09s}
   @keyframes heroIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 }
-.sheet-body,.mobile-menu{overscroll-behavior:contain}
+.mobile-menu{overscroll-behavior:contain}
 
 /* ============================================================
    RESPONSIVE
@@ -618,6 +624,11 @@ footer .foot-about p{font-size:.92rem;margin-top:1.2rem;max-width:38ch;color:#a9
   /* dropping the nav pill is what lets the full link row still fit at 861px;
      the hero and the packages section both carry the same CTA */
   .nav-cta{display:none}
+}
+/* the pill and the "Package Builder" text link both go to /builder/: show the
+   text link only where the pill is hidden */
+@media(min-width:1081px){
+  .nav-links .nav-builder{display:none}
 }
 /* The full nav row needs ~1218px to fit on one line, but the burger only takes
    over at 860px. In between (every iPad landscape, 1024/1152 desktops, a 1280px
@@ -685,7 +696,7 @@ section[id]{scroll-margin-top:84px}
 .preset{
   text-align:left;cursor:pointer;border-radius:11px;padding:1.15rem 1.2rem;font-family:var(--sans);
   border:1px solid rgba(255,255,255,.4);
-  background:linear-gradient(150deg,#8E6E1E 0%,#84651B 55%,#7A5E19 100%);
+  background:linear-gradient(150deg,var(--gold-deep) 0%,#84651B 55%,var(--gold-text) 100%);
   color:#fff;box-shadow:0 8px 20px rgba(184,144,43,.28);
   transition:.3s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden;
 }
@@ -694,7 +705,7 @@ section[id]{scroll-margin-top:84px}
 .preset .pk-name{font-family:var(--serif);font-size:1.2rem;color:#fff;display:block;margin-bottom:.25rem;text-shadow:0 1px 2px rgba(0,0,0,.2)}
 .preset .pk-desc{font-size:.77rem;color:#fff;display:block;line-height:1.45;min-height:3.6em}
 .preset .pk-from{display:block;margin-top:.75rem;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff}
-.preset .pk-from b{color:#fff}
+.preset .pk-from b{color:#fff;font-family:var(--serif);font-size:1.08rem;letter-spacing:0}
 /* package comparison */
 .pkg-compare-btn{
   display:block;margin:1.05rem auto 0;background:none;border:1px dashed rgba(184,144,43,.5);color:var(--gold-deep);
@@ -721,7 +732,6 @@ section[id]{scroll-margin-top:84px}
 .compare-table td:first-child{text-align:left;color:var(--ink);position:sticky;left:0;z-index:1;background:#fff}
 .compare-table tr:nth-child(even) td{background:var(--cream)}
 .compare-table .cmp-price td{font-family:var(--serif);font-weight:700;color:var(--gold-deep);font-size:.95rem;border-top:2px solid var(--gold);background:#FBF4E1}
-.preset .pk-from b{font-family:var(--serif);font-size:1.08rem;letter-spacing:0;margin-left:.2em}
 .preset .pk-tag{position:absolute;top:0;right:0;background:var(--ink);color:var(--gold-bright);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.3em .75em;border-bottom-left-radius:9px}
 
 @media(max-width:900px){.preset-grid{grid-template-columns:repeat(2,1fr)}}
@@ -737,7 +747,7 @@ section[id]{scroll-margin-top:84px}
 .toast{
   position:fixed;left:50%;bottom:24px;transform:translate(-50%,140%);z-index:1200;
   display:flex;align-items:center;gap:.9rem;max-width:min(92vw,480px);
-  background:var(--ink);color:#f3ecdc;border:1px solid rgba(226,194,117,.4);
+  background:var(--ink);color:var(--on-dark);border:1px solid rgba(226,194,117,.4);
   border-radius:60px;padding:.8rem 1.4rem;box-shadow:0 18px 50px rgba(0,0,0,.35);
   font-size:.88rem;opacity:0;visibility:hidden;pointer-events:none;
   transition:transform .45s cubic-bezier(.2,.7,.3,1), opacity .35s ease, visibility 0s linear .45s;
@@ -753,7 +763,7 @@ section[id]{scroll-margin-top:84px}
   text-transform:uppercase;white-space:nowrap;transition:.25s;
 }
 .toast button:hover{background:var(--gold);border-color:var(--gold);color:#fff}
-.toast .t-close{border:0;background:none;color:#b3a98f;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.9em .5em;line-height:1;white-space:nowrap}
+.toast .t-close{border:0;background:none;color:var(--on-dark-mut);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.9em .5em;line-height:1;white-space:nowrap}
 .toast .t-close:hover{background:none;color:#fff}
 @media(max-width:1080px){.toast{bottom:calc(84px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}}
 
@@ -825,7 +835,7 @@ section[id]{scroll-margin-top:84px}
 .resume-card .rc-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
 .resume-card .rc-l{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
 .resume-card b{font-family:var(--serif);font-size:1.5rem;color:#fff}
-.resume-card .rc-s{font-size:.76rem;color:#b3a98f}
+.resume-card .rc-s{font-size:.76rem;color:var(--on-dark-mut)}
 .resume-card .rc-btn{flex:0 0 auto;padding:.75em 1.5em;font-size:.74rem}
 
 .pkg-showcase{position:relative;z-index:2;margin-bottom:2.2rem}
@@ -843,9 +853,6 @@ section[id]{scroll-margin-top:84px}
   .resume-card{flex-wrap:wrap;align-items:flex-start}
   .resume-card .rc-ic{margin-top:.15rem}
   .resume-card .rc-btn{width:100%}
-}
-@media(max-width:560px){
-  .rate-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -867,7 +874,7 @@ section[id]{scroll-margin-top:84px}
       <span class="logo-text"><b>Fantasy Studio</b><span>Malakpet · Hyderabad</span></span>
     </a>
     <nav class="nav-links">
-      <a href="builder/">Package Builder</a>
+      <a href="builder/" class="nav-builder">Package Builder</a>
       <a href="#about">About</a>
       <a href="#services">Services</a>
       <a href="#portfolio">Portfolio</a>
@@ -907,7 +914,7 @@ section[id]{scroll-margin-top:84px}
   </svg>
   <div class="hero-dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap hero-inner">
-    <div class="ornament reveal"><i></i><span>Est. 2012 — 14 Years of Artistry</span><i></i></div>
+    <div class="ornament reveal"><i></i><span>Wedding Artistry Since 2012</span><i></i></div>
     <!-- the wordmark stays the visible H1; the suffix gives crawlers and screen
          readers the service + city the page actually ranks for, with no visual
          change (.sr-only is absolutely positioned, so layout is untouched) -->
@@ -915,7 +922,7 @@ section[id]{scroll-margin-top:84px}
     <p class="tagline reveal d2">Wedding Photography · Cinematography · <b>Candid</b> · Drone</p>
     <div class="hero-cta reveal d3">
       <a href="builder/" class="btn btn-gold">Build Your Package</a>
-      <a href="https://www.instagram.com/fantasy_studio_official?igsh=NXNldTh2aXJyMDAz" target="_blank" rel="noopener" class="btn btn-outline-light">View Our Work</a>
+      <a href="#portfolio" class="btn btn-outline-light">View Our Work</a>
     </div>
   </div>
   <div class="scroll-cue"><span>Scroll</span><span class="line"></span></div>
@@ -990,11 +997,11 @@ section[id]{scroll-margin-top:84px}
     <div class="about-copy reveal">
       <span class="eyebrow">Who We Are</span>
       <h2 class="h-section">Timeless stories,<br><span class="it">beautifully</span> told.</h2>
-      <p class="lead-2">For over fourteen years, Fantasy Studio has been Hyderabad's trusted name in luxury wedding photography &amp; cinematography.</p>
+      <p class="lead-2">Since 2012, Fantasy Studio has been Hyderabad's trusted name in luxury wedding photography &amp; cinematography.</p>
       <p>From our home in Malakpet we have documented more than 1,500 celebrations, from intimate Nikahs to grand Receptions — and we are trusted for <strong>Muslim</strong> wedding traditions, every ritual honoured with the dignity it deserves.</p>
       <div class="trust-row">
         <div class="ti"><b class="stat" data-count="1500" data-suffix="+">1500+</b><span>Weddings Filmed</span></div>
-        <div class="ti"><b class="stat" data-count="14" data-suffix=" Yrs">14 Yrs</b><span>Of Experience</span></div>
+        <div class="ti"><b>2012</b><span>Serving Since</span></div>
         <div class="ti"><b class="stat" data-count="100" data-suffix="%">100%</b><span>Hyderabad Local</span></div>
       </div>
     </div>
@@ -1143,7 +1150,7 @@ section[id]{scroll-margin-top:84px}
     <div class="faq-list reveal d1">
       <details class="faq-item">
         <summary>How do I book Fantasy Studio for my wedding?</summary>
-        <p>Build your package right here on the site, send it to us on WhatsApp, and your dates are reserved once the 50% advance is paid. The remaining 40% is due after the event — editing starts once it is cleared — and the final 10% at delivery.</p>
+        <p>Build your package right here on the site and send it to us on WhatsApp. Your dates are reserved once the 50% advance is paid.</p>
       </details>
       <details class="faq-item">
         <summary>What are the payment terms?</summary>
@@ -1181,29 +1188,27 @@ section[id]{scroll-margin-top:84px}
       <form class="contact-form reveal d1" id="enquiryForm">
         <div class="form-row">
           <div class="fg"><label for="cName">Your Name</label><input type="text" id="cName" required maxlength="120" placeholder="Full name" autocomplete="name" /></div>
-          <div class="fg"><label for="cPhone">Phone</label><input type="tel" id="cPhone" required placeholder="+91 ..." autocomplete="tel" inputmode="numeric" /></div>
+          <div class="fg"><label for="cPhone">Phone</label><input type="tel" id="cPhone" required placeholder="e.g. 98765 43210" autocomplete="tel" inputmode="numeric" /></div>
         </div>
         <div class="form-row">
           <div class="fg"><label for="cDate">Wedding Date</label><input type="date" id="cDate" /></div>
           <div class="fg"><label for="cEvent">Event Type</label>
+            <!-- the functions are filled in from EVENT_TYPES (catalog.js), the
+                 builder's list, so the two never disagree; "Full Wedding" is not
+                 a function and stays as the last choice -->
             <select id="cEvent">
               <option value="">Select…</option>
-              <option>Manje</option><option>Sanchak</option><option>Mehndi</option>
-              <option>Nikah</option><option>Ruksati</option><option>Valima / Reception</option>
-              <option>Full Wedding</option>
+              <option id="cEventAll">Full Wedding</option>
             </select>
           </div>
         </div>
         <div class="fg"><label for="cMsg">Tell us about your celebration</label><textarea id="cMsg" maxlength="2000" placeholder="Venue, number of events, what you're looking for…"></textarea></div>
-        <button type="submit" class="btn btn-gold" style="width:100%">Send Enquiry via WhatsApp</button>
+        <button type="submit" class="btn btn-gold">Send Enquiry via WhatsApp</button>
       </form>
     </div>
   </div>
 </section>
 
-</main>
-
-<!-- ============ FOOTER ============ -->
 <!-- ============ GET THE APP ============
      Both store listings are live. The script below hides this inside the
      store app itself, shows only the App Store button on an iPhone/iPad and
@@ -1233,6 +1238,9 @@ section[id]{scroll-margin-top:84px}
   </div>
 </section>
 
+</main>
+
+<!-- ============ FOOTER ============ -->
 <footer>
   <div class="wrap">
     <div class="foot-grid">
@@ -1247,7 +1255,7 @@ section[id]{scroll-margin-top:84px}
           </svg>
           <span class="logo-text"><b>Fantasy Studio</b><span>Malakpet · Hyderabad</span></span>
         </a>
-        <p>Premium wedding photography &amp; cinematography in Malakpet, Hyderabad. Capturing love stories with artistry for over 14 years.</p>
+        <p>Premium wedding photography &amp; cinematography in Malakpet, Hyderabad. Capturing love stories with artistry since 2012.</p>
       </div>
       <div class="foot-col">
         <h3>Explore</h3>
@@ -1255,8 +1263,6 @@ section[id]{scroll-margin-top:84px}
         <a href="#about">About Us</a>
         <a href="#services">Services</a>
         <a href="builder/">Build a Package</a>
-        <a href="https://play.google.com/store/apps/details?id=in.fantasystudio.app" target="_blank" rel="noopener" class="foot-app foot-play">Android App ↗</a>
-        <a href="https://apps.apple.com/app/id6810769828" target="_blank" rel="noopener" class="foot-app foot-ios">iPhone App ↗</a>
         <a href="#portfolio">Portfolio</a>
         <a href="#contact">Contact</a>
       </div>
@@ -1276,7 +1282,7 @@ section[id]{scroll-margin-top:84px}
     </div>
     <div class="foot-bottom">
       © <span id="year"></span> <span class="gold">Fantasy Studio</span>, Malakpet Hyderabad. All rights reserved. ·
-      <a href="privacy/" class="foot-legal">Privacy Policy</a> · Crafted with love.
+      <a href="privacy/" class="foot-legal">Privacy Policy</a>
     </div>
   </div>
 </footer>
@@ -1360,7 +1366,7 @@ function renderPresets(){
       ${p.tag?`<span class="pk-tag">${esc(p.tag)}</span>`:''}
       <span class="pk-name">${esc(p.name||'')}</span>
       <span class="pk-desc">${esc(p.desc||'')}</span>
-      <span class="pk-from">Package<b>${inr(presetRawTotal(p))}</b></span>
+      <span class="pk-from"><b>${inr(presetRawTotal(p))}</b></span>
     </a>`;
   }).join('');
 }
@@ -1509,7 +1515,7 @@ $('#enquiryForm').addEventListener('submit', async e=>{
   $('#cName').removeAttribute('aria-invalid');
   const ph = parsePhone($('#cPhone').value);
   if(!ph){
-    showToast('Please enter a valid mobile number with country code (e.g. +91 98765 43210).');
+    showToast('Please enter a valid mobile number.');
     $('#cPhone').setAttribute('aria-invalid','true'); $('#cPhone').focus();
     return;
   }
@@ -1675,6 +1681,13 @@ window.addEventListener('load', ()=>{ _startAtTopSafe(); setTimeout(_startAtTopS
 
 $('#year').textContent = new Date().getFullYear();
 const cd = $('#cDate'); if(cd) cd.min = TODAY_ISO;   // no past dates in enquiry form
+/* the enquiry's Event Type choices: the same functions the builder offers.
+   The chosen text is saved as the lead's eventType, exactly as before. */
+(function(){
+  const sel = $('#cEvent'), last = $('#cEventAll');
+  if(!sel || !last) return;
+  EVENT_TYPES.forEach(t=>{ const o = document.createElement('option'); o.textContent = t; sel.insertBefore(o, last); });
+})();
 
 renderPresets();
 renderResume();
@@ -1759,10 +1772,10 @@ flushLeadQueue();
      unless the UA says Android (device emulators do) */
   const ua = navigator.userAgent;
   const isIOS = /iphone|ipad|ipod/i.test(ua) || (!/android/i.test(ua) && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if(inApp){ $$('#getapp, .foot-app').forEach(el=>{ el.hidden = true; }); return; }
+  if(inApp){ $$('#getapp').forEach(el=>{ el.hidden = true; }); return; }
   const isAndroid = /android/i.test(ua);
-  if(isIOS) $$('#playBtn, .foot-play').forEach(el=>{ el.hidden = true; });
-  if(isAndroid) $$('#iosBtn, .foot-ios').forEach(el=>{ el.hidden = true; });
+  if(isIOS) $$('#playBtn').forEach(el=>{ el.hidden = true; });
+  if(isAndroid) $$('#iosBtn').forEach(el=>{ el.hidden = true; });
   const pb = $('#playBtn'), ib = $('#iosBtn');
   if(pb) pb.addEventListener('click', ()=>{ try{ track('app_store_click', { store:'play' }); }catch(e){} });
   if(ib) ib.addEventListener('click', ()=>{ try{ track('app_store_click', { store:'apple' }); }catch(e){} });

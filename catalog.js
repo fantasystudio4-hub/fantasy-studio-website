@@ -708,7 +708,7 @@ function applyRemoteConfig(cfg){
       });
     }
     if(cfg && cfg.presets && Object.keys(cfg.presets).length){
-      /* A preset whose numbers don't add up renders "Package ₹NaN" on the live
+      /* A preset whose numbers don't add up shows "₹NaN" on its card on the live
          site, so validate before adopting: quantities must be real numbers and
          every service key must exist. A bad preset is skipped, keeping the
          built-in one, rather than publishing NaN to visitors. */
@@ -730,7 +730,7 @@ function applyRemoteConfig(cfg){
         });
         if(!ok) return;                                      // skip, keep the built-in
         /* a preset that ended up with nothing priceable would advertise
-           "Package ₹0" — drop it rather than show a free package */
+           a "₹0" card — drop it rather than show a free package */
         var hasAny = events.some(function(ev){ return Object.keys(ev.services).length > 0; });
         if(!hasAny) return;
         /* pr.album is ignored: a package no longer carries an album */
