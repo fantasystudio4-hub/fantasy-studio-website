@@ -561,22 +561,23 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button type="button" data-cfgpage="web">🌐 Website content <em>testimonials · FAQs</em><b class="badge" hidden>not saved</b></button>
     </div>
     <div class="sec" data-cfg="trash">
-      <h3>Trash <span style="font-size:.7rem;color:var(--mut)">(restore anything deleted by mistake — cleared after 30 days, except packages with recorded payments, which are kept as financial records until you delete them here)</span></h3>
+      <h3>Trash</h3>
+      <p class="sub">Restore anything deleted by mistake. Cleared after 30 days — except packages with client or crew payments recorded, which stay until you delete them here.</p>
       <div id="trashList"></div>
     </div>
     <div class="sec" data-cfg="backup">
-      <h3>Backup &amp; Export</h3>
+      <h3>Backup &amp; export</h3>
       <p class="sub">Download your data for safekeeping and accounts.</p>
       <div class="grid2">
-        <button class="addrow" id="expJson">⬇ Full backup (JSON)</button>
-        <button class="addrow" id="expPkgs">⬇ Packages CSV</button>
-        <button class="addrow" id="expPays">⬇ Payments CSV</button>
-        <button class="addrow" id="expLeads">⬇ Leads CSV</button>
-        <button class="addrow" id="expSpend">⬇ Expenses CSV</button>
+        <button class="btn btn--ghost" id="expJson">⬇ Full backup (JSON)</button>
+        <button class="btn btn--ghost" id="expPkgs">⬇ Packages CSV</button>
+        <button class="btn btn--ghost" id="expPays">⬇ Payments CSV</button>
+        <button class="btn btn--ghost" id="expLeads">⬇ Leads CSV</button>
+        <button class="btn btn--ghost" id="expSpend">⬇ Expenses CSV</button>
       </div>
     </div>
     <div class="sec" data-cfg="prices">
-      <h3>Service Rates (₹)</h3>
+      <h3>Service rates (₹)</h3>
       <div class="grid2" id="priceGrid"></div>
     </div>
     <div class="sec" data-cfg="prices">
@@ -588,12 +589,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       </div>
     </div>
     <div class="sec" data-cfg="prices">
-      <h3>Ready-made Packages</h3>
+      <h3>Ready-made packages</h3>
       <div id="pkgListRM"></div>
       <button class="addrow" id="addPkg">＋ Add package</button>
     </div>
     <div class="sec" data-cfg="prices">
-      <h3>Quotation Service Rates <span style="font-size:.7rem;color:var(--mut)">(admin package builder)</span></h3>
+      <h3>Quotation service rates</h3>
       <p class="sub">Everything the builder prefills, including rates it picked up from quotations you have already saved. Edit any of them here; <b style="color:var(--gold-b)">Save All</b> makes this list the whole truth again, so what you see is exactly what the next quote will use.</p>
       <p class="cfgnote" id="rateState"></p>
       <div id="rateList"></div>
@@ -601,7 +602,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button class="addrow" id="recoverRates">⟲ Fill ₹0 rates from past quotations</button>
     </div>
     <div class="sec" data-cfg="quote">
-      <h3>Contact &amp; Payment</h3>
+      <h3>Contact &amp; payment</h3>
       <p class="sub">Phone and website print on every quotation PDF. The UPI IDs are what the client portal's <b style="color:var(--gold-b)">Pay now</b> button sends to — leave them blank to hide that button.</p>
       <div class="grid2">
         <div class="fld"><label>Phone</label><input id="cfgPhone" inputmode="tel" /></div>
@@ -612,21 +613,23 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <p class="cfgnote" id="payState"></p>
     </div>
     <div class="sec" data-cfg="workflow">
+      <h3>Editing</h3>
       <div class="fld" style="max-width:260px"><label>Editing due after (days)</label>
         <input type="number" id="cfgEditDue" min="1" max="365" inputmode="numeric" placeholder="21" /></div>
       <p class="sub">The due date a new editing assignment starts with, counted from the event.</p>
-      <h3>Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(booking → delivery checklist — steps containing “Album”, “Cinematic/Teaser”, “Photo” or “Video” auto-hide for packages without those services)</span></h3>
+      <h3>Delivery steps</h3>
+      <p class="sub">Steps naming Album, Cinematic/Teaser, Photo or Video hide on packages without that service.</p>
       <div id="dstepList"></div>
       <button class="addrow" id="addDstep">＋ Add step</button>
     </div>
     <div class="sec" data-cfg="workflow">
-      <h3>B2B Delivery Steps <span style="font-size:.7rem;color:var(--mut)">(partner-studio jobs only)</span></h3>
+      <h3>B2B delivery steps</h3>
       <p class="sub">A studio collects the footage and does its own post, so the album, pendrive and teaser steps above never applied to them. This shorter checklist is what a 🏢 B2B job shows instead.</p>
       <div id="bstepList"></div>
       <button class="addrow" id="addBstep">＋ Add step</button>
     </div>
     <div class="sec" data-cfg="calendar">
-      <h3>Calendar Festivals</h3>
+      <h3>Calendar festivals</h3>
       <p class="sub">Shown on the calendar — a marker on the date, the name in the day box below it. One per line as <b style="color:var(--gold-b)">YYYY-MM-DD|Name</b>.
         <br><b style="color:var(--warn)">Check the lunar ones.</b> Hindu festivals follow a lunisolar calendar and Islamic ones the Hijri, so their dates move every year and an Indian observance can shift a day on a moon sighting. The seeded list is a starting point, not an authority — fixed-date holidays like Republic Day and Christmas are safe; Raksha Bandhan, Milad un Nabi, Diwali and the rest are worth a minute against a panchang.</p>
       <div id="festWarn" hidden></div>
@@ -640,12 +643,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <div class="av-cfg">
         <div class="fld"><label>Full at … events per morning / evening</label>
           <input type="number" id="cfgAvailFull" min="1" max="99" inputmode="numeric" placeholder="5" /></div>
-        <button class="btn btn--primary" id="saveAvail" type="button" disabled>Save</button>
+        <button class="btn btn--ghost" id="saveAvail" type="button" disabled>Save availability</button>
       </div>
-      <p class="av-cfg-note">Fewer than this and the half-day shows yellow; this many or more, red. Saved by the button here, not by Save All.</p>
+      <p class="av-cfg-note">Fewer than this and the half-day shows yellow; this many or more, red. Not saved by Save All.</p>
     </div>
     <div class="sec" data-cfg="quote">
-      <h3>Quotation Terms</h3>
+      <h3>Quotation terms</h3>
       <div id="termList"></div>
       <button class="addrow" id="addTerm">＋ Add term</button>
     </div>
