@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4c" />
-<link rel="stylesheet" href="app.css?v=p5k" />
+<link rel="stylesheet" href="app.css?v=p5l" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -163,22 +163,20 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div id="leadsView">
     <!-- people who signed in on the app or the website but are not set up as a
          client, crew or partner (6 Oct 2026): follow up from here -->
-    <div class="sec" id="suSec" hidden>
-      <h3>👋 New sign-ups<b class="rq-count" id="suCount" hidden></b></h3>
-      <p class="sub">Signed in with their number but you have not set them up. Say hello, or make them a lead.</p>
-      <div id="suList"></div>
-    </div>
     <!-- every section page reads the same way: the row with the page's main
          action, then the filters, then the list. The tiles sat above the row. -->
     <div class="bar">
       <input id="leadSearch" type="search" placeholder="Name or phone" aria-label="Search leads by name or phone" />
       <button id="leadPick" type="button" aria-pressed="false" title="Select several leads" aria-label="Select several leads">☑</button>
-      <!-- an icon now, as on Bookings: its word made room for ＋ Lead -->
-      <button id="refreshBtn" type="button" title="Refresh" aria-label="Refresh">↻</button>
       <!-- a pasted WhatsApp chat becomes the enquiry's fields (AI, 18 Oct 2026) -->
       <button class="btn btn--ghost" id="leadPaste" type="button" title="Paste a WhatsApp chat — AI fills the enquiry" aria-label="Paste an enquiry">✨ Paste</button>
       <!-- a lead could only be added by hand from the ⚡ menu on Home -->
       <button class="btn btn--primary" id="leadAdd" type="button">＋ Lead</button>
+    </div>
+    <div class="sec" id="suSec" hidden>
+      <h3>👋 New sign-ups<b class="rq-count" id="suCount" hidden></b></h3>
+      <p class="sub">Signed in with their number but you have not set them up. Say hello, or make them a lead.</p>
+      <div id="suList"></div>
     </div>
     <div class="fchips" id="leadChips"></div>
     <!-- lead score (AI, Phase 4, 18 Oct 2026): newest first, or the hot ones on top -->
@@ -302,7 +300,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div id="pkgListView">
       <div class="bar">
         <input id="pkgSearch" type="search" placeholder="Name, phone, quote #" aria-label="Search packages by name, phone or quote number" />
-        <button id="pkgRefresh" aria-label="Refresh">↻</button>
         <button class="btn btn--primary" id="pkgNew">＋ New</button>
       </div>
       <div class="fchips" id="pkgChips"></div>
@@ -1134,7 +1131,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5k"></script>
+<script type="module" src="app.js?v=p5l"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

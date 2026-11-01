@@ -1867,7 +1867,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     }catch(err){ $('#leadList').innerHTML = `<div class="empty">Could not load leads (${esc(err.code||err.message)})</div>`; }
   }
-  on('#refreshBtn', 'click', loadLeads);
   let leadFilterVal = viewGet('leadF');
   /* ---------------------------------------------------------- bulk actions
      Selection lives in a Set of ids, never in the DOM: the leads list is a
@@ -1988,7 +1987,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              <span class="empty-state__icon">👥</span>
              <p class="empty-state__title">No leads yet</p>
              <p class="empty-state__text">Enquiries from the website arrive here on their own — or add one yourself with ＋ Lead.</p>
-             <button type="button" class="btn btn--ghost" data-refresh-leads>↻ Check again</button>
+             <button type="button" class="btn btn--ghost" data-add-lead>＋ Lead</button>
            </div>`;
       return;
     }
@@ -2054,14 +2053,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <a class="btn btn--sm btn--ghost" href="tel:+91${esc(String(l.phone||'').replace(/\D/g,'').slice(-10))}" aria-label="Call ${esc(l.name||'this lead')}">📞 Call</a>
           <a class="btn btn--sm btn--ghost" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬 WhatsApp</a>
           <button type="button" class="btn btn--sm btn--ghost" data-ai-reply title="Draft a WhatsApp reply from this enquiry" aria-label="Draft a WhatsApp reply to ${esc(l.name||'this lead')}">✨ Draft</button>
-          <button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button>
+          <button type="button" class="btn btn--sm btn--danger" data-del-lead>Trash</button>
         </div>
         <div class="card__body lead-det" id="ld-${esc(l.id)}" hidden>${leadDetailHTML(l)}</div>
       </article>`;
      }catch(err){
       /* one lead that cannot be drawn must not take the whole list with it */
       console.error('[leads] could not draw a lead', err);
-      return `<article class="card lead" data-id="${esc(l.id)}" data-state="overdue"><div class="card__head"><span class="card__title">⚠ This lead could not be shown</span><button type="button" class="btn btn--sm btn--danger" data-del-lead>Delete</button></div></article>`;
+      return `<article class="card lead" data-id="${esc(l.id)}" data-state="overdue"><div class="card__head"><span class="card__title">⚠ This lead could not be shown</span><button type="button" class="btn btn--sm btn--danger" data-del-lead>Trash</button></div></article>`;
      }
     }).join('');
     _restore();
@@ -2184,12 +2183,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             return `<div class="ln"><span>${esc(ots ? ots.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'date unknown')}${o.eventType ? ' · ' + esc(o.eventType) : ''}</span>`
               + `<span>${esc(o.status||'new')}${o.grandTotal ? ' · ' + inr(o.grandTotal) : ''}</span></div>`;
           }).join('')
-        + `<p class="sub" style="margin:.2rem 0 .6rem">Quote the one they are actually waiting on — a second package splits the same client's events and payments across two records.</p>`;
+        + `<p class="sub ld-warn">Quote the one they are actually waiting on — a second package splits the same client's events and payments across two records.</p>`;
     }
     if(l.eventType) h += `<div class="ln"><span>Events</span><span>${esc(l.eventType)}</span></div>`;
     if(l.phone) h += `<div class="ln"><span>Phone</span><span class="telrow">
       <a href="tel:+91${esc(String(l.phone||'').replace(/\D/g,'').slice(-10))}" aria-label="Call ${esc(l.name||'this lead')}">${esc(l.phone)}</a>
-      <a class="icon-btn icon-btn--ring" href="https://wa.me/${esc(l.phoneFull || ('91' + String(l.phone||'')))}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp ${esc(l.name||'this lead')}">💬</a>
     </span></div>`;
     if(l.message) h += `<h4>Message</h4><div>${esc(l.message)}</div>`;
     if(l.quote && Array.isArray(l.quote.events)){
@@ -2241,7 +2239,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        pkgFromLead() already coped with a missing quote, so the gate was the
        whole problem. */
     const hasQuote = !!(l.quote && Array.isArray(l.quote.events) && l.quote.events.length);
-    h += ` <button type="button" class="btn btn--sm btn--primary" data-convert>→ ${
+    h += ` <button type="button" class="btn btn--sm btn--ghost" data-convert>→ ${
       l.pkgId ? 'Create another package' : hasQuote ? 'Create package from this quote' : 'Create package from this lead'}</button>`;
     return h;
   }
@@ -2269,7 +2267,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       viewSet('leadF',''); viewSet('leadQ','');
       renderStats(); renderLeads(); return;
     }
-    if(e.target.closest('[data-refresh-leads]')){ loadLeads(); toast('Checking for new leads…'); return; }
+    if(e.target.closest('[data-add-lead]')){ const b = $('#leadAdd'); if(b) b.click(); return; }
     if(e.target.closest('[data-ai-reply]')){
       const l = LEADS.find(x=>x.id===card.dataset.id);
       if(l) openAiDraft({ lead: l });
@@ -3582,7 +3580,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       });
     }catch(err){ _pkgsErr = 'Could not load packages (' + (err.code||err.message) + ')'; renderPkgList(); }
   }
-  on('#pkgRefresh', 'click', loadPkgs);
   on('#pkgSearch', 'input', debounce(()=>{ viewSet('pkgQ', $('#pkgSearch').value||''); renderPkgListOnly(); }));
   /* The filter variables restore themselves where they are declared; the two
      search boxes are DOM and have to be put back by hand. Done once, before

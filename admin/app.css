@@ -1602,6 +1602,7 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
    for "Call" on a moving phone cannot land on it. */
 #leadList .card__actions [data-del-lead]{margin-left:.35rem}
 #leadList .l2{align-items:center}
+#leadList .ld-warn{margin:.2rem 0 .6rem}
 #leadList .card__body h4{font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-lg);margin:.5rem 0 .3rem}
 #leadList .card__body .btn{margin-top:var(--sp-2)}
 #leadList .card__body textarea.input{margin-top:.3rem}
@@ -2664,4 +2665,4 @@ details.aps-help>.insnote{margin-top:0}
 .ls-ln span:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .45rem}
 .ls-ln i{font-style:normal;color:var(--mut);font-size:var(--fs-xs);flex:1 0 100%}
 .lsort{margin:-.35rem 0 .8rem}
-.lsort button{font-size:var(--fs-sm);padding:.5em .6em;min-height:36px}
+.lsort button{font-size:var(--fs-sm);padding:.5em .6em;min-height:var(--tap)}
