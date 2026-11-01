@@ -731,6 +731,16 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!user && _asgsUnsub){ try{ _asgsUnsub(); }catch(e){} _asgsUnsub = null; }
     if(!user && _reqsUnsub){ try{ _reqsUnsub(); }catch(e){} _reqsUnsub = null; }
     if(!user && _studiosUnsub){ try{ _studiosUnsub(); }catch(e){} _studiosUnsub = null; }
+    /* the four listeners opened on demand (Editing, Reviews, Expenses, the morning
+       brief) were left running after a sign-out that was not the Log out button
+       (a revoked token, an unauthorised account); they kept the old account's
+       data in memory until they errored */
+    if(!user){
+      try{ if(_ejUnsub) _ejUnsub(); }catch(e){}    _ejUnsub = null;
+      try{ if(_revsUnsub) _revsUnsub(); }catch(e){}  _revsUnsub = null;
+      try{ if(_expsUnsub) _expsUnsub(); }catch(e){}  _expsUnsub = null;
+      try{ if(_briefUnsub) _briefUnsub(); }catch(e){} _briefUnsub = null;
+    }
     if(!user) stopStudioReqs();
     if(!user) stopProfiles();
     if(!user) stopAvailability();
