@@ -24,6 +24,7 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
   --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
   --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  --grad-gold:linear-gradient(135deg,#C9A347,#8E6E1E);   /* the primary button's gold, written once */
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 
@@ -50,11 +51,11 @@ button,input{font-family:var(--sans);font-size:16px}
 /* In the Android app the page is drawn under the status bar. Capacitor passes
    its height as --safe-area-inset-top; env() covers iOS and newer WebViews.
    Both are 0 wherever nothing overlaps, and max() never adds them twice. */
-header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))}
+header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-filter:blur(8px);padding-top:max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))}
 .hd{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:.7rem;padding:.7rem 14px}
 .hd svg{width:34px;height:34px;flex:0 0 auto}
 .hd b{font-family:var(--serif);font-size:1.05rem}
-.hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
+.hd .tagline{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
 .hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
 .hd .back{margin-left:auto;color:var(--mut);font-size:.8rem;text-decoration:none;border:1px solid var(--line);border-radius:30px;padding:.35em 1em;white-space:nowrap}
 .hd .back + .out{margin-left:.5rem}
@@ -65,7 +66,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .hd .out:hover,.hd .back:hover{border-color:var(--gold);color:var(--gold-b)} .hd .build:hover{background:rgba(201,163,71,.22);border-color:var(--gold)} }
 /* a 360px phone: logo, name, three pills — the two words of the name stack and
    the "Client Area" line goes, so nothing is clipped */
-@media(max-width:420px){ .hd{gap:.55rem} .hd b{font-size:.95rem;line-height:1.05;display:block;max-width:5.2em} .hd span{display:none} .hd .build,.hd .back,.hd .out{padding:.35em .7em} }
+@media(max-width:420px){ .hd{gap:.55rem} .hd b{font-size:.95rem;line-height:1.05;display:block;max-width:5.2em} .hd .tagline{display:none} .hd .build,.hd .back,.hd .out{padding:.35em .7em} }
 @media(max-width:380px){ .hd{gap:.45rem} .hd .build,.hd .back,.hd .out{padding:.35em .55em} .hd .build + .back,.hd .back + .out{margin-left:.35rem} }
 @media(max-width:345px){ .hd .build em{display:none} }   /* the oldest small phones: just "Build" */
 
@@ -80,8 +81,8 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .phwrap input:focus{outline:none}
 .phwrap .ccin{flex:0 0 2.6em;width:2.6em;text-align:center;color:var(--mut);border-right:1px solid var(--line);padding:.75em .1em;letter-spacing:.02em}
 .cchint{color:var(--mut);font-size:.68rem;margin-top:.35rem;text-align:left}
-.gbtn{width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
-.gbtn:active{transform:scale(.98)}
+.gbtn{width:100%;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active{transform:scale(.98);box-shadow:0 3px 8px rgba(142,110,30,.3)}
 .gbtn:disabled{opacity:.7;cursor:default}
 .gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -89,8 +90,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* 6 boxes at a fixed 44px plus gaps overflowed the login card on 360px
    phones; let them shrink evenly instead while staying a 44px tap target */
 .otp input{flex:1 1 0;min-width:0;max-width:52px;width:auto;height:52px;text-align:center;font-size:1.3rem;background:#171309;border:1px solid var(--line);border-radius:10px;color:var(--gold-b)}
-.otp input:focus{outline:none;border-color:var(--gold)}
-.mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem}
+.otp input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
+/* small text buttons were ~18-20px tall: 44px and padding */
+.mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;margin-top:.7rem;min-height:44px;padding:.4em .9em}
 .err{color:var(--err);font-size:.8rem;margin-top:.8rem}
 
 .skel{background:var(--panel);border:1px solid var(--line);border-radius:16px;height:90px;margin:1rem 0;position:relative;overflow:hidden}
@@ -120,7 +122,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .nu-acts a:hover{background:var(--gold);color:#fff} }
 
 /* delivery at a glance: a ring, where they are, what's next */
-.dring{display:flex;align-items:center;gap:.85rem;margin-bottom:.7rem}
+.dring{display:flex;align-items:center;gap:.85rem;margin-bottom:1rem}
 .dring .rw{position:relative;flex:0 0 auto;width:62px;height:62px}
 .dring svg{width:62px;height:62px;transform:rotate(-90deg)}
 .dring .rbg{fill:none;stroke:rgba(226,194,117,.16);stroke-width:6}
@@ -131,7 +133,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .dring .dt span{display:block;color:var(--mut);font-size:.74rem;margin-top:.1rem}
 
 /* pay the balance straight from the page */
-.paynow{width:100%;margin-top:.85rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.85em;font-size:.88rem;letter-spacing:.04em;cursor:pointer;font-family:var(--sans);box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.paynow{width:100%;margin-top:.85rem;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.85em;font-size:.88rem;letter-spacing:.04em;cursor:pointer;font-family:var(--sans);box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .paynow:active{transform:scale(.99)}
 .pay-sheet{position:fixed;left:0;right:0;bottom:0;z-index:130;background:var(--panel);border-top:1px solid var(--gold);border-radius:18px 18px 0 0;padding:1.3rem 1.1rem calc(1.3rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateY(105%);transition:transform .3s;max-height:88vh;overflow-y:auto}
 .pay-sheet.open{transform:translateY(0)}
@@ -151,7 +153,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .upirow .ul{flex:1;min-width:0}
 .upirow .ul b{display:block;color:var(--text);font-size:.88rem;font-weight:500}
 .upirow .ul span{display:block;font-size:.68rem;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.upirow .go{flex:0 0 auto;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:20px;padding:.5em 1.1em;font-size:.78rem;cursor:pointer;text-decoration:none;font-family:var(--sans)}
+.upirow .go{flex:0 0 auto;background:var(--grad-gold);border:0;color:#fff;border-radius:20px;padding:.5em 1.1em;font-size:.78rem;cursor:pointer;text-decoration:none;font-family:var(--sans)}
 .upirow .cp{flex:0 0 auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:.45em .7em;font-size:.7rem;cursor:pointer;font-family:var(--sans)}
 .paynote{font-size:.72rem;color:var(--mut);line-height:1.5;margin-top:.6rem}
 .paynote b{color:var(--gold-b);font-weight:500}
@@ -162,7 +164,6 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .paybar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#C9A347,#9adbb2)}
 .payleg{display:flex;justify-content:space-between;font-size:.68rem;color:var(--mut);letter-spacing:.03em}
 .payleg b{color:var(--ok);font-weight:500}
-.payleg .rest{color:#ffb054}
 
 /* each function: done, next up, or still ahead */
 .ev.past b::after{content:" ✓";color:var(--ok);font-size:.8em}
@@ -194,10 +195,6 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 /* the day, under the occasion — together they are what a client calls this
    booking, which the quote number never was */
 .ph-when{display:block;font-size:.76rem;color:var(--mut);margin-top:.15rem}
-/* "Booking 1 of 2" — the only thing that makes two cards read as two bookings
-   rather than one page that keeps going */
-.ph-n{display:inline-block;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
-      color:var(--gold-b);border:1px solid rgba(226,194,117,.35);border-radius:20px;padding:.16em .6em;margin-bottom:.35rem}
 /* the day badge on an event: what turns four blocks in a row into one
    celebration spread across four days */
 .evday{display:inline-block;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
@@ -243,9 +240,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .brk[open] summary::before{transform:rotate(180deg)}
 .brk-h{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin:.8rem 0 .3rem}
 .qref{font-size:.76rem;color:var(--mut);margin:0 0 .7rem}
-.pkg-h .qno{color:var(--gold-b);font-size:.75rem;letter-spacing:.06em}
 .chip{border-radius:20px;padding:.22em .85em;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
-.chip.draft{color:var(--gold-b);background:rgba(184,144,43,.14)}
 .chip.sent{color:#7fb2e5;background:rgba(127,178,229,.13)}
 .chip.unconfirmed{color:#cf8d85;background:rgba(207,127,118,.13)}
 .chip.booked{color:var(--ok);background:rgba(76,175,125,.13)}
@@ -266,22 +261,18 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .ev{margin-bottom:.8rem}
 .ev:last-child{margin-bottom:0}
 .ev b{font-family:var(--serif);color:#fff;font-size:1rem;display:block}
-.ev .evm{color:var(--mut);font-size:.78rem;margin-bottom:.25rem}
+.evm{color:var(--mut);font-size:.78rem;margin-bottom:.25rem}
 .ev ul{list-style:none;margin:0;padding:0}
 .ev li{list-style:none;display:flex;justify-content:space-between;font-size:.85rem;color:var(--text);padding:.12rem 0}
-.ev li span:last-child:not(:first-child){color:var(--mut)}
 .ln{display:flex;justify-content:space-between;padding:.18rem 0;font-size:.9rem}
 .ln span:first-child{color:var(--mut)}
 .ln.big{border-top:1px solid var(--line);margin-top:.4rem;padding-top:.55rem}
 .ln.big span{color:var(--gold-b);font-family:var(--serif);font-weight:700;font-size:1.1rem}
-.ln.due span:last-child{color:var(--gold-b);font-weight:600}
 .addons li{list-style:none;font-size:.85rem;padding:.15rem 0;color:var(--text)}
 .addons li::before{content:"◆";color:var(--gold);font-size:.6rem;margin-right:.55em;vertical-align:1px}
 .payrow{display:flex;justify-content:space-between;font-size:.82rem;color:var(--mut);padding:.2rem 0;border-bottom:1px dashed var(--line)}
 .payrow:last-child{border-bottom:0}
 .payrow b{color:var(--text);font-weight:500}
-.dprog{height:5px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden;margin:.2rem 0 1rem}
-.dprog i{display:block;height:100%;background:linear-gradient(90deg,#C9A347,#9adbb2);border-radius:4px}
 /* delivery journey — a connected timeline */
 .tstep{position:relative;display:flex;gap:.85rem;padding:0 0 1.05rem}
 .tstep:last-child{padding-bottom:.1rem}
@@ -304,6 +295,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media(hover:hover){ .contact a:hover{background:var(--gold);color:#fff} }
 .empty{color:var(--mut);text-align:center;padding:2.2rem .8rem;font-size:.92rem}
 .empty .ic{font-size:2.2rem;display:block;margin-bottom:.5rem}
+.empty .empty-t{color:var(--text)}
+.empty .gbtn{margin-top:1.2rem;max-width:280px}
+.empty .contact{margin-top:1rem}
 /* the not-found screen: its heading, the other pages this number has, and
    the way out */
 .portlink{display:flex;align-items:center;gap:.8rem;text-decoration:none;color:inherit;border:1px solid var(--line,rgba(184,144,43,.3));border-radius:14px;padding:.8rem 1rem;margin:.9rem 0;background:rgba(184,144,43,.08);font-size:1.4rem;text-align:left}
@@ -317,12 +311,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .nobook .nf-acts{justify-content:flex-start;margin-top:.1rem}
 .nobook .nf-acts .mini{margin-top:0;padding-left:0}
 .nobook .nf-roles{margin-top:.6rem}
-.empty .nf-h{display:block;font-family:var(--serif);color:#fff;font-size:1.1rem;margin-bottom:.4rem}
-#emptyPhone{white-space:nowrap}
+#emptyPhone{white-space:nowrap;color:var(--text)}
 .nf-note{color:var(--mut);font-size:.76rem;margin-top:.9rem}
 .nf-roles{display:flex;flex-direction:column;gap:.5rem;margin-top:1rem}
 .nf-roles a{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:40px;padding:.65em 1em;font-size:.85rem;
-  background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;box-shadow:0 6px 16px rgba(142,110,30,.35)}
+  background:var(--grad-gold);color:#fff;box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .nf-acts{display:flex;justify-content:center;flex-wrap:wrap;gap:0 .3rem;margin-top:.6rem}
 .toast{position:fixed;left:50%;bottom:calc(26px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;padding:.6em 1.4em;font-size:.85rem;opacity:0;transition:.3s;pointer-events:none;z-index:99;max-width:92vw;text-align:center}
 .toast.show{opacity:1}
@@ -330,20 +323,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
-/* small text buttons were ~18-20px tall */
-.mini{min-height:44px;padding:.4em .9em}
 .hd .out,.hd .back,.hd .build{min-height:44px;display:inline-flex;align-items:center}
 
 /* ==== polish pass: one visual system across admin / crew / client ==== */
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
-header{border-bottom:0}
 header::after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#C9A347 28%,#E2C275 50%,#C9A347 72%,transparent)}
 .login,.pkg,.skel{box-shadow:0 10px 26px rgba(0,0,0,.22)}
 .fld input:focus,.fld textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
 .phwrap:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,144,43,.18)}
-.otp input:focus{box-shadow:0 0 0 3px rgba(184,144,43,.18)}
-.gbtn{box-shadow:0 6px 16px rgba(142,110,30,.35)}
-.gbtn:active{box-shadow:0 3px 8px rgba(142,110,30,.3)}
 
 /* ==== store app: bottom tabs (html.fs-app only) ====
    app-shell.js sets html[data-tab]. Every booking card still carries every
@@ -360,6 +347,9 @@ html.fs-app[data-tab="me"]       #dashView [data-tab~="me"]{display:block}
 html.fs-app #dashView .portlink{display:none!important}
 /* a booking folded away from its header stays folded whichever tab is open */
 html.fs-app[data-tab] #dashView .pkg.collapsed .sec{display:none}
+/* the bookings have no section on Me any more (Questions? is one block,
+   #pkgAsk), so their bare headers stay off that tab */
+html.fs-app[data-tab="me"] #dashView #pkgList{display:none}
 /* the greeting's top margin led the page; on the other tabs a card does */
 html.fs-app[data-tab] #dashView{padding-top:1rem}
 html.fs-app[data-tab] #dashView .hello{margin-top:.3rem}
@@ -368,7 +358,7 @@ html.fs-app[data-tab] #dashView .hello{margin-top:.3rem}
 html.fs-app[data-tab] #dashView .pkg-h{border-bottom:0}
 html.fs-app[data-tab] #dashView .pkg > [data-tab]{border-bottom:0;border-top:1px dashed var(--line)}
 /* Home is website chrome (fs-web-only); the sibling rule above still fires
-   for a hidden Home, which would pull Logout in from the right */
+   for a hidden Home, which would pull Sign out in from the right */
 html.fs-app .hd .back + .out{margin-left:auto}
 html.fs-app .hd .build ~ .out{margin-left:.5rem}
 /* while the bar is up, signing out lives on the Me tab */
@@ -385,12 +375,15 @@ html.fs-app .merow:last-child{border-bottom:0}
 html.fs-app .merow b{color:var(--mut);font-weight:500;font-size:.85rem;flex:0 0 auto}
 html.fs-app .merow.danger{color:var(--err)}
 html.fs-app .merow:active{background:rgba(184,144,43,.08)}
+/* Notifications: a status line, not a row to tap (66) */
+html.fs-app .merow.stat{color:var(--mut);cursor:default}
+html.fs-app .merow.stat:active{background:none}
 /* the lock row reads On in gold, the way a switch that is on does */
 html.fs-app .merow[aria-pressed="true"] b{color:var(--gold-b)}
 html.fs-app .merow:disabled{opacity:.6;cursor:default}
 /* who is signed in: the profile photo, or the name's first letter */
 .me-av{flex:0 0 auto;position:relative;width:52px;height:52px;border-radius:50%;overflow:hidden;
-  border:1px solid rgba(226,194,117,.45);background:linear-gradient(135deg,#C9A347,#8E6E1E);display:grid;place-items:center}
+  border:1px solid rgba(226,194,117,.45);background:var(--grad-gold);display:grid;place-items:center}
 .me-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .me-av b{font-family:var(--serif);color:#fff;font-size:1.3rem;font-weight:600}
 /* "Complete your profile": a dashed gold note under the name, like the
@@ -450,8 +443,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
        whole portal, sign-in included, is script-driven. Say so, and give the
        one thing that still works — a way to reach a human. -->
   <style>
-    #loadingView,#loginView,#appView,#errorView,#linkView,
-    #requestView,#pendingView,#noAccessView,.hdr,header{display:none!important}
+    #loadingView,#errorView,#linkView,header{display:none!important}
     .ns-portal{max-width:34rem;margin:22vh auto 0;padding:0 1.3rem;text-align:center;
       font-family:'Jost',system-ui,sans-serif;color:#f3ecdc}
     .ns-portal h1{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:#fff;margin:0 0 .6rem}
@@ -470,13 +462,19 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
 
 <header>
   <div class="hd">
-    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
-    <div><b>Fantasy Studio</b><span>Client Area</span></div>
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+      <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+      <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+      <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+      <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
+    </svg>
+    <div><b>Fantasy Studio</b><span class="tagline">Client Area</span></div>
     <!-- the website's Package Builder (/builder/), not a second one: a signed-in
-         client plans the next function from here; it shows with Logout -->
+         client plans the next function from here; it shows with Sign out -->
     <a class="build" id="buildLink" href="../builder/" aria-label="Build a package" hidden><span aria-hidden="true">✨</span> Build <em>a package</em></a>
     <a class="back fs-web-only" id="backLink" href="../">Home</a>
-    <button class="out" id="logoutBtn" hidden>Logout</button>
+    <button class="out" id="logoutBtn" hidden>Sign out</button>
   </div>
 </header>
 
@@ -534,29 +532,28 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     <div class="pkg nobook" id="noBooking" data-tab="schedule" hidden>
       <div class="sec">
         <h3>Planning a function?</h3>
-        <p>Tap a free date above to ask us about it on WhatsApp, or <a href="../builder/">build your package</a> and we will get back to you with a quote.</p>
+        <p>Pick a free date above, then tap Ask to message us on WhatsApp. Or <a href="../builder/">build a package</a> and we will get back to you with a quote.</p>
         <div class="contact">
-          <a id="emptyCall" href="#">📞 Call the studio</a>
-          <a id="emptyWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
+          <a id="emptyCall" href="#">📞 Call</a>
+          <a id="emptyWa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
         </div>
       </div>
       <div class="sec">
         <h3>Booked with us already?</h3>
-        <p>Your booking shows here the moment the studio adds <b id="emptyPhone" style="color:var(--text)"></b> to it. Booked with a different number? Sign in with that one — or <a id="emptyWaLost" href="#" target="_blank" rel="noopener">tell us</a> and we will sort it out right away.</p>
+        <p>Your booking shows here the moment the studio adds <b id="emptyPhone"></b> to it. Booked with a different number? Sign in with that one — or <a id="emptyWaLost" href="#" target="_blank" rel="noopener">tell us</a> and we will sort it out right away.</p>
         <!-- the same number set up as crew or a partner studio: their page -->
         <div class="nf-roles" id="emptyRoles" hidden></div>
         <div class="nf-acts"><button class="mini" id="emptyOut" type="button">Sign in with another number</button></div>
       </div>
     </div>
-    <!-- store app only: the Me tab. Who is signed in sits above the bookings'
-         own Questions? blocks, the account rows below them. Both are
+    <!-- store app only: the Me tab. Who is signed in sits above the one
+         Questions? block (#pkgAsk), the account rows below it. Both are
          fs-app-only, so a browser never shows them. -->
     <div class="pkg fs-app-only" id="meWho" data-tab="me">
       <div class="pkg-h">
         <!-- the profile photo (profiles/{uid}), or the name's first letter -->
         <span class="me-av" aria-hidden="true"><img id="mePhoto" alt="" hidden /><b id="meInitial">C</b></span>
         <div class="ph-t"><h2 id="meName">Client</h2><span class="ph-when" id="mePhone"></span></div>
-        <span class="chip booked">Client</span>
       </div>
       <!-- the profile is optional ("Later" on /profile/): a quiet reminder
            while something is still empty, never a wall -->
@@ -577,6 +574,18 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
          third without scrolling past the other two. -->
     <div class="jump" id="pkgJump" data-tab="booking schedule payments" hidden></div>
     <div id="pkgList"></div>
+    <!-- Questions? — once, after the bookings, with every quote number in it
+         (it used to repeat inside each booking card: two bookings, four
+         contact buttons). On the Me tab in the app; filled by askSync. -->
+    <div class="pkg" id="pkgAsk" data-tab="me" hidden>
+      <div class="sec"><h3>Questions?</h3>
+        <p class="qref" id="askRef" hidden></p>
+        <div class="contact">
+          <a id="askCall" href="#">📞 Call</a>
+          <a id="askWa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+        </div>
+      </div>
+    </div>
     <!-- Rate your experience: the client's own review of the studio, one per
          number. It lands as reviews/{id} (status new) and is read back live
          through the same filter the rules prove, so the card says "with the
@@ -608,7 +617,8 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     </div>
     <div class="pkg fs-app-only" id="meAcct" data-tab="me">
       <div class="sec"><h3>Your account</h3>
-        <div class="merow"><span>Notifications</span><b id="meNotif">Off</b></div>
+        <!-- what the phone allowed, not a switch: no value on the right, no tap -->
+        <div class="merow stat"><span id="meNotif">Notifications are off</span></div>
         <!-- only on a phone that can do it: lockRow() shows it, worded for
              what the phone has (Face ID, Touch ID, a fingerprint) -->
         <button class="merow" id="meLock" type="button" hidden aria-pressed="false"><span id="meLockLabel">Lock with Face ID</span><b id="meLockState">Off</b></button>
@@ -628,12 +638,12 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
   <div id="errorView" hidden>
     <div class="pkg"><div class="empty">
       <span class="ic">⚠️</span>
-      <b id="errTitle" style="color:var(--text)">We couldn't load your booking</b><br />
+      <b id="errTitle" class="empty-t">We couldn't load your booking</b><br />
       <span id="errText">Please check your connection and try again — your booking is safe.</span>
-      <button class="gbtn" id="retryBtn" type="button" style="margin-top:1.2rem;max-width:280px">Try again</button>
-      <div class="contact" style="margin-top:1rem">
-        <a id="errCall" href="#">📞 Call the studio</a>
-        <a id="errWa" href="#" target="_blank" rel="noopener">WhatsApp us</a>
+      <button class="gbtn" id="retryBtn" type="button">Try again</button>
+      <div class="contact">
+        <a id="errCall" href="#">📞 Call</a>
+        <a id="errWa" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
       </div>
     </div></div>
   </div>
@@ -677,7 +687,7 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 <!-- the store app's tab bar (window.FSApp); a no-op without html.fs-app -->
 <script src="../app-shell.js"></script>
 <script type="module">
-import { todayISO, istAt } from '../fs-shared.js';
+import { todayISO, istAt, esc, inr } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 /* the store app, and nothing else: set by the <head> script */
@@ -693,7 +703,6 @@ const DEMO_VIEW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
 /* ?demo=empty: the same hook signed in with no booking (calendar first) */
 const DEMO_EMPTY = DEMO_VIEW && new URLSearchParams(location.search).get('demo') === 'empty';
 const DEMO_Q = DEMO_VIEW ? (DEMO_EMPTY ? '?demo=empty' : '?demo') : '';
-const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 /* time of day on an event, denormalised onto the assignment by the panel */
 const SLOT_LABEL = { morning:'Morning', evening:'Evening', full:'Full day' };
 const slotName = s => SLOT_LABEL[String(s||'')] || '';
@@ -701,7 +710,6 @@ const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slot
 /* a day's functions in the order they happen: morning, a full day (or no slot), evening */
 const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 
-const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
 const show = id => { ['loadingView','linkView','dashView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
@@ -1247,7 +1255,7 @@ function fillMe(user, pkgs){
   loadProfile(user);
   /* registerPush keeps the token it registered; no token, no alerts */
   let on = false; try{ on = !!localStorage.getItem('fs_push_token'); }catch(e){}
-  $('#meNotif').textContent = on ? 'On' : 'Off';
+  $('#meNotif').textContent = on ? 'Notifications are on' : 'Notifications are off';
   switchRow(user);
   lockRow();
 }
@@ -1624,10 +1632,11 @@ function renderPackages(snap, user){
     || String(b.quoteNo||'').localeCompare(String(a.quoteNo||'')));
   const name = pkgs[0].clientName || user.displayName || '';
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
-  $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `You have ${pkgs.length} bookings with Fantasy Studio — all of them are below.`;
+  $('#helloSub').textContent = pkgs.length === 1 ? 'Here is your booking with Fantasy Studio.' : `Your ${pkgs.length} bookings with Fantasy Studio.`;
   fillMe(user, pkgs);
   renderJump(pkgs);
   renderNextUp(pkgs);
+  askSync(pkgs);
   rvSync(user, pkgs, name);
   /* Which bookings are open right now. On the first paint there is nothing to
      remember, so it keeps the original behaviour: one booking opens as it
@@ -1652,8 +1661,8 @@ function renderPackages(snap, user){
        reporting exactly that about a second booking they had already paid for.
        They can still fold one away by tapping its header; the page just never
        decides for them that a booking is not worth showing. */
-    $('#pkgList').innerHTML = pkgs.map((x,i)=>
-      pkgHTML(x, pkgs.length > 1, !_pkgFirst && !openIds.has(x.id), i, pkgs.length)).join('');
+    $('#pkgList').innerHTML = pkgs.map(x=>
+      pkgHTML(x, pkgs.length > 1, !_pkgFirst && !openIds.has(x.id))).join('');
     _pkgSig = sig;
     if(!_pkgFirst){
       window.scrollTo(0, y);
@@ -2226,11 +2235,12 @@ function renderNoBooking(user){
   setNoBooking(true);
   const name = user.displayName || '';
   $('#hello').textContent = name ? `Hi, ${name}!` : 'Hi!';
-  $('#helloSub').textContent = 'Welcome to Fantasy Studio. Here is when the studio is free — tap a date to ask about it.';
+  $('#helloSub').textContent = 'Welcome to Fantasy Studio. Here is when the studio is free — pick a date, then tap Ask.';
   $('#pkgList').innerHTML = ''; _pkgSig = '';
   fillMe(user, []);
   renderJump([]);
   renderNextUp([]);
+  askSync([]);
   fillEmpty(user);
   reveal('dashView');
   availSync(user, []);   /* the studio's calendar, nothing ringed */
@@ -2267,7 +2277,7 @@ function otherRoles(user){
 /* The status chip used to print the studio's own word for the state. "Booked"
    is what the panel calls it; "Confirmed" is what a client understands. */
 const CLIENT_STATUS = { sent:'Quote', unconfirmed:'On hold', booked:'Confirmed', delivered:'Completed' };
-function pkgHTML(x, canToggle, collapsed, idx, total){
+function pkgHTML(x, canToggle, collapsed){
   const st = x.status||'draft';
   const tt = x.totals||{};
   const paid = Number(tt.advance)||0;
@@ -2292,7 +2302,6 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
   }
   const doneCount = steps.filter(s=>s in done).length;
   const pct = steps.length ? Math.round(100*doneCount/steps.length) : 0;
-  const ph = (contact().phone||'').replace(/\D/g,'');
   /* which function is behind them, which one is next — a three-day wedding
      read as one undifferentiated list before */
   const _today = todayISO();
@@ -2397,7 +2406,6 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
                    : `${doneCount} of ${steps.length} done${_nextStep ? ' · then ' + esc(_nextStep) : ''}`}</span>
           </span>
         </div>
-        <div class="dprog"><i style="width:${pctShown}%"></i></div>
         ${steps.map(s=>{
           const d = s in done;
           const cur = !d && s === curStep && st === 'booked';
@@ -2442,7 +2450,6 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
   <div class="pkg ${canToggle?'can-toggle':''} ${collapsed?'collapsed':''}" data-id="${esc(x.id||'')}">
     <div class="pkg-h" ${canToggle ? 'data-pkgtoggle role="button" tabindex="0" aria-label="Show or hide this booking"' : ''}>
       <div class="ph-t">
-        ${total > 1 ? `<span class="ph-n">Booking ${idx+1} of ${total}</span>` : ''}
         <h2>${esc(_title)}</h2>
         <span class="ph-when">${esc(_span)}${_dayCount > 1 ? ` · ${_dayCount} days` : ''}</span>
       </div>
@@ -2461,10 +2468,7 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
       </div>
       ${Number(tt.finalPrice) > 0 ? `
       <div class="paybar"><i style="width:${pct2}%"></i></div>
-      <div class="payleg">
-        <span><b>${pct2}% settled</b></span>
-        <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : over > 0 ? inr(over) + ' to come back to you' : 'Fully paid ✓'}</span>
-      </div>` : ''}
+      <div class="payleg"><span><b>${pct2}% settled</b></span></div>` : ''}
       ${bal > 0 && upiIds().length
         ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-pid="${esc(x.id||'')}">Pay ${inr(bal)} now</button>` : ''}
       ${/* The same three figures were printed by the tiles above, then again as
@@ -2481,14 +2485,25 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
           x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}` : ''}
       </details>` : ''}
     </div>
-    <div class="sec" data-tab="me"><h3>Questions?</h3>
-      <p class="qref">Quote ${esc(x.quoteNo||'—')} — quote this if you message us.</p>
-      <div class="contact">
-        <a href="tel:+${ph}">📞 Call the studio</a>
-        <a href="https://wa.me/${ph}?text=${encodeURIComponent('Salaam! About my booking ' + (x.quoteNo||''))}" target="_blank" rel="noopener">WhatsApp us</a>
-      </div>
-    </div>
   </div>`;
+}
+/* The one Questions? block (#pkgAsk), after the bookings: the studio's number
+   and every booking's quote number, so a message can say which one. Text and
+   attributes only, never innerHTML. No booking: it goes (#noBooking has its
+   own Call and WhatsApp). */
+function askSync(pkgs){
+  const box = $('#pkgAsk'); if(!box) return;
+  if(!pkgs.length){ box.hidden = true; return; }
+  const ph = (contact().phone||'').replace(/\D/g,'');
+  const qs = pkgs.map(x=>String(x.quoteNo||'').trim()).filter(Boolean);
+  const ref = $('#askRef');
+  ref.textContent = !qs.length ? ''
+    : qs.length === 1 ? 'Quote ' + qs[0] + ' — quote this if you message us.'
+    : 'Quotes ' + qs.join(', ') + ' — quote the one you are asking about.';
+  ref.hidden = !qs.length;
+  $('#askCall').href = 'tel:+' + ph;
+  $('#askWa').href = 'https://wa.me/' + ph + '?text=' + encodeURIComponent('Salaam! About my booking' + (qs.length === 1 ? ' ' + qs[0] : ''));
+  box.hidden = false;
 }
 
 /* ---------- the ?demo sample ----------
