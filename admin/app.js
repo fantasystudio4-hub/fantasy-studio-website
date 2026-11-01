@@ -6117,7 +6117,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the member's own "completed" is the later, stronger signal — once it is
        in, showing "seen" tells the owner nothing they still need */
     const pill = a.workDone
-      ? '<span class="ackpill seen" title="Marked completed by the member">✓ done</span>'
+      ? '<span class="ackpill seen" title="Marked completed by the member">✓ signed off</span>'
       : `<span class="ackpill ${seen?'seen':'wait'}">${seen?'✓ seen':'⏳ not seen'}</span>`;
     const wa = a.kind === 'edit' ? '' : crewWaNumber(a);
     return `
@@ -6203,11 +6203,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="tm-fill">
           <span class="fbar"><i style="width:${fill}%"></i></span>
           <b class="${state}">${heads}${needTotal ? '/' + needTotal : ''} crew</b>
-          ${unconf ? `<em>${unconf} not confirmed</em>`
+          ${unconf ? `<em>${unconf} not seen</em>`
             /* "all confirmed" in green beside a half-staffed shoot two days out
                read as reassurance. It is only good news once the event is
                actually crewed. */
-            : (crew.length && state === 'full' ? '<em class="ok">all confirmed</em>' : '')}
+            : (crew.length && state === 'full' ? '<em class="ok">all seen</em>' : '')}
         </div>
         ${period === 'past'
           /* "Still needs 2× Photography" on a shoot that already happened is
@@ -6358,12 +6358,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </span>
         ${late && wa ? `<button class="edact" data-nudge="${esc(a.id)}" title="Remind the editor">💬</button>` : ''}
         ${step && !stepDone ? `<button class="edact tick" data-tick="${esc(a.id)}" title="Tick “${esc(step)}” on the package">✓ step</button>` : ''}
-        ${a.workDone ? '<span class="duetag ok">✓ done</span>' : dueChip(a)}
+        ${a.workDone ? '<span class="duetag ok">✓ signed off</span>' : dueChip(a)}
       </div>`;
     };
     el.innerHTML = (open.length ? open.map(row).join('')
                                 : '<div class="empty empty--tight">Nothing outstanding — every edit is signed off ✓</div>')
-      + (done.length ? `<div class="grp tog ${_edShowDone?'':'closed'}" data-edgrp role="button" tabindex="0" aria-expanded="${_edShowDone}"><span class="car">▾</span>Completed<b>${done.length}</b></div>`
+      + (done.length ? `<div class="grp tog ${_edShowDone?'':'closed'}" data-edgrp role="button" tabindex="0" aria-expanded="${_edShowDone}"><span class="car">▾</span>Signed off<b>${done.length}</b></div>`
           + (_edShowDone ? done.map(row).join('') : '') : '');
   }
   let _edShowDone = false;
@@ -6696,7 +6696,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              <span class="empty-state__icon">🎬</span>
              <p class="empty-state__title">No team members yet</p>
              <p class="empty-state__text">Add your shooters, editors and assistants — they get their own crew page and show up in the assign picker.</p>
-             <button type="button" class="btn btn--primary" data-tm-add>＋ Add a member</button>
+             <button type="button" class="btn btn--ghost" data-tm-add>＋ Add team member</button>
            </div>`
         : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
@@ -6750,7 +6750,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="lvchip">Lv ${s.rank.lvl} · ${esc(s.rank.title)}</span>
           <span>🎬 <b>${s.done.length}</b> done</span>
           <span>⏭ <b>${s.up.length}</b> ahead</span>
-          ${s.pending ? `<span class="due">⏳ <b>${s.pending}</b> unconfirmed</span>` : ''}
+          ${s.pending ? `<span class="due">⏳ <b>${s.pending}</b> not seen</span>` : ''}
           ${s.due ? `<span class="due">💰 <b>${inr(s.due)}</b> due</span>` : ''}
           ${s.upc ? `<span>🗓 <b>${inr(s.upc)}</b> upcoming</span>` : ''}
           ${s.next ? `<span>next <b>${esc(stepDate(s.next))}</b></span>` : '<span>free</span>'}
@@ -7094,8 +7094,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* badges so an unseen request or an unpaid crew member is never hidden
        behind a section the owner is not looking at */
     const rq = reqCount();
-    $('#segCrewB').hidden = !rq;
-    $('#segCrewB').textContent = rq || '';
     /* owed today — a shoot that has not happened yet is not a debt to chase */
     const due = ASGS.reduce((s,a)=>s + payOwed(a), 0);
     const dueUp = ASGS.reduce((s,a)=>s + payUpcoming(a), 0);
@@ -7590,22 +7588,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        view. block:'nearest' so this never scrolls the page itself. */
     const onChip = stg && stg.querySelector('button.on');
     if(onChip) onChip.scrollIntoView({ inline:'nearest', block:'nearest' });
-    /* only the people who actually have editing work — a full roster of chips
-       here would be a list of everyone who has never touched an edit */
-    const el = $('#ejEditorChips'); if(!el) return;
-    const seen = new Map();
-    (_ejStageF === 'awaiting' ? ejAwaitingRows() : rows).forEach(r=>r.crew.forEach(a=>{
-      if(!a.memberId) return;
-      seen.set(a.memberId, (seen.get(a.memberId)||0) + 1);
-    }));
-    el.hidden = seen.size < 2;
-    if(el.hidden){ el.innerHTML = ''; return; }
-    el.innerHTML = [`<button type="button" data-ejeditor="" class="${_ejEditorF?'':'on'}">Everyone</button>`]
-      .concat([...seen.entries()]
-        .map(([id,c])=>[id, (memberById(id)||{}).name || '—', c])
-        .sort((a,b)=>String(a[1]).localeCompare(String(b[1])))
-        .map(([id,name,c])=>`<button type="button" data-ejeditor="${esc(id)}" class="${_ejEditorF===id?'on':''}">${esc(name)}<b>${c}</b></button>`))
-      .join('');
   }
   function renderEjList(){
     const el = $('#ejList'); if(!el) return;
@@ -7636,7 +7618,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const rows = ejVisibleRows();
     if(!rows.length){
       el.innerHTML = `<div class="empty empty--tight">Nothing matches this filter.
-        <button type="button" class="linky" data-ejclear>Clear it</button></div>`;
+        <button type="button" class="btn btn--sm btn--ghost" data-ejclear>Clear filter &amp; search</button></div>`;
       return;
     }
     /* Banded only in the default order — see ejVisibleRows. Asking for
@@ -7776,7 +7758,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       ${who.length ? `<span class="ejfix-x">${who.length === 1
         ? `${esc(who[0])} has no phone number on file, so their work stays out of reach even after this — add it under More › Team.`
         : `${who.length} editors have no phone number on file, so their work stays out of reach even after this — add them under More › Team.`}</span>` : ''}
-      <button type="button" class="btn btn--sm btn--primary" data-ejfix>${
+      <button type="button" class="btn btn--sm btn--ghost" data-ejfix>${
         shut ? `Let ${one?'the editor':'the editors'} in` : `Send the full scope`}</button>`;
   }
   on('#ejFix', 'click', async e=>{
@@ -7851,10 +7833,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _ejStageF = b.dataset.ejstage;
     viewSet('ejStageF', _ejStageF === 'awaiting' ? '' : _ejStageF);
     renderEditTab();
-  });
-  if($('#ejEditorChips')) on('#ejEditorChips', 'click', e=>{
-    const b = e.target.closest('[data-ejeditor]'); if(!b) return;
-    _ejEditorF = b.dataset.ejeditor; viewSet('ejEditorF', _ejEditorF); renderEditTab();
   });
   on('#ejList', 'click', e=>{
     const fold = e.target.closest('[data-ejband]');
@@ -8043,9 +8021,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
       <div class="sec">
         <h3>Editors <span class="ejn">${r.crew.length}</span></h3>
-        <p class="sub">Tap anyone to change their role, deadline or fee. Several can be on one edit — a rough-cut editor and a colourist are two rows, each with their own pay.</p>
+        <p class="sub">Tap anyone to change their role, deliverable or fee. Several can be on one edit — a rough-cut editor and a colourist are two rows, each with their own pay.</p>
         <div class="ejc">${crewRows}</div>
-        <button class="addrow" data-ejassign style="margin-top:.6rem">＋ Assign editor</button>
+        <button class="addrow" data-ejassign style="margin-top:.6rem">＋ Assign editing</button>
       </div>
 
       <div class="sec">
@@ -8061,7 +8039,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <p class="sub">Between you and the editor. Nothing here reaches the client or a partner studio.</p>
         <div class="ejt-new">
           <textarea id="ejComment" rows="2" maxlength="1000" placeholder="Add a note…"></textarea>
-          <button class="btn btn--sm btn--primary" data-ejpost type="button">Post</button>
+          <button class="btn btn--sm btn--ghost" data-ejpost type="button">Post</button>
         </div>
         <div class="ejt">${thread.length ? thread.map(c=>`
           <div class="ejt-row">
@@ -8390,11 +8368,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const catOf = m => TM_CATS.includes((m||{}).cat) ? m.cat : 'outdoor';
   const CAT_LABEL = { outdoor:'🎥 Outdoor', office:'🏢 Office' };
   let _tmCat = 'outdoor';
-  /* the card as it stands in the form — #tmAssign hands over to a sheet that
-     reads the SAVED member, so a rate typed here and not saved would be lost */
-  let _tmSnap = '';
-  const tmFormKey = () => JSON.stringify([$('#tmName').value.trim(), _tmCat, $('#tmRole').value,
-    $('#tmPhone').value.trim(), Math.max(0, Math.round(Number($('#tmRate').value)||0))]);
   function setTmCat(c){
     _tmCat = TM_CATS.includes(c) ? c : 'outdoor';
     $('#tmCatOut').classList.toggle('on', _tmCat === 'outdoor');
@@ -8413,11 +8386,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#tmPhone').value = m ? (m.phone||'') : '';
     $('#tmRate').value = m && m.defaultRate ? m.defaultRate : '';
     renderTmProf(m);
-    _tmSnap = tmFormKey();
     const tog = $('#tmToggle');
     tog.hidden = !m;
     /* only for someone the many-events sheet can take: active outdoor crew */
-    $('#tmAssign').hidden = !maIsOutdoor(m);
     if(m){
       const off = m.active === false;
       tog.textContent = off ? 'Reactivate this member' : 'Deactivate (keeps their history)';
@@ -8455,12 +8426,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   on('#tmAdd', 'click', ()=>openTm(null));
   /* closeTmUI, not closeTm: the new sheet's pushView replaces this sheet's
      history entry, so one Back still closes it */
-  on('#tmAssign', 'click', ()=>{
-    const id = _tmEditId; if(!id) return;
-    if(tmFormKey() !== _tmSnap){ toast('Save the card first — the changes typed here are not saved yet'); return; }
-    closeTmUI();
-    openMa(id);
-  });
   on('#tmSave', 'click', async ()=>{
     const btn = $('#tmSave'); if(btn.disabled) return;
     const name = $('#tmName').value.trim();

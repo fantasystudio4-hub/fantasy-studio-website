@@ -445,12 +445,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <!-- one job per section: rostering, people, money. Everything used to sit
          on one four-screen scroll, so paying someone meant scrolling past the
          whole season first. -->
-    <div class="tsegs" id="teamSegs" role="tablist">
-      <button type="button" data-tseg="work" class="on" role="tab">📅 Work</button>
-      <button type="button" data-tseg="crew" role="tab">👥 Crew<b class="segb" id="segCrewB" hidden></b></button>
-      <button type="button" data-tseg="pay" role="tab">💰 Pay<b class="segb" id="segPayB" hidden></b></button>
-      <button type="button" data-tseg="edit" role="tab">✂️ Editing<b class="segb" id="segEditB" hidden></b></button>
-    </div>
+    <!-- the old Team section bar is gone (the strip under the header replaced
+         it); these two counts stay as the source the strip and the sidebar
+         mirror (STRIPS, SIDE) — never shown here -->
+    <span hidden><b id="segPayB" hidden></b><b id="segEditB" hidden></b></span>
     <!-- More > Team only (applyTeamSeg shows it): the page's main action first,
          above the join requests and the roster -->
     <div class="bar" id="teamBar" hidden>
@@ -477,7 +475,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <div id="workEd" hidden>
           <!-- was the last thing under a season's worth of rows -->
           <button class="addrow" id="edAdd" style="margin:0 0 .7rem">＋ Assign editing</button>
-          <p class="sub">One row per person per job — for chasing somebody and paying them. <b style="color:var(--gold-b)">Work → Editing</b> is one row per booking, with its stage and notes. <b style="color:var(--gold-b)">＋ Assign editing</b> reaches any booked event, including ones already shot and ones not yet on the editing desk. <span id="edCount"></span></p>
+          <p class="sub">One row per person per job — for chasing and paying. <span id="edCount"></span></p>
           <div id="edList"></div>
         </div>
       </div>
@@ -529,7 +527,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <input id="ejSearch" type="search" placeholder="Search" aria-label="Search client or quote number" />
         <button id="ejSort" type="button" title="Change the order">↕ Deadline</button>
         <!-- the same sheet ＋ Assign editing opens under the per-person list -->
-        <button class="btn btn--primary" id="ejAssign" type="button" title="Assign editing" aria-label="Assign editing">＋ Assign</button>
+        <button class="btn btn--primary" id="ejAssign" type="button">＋ Assign editing</button>
       </div>
       <div class="fchips" id="ejStageChips"></div>
       <div class="stats" id="ejStats"></div>
@@ -901,7 +899,6 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <input id="tmPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
   <div class="fld"><label>Pay per event (₹)</label><input id="tmRate" type="number" min="0" inputmode="numeric" /></div>
   <button class="gbtn" id="tmSave" type="button">Save</button>
-  <button class="btn btn--sm btn--ghost" id="tmAssign" type="button" hidden style="width:100%;margin-top:.55rem">📅 Put on several events</button>
   <button class="btn btn--sm btn--ghost" id="tmToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
 
@@ -1131,7 +1128,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5m"></script>
+<script type="module" src="app.js?v=p5n"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is
