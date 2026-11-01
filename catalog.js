@@ -101,7 +101,7 @@ var SERVICES = [
   { key:'candidPhotography', label:'Candid Photography',  unit:'event', cat:'photo',
     blurb:'A photographer following the real moments, not just the posed ones.',
     icon:'camera' },
-  { key:'ladyShooter',       label:'Female Shooter', unit:'head', cat:'photo',
+  { key:'ladyShooter',       label:'Female Shooter Premium', unit:'head', cat:'photo',
     badge:'Ladies’ Section Only',
     blurb:'A lady photographer covering the ladies’ side exclusively — for pardah-observing families.',
     icon:'lady' },
