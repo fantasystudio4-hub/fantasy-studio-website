@@ -9894,7 +9894,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const pay = e.target.closest('[data-cpay]');
     if(pay){
       const a = ASGS.find(v=>v.id===pay.dataset.cpay); if(!a) return;
-      if(payFee(a) <= 0){ toast('Set a fee for this event first — tap the crew row on the event card'); return; }
+      /* nothing to pay against yet: open the fee editor this row already has */
+      if(payFee(a) <= 0){ toast('Set the fee first'); openFeeEdit(a.id); return; }
       openCrewPay(a);
       return;
     }
@@ -10787,6 +10788,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const u = SUPS.find(v=>v.id === ((ld && ld.dataset.sulead) || (dn && dn.dataset.sudone)));
     if(!u) return;
     if(dn){
+      /* it deletes the note: ask first, the way a partner request's ✕ does */
+      if(!await confirmDialog({ title:'Clear this sign-up?', body:'It leaves this list. They can still sign in.', confirmText:'Clear' })) return;
       if(DEMO){ SUPS = SUPS.filter(v=>v.id !== u.id); renderSignups(); toast('Cleared (demo — not saved)'); return; }
       try{ toast(settleMsg(await settle(deleteDoc(doc(db,'signups',u.id))), 'Cleared').msg); }catch(err){ toast('Could not clear'); }
       return;
