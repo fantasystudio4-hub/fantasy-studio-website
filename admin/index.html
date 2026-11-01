@@ -25,8 +25,8 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      tokens define the values, ui.css builds the components from them,
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
-<link rel="stylesheet" href="ui.css?v=p4b" />
-<link rel="stylesheet" href="app.css?v=p5i" />
+<link rel="stylesheet" href="ui.css?v=p4c" />
+<link rel="stylesheet" href="app.css?v=p5j" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -70,11 +70,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <button class="out hback" id="hdrBack" type="button" hidden aria-label="Back" title="Back">←</button>
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="currentColor">FS</text></svg>
     <!-- the name of the screen you are on; tap it to jump to the top -->
-    <div class="ttl" id="hdrTtl" role="button" tabindex="0" title="Back to the top"><b id="hdrTitle">Fantasy Studio</b><span>Admin Panel</span></div>
+    <div class="ttl" id="hdrTtl" role="button" tabindex="0" title="Back to the top"><b id="hdrTitle">Fantasy Studio</b></div>
     <span class="net" id="netDot" hidden>offline</span>
     <button class="out inst" id="installBtn" hidden>&#11015; Install</button>
     <!-- desktop only: the bar's ＋ is at the top of the page there and scrolls away -->
-    <button class="out add" id="hdrAdd" type="button" title="Add — expense, payment, lead, booking">＋ Add</button>
+    <button class="out add" id="hdrAdd" type="button" title="Quick add">＋ Add</button>
     <!-- owner, 6 Oct 2026: one refresh in the header, so it is on every tab -->
     <button class="out cfg" id="hdrRefresh" type="button" title="Refresh — reload everything" aria-label="Refresh"><i>↻</i><em>Refresh</em></button>
     <button class="out cfg" id="hdrSearch" title="Search everything (Ctrl+K)" aria-label="Search everything"><i>🔍</i><em>Search</em></button>
@@ -82,7 +82,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <button class="out cfg" id="hdrTxns" hidden title="Transactions — every payment in and out" aria-label="Transactions"><i>🧾</i><em>Transactions</em></button>
     <!-- More keeps its WORD at every width: it took the place of the Logout
          pill, which was the one header button that always had one -->
-    <button class="out more" id="tabMore" type="button" title="Portfolio, Partner studios, Team, Apps &amp; website, Settings, Trash, Backup, Logout">More<b class="badge" id="moreBadge" hidden></b></button>
+    <button class="out more" id="tabMore" type="button" title="Portfolio, Partner studios, Team, Apps &amp; website, Settings, Trash, Backup, Sign out">More<b class="badge" id="moreBadge" hidden></b></button>
     <!-- PARKED, not removed: the gear and Logout are reached from More now, but
          the panel still presses these two buttons to do the work (TABS, the
          logout handler), so they stay in the page, hidden -->
@@ -143,7 +143,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="tabs">
     <button id="tabHome" class="on"><i>🏠</i><span>Home</span><b class="badge" id="homeBadge" hidden></b></button>
     <button id="tabLeads"><i>👥</i><span>Leads</span><b class="badge" id="leadsBadge" hidden></b></button>
-    <button id="navAdd" class="plus" type="button" aria-label="Add — expense, payment, lead, booking" title="Add"><i>＋</i><span>Add</span></button>
+    <button id="navAdd" class="plus" type="button" aria-label="Quick add" title="Quick add"><i>＋</i><span>Add</span></button>
     <button id="tabPkgs"><i>💼</i><span>Work</span></button>
     <button id="tabMoney"><i>💰</i><span>Money</span></button>
     <button id="tabCal" hidden><i>🤝</i><span>B2B</span><b class="badge" id="b2bBadge" hidden></b></button>
@@ -320,14 +320,14 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div id="pkgEditView" hidden>
       <div class="hint">Service rates auto-fill from <b>More › Settings › Prices and packages</b> — you can change any rate per quote. Once saved, a package keeps its own prices even if the presets change later.</div>
       <div class="sec">
-        <h3><span class="stepnum">1</span><span id="pkgEditTitle">New Package</span></h3>
+        <h3><span class="stepnum">1</span><span id="pkgEditTitle">New package</span></h3>
         <p class="sub">Who is this quotation for?</p>
         <!-- the chat with the client fills steps 1 and 2 (AI, 18 Oct 2026); empty fields only, nothing saved -->
         <button type="button" class="btn btn--sm btn--ghost pkg-paste" id="pkgPaste" data-direct-only title="Paste the WhatsApp chat — AI fills the client and the functions">✨ Paste an enquiry — fill this quotation</button>
         <div class="grid2">
           <div class="fld" data-direct-only><label>Client name</label><input id="pcName" /></div>
           <div class="fld" data-direct-only><label>C/o (optional)</label><input id="pcCareOf" /></div>
-          <div class="fld" data-direct-only><label>Client phone <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(10-digit mobile · +country code for NRI)</span></label><input id="pcPhone" inputmode="tel" /></div>
+          <div class="fld" data-direct-only><label>Client phone <span class="field__opt">(10-digit mobile · +country code for NRI)</span></label><input id="pcPhone" inputmode="tel" /></div>
           <div class="fld"><label>Quote date</label><input id="pcDate" type="date" /></div>
         </div>
       </div>
@@ -335,7 +335,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
         <h3>🏢 Studio Job — <span id="stuJobName" style="color:var(--gold-b)"></span></h3>
         <p class="sub" id="stuJobTerms"></p>
         <div class="grid2">
-          <div class="fld"><label>End client <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(job sheet only — never shown to them)</span></label>
+          <div class="fld"><label>End client <span class="field__opt">(job sheet only — never shown to them)</span></label>
             <input id="pcEndClient" placeholder="e.g. the couple's names" /></div>
           <div class="fld"><label style="display:flex;align-items:center;gap:.55rem;text-transform:none;letter-spacing:.02em">
             <input id="pcWhiteLabel" type="checkbox" style="width:18px;height:18px;accent-color:var(--gold)" /> White-label job</label>
@@ -768,12 +768,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <div class="st-opts menu" id="moreMenu">
       <button type="button" data-more="portfolio">🖼 Portfolio <em>upload photos, films, reels · approve viewers</em><b class="badge" id="morePortB" hidden></b></button>
       <button type="button" data-more="studios">🤝 Partner studios <em>B2B jobs and requests</em><b class="badge" id="moreStuB" hidden></b></button>
-      <button type="button" data-more="members">🎬 Team <em>crew members · leaderboard</em><b class="badge" id="moreTeamB" hidden></b></button>
+      <button type="button" data-more="members">👤 Team <em>crew members · leaderboard</em><b class="badge" id="moreTeamB" hidden></b></button>
       <button type="button" data-more="apps">📱 Apps &amp; website <em>who uses the app · who visits the site</em></button>
       <button type="button" data-more="settings">⚙️ Settings <em>prices, packages, terms</em></button>
       <button type="button" data-more="trash">🗑 Trash <em>restore a deleted record</em></button>
       <button type="button" data-more="backup">⬇ Backup &amp; export <em>backup and CSV files</em></button>
-      <button type="button" data-more="logout">↩ Logout</button>
+      <button type="button" data-more="logout">↩ Sign out</button>
     </div>
   </div>
 
@@ -794,7 +794,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="payBackdrop"></div>
 <div class="pay-modal" id="payModal" role="dialog" aria-modal="true" aria-label="Record payment">
   <button class="pay-close" id="payClose" type="button" aria-label="Close">&times;</button>
-  <h3 id="payTitle">Record Payment</h3>
+  <h3 id="payTitle">Record payment</h3>
   <div class="who" id="payWho"></div>
   <!-- Correcting a payment used to mean deleting it and typing it again from
        memory. Tapping a row in the history below loads it into these same
@@ -812,11 +812,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button type="button" id="modeCash">Cash</button>
     </div>
   </div>
-  <div class="fld"><label>Note <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional — the client can read this, so keep it factual)</span></label>
+  <div class="fld"><label>Note <span class="field__opt">(optional — the client can read this, so keep it factual)</span></label>
     <input id="payNote" maxlength="80" autocomplete="off" placeholder="e.g. cash at venue · GPay from her brother" /></div>
   <div class="pay-hist" id="payHist"></div>
   <button class="gbtn" id="paySave" type="button">Save Payment</button>
-  <button class="btn btn--sm btn--ghost" id="payDel" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Delete this payment</button>
+  <button class="btn btn--sm btn--danger btn--block sheet-del" id="payDel" type="button" hidden>Delete this payment</button>
 </div>
 
 <!-- Studio transactions (owner, 15 Oct 2026): a double-tap on the "paid"
@@ -839,7 +839,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="feeBackdrop"></div>
 <div class="pay-modal" id="feeModal" role="dialog" aria-modal="true" aria-label="Edit event fee">
   <button class="pay-close" id="feeClose" type="button" aria-label="Close">&times;</button>
-  <h3>Edit Fee</h3>
+  <h3>Edit fee</h3>
   <div class="who" id="feeWho"></div>
   <div class="fld"><label>Fee for this event (₹)</label>
     <input id="feeAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
@@ -850,7 +850,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="cpBackdrop"></div>
 <div class="pay-modal" id="cpModal" role="dialog" aria-modal="true" aria-label="Pay crew member">
   <button class="pay-close" id="cpClose" type="button" aria-label="Close">&times;</button>
-  <h3 id="cpTitle">Pay Crew</h3>
+  <h3 id="cpTitle">Pay crew</h3>
   <div class="who" id="cpWho"></div>
   <!-- same as the client sheet: tap a payment in the history below and it
        loads into these fields to be corrected, rather than removed and
@@ -868,17 +868,17 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
       <button type="button" id="cpModeCash">Cash</button>
     </div>
   </div>
-  <div class="fld"><label>Note <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional — the crew member can read this, so keep it factual)</span></label>
+  <div class="fld"><label>Note <span class="field__opt">(optional — the crew member can read this, so keep it factual)</span></label>
     <input id="cpNote" maxlength="80" autocomplete="off" placeholder="e.g. cash at office · PhonePe" /></div>
   <div class="pay-hist" id="cpHist"></div>
   <button class="gbtn" id="cpSave" type="button">Save Payment</button>
-  <button class="btn btn--sm btn--ghost" id="cpDel" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Delete this payment</button>
+  <button class="btn btn--sm btn--danger btn--block sheet-del" id="cpDel" type="button" hidden>Delete this payment</button>
 </div>
 
 <div class="pay-backdrop" id="stBackdrop"></div>
 <div class="pay-modal" id="stModal" role="dialog" aria-modal="true" aria-label="Change package status">
   <button class="pay-close" id="stClose" type="button" aria-label="Close">&times;</button>
-  <h3>Package Status</h3>
+  <h3>Package status</h3>
   <div class="who" id="stWho"></div>
   <div class="st-opts" id="stOpts"></div>
 </div>
@@ -886,7 +886,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="tmBackdrop"></div>
 <div class="pay-modal" id="tmModal" role="dialog" aria-modal="true" aria-label="Team member">
   <button class="pay-close" id="tmClose" type="button" aria-label="Close">&times;</button>
-  <h3 id="tmTitle">Team Member</h3>
+  <h3 id="tmTitle">Team member</h3>
   <!-- what the member added in the app (photo, name, emergency contact):
        read-only, filled by renderTmProf, hidden when there is none -->
   <div class="pf-box" id="tmProf" hidden></div>
@@ -900,7 +900,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld"><label>Usual role</label>
     <select id="tmRole"></select>
   </div>
-  <div class="fld"><label>Phone <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(their crew-page OTP login)</span></label>
+  <div class="fld"><label>Phone <span class="field__opt">(their crew-page OTP login)</span></label>
     <input id="tmPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
   <div class="fld"><label>Pay per event (₹)</label><input id="tmRate" type="number" min="0" inputmode="numeric" /></div>
   <button class="gbtn" id="tmSave" type="button">Save</button>
@@ -911,7 +911,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="asBackdrop"></div>
 <div class="pay-modal" id="asModal" role="dialog" aria-modal="true" aria-label="Assign crew">
   <button class="pay-close" id="asClose" type="button" aria-label="Close">&times;</button>
-  <h3 id="asTitle">Assign Crew</h3>
+  <h3 id="asTitle">Assign crew</h3>
   <div class="who" id="asWho"></div>
   <div class="fld" id="asBookWrap" hidden><label>Booking</label><select id="asBook"></select></div>
   <div class="fld" id="asBookEvWrap" hidden><label>Which function</label><select id="asBookEv"></select></div>
@@ -930,7 +930,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <!-- a member who brings their own second shooter: one row, one fee (the
        total for all of them), counted as that many against what the event
        needs. Editors are always one, so this hides with the call time. -->
-  <div class="fld" data-solo data-shootonly><label>How many people they bring <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(the pay below is for all of them)</span></label>
+  <div class="fld" data-solo data-shootonly><label>How many people they bring <span class="field__opt">(the pay below is for all of them)</span></label>
     <select id="asHeads"><option value="1">Just them (1)</option><option value="2">2 people — them + 1</option><option value="3">3 people — them + 2</option><option value="4">4 people — them + 3</option><option value="5">5 people — them + 4</option></select></div>
   <div class="fld" data-shootonly><label>Call time</label><input id="asCall" type="time" /></div>
   <!-- The editing deadline was asked for here AND set on the job in the
@@ -948,10 +948,10 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
     <p class="sub" style="margin:.35rem 0 0">One editing job for every function, instead of one per day.</p>
   </div>
   <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
-  <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member)</span></label>
+  <div class="fld"><label>Notes <span class="field__opt">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
   <button class="gbtn" id="asSave" type="button">Save Assignment</button>
-  <button class="btn btn--sm btn--ghost" id="asRemove" type="button" hidden style="width:100%;margin-top:.55rem;color:var(--err)">Remove from this event</button>
+  <button class="btn btn--sm btn--danger btn--block sheet-del" id="asRemove" type="button" hidden>Remove from this event</button>
 </div>
 
 <!-- One person → many events: the assign sheet turned round. Pick the
@@ -969,12 +969,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   </div>
   <div id="maStep2" hidden>
     <div class="fld"><label for="maRole">Role on every ticked event</label><select id="maRole"></select></div>
-    <div class="fld"><label for="maHeads">How many people they bring <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(each event's fee is for all of them)</span></label>
+    <div class="fld"><label for="maHeads">How many people they bring <span class="field__opt">(each event's fee is for all of them)</span></label>
       <select id="maHeads"><option value="1">Just them (1)</option><option value="2">2 people — them + 1</option><option value="3">3 people — them + 2</option><option value="4">4 people — them + 3</option><option value="5">5 people — them + 4</option></select></div>
     <div class="ma-lbl" id="maEvLbl">Upcoming booked events</div>
     <input id="maFilter" class="crewfilter" type="search" placeholder="Filter by client, quote or function…" aria-label="Filter events" hidden autocomplete="off" />
     <div class="ma-evs" id="maEvents" role="group" aria-labelledby="maEvLbl"></div>
-    <div class="fld"><label for="maNotes">Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(shown to the member, on every event)</span></label>
+    <div class="fld"><label for="maNotes">Notes <span class="field__opt">(shown to the member, on every event)</span></label>
       <textarea id="maNotes" rows="2"></textarea></div>
     <div class="ma-foot">
       <div class="ma-sum" id="maSum" aria-live="polite"></div>
@@ -1002,7 +1002,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="expBackdrop"></div>
 <div class="pay-modal" id="expModal" role="dialog" aria-modal="true" aria-label="Expense">
   <button class="pay-close" id="expClose" type="button" aria-label="Close">&times;</button>
-  <h3 id="exTitle">＋ New expense</h3>
+  <h3 id="exTitle">＋ Expense</h3>
   <div class="who">Rent, gear, travel, food — anything the studio spends</div>
   <div class="fld"><label>Amount (₹)</label><input id="exAmt" type="number" min="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="e.g. 500" /></div>
   <div class="fld"><label>Category</label><div class="mode-pills expcats" id="exCat"></div></div>
@@ -1015,7 +1015,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <button type="button" class="exmore" id="exMoreBtn" aria-expanded="false" aria-controls="exMoreBox"><span>More details</span><em id="exMoreSum"></em></button>
   <div id="exMoreBox" hidden>
     <div class="fld"><label>Date</label><input id="exDate" type="date" /></div>
-    <div class="fld"><label>Note <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional)</span></label>
+    <div class="fld"><label>Note <span class="field__opt">(optional)</span></label>
       <input id="exNote" maxlength="120" autocomplete="off" placeholder="e.g. studio rent — August" /></div>
   </div>
   <!-- both buttons ride the bottom edge of the sheet, within thumb reach -->
@@ -1054,7 +1054,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="qaBackdrop"></div>
 <div class="pay-modal" id="qaModal" role="dialog" aria-modal="true" aria-label="Add">
   <button class="pay-close" id="qaClose" type="button" aria-label="Close">&times;</button>
-  <h3>＋ Add</h3>
+  <h3>＋ Quick add</h3>
   <div class="who" id="qaWho"></div>
   <div class="st-opts" id="qaOpts"></div>
 </div>
@@ -1062,16 +1062,16 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="stuBackdrop"></div>
 <div class="pay-modal fin" id="stuModal" role="dialog" aria-modal="true" aria-label="Partner studio">
   <button class="pay-close" id="stuClose" type="button" aria-label="Close">&times;</button>
-  <h3 id="stuTitle">Partner Studio</h3>
+  <h3 id="stuTitle">Partner studio</h3>
   <div class="fld"><label>Studio name</label><input id="stuName" autocomplete="off" /></div>
   <div class="grid2">
     <div class="fld"><label>Owner name</label><input id="stuOwner" autocomplete="off" /></div>
     <div class="fld"><label>City</label><input id="stuCity" autocomplete="off" /></div>
   </div>
-  <div class="fld"><label>Phone <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(10-digit mobile = their portal login)</span></label><input id="stuPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
-  <div class="fld"><label>GST number <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(optional)</span></label><input id="stuGst" autocomplete="off" /></div>
+  <div class="fld"><label>Phone <span class="field__opt">(10-digit mobile = their portal login)</span></label><input id="stuPhone" inputmode="tel" autocomplete="off" placeholder="e.g. 98765 43210" /></div>
+  <div class="fld"><label>GST number <span class="field__opt">(optional)</span></label><input id="stuGst" autocomplete="off" /></div>
   <div class="fld"><label>Payment terms</label><input id="stuTerms" placeholder="e.g. 50% advance · balance on RAW handover" /></div>
-  <div class="fld"><label>Notes <span style="text-transform:none;letter-spacing:0;color:var(--mut)">(the studio's portal login can read this — keep private remarks out)</span></label><textarea id="stuNotes" rows="2"></textarea></div>
+  <div class="fld"><label>Notes <span class="field__opt">(the studio's portal login can read this — keep private remarks out)</span></label><textarea id="stuNotes" rows="2"></textarea></div>
   <button class="gbtn" id="stuSave" type="button">Save Studio</button>
   <button class="btn btn--sm btn--ghost" id="stuToggle" type="button" hidden style="width:100%;margin-top:.55rem"></button>
 </div>
@@ -1079,7 +1079,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 <div class="pay-backdrop" id="jtBackdrop"></div>
 <div class="pay-modal" id="jtModal" role="dialog" aria-modal="true" aria-label="New booking">
   <button class="pay-close" id="jtClose" type="button" aria-label="Close">&times;</button>
-  <h3>📦 New Booking</h3>
+  <h3>📦 New booking</h3>
   <div class="who" id="jtWho"></div>
   <div class="st-opts" id="jtOpts"></div>
 </div>
@@ -1134,7 +1134,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5i"></script>
+<script type="module" src="app.js?v=p5j"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

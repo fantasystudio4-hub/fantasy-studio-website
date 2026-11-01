@@ -34,7 +34,7 @@
      .btn--danger    destructive; always paired with a confirm
      .btn--quiet     text-only, for tertiary links inside cards
    Modifiers: .btn--sm (still 44px tall — only the text and padding shrink),
-              .btn--block (full width), .btn--pill
+              .btn--block (full width)
    ======================================================================== */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);
@@ -59,7 +59,6 @@
 
 .btn--sm{padding:.35em .9em;font-size:var(--fs-md)}
 .btn--block{width:100%}
-.btn--pill{border-radius:var(--r-pill)}
 
 @media(hover:hover){
   .btn--ghost:hover{border-color:var(--gold);color:var(--white)}
@@ -91,9 +90,6 @@
   .icon-btn:hover{color:var(--gold-b);background:var(--white-t2)}
   .icon-btn--danger:hover{background:var(--state-overdue);color:var(--white)}
 }
-/* inside dense list rows these sit in a fixed slot, not a 44px circle of
-   whitespace — keep the hit box, tighten the footprint */
-.up-ev .icon-btn,.exprow .icon-btn{width:var(--tap);height:var(--tap);font-size:var(--fs-xl)}
 
 /* ================================================================== INPUT
    One well for input, select and textarea. Font size stays 16px (--fs-input):
@@ -192,18 +188,6 @@ button.chip-status:active{transform:scale(.97)}
 .chip-status[data-state="progress"] {color:var(--state-progress); background:rgba(var(--state-progress-rgb),.13)}
 .chip-status[data-state="linked"]   {color:var(--state-linked);   background:rgba(var(--state-linked-rgb),.13)}
 
-/* the same colour vocabulary as a bare dot, for dense rows (calendar cells) */
-.state-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto;background:currentColor}
-.state-dot[data-state="pending"]{color:var(--state-pending)}
-.state-dot[data-state="confirmed"]{color:var(--state-confirmed)}
-.state-dot[data-state="overdue"]{color:var(--state-overdue)}
-.state-dot[data-state="info"]{color:var(--state-info)}
-.state-dot[data-state="neutral"]{color:var(--state-neutral)}
-.state-dot[data-state="done"]{color:var(--state-done)}
-.state-dot[data-state="risk"]{color:var(--state-risk)}
-.state-dot[data-state="new"]{color:var(--state-new)}
-.state-dot[data-state="progress"]{color:var(--state-progress)}
-.state-dot[data-state="linked"]{color:var(--state-linked)}
 
 /* ==================================================================== CARD
    The panel has no data tables and gets none: at 390px a table either scrolls
@@ -216,7 +200,6 @@ button.chip-status:active{transform:scale(.97)}
   transition:border-color var(--t-med),background var(--t-med);
 }
 .card.is-open{border-color:var(--line-2);background:var(--panel-open)}
-.card--flat{background:none;border-style:dashed}
 /* status accent down the leading edge — set data-state on the card itself */
 .card[data-state]{border-left:3px solid currentColor}
 .card[data-state="pending"]{border-left-color:var(--state-pending)}
@@ -351,9 +334,6 @@ button.chip-status:active{transform:scale(.97)}
   background:linear-gradient(90deg,transparent,rgba(var(--gold-b-rgb),.08),transparent);
   animation:shim 1.2s infinite;
 }
-.skeleton--tall{height:92px}
-.skeleton--line{height:14px;border-radius:var(--r-sm);margin-bottom:var(--sp-2)}
-.skeleton--stat{height:62px;border-radius:var(--r-md);margin:0}
 @media (prefers-reduced-motion: reduce){ .skeleton::after{animation:none} }
 
 /* ============================================================= EMPTY STATE
@@ -374,10 +354,18 @@ button.chip-status:active{transform:scale(.97)}
    — "no payments yet" under a package, "trash is empty" — that block is louder
    than the thing it sits in. Same component, quieter register. Legacy class
    name .empty is kept as the alias so the sub-panels need no churn. */
-.empty-state--inline,.empty{
+.empty{
   display:block;text-align:center;padding:1.1rem .8rem;
   color:var(--mut);font-size:var(--fs-base);font-style:italic;line-height:1.5;
 }
+
+/* a sub-panel's empty line inside a dense card: the same text, less air.
+   Replaces the inline padding each call site used to pick for itself. */
+.empty.empty--tight{padding:.5rem 0}
+
+/* a figure that is money IN / a state that is done, inside running text.
+   !important because it replaces an inline style= that always won. */
+.hl-ok{color:var(--ok)!important}
 
 /* ==================================================================== TOAST
    Undo lives inside the toast: the confirm already asked, so the second

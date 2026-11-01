@@ -1215,7 +1215,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     'More',
     ['portfolio','🖼','Portfolio','#morePortB'],     ['studios','🤝','Partner studios','#b2bBadge'], ['members','👤','Team','#teamBadge'],
     ...(APPS_PAGE ? [['apps','📱','Apps & website']] : []), ['settings','⚙️','Settings'],
-    ['trash','🗑','Trash'], ['backup','⬇','Backup & export'], ['logout','↩','Logout'],
+    ['trash','🗑','Trash'], ['backup','⬇','Backup & export'], ['logout','↩','Sign out'],
   ];
   function syncSide(r){
     const nav = $('#sideNav'); if(!nav) return;
@@ -2329,7 +2329,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       const hadQuote = !!(l.quote && Array.isArray(l.quote.events) && l.quote.events.length);
       $('#tabPkgs').click(); openPkgEdit(pkgFromLead(l));
-      $('#pkgEditTitle').textContent = `New Package — from ${l.name||'lead'}`;
+      $('#pkgEditTitle').textContent = `New package — from ${l.name||'lead'}`;
       /* the two cases leave the editor in genuinely different states, and the
          owner's next action differs — check rates, or add services */
       toast(hadQuote ? 'Quote loaded — check rates, then Save'
@@ -3960,7 +3960,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   }
   const HOME_TABS = [['next','Coming next'],['ongoing','Ongoing'],['delivered','Delivered']];
   const HOME_EMPTY = {
-    next: 'Nothing booked ahead — a package lands here the moment its status is <b style="color:var(--ok)">booked</b>.',
+    next: 'Nothing booked ahead — a package lands here the moment its status is <b class="hl-ok">booked</b>.',
     ongoing: 'Nothing in post right now — a booking moves here the day after its last function.',
     delivered: 'Nothing delivered yet — mark a package <b>delivered</b> once everything is handed over.',
   };
@@ -6149,12 +6149,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     let all = teamEventsIn(period);
     if(!all.length){
       const EMPTY = {
-        today: 'Nothing shooting today. <span style="color:var(--mut)">Enjoy it.</span>',
-        up:    'No upcoming booked events. Events appear here once a package is <b style="color:var(--ok)">booked</b> and its dates are set.',
+        today: 'Nothing shooting today. Enjoy it.',
+        up:    'No upcoming booked events. Events appear here once a package is <b class="hl-ok">booked</b> and its dates are set.',
         past:  'No past events yet — shoots move here the day after they happen.'
       };
       el.innerHTML = (_pkgsLoaded && _asgsLoaded)
-        ? `<div class="empty" style="padding:.4rem 0">${EMPTY[period] || EMPTY.up}</div>`
+        ? `<div class="empty empty--tight">${EMPTY[period] || EMPTY.up}</div>`
         : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
     }
@@ -6329,7 +6329,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const jobs = ASGS.filter(a=>a.kind === 'edit');
     if(!jobs.length){
       $('#edCount').textContent = '';
-      el.innerHTML = '<div class="empty" style="padding:.5rem 0">No editing assigned yet. Use <b style="color:var(--gold-b)">＋ Assign editing</b> — it reaches shoots that have already happened.</div>';
+      el.innerHTML = '<div class="empty empty--tight">No editing assigned yet. Use <b style="color:var(--gold-b)">＋ Assign editing</b> — it reaches shoots that have already happened.</div>';
       return;
     }
     const today = todayISO();
@@ -6368,7 +6368,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`;
     };
     el.innerHTML = (open.length ? open.map(row).join('')
-                                : '<div class="empty" style="padding:.5rem 0">Nothing outstanding — every edit is signed off ✓</div>')
+                                : '<div class="empty empty--tight">Nothing outstanding — every edit is signed off ✓</div>')
       + (done.length ? `<div class="grp tog ${_edShowDone?'':'closed'}" data-edgrp role="button" tabindex="0" aria-expanded="${_edShowDone}"><span class="car">▾</span>Completed<b>${done.length}</b></div>`
           + (_edShowDone ? done.map(row).join('') : '') : '');
   }
@@ -6714,7 +6714,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       .sort((a,b)=>b.s.xp - a.s.xp);
     const inact = TEAM.filter(m=>m.active === false && inCat(m)).map(m=>({ m, s: memberStats(m.id) }));
     if(!act.length && !inact.length){
-      el.innerHTML = `<div class="empty" style="padding:.4rem 0">No ${_squadCat === 'office' ? 'office' : 'outdoor'} members yet.</div>`;
+      el.innerHTML = `<div class="empty empty--tight">No ${_squadCat === 'office' ? 'office' : 'outdoor'} members yet.</div>`;
       return;
     }
     const C = 113.1;   /* 2πr for r=18 */
@@ -6823,7 +6823,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       openTm(null);
       _tmFromReq = r.id;
-      $('#tmTitle').textContent = 'Approve — Add Team Member';
+      $('#tmTitle').textContent = 'Approve — add team member';
       $('#tmName').value = r.name||'';
       $('#tmPhone').value = reqDial(r);
       return;
@@ -6897,7 +6897,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const el = $('#teamPay'); if(!el) return;
     if(!ASGS.length){
       el.innerHTML = _asgsLoaded
-        ? '<div class="empty" style="padding:.4rem 0">Nothing here yet — pay rows appear as you assign crew to events.</div>'
+        ? '<div class="empty empty--tight">Nothing here yet — pay rows appear as you assign crew to events.</div>'
         : '<div class="skeleton"></div>';
       return;
     }
@@ -6909,7 +6909,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         office:  'No office work owed anything right now.',
         settled: 'Nobody is fully settled yet.'
       };
-      el.innerHTML = `<div class="empty" style="padding:.4rem 0">${EMPTY[_payTab]}</div>`;
+      el.innerHTML = `<div class="empty empty--tight">${EMPTY[_payTab]}</div>`;
       return;
     }
     const byMember = Object.fromEntries(picked);
@@ -6952,7 +6952,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const gone = !livePkgs().some(pk=>pk.id===a.pkgId);
         /* members sign their own work off from the crew page */
         const scissors = a.workDone
-          ? '<span title="Completed — marked by the member" style="color:var(--ok)">✓ </span>'
+          ? '<span title="Completed — marked by the member" class="hl-ok">✓ </span>'
           : (a.date||'') < todayISO() ? '<span title="Not marked completed yet" style="color:var(--warn)">○ </span>'
           : '';
         return `
@@ -7635,13 +7635,13 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         : `<div class="empty-state">
              <span class="empty-state__icon">✂️</span>
              <p class="empty-state__title">No editing jobs yet</p>
-             <p class="empty-state__text">A booking reaches this desk once its package is <b style="color:var(--ok)">booked</b>, one of its functions was quoted a service that produces a film, and you have ticked its <b>editing details received</b> step.</p>
+             <p class="empty-state__text">A booking reaches this desk once its package is <b class="hl-ok">booked</b>, one of its functions was quoted a service that produces a film, and you have ticked its <b>editing details received</b> step.</p>
            </div>`;
       return;
     }
     const rows = ejVisibleRows();
     if(!rows.length){
-      el.innerHTML = `<div class="empty" style="padding:.6rem 0">Nothing matches this filter.
+      el.innerHTML = `<div class="empty empty--tight">Nothing matches this filter.
         <button type="button" class="linky" data-ejclear>Clear it</button></div>`;
       return;
     }
@@ -7984,7 +7984,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         </span>
       </div>`}
       </div>`;
-    }).join('') : `<div class="empty" style="padding:.5rem 0">Nobody is on this edit yet.</div>`;
+    }).join('') : `<div class="empty empty--tight">Nobody is on this edit yet.</div>`;
 
     /* An editor may append a note to this array and the rules cannot see
        inside it, so an entry can be null, a bare string, or carry a field that
@@ -8073,7 +8073,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <div class="ejt-row">
             <span class="ejt-who">${esc(ejWhoShort(c.by))}<em>${esc(ejWhen(c.at))}</em></span>
             <p>${esc(c.text||'')}</p>
-          </div>`).join('') : '<div class="empty" style="padding:.4rem 0">No notes yet.</div>'}</div>
+          </div>`).join('') : '<div class="empty empty--tight">No notes yet.</div>'}</div>
       </div>
 
       <div class="sec">
@@ -8081,7 +8081,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span class="car">▾</span>Activity<b>${audit.length}</b></div>
         ${_ejAuditOpen ? `<div class="eja">${audit.length ? audit.map(a=>`
           <div class="eja-row"><span>${esc(a.what||'')}</span><em>${esc(ejWhoShort(a.by))} · ${esc(ejWhen(a.at))}</em></div>`).join('')
-          : '<div class="empty" style="padding:.4rem 0">Nothing recorded yet.</div>'}</div>` : ''}
+          : '<div class="empty empty--tight">Nothing recorded yet.</div>'}</div>` : ''}
       </div>`;
 
     /* put back whatever was being typed, and the caret with it */
@@ -8412,7 +8412,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function openTm(m){
     _tmEditId = m ? m.id : null;
     _tmFromReq = null;
-    $('#tmTitle').textContent = m ? 'Edit Team Member' : 'Add Team Member';
+    $('#tmTitle').textContent = m ? 'Edit team member' : 'Add team member';
     $('#tmName').value = m ? (m.name||'') : '';
     setTmCat(m ? catOf(m) : 'outdoor');
     $('#tmRole').value = m && TEAM_ROLES.includes(m.role) ? m.role : TEAM_ROLES[0];
@@ -8738,7 +8738,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         head = `<span class="pickhead">${esc(CAT_LABEL[_lastCat])}</span>`;
       }
       return head + pickBtn(m);
-    }).join('') || `<div class="empty" style="padding:.6rem 0">${fq
+    }).join('') || `<div class="empty empty--tight">${fq
       ? 'Nobody matches “' + esc(fq) + '”.'
       : 'No active team members — add one under More → Team.'}</div>`;
 
@@ -8846,7 +8846,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _asCtx = ctx;
     _asForceEdit = !!(opts && opts.forceEdit);
     $('#asBookWrap').hidden = !(opts && opts.pickBooking);
-    $('#asTitle').textContent = a ? 'Edit Assignment' : (_asForceEdit ? 'Assign Editing' : 'Assign Crew');
+    $('#asTitle').textContent = a ? 'Edit assignment' : (_asForceEdit ? 'Assign editing' : 'Assign crew');
     $('#asWho').textContent = asWhoText(ctx) + (ctx.venue ? ' · ' + ctx.venue : '');
     _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
     /* Every field is set BEFORE the picker renders, because renderAsPick ends
@@ -9229,7 +9229,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(memberPhone10(m).length !== 10) bits.push('⚠ no phone');
       return `<button type="button" class="cpick" data-mamem="${esc(m.id)}"><i class="dot booked"></i>`
         + `<span class="cp-t"><b>${esc(m.name||'—')}</b><em>${esc(bits.join(' · '))}</em></span></button>`;
-    }).join('') || '<div class="empty" style="padding:.6rem 0">No active outdoor crew — add one under More → Team.</div>';
+    }).join('') || '<div class="empty empty--tight">No active outdoor crew — add one under More → Team.</div>';
   }
   /* what one event row says about this member, before it is ticked */
   function maState(m, r, ticked){
@@ -9279,7 +9279,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         + `<em>${g.length} function${g.length === 1 ? '' : 's'} ahead · ${esc(span)}</em></span>`
         + (free.length > 1 ? `<button type="button" class="ma-all ${allOn ? 'on' : ''}" data-maall="${esc(pk.id)}" aria-pressed="${allOn}">${allOn ? '✓ ' : ''}all ${free.length}</button>` : '')
         + `</div>` + rows.map(({ r, st })=>maRowHTML(m, r, st)).join('');
-    }).join('') || `<div class="empty" style="padding:.6rem 0">${q
+    }).join('') || `<div class="empty empty--tight">${q
       ? 'No booking matches “' + esc(q) + '”.'
       : 'No upcoming booked events. Events appear here once a package is booked and its dates are set.'}</div>`;
   }
@@ -9656,7 +9656,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cpDate').value = ISO_RE.test(pm.date||'') ? pm.date : todayISO();
     $('#cpNote').value = String(pm.note||'');
     setCpMode(modePill(_cpEditMode0));
-    $('#cpTitle').textContent = 'Correct Payment';
+    $('#cpTitle').textContent = 'Correct payment';
     $('#cpEditWhat').innerHTML = `Editing the <b>${inr(_cpEditAmt0)}</b> paid on ${esc(dmy(pm.date) || 'an unrecorded date')}. Change what is wrong and tap Update.`;
     $('#cpEditBar').hidden = false;
     $('#cpDel').hidden = false;
@@ -9669,7 +9669,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function exitCpEdit(){
     _cpEditPid = null; _cpEditMode0 = ''; _cpEditAmt0 = 0;
     $('#cpAmt').value = ''; $('#cpNote').value = '';
-    $('#cpTitle').textContent = 'Pay Crew';
+    $('#cpTitle').textContent = 'Pay crew';
     $('#cpEditBar').hidden = true;
     $('#cpDel').hidden = true;
     $('#cpSave').textContent = 'Save Payment';
@@ -10107,7 +10107,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <span class="chip-status no-dot" data-state="${esc(it.state)}">${esc(it.badge)}</span>
         <button class="btn btn--sm btn--ghost" data-restore="${esc(it.kind)}:${esc(it.id)}">Restore</button>
         <button class="btn btn--sm btn--danger" data-purge="${esc(it.kind)}:${esc(it.id)}" title="Delete permanently">✕ Forever</button>
-      </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
+      </div>`).join('') : '<div class="empty empty--tight">Trash is empty.</div>';
     /* silent 30-day cleanup — only once BOTH lists have arrived fresh from the server,
        never from a stale cache image (it could hard-delete something restored elsewhere) */
     if(!_purged && _pkgsFresh && _leadsFresh && _asgsFresh){
@@ -10886,7 +10886,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       }
       openStu(null);
       _stuFromReq = r.id;
-      $('#stuTitle').textContent = 'Approve — Add Partner Studio';
+      $('#stuTitle').textContent = 'Approve — add partner studio';
       $('#stuName').value = sreqText(r.studioName, 120);
       $('#stuOwner').value = sreqText(r.ownerName, 80);
       $('#stuCity').value = sreqText(r.city, 60);
@@ -11583,7 +11583,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function openStu(s){
     _stuEditId = s ? s.id : null;
     _stuFromReq = '';
-    $('#stuTitle').textContent = s ? 'Edit Studio' : 'Add Partner Studio';
+    $('#stuTitle').textContent = s ? 'Edit studio' : 'Add partner studio';
     $('#stuName').value  = s ? (s.name||'') : '';
     $('#stuOwner').value = s ? (s.ownerName||'') : '';
     $('#stuCity').value  = s ? (s.city||'') : '';
@@ -11890,10 +11890,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
             </div>
             ${open ? `<div class="sj-det">${di && di.total
               ? trackerHTML(x)
-              : '<div class="empty" style="padding:.4rem 0">Delivery tracking starts once this job is booked.</div>'}
+              : '<div class="empty empty--tight">Delivery tracking starts once this job is booked.</div>'}
               <button class="btn btn--sm btn--ghost" type="button" data-stuopen="${esc(x.id)}">Open package</button></div>` : ''}
           </div>`;
-        }).join('') : `<div class="empty" style="padding:.5rem 0">${
+        }).join('') : `<div class="empty empty--tight">${
           _stuTab === 'closed' ? 'Nothing delivered for this studio yet.'
           : _stuTab === 'open' ? 'No open jobs — everything for this studio is delivered.'
           : 'No jobs yet — ＋ New job starts one with this studio\'s rates.'}</div>`}
@@ -11912,7 +11912,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                the picture, and it was nowhere on this page. -->
           <div class="stu-money">
             <div class="stat"><b title="${inr(totBilled)}">${inrShort(totBilled)}</b><span>billed</span></div>
-            <div class="stat stutx" data-stutx="*" role="button" tabindex="0" title="${inr(totPaid)} — double-tap to see every payment"><b style="color:var(--ok)">${inrShort(totPaid)}</b><span>paid</span></div>
+            <div class="stat stutx" data-stutx="*" role="button" tabindex="0" title="${inr(totPaid)} — double-tap to see every payment"><b class="hl-ok">${inrShort(totPaid)}</b><span>paid</span></div>
             <!-- outstanding is two figures: owed for work already shot, and owed
                  ahead of the upcoming shoots — the partner's own page shows the
                  same two, from the same rule -->
@@ -11933,7 +11933,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
                            ((r.x.events||[])[0]||{}).title || 'Job',
                            r.x.endClientName,
                            { upcoming:'upcoming', ongoing:'ongoing' }[jobPhase(r.x)] || ''].filter(Boolean).join(' · '))}</span>
-            </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" class="stutx" data-stutx="${esc(r.x.id)}" style="color:var(--ok)" title="${inr(r.got)} — double-tap for this job's payments">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
+            </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" class="stutx hl-ok" data-stutx="${esc(r.x.id)}" title="${inr(r.got)} — double-tap for this job's payments">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
           <h4 class="shotlist-h ${_stuEvOpen?'':'closed'}" data-stuevtog role="button" tabindex="0" aria-expanded="${_stuEvOpen}">
             🎬 Every shoot for this studio <b>${shot.length}</b><span class="car">▾</span></h4>
@@ -11943,8 +11943,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <span class="what">${esc(r.title)}<span>· ${esc(r.quoteNo)}${r.endClient ? ' · ' + esc(r.endClient) : ''}${r.venue ? ' · 📍 ' + esc(r.venue) : ''}</span></span>
               <b class="${r.crew ? '' : 'neg'}">${r.crew} crew</b>
             </div>`).join('')}</div>`
-            : '<div class="empty" style="padding:.4rem 0">No dated events on the confirmed jobs yet.</div>') : ''}`
-        : '<div class="empty" style="padding:.5rem 0">No confirmed jobs yet — the ledger fills in as jobs are booked.</div>'}
+            : '<div class="empty empty--tight">No dated events on the confirmed jobs yet.</div>') : ''}`
+        : '<div class="empty empty--tight">No confirmed jobs yet — the ledger fills in as jobs are booked.</div>'}
       </div>
       <div class="sec">
         <h3 class="rc-tog ${rateOpen?'':'closed'}" data-ratetog role="button" tabindex="0" aria-expanded="${rateOpen}">💱 Rate card
@@ -12166,7 +12166,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const body = $('#stxBody'); if(!s || !body) return;
     const all = _stxJob === '*';
     const job = all ? null : studioJobs(s.id).find(x=>x.id === _stxJob);
-    if(!all && !job){ body.innerHTML = '<div class="empty" style="padding:.6rem 0">That job is not here any more.</div>'; return; }
+    if(!all && !job){ body.innerHTML = '<div class="empty empty--tight">That job is not here any more.</div>'; return; }
     const rows = stuTxRows(s, _stxJob);
     const got = rows.reduce((n,r)=>n + r.amount, 0);
     const scope = all ? studioJobs(s.id).filter(x=>CONFIRMED_ST.includes(x.status||'draft')) : [job];
@@ -12179,7 +12179,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     body.innerHTML = `
       <div class="finsplit txsum">
         <span>Billed <b>${inr(billed)}</b></span>
-        <span>Received <b style="color:var(--ok)">${inr(got)}</b></span>
+        <span>Received <b class="hl-ok">${inr(got)}</b></span>
         <span>Due <b style="color:var(${due > 0 ? '--warn' : '--ok'})">${due > 0 ? inr(due) : '✓ Nil'}</b></span>
       </div>
       ${rows.length ? `<div class="pay-hist stx-list">${rows.map(r=>`
@@ -12187,7 +12187,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span>${esc(ISO_RE.test(r.date||'') ? stepDate(r.date) : 'no date')} · ${esc(r.mode||'—')}${all ? ' · ' + esc(r.quoteNo) : ''}${r.note ? `<em class="paynote">${esc(r.note)}</em>` : ''}</span>
           <b>+${inr(r.amount)}</b>
         </div>`).join('')}</div>`
-      : `<div class="empty" style="padding:.6rem 0">No payments recorded ${all ? 'from this studio' : 'on this job'} yet.</div>`}
+      : `<div class="empty empty--tight">No payments recorded ${all ? 'from this studio' : 'on this job'} yet.</div>`}
       ${!all && job ? `<button class="btn btn--sm btn--ghost" type="button" data-stxadd style="width:100%;margin-top:.6rem">＋ Record a payment</button>` : ''}`;
   }
   function openStuTx(jobId){
@@ -12393,7 +12393,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#payDate').value = ISO_RE.test(pm.date||'') ? pm.date : todayISO();
     $('#payNote').value = String(pm.note||'');
     setPayMode(modePill(_payEditMode0));
-    $('#payTitle').textContent = 'Correct Payment';
+    $('#payTitle').textContent = 'Correct payment';
     $('#payEditWhat').innerHTML = `Editing the <b>${inr(_payEditAmt0)}</b> received on ${esc(dmy(pm.date) || 'an unrecorded date')}. Change what is wrong and tap Update.`;
     $('#payEditBar').hidden = false;
     $('#payDel').hidden = false;
@@ -12405,7 +12405,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function exitPayEdit(){
     _payEditPid = null; _payEditMode0 = ''; _payEditAmt0 = 0;
     $('#payAmt').value = ''; $('#payNote').value = '';
-    $('#payTitle').textContent = 'Record Payment';
+    $('#payTitle').textContent = 'Record payment';
     $('#payEditBar').hidden = true;
     $('#payDel').hidden = true;
     $('#paySave').textContent = 'Save Payment';
@@ -12971,14 +12971,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         bar(`${esc(s.label)} <em>${s.n} enquir${s.n===1?'y':'ies'}</em>`,
             `${s.won} booked · ${pc(s.won, s.n)}`,
             s.n / Math.max(...d.sources.map(x=>x.n)))).join('')
-      : '<div class="empty" style="padding:.5rem 0">No enquiries in this window.</div>'}
+      : '<div class="empty empty--tight">No enquiries in this window.</div>'}
 
       <div class="finh">What actually sells</div>
       ${d.services.length ? d.services.slice(0, 10).map(s=>
         bar(`${esc(s.name)} <em>${s.qty}× across ${s.jobs} job${s.jobs===1?'':'s'}</em>`,
             inrShort(s.rev), s.rev / (d.svcTop || 1), 'gold')).join('')
         + `<div class="insnote">Line items are priced before any package discount, so these add to ${inrShort(d.svcGross)} against ${inrShort(d.wonBilled)} actually billed. Read them against each other, not as revenue.</div>`
-      : '<div class="empty" style="padding:.5rem 0">Nothing booked with itemised services yet.</div>'}
+      : '<div class="empty empty--tight">Nothing booked with itemised services yet.</div>'}
 
       <div class="finh">When the studio is busy</div>
       <div class="ins-season">
@@ -13012,7 +13012,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <div class="finh">How long delivery takes you</div>
       ${(()=>{
         const pace = deliveryPace();
-        if(!pace.length) return `<div class="empty" style="padding:.5rem 0">Not enough finished jobs yet — a step needs three completed examples before its typical time means anything.</div>`;
+        if(!pace.length) return `<div class="empty empty--tight">Not enough finished jobs yet — a step needs three completed examples before its typical time means anything.</div>`;
         const mx = Math.max(...pace.map(p=>p.days), 1);
         /* the gap between one step and the previous is where time actually
            goes; the cumulative figure alone hides a stage that eats a month */
@@ -13030,7 +13030,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         + bar('🏢 Partner studios', money(d.partner), d.partner / Math.max(d.direct, d.partner), 'gold')
         + (d.partners.length ? d.partners.slice(0,5).map(p=>`
             <div class="up-ev"><span class="what">${esc(p.name)} <span>· ${p.n} job${p.n===1?'':'s'}</span></span><b title="${inr(p.val)}">${inrShort(p.val)}</b></div>`).join('') : '')
-      : '<div class="empty" style="padding:.5rem 0">Nothing booked in this window.</div>'}
+      : '<div class="empty empty--tight">Nothing booked in this window.</div>'}
 
       ${d.repeats.length ? `
       <div class="finh">Clients who came back</div>
@@ -13156,7 +13156,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
        a summary table — the exact rupees stay in the title */
     const amt = v => v ? `<span title="${inr(v)}">${inrShort(v)}</span>` : '—';
     const row3 = (label, o, cls='', attrs='') => `
-      <div class="ledrow finled ${cls}" ${attrs}><span class="l-ev">${label}</span><b>${amt(o.billed)}</b><b style="color:var(--ok)">${amt(o.recv)}</b><b class="${o.due>0?'neg':''}">${amt(o.due)}</b></div>`;
+      <div class="ledrow finled ${cls}" ${attrs}><span class="l-ev">${label}</span><b>${amt(o.billed)}</b><b class="hl-ok">${amt(o.recv)}</b><b class="${o.due>0?'neg':''}">${amt(o.due)}</b></div>`;
     const HD = '<div class="ledrow finled hd"><span class="l-ev">Period</span><b>Billed</b><b>Collected</b><b>Balance</b></div>';
     $('#finWho').textContent = 'Financial-year view (Apr–Mar) — billed / collected / balance per period, from confirmed bookings by event date';
     /* data-fv marks which Money page a part belongs to: "an" = Analytics,
@@ -13230,12 +13230,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <button class="icon-btn icon-btn--danger" data-exdel="${esc(x.id)}" title="Delete this expense">✕</button>
         </div>`).join('')
         + (expInFy.length > 8 && !MONEY_PAGES ? `<button class="upall" type="button" id="expAll">${_expAll ? '− Show fewer' : `＋ See all ${expInFy.length}`}</button>` : '')
-      : `<div class="empty" style="padding:.5rem 0">${_expsLoaded ? `Nothing recorded for this year yet — tap ${MONEY_PAGES ? '＋ Expense' : '＋ Add expense'}.` : 'Loading…'}</div>`}
+      : `<div class="empty empty--tight">${_expsLoaded ? `Nothing recorded for this year yet — tap ${MONEY_PAGES ? '＋ Expense' : '＋ Add expense'}.` : 'Loading…'}</div>`}
       </div>
       <div data-fv="an">
       <div class="finh">Annual · financial years</div>
       ${fys.length ? HD + fys.map(fy=>row3(`${fy}-${String((fy+1)%100).padStart(2,'0')}`, byFy[fy], fy===y?'on':'', `data-fyr="${fy}" role="button" tabindex="0" title="Show ${fyLabel(fy)} quarter-wise"`)).join('')
-      : '<div class="empty" style="padding:.6rem 0">No confirmed bookings yet — this table fills in as packages are booked.</div>'}
+      : '<div class="empty empty--tight">No confirmed bookings yet — this table fills in as packages are booked.</div>'}
       </div>`;
   }
   on('#finBody', 'click', async e=>{
@@ -13338,7 +13338,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* a new entry starts on whichever of Cash / Online was used last */
     _exMode = x ? (x.mode === 'cash' ? 'cash' : 'online')
                 : (viewGet('exMode','online') === 'cash' ? 'cash' : 'online');
-    $('#exTitle').textContent = x ? '✎ Edit expense' : '＋ New expense';
+    $('#exTitle').textContent = x ? '✎ Edit expense' : '＋ Expense';
     $('#exDate').value = (x && x.date) ? x.date : todayISO();
     $('#exAmt').value = x ? expAmt(x) : '';
     $('#exNote').value = (x && x.note) || '';
@@ -13568,7 +13568,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const net = gotIn - gotOut;
     $('#txBody').innerHTML = `
       <div class="finsplit txsum">
-        <span>➕ In <b style="color:var(--ok)">${inr(gotIn)}</b></span>
+        <span>➕ In <b class="hl-ok">${inr(gotIn)}</b></span>
         <span>➖ Out <b style="color:var(--money-out)">${inr(gotOut)}</b></span>
         <span>💼 Net <b style="color:var(${net < 0 ? '--money-out' : '--ok'})">${net < 0 ? '−' : '+'}${inr(Math.abs(net))}</b></span>
       </div>
@@ -13715,7 +13715,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="stat"><b ${bal>0?'style="color:var(--warn)"':''}>${inr(bal)}</b><span>balance</span></div>
       </div>
       <div class="finh">All events in this package</div>
-      ${events || '<div class="empty" style="padding:.4rem 0">No events yet.</div>'}
+      ${events || '<div class="empty empty--tight">No events yet.</div>'}
       ${crew.length ? `<div class="finh">Crew on ${esc(stepDate(ev.date))}</div>` + crew.map(a=>
         `<div class="ln2"><span>${esc(a.memberName||'—')}</span><span>${esc(a.role||'')}${a.callTime ? ' · ' + esc(a.callTime) : ''}</span></div>`).join('') : ''}
       ${pays}
@@ -14016,7 +14016,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     closeAiUI();
     if($('#pkgView').hidden) $('#tabPkgs').click();
     openPkgEdit(pkg);
-    $('#pkgEditTitle').textContent = `New Package — from a pasted chat`;
+    $('#pkgEditTitle').textContent = `New package — from a pasted chat`;
     toast(pkg.clientPhone ? 'Check names, dates and rates, then Save' : 'No number in the chat — add the phone, check rates, then Save');
   }
   function aiSaveAsLead(){
@@ -15501,7 +15501,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       || String(x.endClientName||'').toLowerCase().includes(q)
       || (qDigits.length >= 3 && normPhone(x.clientPhone).includes(qDigits)));
     if(!all.length){
-      box.innerHTML = `<div class="empty" style="padding:.6rem 0">${
+      box.innerHTML = `<div class="empty empty--tight">${
         q ? 'No booking matches “' + esc(_qaPayQ.trim()) + '”.'
           : 'Nothing is due — every balance is clear 🎉'}</div>`;
       return;
@@ -17158,7 +17158,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }
     $('#pkgEditTitle').textContent = x
       ? `Edit — ${x.quoteNo ? x.quoteNo + ' · ' : ''}${x.clientName||''}`
-      : (stu ? `New Studio Job — ${stu.name||''}` : 'New Package');
+      : (stu ? `New studio job — ${stu.name||''}` : 'New package');
     $('#pcName').value = stu ? (stu.name||'') : (x ? (x.clientName||'') : '');
     $('#pcCareOf').value = (!stu && x) ? (x.careOf||'') : '';
     /* The phone box only ever held the LAST 10 DIGITS, so rebuilding the

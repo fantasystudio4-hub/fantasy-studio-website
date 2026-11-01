@@ -100,7 +100,9 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dwrap>input[type=date]{color:transparent;-webkit-text-fill-color:transparent}
 .dwrap>.dtxt{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
 .dwrap>.dtxt.ph{opacity:.62}
-.gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:var(--r-pill);padding:.9em;font-size:var(--fs-lg);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:var(--tap)}
+/* one primary look (UI rulebook R3, 1 Nov 2026): .gbtn is the full-width sheet
+   form of .btn--primary — same gold, same weight, sentence case */
+.gbtn{width:100%;background:var(--grad-gold);border:0;color:var(--white);border-radius:var(--r-pill);padding:.9em;font-size:var(--fs-lg);font-weight:600;letter-spacing:.02em;cursor:pointer;min-height:var(--tap)}
 .gbtn:active{transform:scale(.98)}
 .err{color:var(--err);font-size:var(--fs-md);margin-top:.7rem}
 /* the not-authorised message prints the rejected address, and a long one with no
@@ -312,11 +314,6 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dstep.cur i{border-color:var(--gold-b)}
 /* the card's one-line answer to "what happens next on this job" */
 /* an inline part of .pk-state now, not a row of its own */
-.dnow{display:inline-flex;align-items:baseline;gap:.4rem;font-size:var(--fs-sm);color:var(--mut);min-width:0}
-.dnow b{color:var(--gold-b);font-weight:600}
-.dnow em{font-style:normal;font-weight:600;font-size:var(--fs-xs);border-radius:var(--r-pill);padding:.06em .5em}
-.dnow em.warm{color:var(--state-pending);background:var(--state-pending-bg);box-shadow:inset 0 0 0 1px var(--state-pending-ln)}
-.dnow em.hot{color:var(--state-overdue);background:var(--state-overdue-bg);box-shadow:inset 0 0 0 1px var(--state-overdue-ln)}
 @media(hover:hover){ .dstep:hover{background:var(--white-t2)} .dstep:hover i{border-color:var(--gold)} }
 
 /* offline chip + forgot password + undo toast */
@@ -329,7 +326,6 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .dwarn{color:var(--err);font-size:var(--fs-md);background:var(--state-overdue-bg);border:1px dashed rgba(var(--state-overdue-rgb),.4);border-radius:var(--r-sm);padding:.45rem .65rem;margin:0 0 .6rem}
 
 /* Home: the search box only appears when it's wanted — the calendar owns the top */
-#homeSearchBar button{flex:0 0 auto}
 
 /* calendar quick jump — the ▾ rides the month name, so the event count can
    sit under it as its own line */
@@ -545,10 +541,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
   .pay-modal{max-height:86dvh}
   @media(max-width:699px){ .pay-modal{max-height:calc(90dvh - var(--kb))} }
 }
-.st-new{color:var(--gold-b)} .st-contacted{color:var(--state-info)} .st-booked{color:var(--ok)}
-.st-shot{color:var(--state-progress)} .st-delivered{color:var(--state-done)} .st-lost{color:var(--err)}
-.st-converted{color:var(--state-linked)}
-.lead-det h4{font-family:var(--serif);color:var(--gold-b);font-size:var(--fs-lg);margin:.5rem 0 .3rem}
 .lead-det .ln{display:flex;justify-content:space-between;padding:.12rem 0;color:var(--text)}
 .lead-det .ln span:last-child{color:var(--mut)}
 
@@ -641,13 +633,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pkg-actions .gbtn{width:auto;flex:1;min-width:130px}
 .pkg-actions .btn{margin-top:0}
 /* instructions that only matter the first few times: one line by default */
-.howto{margin:0 0 .8rem}
-.howto summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:var(--gold-b);font-size:var(--fs-sm);letter-spacing:.04em;border:1px dashed var(--line);border-radius:var(--r-pill);padding:.35em .95em}
-.howto summary::-webkit-details-marker{display:none}
-.howto summary::before{content:"?";display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:rgba(var(--gold-rgb),.25);font-size:var(--fs-xs)}
-.howto[open] summary{margin-bottom:.5rem}
-.howto p{font-size:var(--fs-sm);color:var(--mut);line-height:1.55}
-@media(hover:hover){ .howto summary:hover{border-color:var(--gold)} }
 .hint{background:rgba(var(--gold-rgb),.08);border:1px dashed var(--line);border-radius:var(--r-md);padding:.65rem .8rem;font-size:var(--fs-md);color:var(--mut);margin-bottom:.9rem}
 .hint b{color:var(--gold-b);font-weight:500}
 .sec .sub{font-size:var(--fs-sm);color:var(--mut);margin:-.5rem 0 .8rem}
@@ -663,7 +648,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 [data-del]{padding:.45em .6em}
 .tabs button{min-height:52px}
 .tabs button span,.tabs button em{font-size:var(--fs-sm)}
-.muted-xs{font-size:var(--fs-sm)}
 
 /* ---- team tab ---- */
 .tm-ev{border:1px solid var(--line);border-radius:var(--r-md);padding:.6rem .75rem .5rem;margin-bottom:.65rem;background:var(--white-t1)}
@@ -819,8 +803,6 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
    All of it is derived from the assignment docs the tab already holds. */
 /* swipe between the booking tabs, the way every other app on the phone does */
 #bookingsSec{touch-action:pan-y}
-.listbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem}
-.listbar .howto{margin:0 0 .2rem}
 .swipehint{font-family:var(--sans);font-size:var(--fs-2xs);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);border:1px dashed var(--line);border-radius:var(--r-md);padding:.18em .6em;vertical-align:3px;margin-left:.4em}
 .swipehint::before{content:"↔ "}
 @media(min-width:700px){ .swipehint{display:none} }
@@ -1093,7 +1075,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 #pkgStats .stat{padding:.55rem .2rem}
 #pkgStats .stat b{font-size:clamp(.72rem,3.3vw,1.2rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #pkgStats .stat span{font-size:var(--fs-xs);letter-spacing:.03em}
-@media(min-width:700px){ #pkgStats .stat span{font-size:var(--fs-xs)} }
 .stat.money{position:relative;background:linear-gradient(135deg,rgba(var(--gold-l-rgb),.2),rgba(var(--gold-d-rgb),.15));cursor:pointer}
 .stat.money::after{content:"📊";position:absolute;top:3px;right:5px;font-size:var(--fs-2xs);opacity:.75}
 
@@ -1154,16 +1135,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 /* the money that leaves reads in a different colour from the money that arrives */
 .finsplit.out b{color:var(--money-out)}
 .finsplit.out span:last-child b{color:var(--ok)}
-.finrow{display:flex;align-items:center;gap:.55rem;padding:.28rem 0;border-bottom:1px dashed var(--line);font-size:var(--fs-md)}
-.finrow:last-child{border-bottom:0}
-.finrow .mo{flex:0 0 34px;color:var(--mut)}
-.finrow .fbar{flex:1;height:13px;border-radius:var(--r-xs);background:rgba(var(--white-rgb),.06);overflow:hidden}
-.finrow .fbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--gold-b));border-radius:var(--r-xs)}
-.finrow .amt3{flex:0 0 auto;font-family:var(--serif);color:var(--gold-b);white-space:nowrap;min-width:62px;text-align:right}
-.finrow .n3{flex:0 0 20px;color:var(--mut);font-size:var(--fs-xs);text-align:right}
-.finrow.yr{cursor:pointer}
-.finrow.yr .mo{flex-basis:58px;color:var(--text)}
-.finrow.yr.on{background:rgba(var(--gold-rgb),.09)}
 /* expense categories wrap onto as many rows as they need */
 .mode-pills.expcats{flex-wrap:wrap;margin-bottom:0}
 .mode-pills.expcats button{flex:0 1 auto;font-size:var(--fs-md);padding:.5em .9em}
@@ -1247,7 +1218,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   #installBtn{font-size:0;padding:.35em .7em}
   #installBtn::first-letter{font-size:var(--fs-base)}
 }
-@media(hover:hover){ .finrow.yr:hover .mo{color:var(--gold-b)} }
 .finh{color:var(--gold-b);font-size:var(--fs-xs);letter-spacing:.14em;text-transform:uppercase;margin:.95rem 0 .35rem}
 /* ---- insights ---------------------------------------------------------
    .finnote has been rendering in the money sheet since it was written with
@@ -1309,8 +1279,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 @media(min-width:700px){ .fab{bottom:24px} }
 /* search sits directly above the ⚡ button — smaller and outlined, so the
    gold one stays the primary action */
-#homeResults{padding:.8rem 1rem}
-#homeResults .up-ev .when{min-width:var(--tap);font-size:var(--fs-xl)}
 #cfgJump{position:sticky;top:var(--hdr-h,56px);z-index:var(--z-sticky);background:var(--bar-2);backdrop-filter:blur(8px);margin:0 calc(var(--gut) * -1) .8rem;padding:.75rem var(--gut) .55rem}
 #configView .sec{scroll-margin-top:calc(var(--hdr-h,56px) + 62px)}
 
@@ -1428,7 +1396,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   /* inline row actions — Open, Assign, Edit, Sync, ✓ step */
   .edact{min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center}
   .upall,.copycrew,.linky{min-height:var(--tap)}
-  .howto summary{min-height:var(--tap)}
   .qchip{min-height:var(--tap);display:inline-flex;align-items:center}
 
   /* 8.8px is not a readable label */
@@ -1811,7 +1778,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
   .tabs button span{font-size:var(--fs-2xs);letter-spacing:0}
 }
 @media(max-width:359px){
-  .tabs button span{font-size:9px}
   .tabs button i{font-size:var(--fs-lg)}
 }
 
@@ -2143,7 +2109,6 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
      They follow the toggle, because a card has one left edge. */
   .pkg-acts{margin-inline:.7rem;padding:.6rem 0 .65rem}
   .dtrack{margin-inline:.7rem;padding-bottom:.6rem}
-  #homeResults{padding:.7rem}
 
   /* ---- 7. sheets -------------------------------------------------------
      A sheet is full-width on a phone, so its own padding is the only thing
@@ -2204,12 +2169,12 @@ header::after{content:"";display:block;height:2px;background:linear-gradient(90d
 .rv-quote{margin:.45rem 0 0;font-style:italic;color:var(--text);line-height:1.5;font-size:var(--fs-md);overflow-wrap:anywhere}
 .rv-meta{margin-top:.35rem;font-size:var(--fs-xs);color:var(--mut);overflow-wrap:anywhere}
 .rq.rv-old{opacity:.85}
-#revSec .count{display:inline-block;min-width:1.4em;padding:0 .4em;margin-left:.3em;border-radius:1em;background:var(--gold-b);color:var(--ink,#1b1812);font-size:var(--fs-xs);text-align:center;vertical-align:middle}
+#revSec .count{display:inline-block;min-width:1.4em;padding:0 .4em;margin-left:.3em;border-radius:1em;background:var(--gold-b);color:var(--ink);font-size:var(--fs-xs);text-align:center;vertical-align:middle}
 .rq-items .tot b{font-family:var(--serif);font-weight:700;font-size:var(--fs-lg);color:var(--gold-b)}
 .rq-items .nil{color:var(--mut)}
 /* how full that half already is — the same three colours as the public
    calendar: free, filling up, full or blocked */
-.rq-fnb{margin-top:.7rem;padding:.7rem .8rem .8rem;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025)}
+.rq-fnb{margin-top:.7rem;padding:.7rem .8rem .8rem;border:1px solid var(--line);border-radius:12px;background:rgba(var(--white-rgb),.025)}
 .rq-fnh{font-size:var(--fs-sm,.72rem);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin-bottom:.35rem}
 .rq-busy{display:flex;align-items:flex-start;gap:.5rem;margin-top:.55rem;font-size:var(--fs-md);line-height:1.45;color:var(--text);overflow-wrap:anywhere}
 .rq-busy i{flex:0 0 auto;width:10px;height:10px;border-radius:3px;margin-top:.3em;background:var(--state-confirmed)}
@@ -2450,6 +2415,10 @@ html.has-stuadd #studioListView > .sec:last-child{margin-bottom:.9rem}
 .stu-ledacts{margin:0 0 .8rem}
 /* one back control, in the header (a stale page keeps its own arrow) */
 html.shell .stu-hd #stuBack{display:none}
+/* the same for the quotation editor and an editing job (UI rulebook R1,
+   1 Nov 2026): hidden, not removed — the panel presses #pkgBack itself */
+html.shell #pkgBack,html.shell .ejback{display:none}
+#payDel,#cpDel,#asRemove{margin-top:.55rem}
 
 /* ---- Save stays in reach on the two forms that scrolled it away ----
    The add-event form is a block of the page, not a sheet: its Save row was the
@@ -2617,7 +2586,7 @@ details.aps-help>.insnote{margin-top:0}
 .qe-mic,.qe-go{flex:0 0 var(--tap);min-height:var(--tap);border-radius:var(--r-sm);border:1px solid var(--line);background:var(--panel);color:var(--gold-b);font-size:1.15rem;cursor:pointer;padding:0}
 .qe-go{background:var(--grad-gold);border-color:transparent;color:var(--ink-0)}
 .qe-go:disabled{opacity:.55;cursor:default}
-.qe-mic.on{background:var(--err);border-color:transparent;color:#fff;animation:qePulse 1.1s ease-in-out infinite}
+.qe-mic.on{background:var(--err);border-color:transparent;color:var(--white);animation:qePulse 1.1s ease-in-out infinite}
 @keyframes qePulse{50%{opacity:.55}}
 .qe-status{font-size:var(--fs-sm);color:var(--mut);margin:.35rem 0 0;line-height:1.45;overflow-wrap:anywhere}
 .qe-status b{color:var(--text);font-weight:600}
