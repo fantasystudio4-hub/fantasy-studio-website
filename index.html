@@ -1593,10 +1593,14 @@ $('#enquiryForm').addEventListener('submit', async e=>{
     if(btn){ btn.disabled = true; btn.textContent = 'Sending…'; }
     let ok = false;
     try{
-      if(await firebaseReady(6000) && typeof window.__saveReview === 'function') ok = await window.__saveReview({ name, location, rating, text });
+      /* one id for this review, kept across "try again" taps: a send that timed
+         out may still have landed, and a second tap must not store it twice */
+      if(!form._rvId) form._rvId = newDocId();
+      if(await firebaseReady(6000) && typeof window.__saveReview === 'function') ok = await window.__saveReview({ id: form._rvId, name, location, rating, text });
     }catch(err){ ok = false; }
     if(btn){ btn.disabled = false; btn.textContent = 'Send review'; }
     if(!ok){ showToast('Could not send your review — please check your connection and try again.'); return; }
+    form._rvId = '';
     track('review_sent', { rating, source: 'website' });
     try{ localStorage.setItem(RV_KEY, JSON.stringify({ at: Date.now(), rating, name })); }catch(e){}
     showToast('Thank you! Your review is with the studio.');

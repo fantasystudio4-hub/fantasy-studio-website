@@ -558,6 +558,20 @@ function clampLead(doc){
    however many times it is retried */
 function leadWritable(doc){ return !!(doc && String(doc.name||'').trim()); }
 
+/* Every lead and review is written under an id minted HERE, once, and every
+   retry reuses it. The write is time-boxed (2.5 s) but a request cut off by the
+   box can still land; with a random server id the retry then made a SECOND copy
+   (two leads, a false "hot" duplicate-number flag). With a fixed id the second
+   create is answered 409 ALREADY_EXISTS, which means it is already there. The
+   shape is a Firestore auto-id's, which the admin's SAFE_ID accepts. */
+function newDocId(){
+  var A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', out = '', i;
+  var r = new Uint8Array(20);
+  try{ crypto.getRandomValues(r); }catch(e){ for(i = 0; i < 20; i++) r[i] = Math.floor(Math.random() * 256); }
+  for(i = 0; i < 20; i++) out += A.charAt(r[i] % A.length);
+  return out;
+}
+
 /* A queued lead used to be retried forever. Give up eventually rather than
    burning a request on every visit for the life of the browser profile. */
 var LEAD_QUEUE_MAX_TRIES = 5;
@@ -581,6 +595,7 @@ function firebaseReady(waitMs){
 }
 async function saveLeadReliably(doc){
   var lead = clampLead(doc);                    /* fits the rule, so it can land */
+  if(!lead._id) lead._id = newDocId();          /* the same id on every retry — see newDocId */
   var ready = await firebaseReady(4000);        /* the window that used to drop leads */
   if(!ready || typeof window.__saveLead !== 'function'){ queueLead(lead); return false; }
   var ok = false;
@@ -601,6 +616,7 @@ async function flushLeadQueue(){
        failing for a sixth time and being dropped. */
     var doc = clampLead(item.doc);
     if(!leadWritable(doc)) continue;            /* nameless: it can never be accepted */
+    if(!doc._id) doc._id = newDocId();
     var ok = false;
     try{ ok = await window.__saveLead(doc); }catch(e){ ok = false; }
     if(ok) continue;
@@ -796,6 +812,9 @@ function applyRemoteConfig(cfg){
       document.dispatchEvent(new Event('firebase-ready'));
     });
 
+  /* 409 ALREADY_EXISTS on a create under our own id: an earlier try landed */
+  function landed(r){ return r.ok || r.status === 409; }
+
   /* Lead capture. Resolves true only if the write actually landed, so the
      caller can queue it for retry instead of dropping it on the floor.
      Still time-boxed to 2.5s so the WhatsApp hand-off is never held up. */
@@ -803,12 +822,14 @@ function applyRemoteConfig(cfg){
     /* REST cannot request serverTimestamp() without a commit+transform, so this
        is the client clock. Same value the SDK would have written while offline. */
     var doc = Object.assign({ createdAt: new Date(), status: 'new', notes: '' }, lead);
+    var id = doc._id || newDocId();
+    delete doc._id;                             /* the id is the document's name, not a field the rule allows */
     return Promise.race([
-      fetch(BASE + '/leads?key=' + CFG.apiKey, {
+      fetch(BASE + '/leads?documentId=' + encodeURIComponent(id) + '&key=' + CFG.apiKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: toFields(doc) })
-      }).then(function(r){ return r.ok; }).catch(function(){ return false; }),
+      }).then(landed).catch(function(){ return false; }),
       new Promise(function(res){ setTimeout(function(){ res(false); }, 2500); })
     ]);
   };
@@ -834,11 +855,11 @@ function applyRemoteConfig(cfg){
     };
     if(!doc.name || !doc.text || !rating) return Promise.resolve(false);
     return Promise.race([
-      fetch(BASE + '/reviews?key=' + CFG.apiKey, {
+      fetch(BASE + '/reviews?documentId=' + encodeURIComponent(rv.id || newDocId()) + '&key=' + CFG.apiKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: toFields(doc) })
-      }).then(function(r){ return r.ok; }).catch(function(){ return false; }),
+      }).then(landed).catch(function(){ return false; }),
       new Promise(function(res){ setTimeout(function(){ res(false); }, 8000); })
     ]);
   };

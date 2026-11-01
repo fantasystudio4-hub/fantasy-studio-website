@@ -45,7 +45,12 @@ function loadCatalog(overrides = {}) {
   };
   const sandbox = {
     console,
-    setTimeout,
+    /* the page's own time boxes (2.5 s / 8 s) must not hold a finished test open */
+    setTimeout: (fn, ms) => {
+      const t = setTimeout(fn, ms);
+      if (t.unref) t.unref();
+      return t;
+    },
     clearTimeout,
     Promise,
     Date,
@@ -66,6 +71,9 @@ function loadCatalog(overrides = {}) {
     navigator: { userAgent: 'node-test', onLine: true },
     location: { href: 'http://localhost/', hostname: 'localhost', search: '', hash: '', pathname: '/' },
     fetch: () => Promise.reject(new Error('no network in tests')),
+    Event: function Event(t) {
+      this.type = t;
+    },
     CustomEvent: function CustomEvent(t) {
       this.type = t;
     },

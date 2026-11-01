@@ -105,3 +105,44 @@ test('saveLeadReliably queues the lead when Firebase is not ready', async () => 
   assert.equal(ok, false);
   assert.equal(queued(C)[0].doc.name, 'Offline');
 });
+
+test('a retried lead reuses the id it was first sent under', async () => {
+  const C = loadCatalog();
+  C.__firebaseReady = true;
+  const ids = [];
+  C.__saveLead = async (d) => {
+    ids.push(d._id);
+    return false; /* first try: cut off by the time box */
+  };
+  await C.saveLeadReliably({ name: 'Priya', phone: '9876543210' });
+  C.__saveLead = async (d) => {
+    ids.push(d._id);
+    return true;
+  };
+  await C.flushLeadQueue();
+  assert.equal(ids.length, 2);
+  assert.match(ids[0], /^[A-Za-z0-9]{20}$/);
+  assert.equal(ids[1], ids[0]);
+});
+
+test('the REST writer posts under that id, without it as a field, and reads 409 as landed', async () => {
+  const calls = [];
+  let status = 200;
+  const fetch = async (url, opts) => {
+    if (!opts) return { ok: true, status: 200, json: async () => ({ fields: {} }) }; /* config/site */
+    calls.push({ url, body: JSON.parse(opts.body) });
+    return { ok: status < 300, status };
+  };
+  const C = loadCatalog({ FIREBASE_CONFIG: { apiKey: 'k', projectId: 'p' }, fetch });
+  const lead = { _id: 'abcDEF123', name: 'Priya', phone: '9876543210', source: 'contact_form' };
+  assert.equal(await C.__saveLead(lead), true);
+  assert.match(calls[0].url, /\/leads\?documentId=abcDEF123&key=k$/);
+  assert.equal('_id' in calls[0].body.fields, false);
+  status = 409;
+  assert.equal(await C.__saveLead(lead), true);
+  status = 403;
+  assert.equal(await C.__saveLead(lead), false);
+  status = 200;
+  assert.equal(await C.__saveReview({ id: 'rv1', name: 'A', text: 'Lovely', rating: 5 }), true);
+  assert.match(calls[3].url, /\/reviews\?documentId=rv1&key=k$/);
+});
