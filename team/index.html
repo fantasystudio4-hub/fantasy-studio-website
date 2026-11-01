@@ -69,7 +69,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(20,17,10,.96);backdrop-f
 .hd svg{width:34px;height:34px;flex:0 0 auto}
 .hd b{font-family:var(--serif);font-size:1.05rem}
 .hd span{color:var(--gold-b);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;display:block}
-.hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer}
+.hd .out{margin-left:auto;background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;white-space:nowrap}
 @media(hover:hover){ .hd .out:hover{border-color:var(--gold);color:var(--gold-b)} }
 
 .login{max-width:400px;margin:8vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.9rem 1.5rem;text-align:center}
@@ -423,7 +423,7 @@ html.fs-app .ejt-new textarea{font-size:16px}
 .hd > div{flex:1}
 .hd a.out{text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center}
 @media(max-width:400px){ .hd .inst{font-size:0;padding:.35em .7em} .hd .inst::first-letter{font-size:.85rem}
-  /* offline shrinks to a red dot, so the title still fits beside Home and Logout */
+  /* offline shrinks to a red dot, so the title still fits beside Home and Sign out */
   .hd .net{font-size:0;width:10px;height:10px;padding:0;border-radius:50%;background:var(--err);flex:0 0 auto} }
 
 /* install card — offered once, and only where it can actually work */
@@ -654,7 +654,7 @@ html.fs-app .md-no:disabled{opacity:.6;cursor:default}
     <!-- .fs-web-only: the store app has no website to go home to and IS the install -->
     <button class="out inst fs-web-only" id="installBtn" hidden>&#11015; Install</button>
     <a class="out fs-web-only" id="homeLink" href="../">Home</a>
-    <button class="out" id="logoutBtn" hidden>Logout</button>
+    <button class="out" id="logoutBtn" hidden>Sign out</button>
   </div>
 </header>
 
@@ -2746,7 +2746,7 @@ if(!CONFIGURED){
     $('#meNotifRow').hidden = !push;
     renderLockRow();
   }
-  /* Sign out is the header's Logout, the same path (to /start/). */
+  /* Sign out is the header's Sign out, the same path (to /start/). */
   $('#meOut').addEventListener('click', ()=>$('#logoutBtn').click());
   /* A number that is also a client or a partner studio: /start/ lists its
      pages ("Continue as …") once its note of this one is gone. Still signed

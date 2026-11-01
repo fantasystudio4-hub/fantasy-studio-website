@@ -66,10 +66,10 @@ header::after{content:"";display:block;height:1px;background:linear-gradient(90d
 .hd > div{flex:1;min-width:0}
 .net{font-size:.66rem;color:#e5b57f;border:1px solid rgba(229,181,127,.4);border-radius:20px;padding:.12rem .5rem;flex:none}
 /* Buttons, the crew page's look (UI rulebook, 1 Nov 2026): the header's
-   Home / Logout an outlined pill; primary (.gbtn, .reqbtn, .paynow) the gold
+   Home / Sign out an outlined pill; primary (.gbtn, .reqbtn, .paynow) the gold
    pill; secondary (.btn2) an outlined pill, as the crew page draws its Call
    and WhatsApp; tertiary (.mini) an underlined text link. */
-.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;flex:none;min-height:44px}
+.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;flex:none;min-height:44px;white-space:nowrap}
 .out:active{color:var(--gold-b)}
 @media(hover:hover){ .out:hover{border-color:var(--gold);color:var(--gold-b)} }
 a.out{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
@@ -574,7 +574,7 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <div><b>Fantasy Studio</b><span class="tag">Partner</span></div>
     <span class="net" id="netDot" hidden>offline</span>
     <a class="out fs-web-only" id="homeLink" href="../">Home</a>
-    <button class="out" id="logoutBtn" hidden>Logout</button>
+    <button class="out" id="logoutBtn" hidden>Sign out</button>
   </div>
 </header>
 
@@ -966,7 +966,7 @@ async function leave(){
 $('#logoutBtn').addEventListener('click', leave);
 $('#naLogout').addEventListener('click', leave);
 $('#errRetry').addEventListener('click', ()=>location.reload());
-/* Me tab (store app). Sign out is the header's Logout. */
+/* Me tab (store app). Sign out is the header's Sign out. */
 $('#meLogout').addEventListener('click', leave);
 /* A number that is a client or crew too (otherRoles): /start/ lists its
    pages, still signed in, once its note of this one is gone (?pick asks
