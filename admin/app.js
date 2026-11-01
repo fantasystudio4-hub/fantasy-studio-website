@@ -11371,7 +11371,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              <span class="empty-state__icon">🏢</span>
              <p class="empty-state__title">No partner studios yet</p>
              <p class="empty-state__text">Add the studios that hire Fantasy Studio — their jobs, dues and lifetime value are tracked here.</p>
-             <button type="button" class="btn btn--primary" data-stu-add>＋ Add a partner studio</button>
+             <button type="button" class="btn btn--ghost" data-stu-add>＋ Add studio</button>
            </div>`
         : '<div class="skeleton"></div><div class="skeleton"></div>';
       return;
@@ -11791,7 +11791,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              child of it (see the note above). Same buttons, same handlers. -->
         <div class="ev-acts stu-acts">
           ${s.phone ? `${telOf(s.phone) ? `<a class="btn btn--sm btn--ghost stu-a" href="tel:${esc(telOf(s.phone))}">📞 Call</a>` : ''}
-          <a class="btn btn--sm btn--ghost stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          <a class="btn btn--sm btn--ghost stu-a" href="https://wa.me/${esc(normPhoneFull(s.phone))}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
           <button class="btn btn--sm btn--ghost" type="button" data-stuedit>Edit</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stunewjob>＋ New job</button>
           <button class="btn btn--sm btn--ghost" type="button" data-stuaddev>＋ Add event</button>
@@ -12147,7 +12147,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <b>+${inr(r.amount)}</b>
         </div>`).join('')}</div>`
       : `<div class="empty empty--tight">No payments recorded ${all ? 'from this studio' : 'on this job'} yet.</div>`}
-      ${!all && job ? `<button class="btn btn--sm btn--ghost" type="button" data-stxadd style="width:100%;margin-top:.6rem">＋ Record a payment</button>` : ''}`;
+      ${!all && job ? `<button class="btn btn--sm btn--ghost btn--block stx-add" type="button" data-stxadd>＋ Record payment</button>` : ''}`;
   }
   function openStuTx(jobId){
     if(!studioById(_stuDetailId)) return;

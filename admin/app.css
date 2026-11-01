@@ -2419,6 +2419,10 @@ html.shell .stu-hd #stuBack{display:none}
 /* the same for the quotation editor and an editing job (UI rulebook R1,
    1 Nov 2026): hidden, not removed — the panel presses #pkgBack itself */
 html.shell #pkgBack,html.shell .ejback{display:none}
+/* no studios yet: the empty state's ＋ Add studio is the one door, so the
+   row's copy of it stands down (rulebook R1, 1 Nov 2026) */
+#calView .sec:has(#studioList > .empty-state) .b2b-adds{display:none}
+.stx-add{margin-top:.6rem}
 #payDel,#cpDel,#asRemove{margin-top:.55rem}
 
 /* ---- Save stays in reach on the two forms that scrolled it away ----
