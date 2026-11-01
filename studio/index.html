@@ -25,6 +25,9 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
   --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
   --text:#f3ecdc; --mut:#b3a98f; --ok:#4caf7d; --err:#e07a6a;
+  /* the gold of every primary button, written once (UI rulebook, 1 Nov 2026;
+     the crew page and the admin use the same name) */
+  --grad-gold:linear-gradient(135deg,#C9A347,#8E6E1E);
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 
@@ -62,13 +65,31 @@ header::after{content:"";display:block;height:1px;background:linear-gradient(90d
 .hd span.tag{font-size:.68rem;color:var(--mut);letter-spacing:.14em;text-transform:uppercase}
 .hd > div{flex:1;min-width:0}
 .net{font-size:.66rem;color:#e5b57f;border:1px solid rgba(229,181,127,.4);border-radius:20px;padding:.12rem .5rem;flex:none}
-.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.34rem .7rem;font-size:.78rem;cursor:pointer;flex:none;min-height:44px}
+/* Buttons, the crew page's look (UI rulebook, 1 Nov 2026): the header's
+   Home / Logout an outlined pill; primary (.gbtn, .reqbtn, .paynow) the gold
+   pill; secondary (.btn2) an outlined pill, as the crew page draws its Call
+   and WhatsApp; tertiary (.mini) an underlined text link. */
+.out{background:none;border:1px solid var(--line);color:var(--mut);border-radius:30px;padding:.35em 1em;font-size:.75rem;cursor:pointer;flex:none;min-height:44px}
 .out:active{color:var(--gold-b)}
+@media(hover:hover){ .out:hover{border-color:var(--gold);color:var(--gold-b)} }
 a.out{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
 
-/* the sign-in form lives on /start/ now (one sign-in for every page) */
-.mini{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:.42rem .8rem;font-size:.8rem;cursor:pointer;min-height:44px}
+.gbtn,.reqbtn,.paynow{display:block;width:100%;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.9em;
+  font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:44px;box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn:active,.reqbtn:active,.paynow:active{transform:scale(.98);box-shadow:0 3px 8px rgba(142,110,30,.3)}
+.gbtn:disabled,.reqbtn:disabled{opacity:.7;cursor:default}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-height:44px;padding:.6em 1em;
+  background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:40px;font-size:.85rem;
+  text-align:center;text-decoration:none;cursor:pointer}
+.btn2:active{background:rgba(184,144,43,.2)}
+.btn2:disabled{opacity:.6;cursor:default}
+@media(hover:hover){ a.btn2:hover{background:var(--gold);color:#fff} }
+/* the destructive Yes of an ask-first (Delete my account, cancel a request) */
+.btn2.danger{color:#f0b3a8;border-color:rgba(224,122,106,.55)}
+.mini{background:none;border:0;color:var(--mut);text-decoration:underline;font-size:.78rem;cursor:pointer;min-height:44px;padding:.4em .9em}
 .mini:active{color:var(--gold-b)}
+/* a sheet's Close, the width of the sheet */
+.btn2.sheetx{display:flex;width:100%;margin-top:.8rem}
 .err{background:rgba(224,122,106,.12);border:1px solid rgba(224,122,106,.4);color:#f0b3a8;border-radius:10px;padding:.6rem .8rem;font-size:.85rem;margin-top:.8rem}
 .note{color:var(--mut);font-size:.78rem;margin-top:.9rem}
 .crewlink{display:block;margin-top:1.1rem;padding-top:1rem;border-top:1px dashed var(--line);color:var(--mut);font-size:.8rem;text-decoration:none;min-height:44px}
@@ -81,10 +102,11 @@ button.crewlink{width:100%;background:none;border:0;border-top:1px dashed var(--
   text-align:left;cursor:pointer;font-family:var(--sans);line-height:1.55}
 .crewlink.warn b{color:#f0b3a8}
 .na-ask{margin-top:.8rem;font-size:.84rem;color:var(--mut)}
-.na-ask .rowbtns .mini:first-child{color:#f0b3a8;border-color:rgba(224,122,106,.55)}
 .na-ask .err{margin-top:.7rem}
-.rowbtns{display:flex;gap:.6rem;margin-top:.7rem}
-.rowbtns .mini{flex:1;text-align:center;text-decoration:none;color:var(--mut);display:flex;align-items:center;justify-content:center;gap:.35rem}
+.rowbtns{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.7rem}
+.rowbtns .btn2,.rowbtns .mini{flex:1}
+/* the error view: Try again (gold), then Call, as on the crew page */
+#errorView .gbtn{margin-top:.9rem}
 
 .skel{height:74px;border-radius:14px;background:var(--panel);border:1px solid var(--line);margin-top:1.1rem;position:relative;overflow:hidden}
 .skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(226,194,117,.07),transparent);animation:sh 1.4s infinite}
@@ -114,11 +136,9 @@ button.crewlink{width:100%;background:none;border:0;border-top:1px dashed var(--
 .cd span{font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
 .cd .today{font-size:1rem;color:var(--gold-b);font-family:var(--serif)}
 .nu-acts{display:flex;gap:.6rem;margin-top:.75rem;flex-wrap:wrap}
-.nu-acts .mini{text-decoration:none;display:inline-flex;align-items:center;gap:.3rem}
 
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1.1rem}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.75rem .85rem}
-.tile.wide{grid-column:1/-1}
 .tile b{display:block;font-size:1.18rem;color:var(--gold-b);font-variant-numeric:tabular-nums}
 .tile span{font-size:.7rem;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
 .tile.due b{color:#e5b57f}
@@ -184,7 +204,6 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .brk[open] summary::before{transform:rotate(180deg)}
 .brk-h{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-b);margin:.7rem 0 .25rem}
 .pkm{flex-basis:100%;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-width:0}
-.pkg-h .qno{font-size:.68rem;color:var(--mut);letter-spacing:.06em}
 .chev{color:var(--mut);transition:transform .2s;flex:none}
 .pkg.collapsed .chev{transform:rotate(-90deg)}
 /* Collapsing hides the .sec blocks and DELIBERATELY not the stage strip: a
@@ -221,7 +240,7 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .slotpill{font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;border-radius:20px;padding:.08rem .45rem;margin-left:.45rem;vertical-align:2px;border:1px solid}
 .slotpill.morning{color:#e8c77f;border-color:rgba(232,199,127,.45)}
 .slotpill.evening{color:#c7a6e8;border-color:rgba(199,166,232,.45)}
-.slotpill.full{color:#8fd0e8;border-color:rgba(143,208,232,.45)}
+.slotpill.full{color:#9adbb2;border-color:rgba(154,219,178,.45)}   /* the crew page's full-day green */
 .crewrow{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
 .crewchip{font-size:.72rem;color:var(--text);background:var(--ink);border:1px solid var(--line);border-radius:20px;padding:.18rem .6rem}
 .crewchip i{font-style:normal;color:var(--mut)}
@@ -233,7 +252,6 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .paybar{height:5px;border-radius:4px;background:var(--ink);margin-top:.55rem;overflow:hidden}
 .paybar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold-b))}
 .payleg{display:flex;justify-content:space-between;font-size:.72rem;color:var(--mut);margin-top:.3rem}
-.payleg .rest{color:#e5b57f}
 /* delivery progress — read-only; the admin panel is what ticks these */
 .dl-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem}
 .dl-bar{flex:1;height:5px;border-radius:4px;background:var(--ink);overflow:hidden}
@@ -250,7 +268,7 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .dl-next.done{color:var(--ok,#4caf7d)}
 .payrow{display:flex;justify-content:space-between;gap:1rem;padding:.28rem 0;font-size:.84rem;color:var(--mut)}
 .payrow b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
-.paynow{display:block;width:100%;margin-top:.7rem;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#191307;font-weight:600;border-radius:10px;padding:.7rem;cursor:pointer;min-height:44px}
+.paynow{margin-top:.7rem}
 
 .ledger{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:.9rem;overflow:hidden}
 .ledhead,.ledrow{display:grid;grid-template-columns:minmax(0,1.4fr) auto auto auto;gap:.6rem;padding:.55rem 1rem;align-items:baseline}
@@ -273,11 +291,13 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .ledsub{display:flex;justify-content:flex-end;align-items:center;gap:.7rem;padding:.5rem 1rem .65rem;font-size:.82rem;color:var(--mut);border-bottom:1px solid var(--line)}
 .ledsub b{color:#e5b57f;font-variant-numeric:tabular-nums;font-size:.9rem}
 .ledsub.clear b{color:var(--ok)}
-.ledsub .mini{min-height:34px;padding:.3rem .7rem;color:var(--gold-b);border-color:rgba(226,194,117,.45)}
+.ledsub .btn2{padding:.3rem .9rem}
 .ledfoot b{color:#e5b57f;font-variant-numeric:tabular-nums}
 .ledfoot.clear b{color:var(--ok)}
 .ledacts{margin-top:.6rem;display:flex}
-.ledacts .mini{width:100%;color:var(--text)}
+.ledacts .btn2{width:100%}
+/* the agreed rates, one per row */
+.ledger .ln.rate{padding:.5rem 1rem;border-bottom:1px dashed var(--line)}
 
 .help{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;margin-top:1.6rem}
 .help p{color:var(--mut);font-size:.84rem;margin-bottom:.6rem}
@@ -289,6 +309,16 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 .pay-back.open{opacity:1;pointer-events:auto}
 .pay-sheet{position:fixed;left:0;right:0;bottom:0;background:#1c1710;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:1rem 1.2rem calc(1.2rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)));transform:translateY(105%);transition:.28s;z-index:50;max-width:640px;margin:0 auto;max-height:88vh;overflow:auto}
 .pay-sheet.open{transform:translateY(0)}
+/* a sheet's title in the serif of the page's section heads (h2.secl) */
+.pay-sheet h3{font-family:var(--serif);font-size:1.1rem;line-height:1.3;margin-bottom:.5rem}
+.pay-sheet .note{margin-top:.5rem}
+#txWho{margin:-.3rem 0 .6rem}
+.payapp.paydone{margin-top:.9rem}
+/* a list that could not load (or a part of it), and a list with nothing in it */
+.empty.warn{margin-top:.9rem;border-color:rgba(224,122,106,.4)}
+.empty.slim{padding:.6rem 0}
+/* a studio's name above its jobs, with two studios on one number */
+.evm.stuname{margin-top:.7rem}
 .pay-sheet::before{content:"";display:block;width:44px;height:4px;border-radius:4px;background:var(--line);margin:0 auto .8rem}
       <div class="sums txopen" data-tx="${esc(x.id)}" title="Double-tap to see every payment on this job">
         <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
@@ -322,10 +352,6 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
    into one; every control keeps the 44px floor. */
 #reqCta{margin-top:1.1rem}
 #availBox:not(:empty) + #reqCta{margin-top:-.35rem}   /* directly under the calendar, inside its bottom margin */
-.reqbtn{display:block;width:100%;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#191307;font-weight:600;
-  border-radius:12px;padding:.75rem 1rem;cursor:pointer;min-height:48px}
-.reqbtn:active{filter:brightness(.92)}
-.reqbtn:disabled{opacity:.6;cursor:default}
 .reqcta-n{color:var(--mut);font-size:.78rem;margin-top:.45rem;text-align:center}
 /* closed, the sheet is out of the tab order as well as off the screen */
 .req-sheet{overscroll-behavior:contain;visibility:hidden;transition:transform .28s,visibility 0s linear .28s}
@@ -377,7 +403,7 @@ textarea.rq-in{resize:vertical;min-height:84px}
 .rq-tot b{color:var(--gold-b);font-size:1.05rem;font-variant-numeric:tabular-nums}
 .rq-chips{display:flex;gap:.4rem;overflow-x:auto;margin-top:.5rem;padding-bottom:.15rem;scrollbar-width:none}
 .rq-chips::-webkit-scrollbar{display:none}
-.rq-chips button{flex:none;min-height:36px;padding:0 .8rem;border:1px solid var(--line);border-radius:999px;background:none;color:var(--text);font:inherit;font-size:.82rem;cursor:pointer}
+.rq-chips button{flex:none;min-height:44px;padding:0 .8rem;border:1px solid var(--line);border-radius:999px;background:none;color:var(--text);font:inherit;font-size:.82rem;cursor:pointer}
 .rq-chips button:active,.rq-chips button.on{background:rgba(184,144,43,.18);border-color:var(--gold-b);color:var(--gold-b)}
 .rq-more-h{cursor:pointer;min-height:44px;gap:.5rem}
 .rq-more-h .mf-t{flex:1;min-width:0;line-height:1.35}
@@ -438,7 +464,6 @@ textarea.rq-in{resize:vertical;min-height:84px}
 .rqr-acts .mini{flex:none}
 .rqr-ask{margin-top:.5rem;font-size:.84rem;color:var(--mut)}
 .rqr-ask .rowbtns{margin-top:.45rem}
-.rqr-ask .rowbtns .mini:first-child{color:#f0b3a8;border-color:rgba(224,122,106,.55)}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
@@ -472,6 +497,11 @@ html.fs-app .sch-t{flex:1;min-width:0}
 html.fs-app .sch-t b{font-weight:500;overflow-wrap:anywhere}
 html.fs-app .sch-w{flex:none;font-size:.7rem;color:var(--mut);letter-spacing:.04em;white-space:nowrap;padding-top:.2rem}
 html.fs-app .sch.today .sch-w{color:var(--gold-b);font-weight:600}
+/* the first row is the next event: it carries the countdown and Add to
+   calendar that used to be a Next event card above this list */
+html.fs-app .sch.next{background:linear-gradient(180deg,rgba(184,144,43,.08),transparent)}
+html.fs-app .sch.next .sch-w{color:var(--gold-b);font-weight:600;font-size:.58rem;letter-spacing:.16em;text-transform:uppercase}
+html.fs-app .sch .cd{margin-top:.5rem}
 /* Me tab: who is signed in, then one row per action */
 html.fs-app .me{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:.9rem;overflow:hidden}
 html.fs-app .me-who{padding:.9rem 1rem}
@@ -481,6 +511,7 @@ html.fs-app .me-row{display:flex;align-items:center;gap:.7rem;width:100%;min-hei
   background:none;border:0;border-top:1px dashed var(--line);border-radius:0;color:var(--text);text-align:left;text-decoration:none;font-size:.92rem;line-height:1.35}
 html.fs-app .me-row:first-child{border-top:0}
 html.fs-app .me-row[hidden]:first-child + .me-row{border-top:0}   /* the Switch row, when there is nothing to switch to */
+html.fs-app .me-row[hidden]:first-child + .me-row[hidden] + .me-row{border-top:0}   /* and no Notifications row either */
 html.fs-app a.me-row,html.fs-app button.me-row{cursor:pointer}
 html.fs-app a.me-row:active,html.fs-app button.me-row:active{background:rgba(184,144,43,.12)}
 html.fs-app .me-ic{flex:none;width:1.5em;text-align:center}
@@ -491,7 +522,7 @@ html.fs-app .me-row.warn{color:#f0b3a8}
 /* who is signed in: the studio's logo (profile photo) or its initials */
 html.fs-app .me-who{display:flex;align-items:center;gap:.8rem}
 html.fs-app .me-av{flex:none;width:52px;height:52px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
-  background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#fff;font-family:var(--serif);font-size:1.15rem;border:1px solid var(--line)}
+  background:var(--grad-gold);color:#fff;font-family:var(--serif);font-size:1.15rem;border:1px solid var(--line)}
 html.fs-app .me-av img{width:100%;height:100%;object-fit:cover;display:block;background:#fff}
 html.fs-app .me-wt{flex:1;min-width:0}
 html.fs-app .me-wt b,html.fs-app .me-wt span{overflow-wrap:anywhere}
@@ -502,14 +533,13 @@ html.fs-app .me-row.todo .me-t em{color:var(--mut)}
 html.fs-app .me-ask{padding:.2rem 1rem 1rem;font-size:.84rem;color:var(--mut);
   scroll-margin-bottom:calc(var(--fs-tabs-h,58px) + 16px)}   /* its buttons clear the tab bar when it opens */
 html.fs-app .me-ask .rowbtns{margin-top:.8rem}
-html.fs-app .me-ask .rowbtns .mini:first-child{color:#f0b3a8;border-color:rgba(224,122,106,.55)}
 html.fs-app .me-ask .err{margin-top:.7rem}
 /* the lock switch on the Me tab: a checkbox drawn as a switch */
 html.fs-app label.me-row{cursor:pointer}
 html.fs-app .me-sw{appearance:none;-webkit-appearance:none;flex:none;width:46px;height:28px;margin:0;border:0;border-radius:14px;
   background:rgba(179,169,143,.35);position:relative;cursor:pointer;transition:background .18s}
 html.fs-app .me-sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .18s}
-html.fs-app .me-sw:checked{background:linear-gradient(135deg,#C9A347,#8E6E1E)}
+html.fs-app .me-sw:checked{background:var(--grad-gold)}
 html.fs-app .me-sw:checked::after{transform:translateX(18px)}
 html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
 </style>
@@ -523,8 +553,7 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
        whole portal, sign-in included, is script-driven. Say so, and give the
        one thing that still works — a way to reach a human. -->
   <style>
-    #loadingView,#appView,#errorView,#linkView,#emptyView,
-    #requestView,#pendingView,#noAccessView,.hdr,header{display:none!important}
+    #loadingView,#appView,#errorView,#noAccessView,header{display:none!important}
     .ns-portal{max-width:34rem;margin:22vh auto 0;padding:0 1.3rem;text-align:center;
       font-family:'Jost',system-ui,sans-serif;color:#f3ecdc}
     .ns-portal h1{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:#fff;margin:0 0 .6rem}
@@ -536,8 +565,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
   <div class="ns-portal">
     <h1>This page needs JavaScript</h1>
     <p>Signing in and showing your jobs is done in your browser, so it cannot load with scripting switched off. Turn it on, or reach us directly and we will tell you anything you need.</p>
-    <a href="tel:+918686868803">Call 8686868803</a>
-    <a href="https://wa.me/918686868803?text=Hi%20Fantasy%20Studio%20%E2%80%94%20I%20need%20an%20update%20on%20our%20jobs.">WhatsApp us</a>
+    <a href="tel:+918686868803">📞 Call 8686868803</a>
+    <a href="https://wa.me/918686868803?text=Hi%20Fantasy%20Studio%20%E2%80%94%20I%20need%20an%20update%20on%20our%20jobs.">💬 WhatsApp</a>
   </div>
 </noscript>
 
@@ -565,8 +594,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <h2 id="naHead">This number isn't set up with Fantasy Studio yet</h2>
       <p>If your studio works with Fantasy Studio, call us and we will switch partner access on for this number — it takes a minute.</p>
       <div class="rowbtns">
-        <a class="mini" id="naCall" href="tel:+918686868803">📞 Call</a>
-        <a class="mini" id="naWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn2" id="naCall" href="tel:+918686868803">📞 Call</a>
+        <a class="btn2" id="naWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">💬 WhatsApp</a>
         <button class="mini" id="naLogout">Sign out</button>
       </div>
       <!-- only when this number has a booking or crew pages (checkOther) -->
@@ -579,8 +608,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
         <div class="na-ask" id="naDelAsk" hidden>
           <p>This deletes the Fantasy Studio login this number signed in with, and any profile, for good, and signs you out. If Fantasy Studio sets this number up later, you can sign in again with an OTP.</p>
           <div class="rowbtns">
-            <button class="mini" type="button" id="naDelYes">Delete my account</button>
-            <button class="mini" type="button" id="naDelNo">Cancel</button>
+            <button class="btn2 danger" type="button" id="naDelYes">Delete my account</button>
+            <button class="btn2" type="button" id="naDelNo">Cancel</button>
           </div>
           <div class="err" id="naDelErr" role="alert" hidden></div>
         </div>
@@ -592,10 +621,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <div class="empty">
       <h2>We hit a snag</h2>
       <p id="errMsg">Could not load your account.</p>
-      <div class="rowbtns">
-        <button class="mini" id="errRetry">Try again</button>
-        <a class="mini" id="errCall" href="tel:+918686868803">📞 Call us</a>
-      </div>
+      <button class="gbtn" id="errRetry" type="button">Try again</button>
+      <div class="rowbtns"><a class="btn2" id="errCall" href="tel:+918686868803">📞 Call</a></div>
     </div>
   </div>
 
@@ -630,8 +657,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <div class="help" id="helpBox">
       <p>Questions about a job or a payment? We're one tap away.</p>
       <div class="rowbtns">
-        <a class="mini" id="helpCall" href="tel:+918686868803">📞 Call</a>
-        <a class="mini" id="helpWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn2" id="helpCall" href="tel:+918686868803">📞 Call</a>
+        <a class="btn2" id="helpWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">💬 WhatsApp</a>
       </div>
     </div>
     <!-- Me tab (store app): the rows Apple expects an account to have. Delete
@@ -641,16 +668,18 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <!-- a number that is a client or crew as well: /start/ lists its pages,
            still signed in (renderMe shows it, otherRoles says where to) -->
       <button class="me-row" type="button" id="meSwitch" hidden><span class="me-ic" aria-hidden="true">🔁</span><span class="me-t"><span id="meSwTo">Switch pages</span><em>You stay signed in</em></span><span class="me-go" aria-hidden="true">→</span></button>
-      <div class="me-row"><span class="me-ic" aria-hidden="true">🔔</span><span class="me-t">Notifications<em id="mePushSt"></em></span></div>
+      <!-- only where the push plugin is (renderMe), as on the crew page: a
+           phone without it has nothing to switch on -->
+      <div class="me-row" id="meNotifRow" hidden><span class="me-ic" aria-hidden="true">🔔</span><span class="me-t">Notifications<em id="mePushSt"></em></span></div>
       <!-- the biometric lock: only a build of the app with the plugin shows this row (renderMeLock) -->
-      <label class="me-row" id="meLockRow" hidden><span class="me-ic" aria-hidden="true">🔐</span><span class="me-t"><span id="meLockT">App lock</span><em id="meLockSt"></em></span><input class="me-sw" type="checkbox" role="switch" id="meLock" /></label>
+      <label class="me-row" id="meLockRow" hidden><span class="me-ic" aria-hidden="true">🔐</span><span class="me-t"><span id="meLockT">Face ID lock</span><em id="meLockSt"></em></span><input class="me-sw" type="checkbox" role="switch" id="meLock" /></label>
       <a class="me-row" href="../privacy/"><span class="me-ic" aria-hidden="true">🔒</span><span class="me-t">Privacy policy</span><span class="me-go" aria-hidden="true">→</span></a>
       <button class="me-row warn" type="button" id="meDelete" aria-expanded="false" aria-controls="meDelAsk"><span class="me-ic" aria-hidden="true">🗑</span><span class="me-t">Delete my account<em>Your login and profile, for good</em></span><span class="me-go" aria-hidden="true">→</span></button>
       <div class="me-ask" id="meDelAsk" hidden>
         <p>This deletes your Fantasy Studio login and your profile (logo and details) for good, and signs you out. Your studio's jobs and payments stay on Fantasy Studio's records.</p>
         <div class="rowbtns">
-          <button class="mini" type="button" id="meDelYes">Delete my account</button>
-          <button class="mini" type="button" id="meDelNo">Cancel</button>
+          <button class="btn2 danger" type="button" id="meDelYes">Delete my account</button>
+          <button class="btn2" type="button" id="meDelNo">Cancel</button>
         </div>
         <div class="err" id="meDelErr" role="alert" hidden></div>
       </div>
@@ -665,14 +694,14 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
   <h3>Pay Fantasy Studio</h3>
   <div class="amtwrap"><b>₹</b><input id="payAmt" type="tel" inputmode="numeric" aria-label="Amount in rupees" /></div>
   <div class="chips">
-    <button class="mini" id="payFull">Full balance</button>
-    <button class="mini" id="payHalf">Half</button>
+    <button class="btn2" id="payFull">Full balance</button>
+    <button class="btn2" id="payHalf">Half</button>
   </div>
   <div id="payApps"></div>
-  <div class="vpa" id="payVpa" hidden><span>UPI ID: <code id="vpaText"></code></span><button class="mini" id="vpaCopy">Copy</button></div>
-  <p class="note" style="margin-top:.5rem">If no app opens, copy the UPI ID and pay from any UPI app.</p>
-  <a class="payapp" id="payDone" target="_blank" rel="noopener" style="margin-top:.9rem"><b>I've paid — tell Fantasy Studio</b><span class="go">WhatsApp →</span></a>
-  <button class="mini" id="payClose" style="width:100%;margin-top:.8rem">Close</button>
+  <div class="vpa" id="payVpa" hidden><span>UPI ID: <code id="vpaText"></code></span><button class="btn2" id="vpaCopy">Copy</button></div>
+  <p class="note">If no app opens, copy the UPI ID and pay from any UPI app.</p>
+  <a class="payapp paydone" id="payDone" target="_blank" rel="noopener"><b>I've paid — tell Fantasy Studio</b><span class="go">WhatsApp →</span></a>
+  <button class="btn2 sheetx" id="payClose">Close</button>
 </div>
 
 <!-- Transactions (owner, 15 Oct 2026): a double-tap on a job's Money tiles
@@ -682,9 +711,9 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
 <div class="pay-back" id="txBack"></div>
 <div class="pay-sheet" id="txSheet" role="dialog" aria-modal="true" aria-labelledby="txTitle">
   <h3 id="txTitle">Transactions</h3>
-  <div class="note" id="txWho" style="margin:-.3rem 0 .6rem"></div>
+  <div class="note" id="txWho"></div>
   <div id="txBody"></div>
-  <button class="mini" id="txClose" style="width:100%;margin-top:.8rem">Close</button>
+  <button class="btn2 sheetx" id="txClose">Close</button>
 </div>
 
 <!-- Request a booking (owner, 1 Oct 2026): a bottom sheet on the Pay sheet's
@@ -732,12 +761,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <div class="rq-f">
       <label class="rq-l" for="reqFn">Function</label>
       <input class="rq-in" id="reqFn" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Nikah" autocapitalize="words" enterkeyhint="next" aria-describedby="reqFnErr" />
-      <datalist id="reqFnList">
-        <option value="Manje"></option><option value="Sanchak"></option><option value="Mehndi"></option>
-        <option value="Haldi"></option><option value="Sangeet"></option><option value="Nikah"></option>
-        <option value="Wedding"></option><option value="Ruksati"></option><option value="Valima / Reception"></option>
-        <option value="Engagement"></option><option value="Birthday"></option>
-      </datalist>
+      <!-- filled from REQ_FNS, the same list as the chips under it -->
+      <datalist id="reqFnList"></datalist>
       <div class="rq-chips" aria-label="Quick pick"></div>
       <div class="rq-err" id="reqFnErr" role="alert" hidden></div>
     </div>
@@ -749,7 +774,8 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
       <span class="rq-l" id="reqCovL">Coverage <small>at your agreed rates</small></span>
       <div class="rq-cov" id="reqCov" role="group" aria-labelledby="reqCovL"></div>
       <div class="rq-err" id="reqCovErr" role="alert" hidden></div>
-      <div class="rq-est"><span>Estimate</span><b id="reqEst" aria-live="polite">—</b></div>
+      <!-- hidden while this is the only function: the total at the foot says the same (mfHeads) -->
+      <div class="rq-est" id="reqEstRow" hidden><span>Estimate</span><b id="reqEst" aria-live="polite">—</b></div>
       <p class="rq-est-n">An estimate only, at your agreed rates. Fantasy Studio confirms the final price.</p>
     </div>
     <div class="rq-f">
@@ -767,7 +793,7 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     <div class="rq-foot">
       <div class="rq-tot" id="reqTotRow" hidden><span id="reqTotN"></span><b id="reqTot"></b></div>
       <button class="reqbtn rq-send" type="submit" id="reqSend">Send request</button>
-      <p class="note" id="reqSlow" style="margin-top:.5rem" hidden>Taking longer than usual. Your request sends as soon as the connection is back — you can close this.</p>
+      <p class="note" id="reqSlow" hidden>Taking longer than usual. Your request sends as soon as the connection is back — you can close this.</p>
       <a class="rq-wa" id="reqWa" href="https://wa.me/918686868803" target="_blank" rel="noopener">or message us on WhatsApp</a>
     </div>
   </form>
@@ -1482,6 +1508,8 @@ function widgetNext(list){
   const [e, ...later] = list;
   FSApp.widget.set(e ? { role:'studio', ...widgetItem(e), later: later.slice(0, 3).map(widgetItem) } : { role:'studio', title:'' });
 }
+/* the countdown and Add to calendar, wherever the next event is drawn */
+const NU_TAIL = '<div class="cd" id="cdBox"></div><div class="nu-acts"><button class="btn2" type="button" id="icsBtn">📅 Add to calendar</button></div>';
 function renderNextUp(jobs){
   clearInterval(_cdT);
   const t = todayISO();
@@ -1492,18 +1520,21 @@ function renderNextUp(jobs){
   if(FS_APP) renderSched(upcoming);
   const nu = upcoming[0];
   widgetNext(upcoming);
-  if(!nu){ $('#nextupBox').innerHTML = ''; return; }
-  $('#nextupBox').innerHTML = `
+  /* In the app the Schedule tab's Coming up list starts with this same
+     event, so the countdown sits INSIDE its first row (renderSched) and
+     there is no Next event card above it: one event, one place, as the
+     crew page did on 18 Oct 2026. A browser has no Coming up list and
+     keeps the card. The venue link is the way to Maps (the card's own
+     "Directions" opened the same address, 1 Nov 2026). */
+  if(!nu || FS_APP) $('#nextupBox').innerHTML = '';
+  if(!nu) return;
+  if(!FS_APP) $('#nextupBox').innerHTML = `
     <div class="nextup">
       <div class="lbl">Next event</div>
       <h2>${esc(nu.title||'Event')}${slotTag(nu.slot)}</h2>
       <div class="evm">${esc(jobLabel(nu.job))}${nu.job.quoteNo ? ' · ' + esc(nu.job.quoteNo) : ''}</div>
       <div class="evm">${human(nu.date)}${nu.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(nu.venue)}" target="_blank" rel="noopener">📍 ${esc(nu.venue)}</a>` : ''}</div>
-      <div class="cd" id="cdBox"></div>
-      <div class="nu-acts">
-        <button class="mini" id="icsBtn">📅 Add to calendar</button>
-        ${nu.venue ? `<a class="mini" style="text-decoration:none" href="https://maps.google.com/?q=${encodeURIComponent(nu.venue)}" target="_blank" rel="noopener">🧭 Directions</a>` : ''}
-      </div>
+      ${NU_TAIL}
     </div>`;
   $('#icsBtn').addEventListener('click', e=>addToCalendar(nu, e.currentTarget));
   const target = new Date(nu.date + 'T00:00');
@@ -1516,14 +1547,16 @@ function renderNextUp(jobs){
       return;
     }
     const d = Math.floor(ms/864e5), h = Math.floor(ms%864e5/36e5), m = Math.floor(ms%36e5/6e4);
-    el.innerHTML = `<div><b>${d}</b><span>days</span></div><div><b>${h}</b><span>hrs</span></div><div><b>${m}</b><span>min</span></div>`;
+    el.innerHTML = `<div><b>${d}</b><span>days</span></div><div><b>${h}</b><span>hours</span></div><div><b>${m}</b><span>mins</span></div>`;
   };
   tick();
   _cdT = setInterval(tick, 30000);
 }
 
 /* Schedule tab (store app): the same upcoming list renderNextUp computes,
-   every event across every job, one line each, soonest first */
+   every event across every job, one line each, soonest first. The first
+   row is the next event: it says so, and carries the countdown and Add to
+   calendar (renderNextUp ticks the clock in it). */
 function renderSched(upcoming){
   const box = $('#schedBox');
   if(!upcoming.length){
@@ -1532,14 +1565,15 @@ function renderSched(upcoming){
   }
   const t = todayISO();
   const day0 = new Date(t + 'T00:00');
-  const rows = upcoming.map(e=>{
+  const rows = upcoming.map((e, i)=>{
     const d = new Date(e.date + 'T00:00');
     const days = Math.round((d - day0)/864e5);
-    const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'in ' + days + ' days';
-    return `<div class="sch${days === 0 ? ' today' : ''}">
+    const when = i === 0 ? 'Next event' : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'in ' + days + ' days';
+    return `<div class="sch${days === 0 ? ' today' : ''}${i === 0 ? ' next' : ''}">
       <div class="sch-d"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-IN',{month:'short'})}</span><i>${d.getFullYear()}</i></div>
       <div class="sch-t"><b>${esc(e.title||'Event')}${slotTag(e.slot)}</b>
         <div class="evm">${esc(jobLabel(e.job))}${e.venue ? ` · <a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(e.venue)}" target="_blank" rel="noopener">📍 ${esc(e.venue)}</a>` : ''}</div>
+        ${i === 0 ? NU_TAIL : ''}
       </div>
       <span class="sch-w">${when}</span>
     </div>`;
@@ -1584,7 +1618,7 @@ function availSync(jobs){
       mine: availMine,
       onAsk: null,   /* owner, 6 Oct 2026: no per-day Request buttons; the Request a booking sheet has the date and slot */
       monthsAhead: 12,
-      heading: 'Fantasy Studio availability',
+      heading: 'Studio calendar',   /* the crew page's name for the same calendar */
     });
   }).catch(e=>{ console.warn('[availability] the calendar did not load', e); });
 }
@@ -1634,6 +1668,10 @@ function renderMe(){
   const other = otherRoles();
   $('#meSwitch').hidden = !other.length;
   if(other.length) $('#meSwTo').textContent = 'Switch to ' + other.map(k=>ROLE_PAGE[k]).join(' or ');
+  /* Notifications only where the push plugin is (as on the crew page):
+     without it the row was a dead end that could only say "not on" */
+  const C = window.Capacitor;
+  $('#meNotifRow').hidden = !(C && C.isPluginAvailable && C.isPluginAvailable('FirebaseMessaging'));
   let tok = ''; try{ tok = localStorage.getItem(PUSH_KEY) || ''; }catch(e){}
   $('#mePushSt').textContent = tok ? 'On for this phone' : 'Not on for this phone';
   renderMeLock();
@@ -1745,7 +1783,7 @@ function renderTiles(jobs){
       <div class="tile"><b>${upEv}</b><span>upcoming events</span></div>
       <div class="tile"><b>${open}</b><span>open jobs</span></div>
       <div class="tile ${sp.shotDue>0?'due':'ok'}"><b>${sp.shotDue>0 ? shMoney(sp.shotDue) : '✓ Clear'}</b><span>due · shot work</span><em>${shotSub}</em></div>
-      <div class="tile ${sp.upDue>0?'due':'ok'}"><b>${sp.upDue>0 ? shMoney(sp.upDue) : '✓ Clear'}</b><span>due · upcoming</span><em>${upSub}</em></div>
+      <div class="tile ${sp.upDue>0?'due':'ok'}"><b>${sp.upDue>0 ? shMoney(sp.upDue) : '✓ Clear'}</b><span>due · upcoming events</span><em>${upSub}</em></div>
       ${total > 0 ? `<div class="tile-tot"><span>Total to pay</span><b>${inr(total)}</b></div>` : ''}
     </div>`;
 }
@@ -1807,7 +1845,7 @@ function deliverySection(x, st){
    to ring the office to ask it — and it was a tick in a list halfway down the
    card. It gets a stage of its own and a sentence in plain words. */
 const B2B_STAGES = ['Confirmed', 'Shot', 'Ready to collect', 'Handed over'];
-function stageBlock(x, st, dayCount){
+function stageBlock(x, st){
   if(!CONFIRMED_ST.includes(st)) return '';
   const done = {};
   (Array.isArray(x.delivery) ? x.delivery : []).forEach(d=>{ if(d && d.step) done[d.step] = d.date || ''; });
@@ -1826,9 +1864,10 @@ function stageBlock(x, st, dayCount){
     : idx === 2 ? '<b>Your data is ready to collect from our office.</b> Bring a drive, or call us to arrange it.'
     : idx === 1 ? 'Shot and with our editors. We will tell you the moment the data is ready to collect.'
     : days === 0 ? 'First shoot is today.'
-    /* "to the first shoot of 3" read as "shoot 1 of 3" — two separate facts,
-       so two separate sentences */
-    : days != null ? `Dates are locked in. ${days} day${days===1?'':'s'} to the first shoot.${dayCount > 1 ? ` It runs over ${dayCount} days.` : ''}`
+    /* "to the first shoot of 3" read as "shoot 1 of 3". How many days the
+       job runs is said once, in the card's header (and its Day tags), so
+       this says only how far off the first shoot is (1 Nov 2026). */
+    : days != null ? `Dates are locked in. ${days} day${days===1?'':'s'} to the first shoot.`
     : 'Confirmed. Dates to be finalised.';
   return `<div class="stage${idx === 2 ? ' ready' : ''}">
       <div class="stage-row">
@@ -1913,8 +1952,8 @@ function jobHTML(x, canToggle, collapsed, idx, total){
         <span class="chip ${esc(st)}">${esc(STATUS_LABEL(st))}</span>
       </span>
     </div>
-    ${stageBlock(x, st, _dayCount)}
-    <div class="sec"><h4>${_dayCount > 1 ? `Schedule · ${_dayCount} days` : 'Schedule'}</h4>${evs || '<div class="evm">Details coming soon.</div>'}
+    ${stageBlock(x, st)}
+    <div class="sec"><h4>Schedule</h4>${evs || '<div class="evm">Details coming soon.</div>'}
       ${editors.length ? `<div class="crewnote">🎬 Post-production: ${editors.map(c=>esc(c.name||'Editor')).join(', ')}</div>` : ''}
       ${strays.length ? `<div class="crewnote">Also on this job: ${strays.map(c=>esc(c.name) + (isDate(c.date) ? ' ('+dmy(c.date)+')' : '')).join(', ')}</div>` : ''}
     </div>
@@ -1929,10 +1968,8 @@ function jobHTML(x, canToggle, collapsed, idx, total){
       </div>
       ${Number(tt.finalPrice) > 0 ? `
       <div class="paybar"><i style="width:${pctPaid}%"></i></div>
-      <div class="payleg">
-        <span><b>${pctPaid}% settled</b></span>
-        <span class="${bal>0?'rest':''}">${bal > 0 ? inr(bal) + ' to go' : over > 0 ? inr(over) + ' to come back to you' : 'Fully paid ✓'}</span>
-      </div>` : ''}
+      ${/* the bar says how far along; what is left (or owed back) is the third tile's */''}
+      <div class="payleg"><span><b>${pctPaid}% settled</b></span></div>` : ''}
       ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-jid="${esc(x.id)}">Pay ${inr(bal)} now</button>` : ''}
       ${hasBreak || (x.payments||[]).length ? `
       <details class="brk">
@@ -1952,14 +1989,16 @@ function renderJobs(jobs){
   const box = $('#jobsBox');
   const errNames = STUS.filter(s=>_pkgErrs.has(s.id)).map(s=>s.name||'one studio');
   if(errNames.length && !jobs.length){
+    /* the code is for whoever reads a screenshot of this, so it goes after Ref: */
+    const ref = String((_pkgErrs.values().next().value||{}).code||'error').slice(0, 40);
     box.innerHTML = `<h2 class="secl">Your jobs</h2>
-      <div class="empty">Could not load your jobs (${esc((_pkgErrs.values().next().value||{}).code||'error')}) — check your connection and tap Try again.
-      <div class="rowbtns"><button class="mini" type="button" data-reload>Try again</button></div></div>`;
+      <div class="empty">Could not load your jobs — check your connection and tap Try again. (Ref: ${esc(ref)})
+      <div class="rowbtns"><button class="btn2" type="button" data-reload>Try again</button></div></div>`;
     return;
   }
   const warn = errNames.length
-    ? `<div class="empty" style="margin-top:.9rem;border-color:rgba(224,122,106,.4)">⚠ Jobs for ${esc(errNames.join(', '))} could not load right now — what's below may be incomplete.
-      <div class="rowbtns"><button class="mini" type="button" data-reload>Try again</button></div></div>`
+    ? `<div class="empty warn">⚠ Jobs for ${esc(errNames.join(', '))} could not load right now — what's below may be incomplete.
+      <div class="rowbtns"><button class="btn2" type="button" data-reload>Try again</button></div></div>`
     : '';
   if(!jobs.length){
     box.innerHTML = `<h2 class="secl">Your jobs</h2>
@@ -1989,7 +2028,7 @@ function renderJobs(jobs){
     .filter(p=>p.querySelector('details.brk[open]')).map(p=>p.dataset.job));
   box.innerHTML = warn + `<h2 class="secl">Your jobs <small>${ordered.length}</small></h2>` +
     ordered.map((x,i)=>{
-      const head = multi ? `<div class="evm" style="margin-top:.7rem">${esc(x.studioName||'')}</div>` : '';
+      const head = multi ? `<div class="evm stuname">${esc(x.studioName||'')}</div>` : '';
       return head + jobHTML(x, canToggle, canToggle && !_openJobs.has(x.id), i, ordered.length);
     }).join('');
   openBrk.forEach(id=>{
@@ -2055,7 +2094,7 @@ function renderLedger(jobs){
   const group = (key, title, list, due) => !list.length ? '' : `
       <div class="ledgrp"><span>${title}</span><small>${plural(list.length, 'job')}</small></div>
       ${list.map(row).join('')}
-      <div class="ledsub ${due>0?'':'clear'}"><span>${due>0 ? 'Due for ' + title.toLowerCase() : title + ' · settled'}</span><b>${due>0 ? inr(due) : '✓'}</b>${due>0 && canPay ? `<button class="mini" type="button" data-paygrp="${key}">Pay</button>` : ''}</div>`;
+      <div class="ledsub ${due>0?'':'clear'}"><span>${due>0 ? 'Due for ' + title.toLowerCase() : title + ' · settled'}</span><b>${due>0 ? inr(due) : '✓'}</b>${due>0 && canPay ? `<button class="btn2" type="button" data-paygrp="${key}">Pay</button>` : ''}</div>`;
   const run = sp.shotDue + sp.upDue;
   box.innerHTML = `
     <h2 class="secl">Account with Fantasy Studio <small>confirmed jobs</small></h2>
@@ -2063,9 +2102,10 @@ function renderLedger(jobs){
       <div class="ledhead"><span>Job</span><span>Billed</span><span>Paid</span><span>Due</span></div>
       ${group('shot', 'Shot work', sp.shot, sp.shotDue)}
       ${group('up', 'Upcoming events', sp.up, sp.upDue)}
-      <div class="ledfoot ${run>0?'':'clear'}"><span>${run>0 ? 'Outstanding balance' : 'Account settled'}</span><b>${run>0 ? inr(run) : '✓ Nothing due'}</b></div>
+      ${/* the same words as the tiles on the Jobs tab: "Total to pay", "due · upcoming events" */''}
+      <div class="ledfoot ${run>0?'':'clear'}"><span>${run>0 ? 'Total to pay' : 'Account settled'}</span><b>${run>0 ? inr(run) : '✓ Nothing due'}</b></div>
     </div>
-    <div class="ledacts"><button class="mini" type="button" data-txall>🧾 Transactions — every payment on your account</button></div>`;
+    <div class="ledacts"><button class="btn2" type="button" data-txall>🧾 All transactions</button></div>`;
 }
 /* Pay one whole group of the account — the shot work, or the upcoming events —
    in one go. The sheet keeps a group id instead of a job id, so the live
@@ -2092,15 +2132,15 @@ function renderRates(){
       .sort((a,b)=>a[0].localeCompare(b[0]));
     if(!entries.length) return '';
     return `
-      <h2 class="secl">Your negotiated rates${STUS.length>1 ? ` <small>${esc(s.name||'')}</small>` : ' <small>auto-applied on every new job</small>'}</h2>
+      <h2 class="secl">Your agreed rates${STUS.length>1 ? ` <small>${esc(s.name||'')}</small>` : ' <small>auto-applied on every new job</small>'}</h2>
       <div class="ledger">${entries.map(([k,v])=>
-        `<div class="ln" style="padding:.5rem 1rem;border-bottom:1px dashed var(--line)"><span>${esc(k)}</span><span>${inr(v)}</span></div>`).join('')}
+        `<div class="ln rate"><span>${esc(k)}</span><span>${inr(v)}</span></div>`).join('')}
       </div>`;
   }).join('');
   box.innerHTML = blocks;
 }
 
-/* toggle job cards + jump to money */
+/* toggle job cards, and Pay now */
 document.addEventListener('click', e=>{
   /* Try again is a reload; in the app a pull-to-refresh retries without one */
   if(e.target.closest('[data-reload]')){ location.reload(); return; }
@@ -2109,14 +2149,6 @@ document.addEventListener('click', e=>{
     const card = tog.closest('.pkg');
     const id = card.dataset.job;
     if(card.classList.toggle('collapsed')) _openJobs.delete(id); else _openJobs.add(id);
-    return;
-  }
-  const sums = e.target.closest('[data-sums]');
-  if(sums){
-    const card = sums.closest('.pkg');
-    if(card.classList.contains('collapsed')){ card.classList.remove('collapsed'); _openJobs.add(card.dataset.job); }
-    const sec = [...card.querySelectorAll('.sec')].find(s=>s.querySelector('h4') && s.querySelector('h4').textContent === 'Money');
-    if(sec) sec.scrollIntoView({ behavior:'smooth', block:'center' });
     return;
   }
   const pay = e.target.closest('[data-pay]');
@@ -2216,7 +2248,7 @@ function renderTxSheet(){
   const body = $('#txBody'); if(!body) return;
   if(_txJobId === '*'){ renderTxAll(body); return; }
   const x = allJobs().find(j=>j.id === _txJobId);
-  if(!x){ body.innerHTML = '<div class="empty" style="padding:.6rem 0">This job is no longer on your account.</div>'; return; }
+  if(!x){ body.innerHTML = '<div class="empty slim">This job is no longer on your account.</div>'; return; }
   const tt = x.totals||{};
   const paid = Math.max(0, Number(tt.advance)||0);
   const bal = Math.max(0, Number(tt.balance)||0);
@@ -2233,8 +2265,8 @@ function renderTxSheet(){
     </div>
     ${rows.length ? `<div class="txlist">${rows.map(pm=>
       `<div class="payrow"><span>${esc(isDate(pm.date) ? dmy(pm.date) : 'Date not recorded')} · ${esc(pm.mode||'—')}${pm.note ? `<em>${esc(pm.note)}</em>` : ''}</span><b>+ ${inr(pm.amount)}</b></div>`).join('')}</div>`
-    : '<div class="empty" style="padding:.6rem 0">No payments recorded on this job yet.</div>'}
-    ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-jid="${esc(x.id)}" style="margin-top:.7rem">Pay ${inr(bal)} now</button>` : ''}`;
+    : '<div class="empty slim">No payments recorded on this job yet.</div>'}
+    ${bal > 0 && (CONTACT.upi || CONTACT.upiAlt) ? `<button class="paynow" type="button" data-pay="${bal}" data-q="${esc(x.quoteNo||'')}" data-jid="${esc(x.id)}">Pay ${inr(bal)} now</button>` : ''}`;
 }
 /* The whole account in one list (owner, 18 Oct 2026): every payment this
    studio has made to Fantasy Studio, across all its confirmed jobs, newest
@@ -2260,7 +2292,7 @@ function renderTxAll(body){
     </div>
     ${rows.length ? `<div class="txlist">${rows.map(pm=>
       `<div class="payrow"><span>${esc(isDate(pm.date) ? dmy(pm.date) : 'Date not recorded')} · ${esc(pm.mode||'—')}<em>${esc(pm.job.quoteNo||'')}${pm.job.quoteNo ? ' · ' : ''}${esc(jobLabel(pm.job))}${pm.note ? ' · ' + esc(pm.note) : ''}</em></span><b>+ ${inr(pm.amount)}</b></div>`).join('')}</div>`
-    : '<div class="empty" style="padding:.6rem 0">No payments recorded on your account yet.</div>'}`;
+    : '<div class="empty slim">No payments recorded on your account yet.</div>'}`;
 }
 function openTxSheet(jobId){
   _txJobId = jobId || '';
@@ -2423,8 +2455,8 @@ function reqRowHTML(u, jobIds){
     foot = _reqAsk === r.id
       ? `<div class="rqr-ask">Cancel this request? Fantasy Studio will no longer see it.
           <div class="rowbtns">
-            <button class="mini" type="button" data-rq="yes" data-id="${id}">Yes, cancel it</button>
-            <button class="mini" type="button" data-rq="keep" data-id="${id}">Keep it</button>
+            <button class="btn2 danger" type="button" data-rq="yes" data-id="${id}">Yes, cancel it</button>
+            <button class="btn2" type="button" data-rq="keep" data-id="${id}">Keep it</button>
           </div></div>`
       : `<div class="rqr-acts"><span class="evm">Waiting for Fantasy Studio to confirm</span>
           <button class="mini" type="button" data-rq="ask" data-id="${id}" aria-label="Cancel this request">Cancel</button></div>`;
@@ -2520,8 +2552,14 @@ function reqDateCue(){
   d.classList.toggle('rq-nodate', !d.value && !(d.validity && d.validity.badInput));   /* not .empty: that is the page's empty-state panel */
 }
 const REQ_MAX_FN = 6;
-const REQ_CHIPS = ['Nikah','Mehndi','Haldi','Sangeet','Reception','Engagement','Ruksati','Birthday'];
-const chipsHTML = () => REQ_CHIPS.map(c=>`<button type="button" data-chip="${c}">${c}</button>`).join('');
+/* The function names a partner can pick: ONE list for the quick-pick chips
+   and the Function field's suggestions (#reqFnList). They were two lists,
+   so a chip offered "Reception" while the field suggested "Valima /
+   Reception" (1 Nov 2026). The field still takes any name typed. */
+const REQ_FNS = ['Nikah','Mehndi','Haldi','Sangeet','Valima / Reception','Engagement','Ruksati','Birthday',
+                 'Manje','Sanchak','Wedding'];
+const chipsHTML = () => REQ_FNS.map(c=>`<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join('');
+$('#reqFnList').innerHTML = REQ_FNS.map(c=>`<option value="${esc(c)}"></option>`).join('');
 document.querySelectorAll('#reqCard1 .rq-chips').forEach(e=>{ e.innerHTML = chipsHTML(); });
 const estOf = q => _reqRows.reduce((t, [svc, rate])=>t + ((q && q.get(svc)) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
 const slotWord = v => v === 'morning' ? 'Morning' : v === 'evening' ? 'Evening' : v === 'full' ? 'Full day' : '';
@@ -2546,13 +2584,17 @@ const mfLine = (v, n) => String(v||'').replace(/\s+/g, ' ').trim().slice(0, n);
 /* every card's heading follows its own date and function, and the numbers
    close up when one is removed */
 function mfHeads(){
-  $('#reqCard1 .mf-t').textContent = mfSummary('Function 1', $('#reqDate').value, reqSlot(), mfLine($('#reqFn').value, 40), estOf(_reqQty));
+  const n = mfCards().length + 1;
+  /* With one function its estimate is said once, by the total at the foot:
+     the card's own Estimate line and the heading's figure only come back
+     when a second function makes them differ from the total (1 Nov 2026) */
+  $('#reqEstRow').hidden = n === 1;
+  $('#reqCard1 .mf-t').textContent = mfSummary('Function 1', $('#reqDate').value, reqSlot(), mfLine($('#reqFn').value, 40), n > 1 ? estOf(_reqQty) : 0);
   mfCards().forEach((c, i)=>{
     const sl = (c.querySelector('input[type=radio]:checked') || {}).value || '';
     c.querySelector('.mf-t').textContent = mfSummary('Function ' + (i + 2), c.querySelector('.mf-date').value, sl, mfLine(c.querySelector('.mf-fn').value, 40), estOf(c._qty));
   });
   reqTotal();
-  const n = mfCards().length + 1;
   $('#reqAddFn').textContent = n === 1 ? '＋ Add another function on a different date' : '＋ Add another function (' + n + ' so far)';
   reqBusyPaint();
 }
@@ -2579,21 +2621,11 @@ function mfEst(c){
   c.querySelector('.mf-est').textContent = mfItems(c).length ? inr(est) : '—';
   mfHeads();
 }
-async function mfAvail(c){
-  const el = c.querySelector('.rq-av'), date = c.querySelector('.mf-date').value;
-  const slot = (c.querySelector('input[type=radio]:checked') || {}).value || '';
-  const say = (cls, text)=>{ el.className = 'rq-av' + (cls ? ' ' + cls : ''); el.textContent = text; };
+/* another function card's calendar word: the same helper as the first card's (availNote) */
+function mfAvail(c){
   const seq = c._seq = (c._seq || 0) + 1;
-  if(!isDate(date) || date < todayISO() || !slot){ say('', ''); return; }
-  const days = await reqAvailDays(date.slice(0, 7));
-  if(seq !== c._seq) return;
-  if(!days){ say('', ''); return; }
-  const rec = days[date.slice(8)], f = v => (v === 'r' || v === 'y') ? v : '';
-  const m = f(rec && rec.m), ev = f(rec && rec.e);
-  const v = slot === 'full' ? (m === 'r' || ev === 'r' ? 'r' : (m || ev)) : (slot === 'morning' ? m : ev);
-  if(v === 'r') say('r', 'This slot looks fully booked — you can still ask');
-  else if(v === 'y') say('y', 'Filling up');
-  else say('ok', 'Looks free on our calendar');
+  return availNote(c.querySelector('.rq-av'), c.querySelector('.mf-date').value,
+    (c.querySelector('input[type=radio]:checked') || {}).value || '', ()=>seq === c._seq);
 }
 function reqAddFn(){
   const box = $('#reqMore');
@@ -2761,14 +2793,18 @@ function reqAvailDays(month){
   _reqAvail.set(month, safe);
   return safe;
 }
-async function reqPaintAvail(){
-  const el = $('#reqAvailNote');
-  const say = (cls, text)=>{ el.className = 'rq-av' + (cls ? ' ' + cls : ''); el.textContent = text; };
-  const date = $('#reqDate').value, slot = reqSlot();
+function reqPaintAvail(){
   const seq = ++_reqAvSeq;
+  return availNote($('#reqAvailNote'), $('#reqDate').value, reqSlot(), ()=>seq === _reqAvSeq);
+}
+/* What the calendar says about one date and slot, into el — for the first
+   card (reqPaintAvail) and every added one (mfAvail), so the two can never
+   word it differently. latest() is false once a newer pick has asked. */
+async function availNote(el, date, slot, latest){
+  const say = (cls, text)=>{ el.className = 'rq-av' + (cls ? ' ' + cls : ''); el.textContent = text; };
   if(!isDate(date) || date < todayISO() || !slot){ say('', ''); return; }
   const days = await reqAvailDays(date.slice(0, 7));
-  if(seq !== _reqAvSeq) return;
+  if(!latest()) return;
   if(!days){ say('', ''); return; }
   const rec = days[date.slice(8)], f = v => (v === 'r' || v === 'y') ? v : '';
   const m = f(rec && rec.m), ev = f(rec && rec.e);
@@ -3138,7 +3174,9 @@ async function renderMeLock(){
   if(_bio.type === 'none'){ row.hidden = true; return; }
   const what = bioName(_bio.type);
   const on = FSApp.lock.enabled(LOCK.portal, LOCK.defaultOn);
-  $('#meLockT').textContent = 'Lock with ' + what;
+  /* named the way the crew page names it: "Face ID lock", "Fingerprint lock" */
+  $('#meLockT').textContent = _bio.type === 'touch' ? (IS_ANDROID ? 'Fingerprint lock' : 'Touch ID lock')
+                                                    : (IS_ANDROID ? 'Face lock' : 'Face ID lock');
   $('#meLock').checked = on && _bio.ok;
   $('#meLock').disabled = !_bio.ok;
   $('#meLockSt').textContent = !_bio.ok ? 'Set up ' + what + ' on this phone first'
