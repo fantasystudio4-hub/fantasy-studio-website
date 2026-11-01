@@ -254,6 +254,8 @@ if(DEMO_GALLERY){
 
 /* ---------- guard: the gallery is for the person approved, not to be kept ---------- */
 let WHO = '';
+/* the watermark is OFF on purpose (owner, Oct 2026) and kept to switch back on */
+// eslint-disable-next-line no-unused-vars
 function setMark(){
   const m = $('#mark'); if(!m || !WHO) return;
   m.innerHTML = Array.from({ length: 9 }, (_, i) => `<i style="top:${i * 13 - 4}%">${esc((WHO + '   ·   ').repeat(8))}</i>`).join('');

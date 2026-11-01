@@ -1911,7 +1911,6 @@ function renderJump(pkgs){
        is one, otherwise the day it happened */
     const d = ds.find(v=>v >= today) || ds[ds.length-1] || '';
     const when = d ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : 'Date to come';
-    const ev = (x.events||[]).length;
     /* named by the occasion, not the quote number: "FS-2026-041" identifies a
        booking to the studio and to nobody else */
     const names = [...new Set([...(x.events||[])]
@@ -2327,8 +2326,6 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
     ? `<div class="ln"><span>Premium album</span><span>${Number(x.album.sheets)} sheets</span></div>` : '';
   const addons = (x.addons||[]).length
     ? `<div class="sec" data-tab="booking"><h3>Included extras</h3><ul class="addons">${x.addons.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>` : '';
-  const pays = (x.payments||[]).length
-    ? `<div class="sec"><h3>Payments received</h3>${x.payments.map(pm=>`<div class="payrow"><span>${esc(shortD(pm.date)||pm.date||'')} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}</div>` : '';
   const curStep = steps.find(s=>!(s in done));
   const _nextStep = steps[steps.indexOf(curStep) + 1];
   const RC = 169.6;   /* 2πr for r=27 */

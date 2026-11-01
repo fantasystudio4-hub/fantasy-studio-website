@@ -32,7 +32,10 @@ module.exports = [
       } /* FSApp: app-shell.js sets window.FSApp; grecaptcha: Google's script */,
     },
     rules: {
-      'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_' }],
+      'no-unused-vars': [
+        'warn',
+        { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-inner-declarations': 'off',
       'no-useless-escape': 'off',

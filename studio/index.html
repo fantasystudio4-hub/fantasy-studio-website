@@ -802,11 +802,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
    fs-auth.js is the one session every page shares; the SDK functions come
    from the SAME URLs it imports, so they work with its auth and db. */
 let FS, onAuthStateChanged;
-let collection, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, query, where, onSnapshot;
+let collection, doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp, query, where, onSnapshot;
 try{
   FS = await import('../fs-auth.js');
   ({ onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'));
-  ({ collection, doc, getDoc, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, query, where, onSnapshot } =
+  ({ collection, doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp, query, where, onSnapshot } =
     await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'));
 }catch(e){
   $('#errMsg').textContent = 'Could not reach the sign-in service — check your connection and try again.';
@@ -1571,9 +1571,8 @@ function renderSched(upcoming){
    it (avail.css); this page hands it the database, whether to paint the
    built-in sample instead (the ?demo view and the review number read
    nothing), this partner's own event dates to ring (mine, read again on
-   refresh) and what a tap on a free half does: open the booking request
-   form on that date and slot (reqFromCal; the buttons read "Request the
-   morning / evening" here, askLabels). Loaded lazily once the jobs are on
+   refresh). There are no per-day Request buttons (owner, 6 Oct 2026: onAsk
+   is null) — the Request a booking sheet takes the date and slot. Loaded lazily once the jobs are on
    screen, so a module that fails to load costs the page nothing but the
    calendar; one failed load is not retried until the page loads again. */
 let _avail = null, _availGen = 0, _availBusy = false, _availSig = '', _availJobs = [];
@@ -2852,8 +2851,6 @@ function closeReq(fromPop){
   const o = _reqOpener; _reqOpener = null;
   if(o && o !== document.body && document.contains(o)) try{ o.focus({ preventScroll:true }); }catch(e){}
 }
-/* a calendar day's "Request the morning / evening" (availSync hands this to ../avail.js) */
-function reqFromCal(iso, half){ openReq({ date: iso, slot: half === 'e' ? 'evening' : 'morning' }); }
 /* the button under the calendar: the day picked on the calendar, when there
    is one (a red day has no button of its own there, and can still be asked) */
 $('#reqOpen').addEventListener('click', ()=>{

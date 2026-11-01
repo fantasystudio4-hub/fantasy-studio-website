@@ -912,7 +912,6 @@ window.addEventListener('beforeinstallprompt', e=>{
 <script type="module">
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 
 /* ---------- pay: agreed fee, what has actually come in, what is left ----------
    The studio can settle a shoot in instalments, so pay.payments[] is the record
@@ -2073,7 +2072,6 @@ if(!CONFIGURED){
   /* The row. Enough to know which job it is and whether it wants you, and
      nothing else — the job itself opens in a sheet. */
   function editRow(a){
-    const j = EJOBS[a.pkgId];
     const asked = a.payProposal && Number(a.payProposal.amount) >= 0
       ? Math.round(Number(a.payProposal.amount)) : null;
     const fee = Math.max(0, Number(((a||{}).pay||{}).amount) || 0);

@@ -5852,8 +5852,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   /* A package is identified by its quote number first — the client name alone
      is ambiguous the moment a couple books twice, and the owner reads the quote
      number off the PDF and off WhatsApp. One helper so every list agrees. */
-  const qnoOf = x => (x && x.quoteNo) ? String(x.quoteNo) : '';
-  const pkgLabel = x => [qnoOf(x), (x && x.clientName) || '—'].filter(Boolean).join(' · ');
   const qnoTag = q => q ? `<span class="qtag">${esc(q)}</span>` : '';
   const asWhoText = c => [c.quoteNo, (c.eventTitle || 'Event') + slotSuffix(c.slot), c.clientName || '—',
                           stepDate(c.date) || c.date].filter(Boolean).join(' · ');
@@ -5894,7 +5892,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return wantPast ? -c : c;
     });
   }
-  const teamUpcoming = () => teamEventsIn('upcoming');
   /* crew whose stored date matches this exact event */
   /* Two functions of the same package on ONE date (e.g. Nikah morning +
      Reception evening) used to show each other's crew, because a match on
@@ -7218,7 +7215,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const n = p && Number(p.amount);
     return (p && Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
   };
-  const ejAsksFor = id => ejCrew(id).filter(a=>ejProposed(a) !== null).length;
   /* The one deadline an editing job has: the Deadline on the booking, the only
      one the panel can show or change. An assignment written before the assign
      sheet lost its own due date still carries one, and it used to win — so
@@ -8103,17 +8099,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const f = el.querySelector('#' + focusId);
       if(f){ try{ f.focus({ preventScroll:true }); if(selEnd != null) f.setSelectionRange(selEnd, selEnd); }catch(e){} }
     }
-  }
-  /* an assignment's createdAt is the moment the editor was put on the job.
-     Rows written before that field existed fall back to their due date. */
-  function ejAssignedAt(a){
-    const t = a && a.createdAt;
-    const d = t && typeof t.toDate === 'function' ? t.toDate() : (t ? new Date(t) : null);
-    if(d && !isNaN(d)) return dayOf(d);
-    if(stepDate(a && a.dueDate)) return 'for ' + stepDate(a.dueDate);
-    /* rows written before createdAt existed know neither — say nothing rather
-       than printing "assigned —", which reads like a missing value */
-    return '';
   }
 
   /* ---- writes ----
@@ -9629,7 +9614,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function openCrewPay(a){
     _cpId = a.id; _cpAllMember = null;
     exitCpEdit(); setCpMode(viewGet('cpMode','online') === 'cash' ? 'cash' : 'online');
-    const fee = payFee(a), got = payGot(a), due = payDue(a);
+    const fee = payFee(a), due = payDue(a);
     $('#cpWho').textContent = `${a.memberName||'—'} · ${a.eventTitle||'Event'} ${stepDate(a.date)||a.date||''} — `
       + (fee > 0 ? `${inr(due)} left of ${inr(fee)}` : 'no fee set on this assignment');
     $('#cpAmt').value = ''; $('#cpNote').value = '';
@@ -16194,7 +16179,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   const apTile = (n, label, sub, cls) => `<div class="stat${cls ? ' ' + cls : ''}"><b>${n}</b><span>${label}</span>${sub ? `<em class="st-up">${sub}</em>` : ''}</div>`;
   const apBar = (label, right, frac, cls) => `<div class="ins-bar${cls ? ' ' + cls : ''}"><span class="ib-l">${label}</span><span class="ib-t"><i style="width:${Math.max(2, Math.round(100 * (frac || 0)))}%"></i></span><b class="ib-r">${right}</b></div>`;
-  const apH = t => `<div class="finh">${t}</div>`;
   const apNote = t => `<div class="insnote">${t}</div>`;
   const apLink = (href, label) => /^https:\/\//i.test(String(href || '')) ? `<a class="btn btn--ghost" href="${esc(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
   /* a section that throws must not take the page with it */
