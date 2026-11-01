@@ -36,6 +36,8 @@
    re-renders on every snapshot can call this freely.
    ============================================================ */
 import { doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+/* the studio's day, Hyderabad time: one copy of the rule (CLAUDE.md rule 2) */
+import { todayISO as todayIso } from './fs-shared.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MON3   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -44,8 +46,6 @@ const WORD   = { '': 'available', y: 'filling up', r: 'fully booked' };
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const pad      = n => String(n).padStart(2, '0');
-/* the studio's day, Hyderabad time — the same rule as fs-shared.js todayISO */
-const todayIso = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
 const monthKey = (y, m) => `${y}-${pad(m + 1)}`;
 const flag     = v => (v === 'y' || v === 'r') ? v : '';           /* anything else in the doc = free */
 const esc      = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));

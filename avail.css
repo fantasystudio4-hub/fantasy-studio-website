@@ -44,7 +44,7 @@
 
 /* header: ‹ Month YYYY › Today */
 .fs-avail .av-nav{display:flex;gap:.45rem;align-items:center;margin-bottom:.7rem}
-.fs-avail .av-btn{background:none;border:1px solid var(--av-line);color:var(--av-gold-b);border-radius:10px;cursor:pointer;padding:.3em .75em;font-size:1.1rem;font-family:inherit;line-height:1;min-height:40px;min-width:40px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.fs-avail .av-btn{background:none;border:1px solid var(--av-line);color:var(--av-gold-b);border-radius:10px;cursor:pointer;padding:.3em .75em;font-size:1.1rem;font-family:inherit;line-height:1;min-height:44px;min-width:44px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .fs-avail .av-btn:disabled{opacity:.28;cursor:default}
 .fs-avail .av-btn:active:not(:disabled){border-color:var(--av-gold)}
 .fs-avail .av-today{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;padding-inline:.8em}
@@ -112,7 +112,7 @@
    second drops under the first and each stretches full width. From 560px
    the pair keeps its natural width and sits to the right of the text. */
 .fs-avail .av-asks{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.35rem}
-.fs-avail .av-ask{flex:1 1 auto;min-height:42px;white-space:nowrap;background:linear-gradient(135deg,var(--av-gold-l),var(--av-gold-d));border:0;color:#fff;border-radius:40px;
+.fs-avail .av-ask{flex:1 1 auto;min-height:44px;white-space:nowrap;background:linear-gradient(135deg,var(--av-gold-l),var(--av-gold-d));border:0;color:#fff;border-radius:40px;
   padding:.6em 1.2em;font-family:inherit;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
   box-shadow:0 6px 16px rgba(142,110,30,.35);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .fs-avail .av-ask:active{filter:brightness(.92)}

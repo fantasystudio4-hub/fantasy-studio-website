@@ -95,14 +95,16 @@ html.fs-app .fs-lock-in{width:100%;max-width:320px;display:flex;flex-direction:c
 html.fs-app .fs-lock-mark{width:64px;height:64px;margin-bottom:1.1rem}
 html.fs-app #fsLock h2{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.4rem;line-height:1.2;color:#fff;margin:0 0 .45rem;text-wrap:balance}
 html.fs-app .fs-lock-sub{color:var(--fs-tabs-mut);font-size:.88rem;line-height:1.45;margin:0 0 1.6rem}
-html.fs-app .fs-lock-btn{
+/* the gold button: the lock screen's Unlock and the update popup's Update now */
+html.fs-app .fs-lock-btn,
+html.fs-app .fs-upd-btn{
   width:100%;min-height:50px;margin:0;padding:.9em 1.2em;
   background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;border-radius:40px;color:#fff;
   font-family:inherit;font-size:.9rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
   -webkit-tap-highlight-color:transparent;transition:opacity .18s;
 }
-html.fs-app .fs-lock-btn:active{opacity:.85}
-html.fs-app .fs-lock-btn:disabled{opacity:.55;cursor:default}
+html.fs-app .fs-lock-btn:active,html.fs-app .fs-upd-btn:active{opacity:.85}
+html.fs-app .fs-lock-btn:disabled,html.fs-app .fs-upd-btn:disabled{opacity:.55;cursor:default}
 html.fs-app .fs-lock-btn:focus{outline:none}
 html.fs-app .fs-lock-btn:focus-visible{outline:2px solid var(--fs-tabs-gold);outline-offset:3px}
 /* the way out: a quiet text link, but a full 44px tap target */
@@ -134,7 +136,7 @@ html.fs-app .fs-ptr.spin i{animation:fs-ptr-spin .8s linear infinite}
 
 /* ---- the update popup (app-shell.js, the app update block) ----
    One card over the page: above the tab bar (1250 > 1200), under the lock
-   screen (1300). Same gold button as the lock screen. */
+   screen (1300). Its button is the lock screen's (.fs-lock-btn, above). */
 html.fs-app .fs-upd{
   position:fixed;inset:0;z-index:1250;
   display:flex;align-items:center;justify-content:center;
@@ -149,14 +151,6 @@ html.fs-app .fs-upd-card{
 html.fs-app .fs-upd-card h2{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:1.3rem;line-height:1.25;color:#fff;margin:0 0 .5rem;text-wrap:balance}
 html.fs-app .fs-upd-sub{color:var(--fs-tabs-mut);font-size:.9rem;line-height:1.5;margin:0 0 .9rem}
 html.fs-app .fs-upd-msg{min-height:1.4em;color:var(--fs-tabs-gold);font-size:.88rem;line-height:1.4;margin:0 0 .6rem}
-html.fs-app .fs-upd-btn{
-  width:100%;min-height:50px;margin:0;padding:.9em 1.2em;
-  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;border-radius:40px;color:#fff;
-  font-family:inherit;font-size:.9rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;transition:opacity .18s;
-}
-html.fs-app .fs-upd-btn:active{opacity:.85}
-html.fs-app .fs-upd-btn:disabled{opacity:.55;cursor:default}
 html.fs-app .fs-upd-later{
   display:block;width:100%;min-height:44px;margin:.3rem 0 0;padding:.6em 1em;background:none;border:0;
   font-family:inherit;font-size:.88rem;color:var(--fs-tabs-mut);cursor:pointer;-webkit-tap-highlight-color:transparent;
@@ -170,6 +164,7 @@ html.fs-app .fs-upd-btn:focus-visible,html.fs-app .fs-upd-later:focus-visible{ou
   html.fs-app .fs-tab::before,
   html.fs-app .fs-tab-ic,
   html.fs-app .fs-lock-btn,
+  html.fs-app .fs-upd-btn,
   html.fs-app .fs-ptr{transition:none}
   html.fs-app .fs-ptr.spin i{animation-duration:1.6s}   /* still a sign of life, just calmer */
 }

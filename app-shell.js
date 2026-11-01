@@ -395,9 +395,9 @@
       });
       btn.addEventListener('click', function(){
         if(btn.disabled) return;
-        btn.disabled = true; el.classList.add('trying');
+        btn.disabled = true;
         Promise.resolve().then(function(){ return o.onTry && o.onTry(); }).catch(function(){}).then(function(){
-          btn.disabled = false; el.classList.remove('trying');
+          btn.disabled = false;
         });
       });
       el.querySelector('.fs-lock-out').addEventListener('click', function(){
