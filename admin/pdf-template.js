@@ -49,11 +49,14 @@ async function fetchFontB64(url, timeoutMs){
      what made navigator.share() throw NotAllowedError and drop the PDF. */
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   const t = ctl ? setTimeout(() => ctl.abort(), timeoutMs || 8000) : null;
-  let r;
-  try { r = await fetch(url, ctl ? { signal: ctl.signal } : undefined); }
-  finally { if (t) clearTimeout(t); }
-  if (!r.ok) throw new Error('font http ' + r.status);
-  const buf = new Uint8Array(await r.arrayBuffer());
+  /* the box covers the BODY too: fetch resolves on the headers, and a stall
+     half-way through ~500 KB is the case that hung */
+  let buf;
+  try {
+    const r = await fetch(url, ctl ? { signal: ctl.signal } : undefined);
+    if (!r.ok) throw new Error('font http ' + r.status);
+    buf = new Uint8Array(await r.arrayBuffer());
+  } finally { if (t) clearTimeout(t); }
   let bin = '';
   const CH = 0x8000;
   for (let i = 0; i < buf.length; i += CH) bin += String.fromCharCode.apply(null, buf.subarray(i, i + CH));
@@ -106,6 +109,19 @@ function fmtDateSpan(dates){
     } catch (e) { /* fall through */ }
   }
   return fmtDateHuman(a) + ' – ' + fmtDateHuman(b);
+}
+
+/* When the balance falls due: the final 10% of the package at delivery and
+   the rest after the event — but never more than the balance itself, so the
+   two rows always add up to the Balance Due printed above them. (They used to
+   be worked from the package price and the advance, so an advance over 90%
+   printed ₹0 after the event and a full 10% at delivery under a smaller
+   balance.) Nothing is scheduled when nothing is due. */
+export function paymentSchedule(fin, balance){
+  const bal = Math.max(0, Math.round(Number(balance) || 0));
+  const tenth = Math.round((Number(fin) || 0) * 0.10);
+  const delivery = Math.min(tenth, bal);
+  return { delivery, eventDay: bal - delivery, fullTenth: delivery === tenth };
 }
 
 export async function buildQuotePdf(pkg, contact, terms){
@@ -423,10 +439,9 @@ export async function buildQuotePdf(pkg, contact, terms){
      B2B jobs run on the partner studio's own payment terms, so they never get
      the retail split — printing it would contradict what was agreed. */
   const advAmt = Number(t.advance) || 0;
-  const showSchedule = advAmt > 0 && !isB2B && fin > 0;
+  const { delivery, eventDay, fullTenth } = paymentSchedule(fin, t.balance);
+  const showSchedule = advAmt > 0 && !isB2B && fin > 0 && delivery + eventDay > 0;
   if (showSchedule) {
-    const delivery = Math.round(fin * 0.10);
-    const eventDay = Math.max(0, fin - advAmt - delivery);
     /* Two rows, not three. The box directly above already states the advance
        and the balance, so repeating them here would be the same two figures
        twice within an inch — and a third row pushed a one-page quotation onto
@@ -443,7 +458,7 @@ export async function buildQuotePdf(pkg, contact, terms){
        actually asks after the wedding. */
     const sched = [
       ['After the event', 'balance — editing starts once this is paid', eventDay],
-      ['At delivery', 'final 10% of the package', delivery],
+      ['At delivery', fullTenth ? 'final 10% of the package' : 'the rest of the balance', delivery],
     ];
     sched.forEach(([label, note, amt], i) => {
       ensure(18);
