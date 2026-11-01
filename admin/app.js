@@ -10788,6 +10788,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <button class="icon-btn icon-btn--danger" data-sudone="${esc(u.id)}" title="Done — clear" aria-label="Clear">✕</button>
       </div>`; }).join('');
   }
+  const _suBusy = new Set();
   on('#suList', 'click', async e=>{
     const ld = e.target.closest('[data-sulead]'), dn = e.target.closest('[data-sudone]');
     const u = SUPS.find(v=>v.id === ((ld && ld.dataset.sulead) || (dn && dn.dataset.sudone)));
@@ -10802,15 +10803,22 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const p10 = String(u.phone10||'').replace(/\D/g,'').slice(-10);
     const data = { name: 'New sign-up', phone: p10, phoneFull: String(u.phoneFull||'').replace(/\D/g,'').slice(0, 20), eventType:'', weddingDate:'',
       message: 'Signed in on the app or website and has not been set up yet. Say hello.', quote: null, grandTotal: null,
-      source: 'contact_form', createdAt: new Date(), status: 'new', notes: '' };
+      source: 'contact_form', createdAt: serverTimestamp(), status: 'new', notes: '' };
     if(DEMO){ toast('Lead added (demo — not saved)'); return; }
+    /* One lead per sign-up, however many taps: the button had no busy state and
+       a random id, and settle() can take 2.5 s, so a double tap made two leads.
+       The id is now the sign-up's own ('su_' + uid, inside SAFE_ID), so even a
+       second write lands on the same document. */
+    if(_suBusy.has(u.id)) return;
+    _suBusy.add(u.id);
     try{
-      const res = await settle(setDoc(doc(collection(db,'leads')), data));
+      const res = await settle(setDoc(doc(db,'leads','su_' + u.id), data));
       const sm = settleMsg(res, 'Lead added ✓ — it is in Leads');
       toast(sm.msg);
       /* the lead stands for them now */
       if(sm.ok) await settle(deleteDoc(doc(db,'signups',u.id)));
     }catch(err){ toast('Could not add the lead: ' + (err.code||err.message)); }
+    finally{ _suBusy.delete(u.id); }
   });
   function renderPartnerReqs(){
     const pend = preqPending();

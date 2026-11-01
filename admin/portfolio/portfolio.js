@@ -98,7 +98,11 @@ function videoPoster(file){
 function put(path, blob, type, onProg){
   return new Promise((ok, no) => {
     const task = uploadBytesResumable(sref(storage, path), blob, { contentType: type, cacheControl: 'public,max-age=31536000' });
-    task.on('state_changed', s => onProg && onProg(s.bytesTransferred / s.totalBytes), no, async () => ok({ url: await getDownloadURL(task.snapshot.ref), path }));
+    /* getDownloadURL can fail after the bytes are up; without the catch that
+       rejection went nowhere, put() never settled and the batch sat on
+       "Uploading…" for good, with the leave-page warning stuck on */
+    task.on('state_changed', s => onProg && onProg(s.bytesTransferred / s.totalBytes), no,
+      () => getDownloadURL(task.snapshot.ref).then(url => ok({ url, path }), no));
   });
 }
 /* leaving mid-upload kills it: ask first */
