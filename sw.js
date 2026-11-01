@@ -3,7 +3,9 @@
    cache is the offline fallback), network-first-with-timeout for ALL
    executable code (see isCode below), and stale-while-revalidate for the
    remaining assets (images, fonts, manifest). */
-const CACHE = 'fs-cache-v21';   // v21: fs-shared.js, the pay / account rules the admin,
+const CACHE = 'fs-cache-v22';   // v22: avail.js and the client page import fs-shared.js (todayISO,
+                                //      esc, inr) instead of keeping their own copies (1 Nov 2026)
+                                // v21: fs-shared.js, the pay / account rules the admin,
                                 //      crew and partner pages import (app code, below)
                                 // v20: the Portfolio admin script is app code (network-first, below)
                                 // v19: executable code is never cache-first — firebase-config.js,
