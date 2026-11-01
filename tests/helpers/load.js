@@ -93,4 +93,17 @@ function cut(src, from, to) {
   return src.slice(a, b);
 }
 
-module.exports = { ROOT, read, loadCatalog, cut, memoryStorage };
+/* A browser ES module with no imports (fs-shared.js): `export` is stripped and
+   every exported name is returned. The package is CommonJS, so it cannot be
+   import()ed as it stands. */
+function loadModule(rel, globals = {}) {
+  const src = read(rel);
+  assert.ok(!/^\s*import\s/m.test(src), `${rel} has imports; loadModule only takes self-contained modules`);
+  const names = [...src.matchAll(/^export\s+(?:const|let|function|async function)\s+([A-Za-z_$][\w$]*)/gm)].map(
+    (m) => m[1],
+  );
+  const body = src.replace(/^export\s+/gm, '');
+  return new Function(...Object.keys(globals), `${body}\nreturn { ${names.join(', ')} };`)(...Object.values(globals));
+}
+
+module.exports = { ROOT, read, loadCatalog, loadModule, cut, memoryStorage };

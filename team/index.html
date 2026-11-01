@@ -878,6 +878,8 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
       /* the one sign-in the page imports (session, database): without it an
          offline start stops at the error view */
       '../fs-auth.js',
+      /* the shared pay rules, a static import: without it the module never runs */
+      '../fs-shared.js',
       './'
     ].map(u=>new URL(u, location.href).href);
 
@@ -910,39 +912,13 @@ window.addEventListener('beforeinstallprompt', e=>{
 <!-- the store app's tab bar; a classic script, so FSApp exists before the module runs -->
 <script src="../app-shell.js"></script>
 <script type="module">
+import { payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
-/* ---------- pay: agreed fee, what has actually come in, what is left ----------
-   The studio can settle a shoot in instalments, so pay.payments[] is the record
-   and pay.paidAmount its running sum. Assignments written before instalments
-   existed carry only pay.paid, so these helpers read both shapes and the old
-   rows stay correct. Same helpers, same names, as the admin panel. */
-const payFee = a => Math.max(0, Number(((a||{}).pay||{}).amount)||0);
-function payGot(a){
-  const p = (a||{}).pay || {};
-  if(p.paidAmount !== undefined && p.paidAmount !== null) return Math.max(0, Number(p.paidAmount)||0);
-  return p.paid ? Math.max(0, Number(p.amount)||0) : 0;
-}
-const payDue = a => Math.max(0, payFee(a) - payGot(a));
-function payState(a){
-  const fee = payFee(a), got = payGot(a);
-  if(got > 0 && fee <= 0) return 'paid';   /* money paid against no fee is settled, not part-paid */
-  if(fee > 0 && got >= fee) return 'paid';
-  return got > 0 ? 'part' : 'due';
-}
-/* When the unpaid part of a fee starts to count as owed (owner, 1 Oct 2026):
-   a SHOOT from the day after its event date — the same test this page uses
-   for "done" — and not from the moment the member is assigned to it. Until
-   then it is "upcoming" and is shown apart from what is owed. An EDITING job
-   is owed as soon as it is assigned, as before, and so is a row with no
-   usable date. Nothing stored changes, only how the totals are added up.
-   Money the studio has recorded (payGot) counts as received whatever the
-   date. For every row: payOwed + payUpcoming === payDue. Same helpers, same
-   names, as the admin panel. */
-const payEarned = a => !a || a.kind === 'edit' || !/^\d{4}-\d{2}-\d{2}$/.test(a.date||'') || a.date < todayISO();
-const payOwed = a => payEarned(a) ? payDue(a) : 0;        /* owed now */
-const payUpcoming = a => payEarned(a) ? 0 : payDue(a);    /* agreed for a shoot that has not happened yet */
+/* crew pay — payFee · payGot · payDue · payState · payEarned · payOwed ·
+   payUpcoming — comes from ../fs-shared.js (imported above), the one copy the
+   admin panel reads too, so the studio and the crew always see the same amounts. */
 /* every instalment as {amount, date, mode}, newest last */
 function payEvents(a){
   const p = (a||{}).pay || {};

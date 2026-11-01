@@ -24,5 +24,5 @@
       "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js": ["./node_modules/firebase/storage"]
     }
   },
-  "files": ["types/globals.d.ts", "catalog.js", "avail.js", "fs-auth.js"]
+  "files": ["types/globals.d.ts", "catalog.js", "avail.js", "fs-auth.js", "fs-shared.js"]
 }

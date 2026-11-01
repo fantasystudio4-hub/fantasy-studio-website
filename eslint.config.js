@@ -45,7 +45,7 @@ module.exports = [
     },
   },
   {
-    files: ['**/*.html', 'admin/**/*.js', 'fs-auth.js', 'app-shell.js', 'avail.js'],
+    files: ['**/*.html', 'admin/**/*.js', 'fs-auth.js', 'fs-shared.js', 'app-shell.js', 'avail.js'],
     languageOptions: { sourceType: 'module' },
   },
   { files: ['index.html', 'builder/index.html'], languageOptions: { globals: CATALOG } },

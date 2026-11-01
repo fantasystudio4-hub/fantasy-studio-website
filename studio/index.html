@@ -785,6 +785,7 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 }
 </script>
 <script type="module">
+import { jobPhase, jobBalance } from '../fs-shared.js';
 const $  = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1401,24 +1402,10 @@ function nextEventDate(x){
 function lastEventDate(x){
   return (x.events||[]).map(e=>e.date).filter(isDate).sort().slice(-1)[0] || '';
 }
-function firstEventDate(x){
-  return (x.events||[]).map(e=>e.date).filter(isDate).sort()[0] || '';
-}
-/* Which box of the account a confirmed job sits in. One partner can have ten
-   jobs with us, and one total hid whether the money was owed for weddings we
-   had already shot or for ones still weeks away. 'upcoming' = nothing has
-   been shot yet (the first dated event is still ahead, or there are no dates
-   yet); 'ongoing' = a multi-day job with a day shot and a day still to come;
-   'done' = the last day is behind us, or the job is marked delivered. The
-   admin's studio page and the WhatsApp statement use the same rule, so both
-   sides always show the partner the same two figures. */
-function jobPhase(x){
-  if((x.status||'draft') === 'delivered') return 'done';
-  const t = todayISO(), first = firstEventDate(x);
-  if(!first || first > t) return 'upcoming';
-  return lastEventDate(x) >= t ? 'ongoing' : 'done';
-}
-const jobBal = x => Math.max(0, Number((x.totals||{}).balance)||0);
+/* Which box of the account a confirmed job sits in, and its balance: jobPhase
+   and jobBalance from ../fs-shared.js (imported above) — the admin's studio page
+   and the WhatsApp statement read the same copy, so both sides always show the
+   partner the same two figures. */
 /* the two halves of the account, from the confirmed jobs in the order given */
 function acctSplit(jobs){
   const t = todayISO();
@@ -1427,8 +1414,8 @@ function acctSplit(jobs){
   const up   = conf.filter(x=>jobPhase(x) === 'upcoming');
   return {
     shot, up,
-    shotDue: shot.reduce((s,x)=>s + jobBal(x), 0),
-    upDue:   up.reduce((s,x)=>s + jobBal(x), 0),
+    shotDue: shot.reduce((s,x)=>s + jobBalance(x), 0),
+    upDue:   up.reduce((s,x)=>s + jobBalance(x), 0),
     done:    shot.filter(x=>jobPhase(x) === 'done').length,
     ongoing: shot.filter(x=>jobPhase(x) === 'ongoing').length,
     upEvents: up.reduce((n,x)=>n + (x.events||[]).filter(e=>isDate(e.date) && e.date >= t).length, 0),
@@ -2092,7 +2079,7 @@ function payGroup(key){
   const sp = acctSplit(allJobs());
   const list = key === 'shot' ? sp.shot : sp.up, due = key === 'shot' ? sp.shotDue : sp.upDue;
   if(!(due > 0)) return;
-  const q = (key === 'shot' ? 'shot work' : 'upcoming events') + ' (' + list.filter(x=>jobBal(x) > 0).map(x=>x.quoteNo||'').filter(Boolean).join(', ') + ')';
+  const q = (key === 'shot' ? 'shot work' : 'upcoming events') + ' (' + list.filter(x=>jobBalance(x) > 0).map(x=>x.quoteNo||'').filter(Boolean).join(', ') + ')';
   openPay(due, q, 'grp:' + key);
 }
 $('#ledgerBox').addEventListener('click', e=>{

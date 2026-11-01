@@ -1,3 +1,4 @@
+import { payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
@@ -5657,53 +5658,14 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     .replace(/\bIphone\b/g, 'iPhone').replace(/\bLed\b/g, 'LED');
 
   /* ---------- crew pay: agreed fee, part-payments, what is still owed ----------
-     A shoot can be settled in instalments, so pay.payments[] is the record and
-     pay.paidAmount its running sum. Rows written before instalments existed
-     carry only pay.paid + pay.paidDate, so every reader goes through these
-     helpers and old rows keep reading correctly with nothing to migrate. */
-  const payFee = a => Math.max(0, Number(((a||{}).pay||{}).amount)||0);
-  function payGot(a){
-    const p = (a||{}).pay || {};
-    if(p.paidAmount !== undefined && p.paidAmount !== null) return Math.max(0, Number(p.paidAmount)||0);
-    return p.paid ? Math.max(0, Number(p.amount)||0) : 0;   /* legacy: paid meant paid in full */
-  }
-  const payDue = a => Math.max(0, payFee(a) - payGot(a));
-  /* ---------- WHEN a fee becomes owed (owner, 1 Oct 2026) ----------
-     Assigning someone to a shoot is an agreement, not a debt: the fee is owed
-     from the DAY AFTER the event (a.date < today — the same test this panel
-     uses for "done"). Until then the unpaid part is "upcoming" and is shown
-     apart from what is due. Editing jobs are owed as soon as they are
-     assigned, exactly as before, and so is a row with no usable date — a
-     shoot that can never become "past" must not hide its fee for ever.
-     Money actually recorded (payGot) is never affected: the studio pays no
-     advances, but an early payment on an old row still counts as paid.
-     Nothing stored changes — only how totals are added up — and the crew page
-     (team/index.html) carries the same three helpers under the same names.
-     Always true: payOwed(a) + payUpcoming(a) === payDue(a). */
-  /* asked once per row per total — over 2,000 assignments a date-formatter
-     call each time is felt on a phone, so today's date is held for a second */
-  let _payDay = '', _payDayAt = 0;
-  const payToday = () => {
-    const t = Date.now();
-    if(!_payDay || t - _payDayAt > 1000 || t < _payDayAt){ _payDay = todayISO(); _payDayAt = t; }
-    return _payDay;
-  };
-  const payEarned = a => !a || a.kind === 'edit' || !/^\d{4}-\d{2}-\d{2}$/.test(a.date||'') || a.date < payToday();
-  const payOwed = a => payEarned(a) ? payDue(a) : 0;        /* what is owed NOW */
-  const payUpcoming = a => payEarned(a) ? 0 : payDue(a);    /* agreed, for a shoot that has not happened yet */
+     payFee · payGot · payDue · payState · payEarned · payOwed · payUpcoming come
+     from ../fs-shared.js, the one copy the crew page reads too — so the owner
+     and a crew member can never be shown different amounts. */
   /* A row that money has been recorded on belongs to the person who was paid:
      the doc carries pay.payments[] and pay.paidAmount, so changing its member
      would hand those receipts to someone else (owner, 1 Nov 2026: refuse it —
      the new person gets a row of their own). */
   const reassignBlocked = (old, memberId) => !!old && old.memberId !== memberId && payGot(old) > 0;
-  /* 'paid' only when a real fee has been fully settled; 'part' once money has
-     moved but not all of it; 'due' otherwise */
-  function payState(a){
-    const fee = payFee(a), got = payGot(a);
-    if(got > 0 && fee <= 0) return 'paid';   /* money paid against no fee is settled, not part-paid */
-    if(fee > 0 && got >= fee) return 'paid';
-    return got > 0 ? 'part' : 'due';
-  }
   /* every instalment as {amount, date, mode} — used wherever crew pay has to be
      bucketed by WHEN it left, which the single legacy paidDate cannot express */
   function payEvents(a){
@@ -10243,23 +10205,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function studioById(id){ return STUDIOS.find(s=>s.id===id) || null; }
   const isStudioJob = x => !!x && (x.clientType||'direct') === 'studio';
   const studioJobs = id => livePkgs().filter(p=>isStudioJob(p) && p.studioId === id);
-  /* Which half of a partner's account a confirmed job sits in — the same rule
-     the partner portal draws its two balance tiles from (studio/index.html,
-     jobPhase), so the two sides never show the studio different figures.
-     'upcoming' = nothing shot yet (first dated event still ahead, or no dates);
-     'ongoing' = a day shot and a day still to come; 'done' = last day behind
-     us, or marked delivered. */
-  function stuJobPhase(x){
-    if((x.status||'draft') === 'delivered') return 'done';
-    const t = todayISO();
-    const ds = (x.events||[]).map(e=>e.date).filter(d=>ISO_RE.test(d||'')).sort();
-    if(!ds.length || ds[0] > t) return 'upcoming';
-    return ds[ds.length-1] >= t ? 'ongoing' : 'done';
-  }
-  const stuBal = x => Math.max(0, Number((x.totals||{}).balance)||0);
+  /* Which half of a partner's account a confirmed job sits in: jobPhase and
+     jobBalance from ../fs-shared.js, the copy the partner portal draws its two
+     balance tiles from, so the two sides never show the studio different figures. */
   function stuDueSplit(conf){
-    const shot = conf.filter(x=>stuJobPhase(x) !== 'upcoming'), up = conf.filter(x=>stuJobPhase(x) === 'upcoming');
-    return { shot, up, shotDue: shot.reduce((n,x)=>n + stuBal(x), 0), upDue: up.reduce((n,x)=>n + stuBal(x), 0) };
+    const shot = conf.filter(x=>jobPhase(x) !== 'upcoming'), up = conf.filter(x=>jobPhase(x) === 'upcoming');
+    return { shot, up, shotDue: shot.reduce((n,x)=>n + jobBalance(x), 0), upDue: up.reduce((n,x)=>n + jobBalance(x), 0) };
   }
 
   /* ---- partner portal: mirror each studio job's crew onto its package ----
@@ -11485,7 +11436,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     /* the outstanding figure is given in its two halves — work already shot
        and events still ahead — the same split the partner sees on their page */
     const sp = stuDueSplit(conf);
-    const open = conf.filter(x=>stuBal(x) > 0).map(x=>({ quoteNo: x.quoteNo||'—', due: stuBal(x), phase: stuJobPhase(x) }));
+    const open = conf.filter(x=>jobBalance(x) > 0).map(x=>({ quoteNo: x.quoteNo||'—', due: jobBalance(x), phase: jobPhase(x) }));
     return { studioName: (s2.name||'').trim(), jobs: conf.length, billed, received: paid,
              dueShotWork: sp.shotDue, dueUpcoming: sp.upDue, totalOutstanding: due, openItems: open };
   }
@@ -11894,7 +11845,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
               <span>${esc([dmy(jobDate(r.x)),
                            ((r.x.events||[])[0]||{}).title || 'Job',
                            r.x.endClientName,
-                           { upcoming:'upcoming', ongoing:'ongoing' }[stuJobPhase(r.x)] || ''].filter(Boolean).join(' · '))}</span>
+                           { upcoming:'upcoming', ongoing:'ongoing' }[jobPhase(r.x)] || ''].filter(Boolean).join(' · '))}</span>
             </span><b data-l="Billed" title="${inr(r.billed)}">${inrShort(r.billed)}</b><b data-l="Received" class="stutx" data-stutx="${esc(r.x.id)}" style="color:var(--ok)" title="${inr(r.got)} — double-tap for this job's payments">${inrShort(r.got)}</b><b data-l="Due" class="${r.out>0?'neg':''}" title="${inr(r.out)}">${inrShort(r.out)}</b></div>`).join('')}
           <div class="ledrow" style="border-top:1px solid var(--line);font-size:.85rem"><span class="l-ev">Outstanding balance</span><b style="color:var(--gold-b)">${inr(run)}</b></div>
           <h4 class="shotlist-h ${_stuEvOpen?'':'closed'}" data-stuevtog role="button" tabindex="0" aria-expanded="${_stuEvOpen}">
