@@ -77,6 +77,62 @@ the separate, gitignored `app/` repo (`app/backend/functions`,
     `x in list` for `array-contains`). `isAdmin()` requires a verified Google
     sign-in — keep both clauses (`tests/rules.test.js`).
 
+## UI conventions
+
+The owner approved this rulebook on 1 Nov 2026, and the UI cleanup on
+`chore/ui-cleanup` applied it. It covers three surfaces, and each one already
+has its components. **Reuse them; don't hand-roll a button or invent a colour.**
+
+| Surface | Pages | Components to reuse |
+| --- | --- | --- |
+| Admin | `admin/` | `admin/tokens.css` (colours, `--state-*`, `--sp-*`, `--fs-*`, `--r-*`, `--tap`) + `admin/ui.css` (`.btn` `--primary/--ghost/--danger/--quiet/--sm/--block`, `.icon-btn`, `.card`, `.chip-status`, `.modal`, `.empty-state`, `.empty--tight`, `.field__opt`, `.hl-ok`). `.gbtn` = the full-width sheet form of `.btn--primary`. |
+| Portals | `client/ start/ profile/ team/ studio/`, `app-shell.*`, `avail.*` | Each page's inline `:root` (`--gold`, `--gold-b`, `--panel`, `--text`, `--mut`, `--line` .22, `--grad-gold`). **`team/index.html` is the reference**: `.gbtn` gold pill = primary, outlined pill = secondary, underlined `.mini` = tertiary link. |
+| Public | `index.html`, `builder/`, `404`, `privacy/`, `portfolio/`, `get/` | The `:root` shared by `index.html` and `builder/`. `.btn.btn-gold` = primary, `.btn-outline-gold` = secondary (`.btn-outline-light` on photos). |
+
+1. **One primary action per view.** A view is a page or tab, or an open sheet.
+   At most one gold button is visible at a time.
+   - Buttons inside list cards are secondary.
+   - When an empty state repeats the toolbar's action, its button is ghost, or
+     the toolbar copy hides.
+   - Destructive actions use the danger style and always confirm. Never use a
+     ghost button coloured red inline.
+   - In the admin shell the header ← is the only back button: hide an in-page
+     back under `html.shell`.
+2. **Wording.** Verb + noun, 1–3 words, sentence case (`Save fee`). A count is
+   fine (`Assign Ali to 3 events`). ＋ means create and nothing else; "see
+   more" is `View all N ›`. Use one word per action everywhere:
+
+   | Action | Use |
+   | --- | --- |
+   | Leave the account | Sign out |
+   | Contact | 📞 Call · 💬 WhatsApp |
+   | Reload | ↻ Refresh |
+   | Move to Trash (undoable) | Trash |
+   | Erase for good | Delete |
+   | Money in / out | ＋ Record payment · ＋ Expense |
+   | Assign editing work | ＋ Assign editing |
+   | Crew states | Seen / Not seen · Signed off |
+   | Builder actions | Send on WhatsApp · Download PDF · Share quote · Clear package |
+   | Link to the builder | Build a package |
+   | Unit | per function |
+   | A path in running text | More › Partner studios |
+
+3. **Values.** Use only the surface's existing tokens. No raw hex, rgb or px
+   font sizes in admin code. Touch targets are at least 44px. The same kind of
+   element looks the same on every page of a surface. No inline `style=` in new
+   code: add a class.
+4. **Text is allowed only if a first-time user would be lost without it.**
+   - At most one muted line under a heading, and nothing in brackets inside a
+     heading.
+   - Don't put anything that matters in a `title` tooltip: these screens are
+     used on phones, where tooltips never show.
+   - Never say the same thing twice on one view.
+   - An empty state is one line plus at most one button.
+   - No developer text in the UI: no "publish the rules", no raw error codes
+     (put them after `Ref:`), no rollout notes.
+   - Instructions must match the screen: above or below, real tab names, real
+     field names.
+
 ## Adding a feature
 
 1. Find the page's section and the nearest existing pattern; follow it.
