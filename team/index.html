@@ -2329,7 +2329,7 @@ if(!CONFIGURED){
     const up = ASGS.filter(a=>a.kind !== 'edit' && /^\d{4}-\d{2}-\d{2}$/.test(a.date||'') && a.date >= today)
       .map(a=>({ a, t: shootStart(a).getTime() })).sort((x,y)=>x.t - y.t || slotRank(x.a.slot) - slotRank(y.a.slot)).map(x=>x.a);
     const i = up.findIndex(a=>!hasCall(a) || shootStart(a).getTime() + SHOOT_OVER > now);
-    return i > 0 ? up.slice(i) : up;
+    return i < 0 ? [] : up.slice(i);   /* none left that is not over → nothing next, not the whole day's list */
   }
   const widgetOff = () => (window.FSApp && FSApp.widget) ? FSApp.widget.clear('crew') : Promise.resolve();
   /* signed out or deleted: the one session was every page's, so whatever
