@@ -66,6 +66,7 @@ function injectCss(){
    what the Cloud Function writes for one month. Today and tomorrow carry
    one amber half each, so the month that opens first always has colour
    even on the 31st. */
+/** @type {Array<[number, string, string]>} */
 const SAMPLE = [
   [0, '', 'y'], [1, 'y', ''],
   [2, 'y', 'y'], [4, 'r', 'r'], [6, 'y', 'y'], [9, 'y', 'r'], [11, 'y', 'y'], [14, 'r', 'r'],
@@ -182,7 +183,7 @@ export function mountAvailability(host, opts = {}){
        rebuild would drop the keyboard focus to <body>: note whether the
        focus was in the grid and put it back on the selected day (or the
        same date, when nothing is selected) */
-    const active = grid.contains(document.activeElement) ? document.activeElement : null;
+    const active = /** @type {HTMLElement|null} */ (grid.contains(document.activeElement) ? document.activeElement : null);
     const back = active && active.dataset ? active.dataset.date : '';
     grid.innerHTML = h;
     if(active){

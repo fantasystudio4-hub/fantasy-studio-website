@@ -1,0 +1,28 @@
+{
+  /* Type-check the SHARED modules only (checkJs, no emit). admin/app.js and the
+     big page scripts are not included yet — they would report thousands of
+     untyped-DOM errors; app-shell.js needs JSDoc on its FSApp object first. Add a file here once it type-checks clean. The Firebase
+     CDN imports are mapped onto the npm package of the SAME version, so calls
+     into the SDK are checked against its real types. */
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": [],
+    "paths": {
+      "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js": ["./node_modules/firebase/app"],
+      "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js": ["./node_modules/firebase/auth"],
+      "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js": ["./node_modules/firebase/firestore"],
+      "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js": ["./node_modules/firebase/functions"],
+      "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js": ["./node_modules/firebase/storage"]
+    }
+  },
+  "files": ["types/globals.d.ts", "catalog.js", "avail.js", "fs-auth.js"]
+}

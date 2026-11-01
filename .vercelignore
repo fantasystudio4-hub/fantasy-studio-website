@@ -52,3 +52,17 @@ _demo-data.js
 # NOTE: firebase-config.js is intentionally NOT excluded — the site needs it at
 # runtime, and a Firebase web config is public by design (it is not a secret;
 # the security boundary is firestore.rules, deployed in the Firebase console).
+
+# Dev tooling (lint, type-check, tests, git hook). None of it is a site asset,
+# and node_modules alone is thousands of files.
+node_modules/
+**/node_modules/
+package.json
+package-lock.json
+eslint.config.js
+tsconfig.json
+.prettierrc.json
+.prettierignore
+.githooks/
+tests/
+types/

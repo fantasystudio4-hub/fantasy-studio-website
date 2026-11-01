@@ -263,7 +263,8 @@ function track(ev, data){
    the click itself is never touched or delayed. */
 document.addEventListener('click', function(e){
   try{
-    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    var t = /** @type {any} */ (e.target);
+    var a = t && t.closest ? t.closest('a[href]') : null;
     if(!a) return;
     var h = a.getAttribute('href') || '';
     if(/^https:\/\/wa\.me\//i.test(h)) track('whatsapp_tap');

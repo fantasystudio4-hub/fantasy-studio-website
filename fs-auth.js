@@ -795,8 +795,9 @@ export function mountPhoneSignIn(rootEl, opts = {}){
     <div class="err" data-err role="alert" hidden></div>
     ${note ? `<div class="note">${esc(note)}</div>` : ''}`;
   rootEl.appendChild(wrap);
+  /** @type {(s: string) => any} */
   const $ = s => wrap.querySelector(s);
-  const otpInputs = [...wrap.querySelectorAll('[data-otp-boxes] input')];
+  const otpInputs = /** @type {HTMLInputElement[]} */ ([...wrap.querySelectorAll('[data-otp-boxes] input')]);
   /* the invisible widget and its badge live outside the view (as the portals'
      #recaptcha-box did), so hiding the box after sign-in never hides them mid-check */
   const rcBox = document.createElement('div');

@@ -17,3 +17,6 @@ firestore.rules.proposed
 
 # Scratch previews rendered while working on the crew page. Never deploy.
 _preview-*.html
+
+# Dev tooling installs (npm install)
+node_modules/
