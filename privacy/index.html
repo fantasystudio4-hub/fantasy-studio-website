@@ -19,12 +19,12 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap" /></noscript>
 <style>
-:root{--ink:#14110a;--gold:#B8902B;--gold-b:#d9b45a;--paper:#f4ead2;--line:rgba(184,144,43,.25)}
+:root{--ink:#14110a;--gold:#B8902B;--gold-b:#E2C275;--paper:#f4ead2;--line:rgba(184,144,43,.25)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--ink);color:var(--paper);font-family:'Jost',sans-serif;line-height:1.7;
   padding:calc(24px + max(env(safe-area-inset-top),var(--safe-area-inset-top,0px))) 1.2rem calc(48px + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))}
 main{max-width:720px;margin:0 auto}
-.brand{display:flex;align-items:center;gap:.7rem;margin-bottom:2.2rem}
+.brand{display:flex;align-items:center;gap:.7rem;margin-bottom:2.2rem;color:var(--paper);text-decoration:none;width:max-content}
 .brand svg{width:44px;height:44px;flex:none}
 .brand b{font-family:'Playfair Display',serif;font-size:1.15rem;letter-spacing:.02em}
 .brand span{display:block;font-size:.7rem;letter-spacing:.22em;color:var(--gold-b);text-transform:uppercase}
@@ -47,10 +47,18 @@ html.fs-app .back.fs-app-only{display:inline-block}
 </head>
 <body>
 <main>
-  <div class="brand">
-    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="4"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-family="Georgia,serif" font-weight="700" font-size="36" fill="#B8902B">FS</text></svg>
+  <!-- the studio's mark, as on every other page; in the store app the home
+       page sends a stray tap on to the app's own entry, never the brochure -->
+  <a class="brand" href="../" aria-label="Fantasy Studio home">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="45" fill="none" stroke="#B8902B" stroke-width="2.3"/>
+      <circle cx="50" cy="50" r="35" fill="none" stroke="#B8902B" stroke-width="1.9"/>
+      <circle cx="50" cy="5" r="3.3" fill="#B8902B"/><circle cx="50" cy="95" r="3.3" fill="#B8902B"/>
+      <circle cx="5" cy="50" r="3.3" fill="#B8902B"/><circle cx="95" cy="50" r="3.3" fill="#B8902B"/>
+      <text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display',Georgia,serif" font-weight="600" font-size="33" fill="#B8902B">FS</text>
+    </svg>
     <div><b>Fantasy Studio</b><span>Malakpet · Hyderabad</span></div>
-  </div>
+  </a>
 
   <h1>Privacy Policy</h1>
   <p class="upd">Last updated: 7 October 2026 · Applies to www.fantasystudio.in and the Fantasy Studio mobile apps.</p>

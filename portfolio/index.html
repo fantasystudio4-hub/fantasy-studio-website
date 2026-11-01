@@ -34,7 +34,8 @@ h1 em{font-style:normal;color:var(--gold-b)}
 .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.2rem;max-width:30rem}
 .box label{display:block;font-size:.8rem;color:var(--mut);margin-bottom:.3rem}
 .box input{font:inherit;width:100%;background:#0f0d08;color:var(--paper);border:1px solid var(--line);border-radius:10px;padding:.65rem .8rem;min-height:46px;margin-bottom:.9rem}
-.btn{font:inherit;font-weight:600;background:linear-gradient(135deg,#C9A347,#8E6E1E);color:#14110a;border:0;border-radius:999px;padding:.75rem 1.5rem;min-height:48px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+/* the public pages' gold button: white uppercase on the deep gold */
+.btn{font:inherit;font-weight:500;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(135deg,#8E6E1E,#7A5E19);color:#fff;border:0;border-radius:999px;padding:.75rem 1.5rem;min-height:48px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 .btn:disabled{opacity:.55}
 .btn.ghost{background:none;color:var(--paper);border:1px solid var(--line)}
 .state{max-width:30rem;padding:1rem 0}
@@ -112,7 +113,7 @@ html.fs-app .back{display:none}
   <section id="vAsk" class="hero" hidden>
     <h1>The <em>Fantasy Studio</em> portfolio</h1>
     <p class="lead">Weddings, cinematic films, reels and candid photographs, a hand-picked showcase of our finest work. Ask for access and we'll open it for you.</p>
-    <div class="stats"><div><b>2012</b><span>Established</span></div><div><b>1500+</b><span>Weddings</span></div><div><b>Hyderabad</b><span>Malakpet</span></div></div>
+    <div class="stats"><div><b>2012</b><span>Established</span></div><div><b>1500+</b><span>Weddings</span></div><div><b>Malakpet</b><span>Hyderabad</span></div></div>
     <form class="box" id="askForm" novalidate>
       <label for="askName">Your name</label>
       <input id="askName" type="text" maxlength="80" autocomplete="name" autocapitalize="words" />

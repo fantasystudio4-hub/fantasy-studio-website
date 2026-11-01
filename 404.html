@@ -21,6 +21,7 @@
 :root{
   --ink:#14110a; --gold:#B8902B; --gold-b:#E2C275; --paper:#f4ead2;
   --line:rgba(184,144,43,.25); --mut:rgba(244,234,210,.62);
+  --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -28,7 +29,7 @@ body{
     radial-gradient(120% 80% at 50% -10%, rgba(184,144,43,.18), transparent 58%),
     linear-gradient(180deg,#1a150c,#14110a 46%);
   color:var(--paper);
-  font-family:'Jost',system-ui,sans-serif;
+  font-family:var(--sans);
   line-height:1.65;
   min-height:100vh;
   display:flex;align-items:center;justify-content:center;
@@ -37,11 +38,11 @@ body{
 main{max-width:560px;width:100%;text-align:center}
 .mark{width:66px;height:66px;margin:0 auto 1.6rem;display:block}
 .code{
-  font-family:'Jost',sans-serif;font-size:.72rem;letter-spacing:.42em;
+  font-family:var(--sans);font-size:.72rem;letter-spacing:.42em;
   text-transform:uppercase;color:var(--gold-b);margin-bottom:.9rem;
 }
 h1{
-  font-family:'Playfair Display',Georgia,serif;font-weight:600;
+  font-family:var(--serif);font-weight:600;
   font-size:clamp(1.7rem,6vw,2.5rem);line-height:1.15;color:#fff;
   letter-spacing:-.01em;margin-bottom:.7rem;text-wrap:balance;
 }
@@ -64,7 +65,7 @@ p.lead{color:var(--mut);font-size:1rem;max-width:44ch;margin:0 auto 2rem}
 .reach a{color:var(--gold-b);text-decoration:none;border-bottom:1px solid rgba(226,194,117,.3)}
 .reach a:hover{border-bottom-color:var(--gold-b)}
 .reach .tel{
-  font-family:'Playfair Display',Georgia,serif;font-size:1.45rem;
+  font-family:var(--serif);font-size:1.45rem;
   display:inline-block;margin-top:.25rem;border:0;
 }
 a:focus-visible{outline:2px solid var(--gold-b);outline-offset:3px}
