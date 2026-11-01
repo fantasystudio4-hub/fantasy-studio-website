@@ -38,7 +38,7 @@ function start(){
   onSnapshot(collection(db, 'portfolioRequests'), snap => {
     REQS = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
     renderReqs();
-  }, e => { $('#reqBox').innerHTML = `<p class="err">Could not load requests (${esc(e.code || e.message)}) — publish the updated firestore.rules first.</p>`; });
+  }, e => { $('#reqBox').innerHTML = `<p class="err">Could not load requests (${esc(e.code || e.message)}) — permission refused; sign in again.</p>`; });
   onSnapshot(query(collection(db, 'portfolio'), orderBy('order')), snap => {
     ITEMS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderLib();
@@ -153,7 +153,7 @@ async function uploadBatch(files){
       bar.style.width = '100%'; note.textContent = 'Done ✓';
       setTimeout(() => row.remove(), 2500);
     }catch(err){
-      note.textContent = 'Failed — ' + (err.code === 'storage/unauthorized' ? 'Storage refused it (sign in to the admin again, or the Storage rules are not published)' : err.message || err.code);
+      note.textContent = 'Failed — ' + (err.code === 'storage/unauthorized' ? 'Storage refused it — sign in to the admin again' : err.message || err.code);
       note.style.color = 'var(--err)';
     }
   }

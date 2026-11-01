@@ -189,7 +189,8 @@ export async function buildQuotePdf(pkg, contact, terms){
 
   const slimHeader = () => {
     doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(...GOLD);
-    doc.text(wl ? 'EVENT QUOTATION' : 'FANTASY STUDIO — EVENT QUOTATION', PAGE_W/2, 58, { align: 'center' });
+    // the studio's name is already in every page's footer — said once (1 Nov 2026)
+    doc.text('EVENT QUOTATION', PAGE_W/2, 58, { align: 'center' });
     doc.setDrawColor(...GOLD); doc.setLineWidth(0.7);
     doc.line(ML, 66, MR, 66);
   };
