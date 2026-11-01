@@ -108,3 +108,29 @@ test('a crew row with pay recorded cannot be handed to another member', () => {
   assert.equal(reassignBlocked(unpaid, 'sandeep'), false);
   assert.equal(reassignBlocked(null, 'sandeep'), false); /* a new row */
 });
+
+test('"today" is Hyderabad\'s day whatever zone the phone is in', () => {
+  /* 20:00 UTC on 1 Nov = 13:00 in Los Angeles (still 1 Nov there) = 01:30 on 2 Nov in Hyderabad */
+  const at = Date.parse('2026-11-01T20:00:00Z');
+  class LateEvening extends Date {
+    constructor(...a) {
+      super(...(a.length ? a : [at]));
+    }
+    static now() {
+      return at;
+    }
+  }
+  const prevTZ = process.env.TZ;
+  process.env.TZ = 'America/Los_Angeles';
+  try {
+    const M = loadModule('fs-shared.js', { Date: LateEvening });
+    assert.equal(M.todayISO(), '2026-11-02');
+    assert.equal(M.istDay(Date.parse('2026-11-01T18:29:59Z')), '2026-11-01');
+    assert.equal(M.istDay(Date.parse('2026-11-01T18:30:00Z')), '2026-11-02');
+    assert.equal(M.istAt('2026-11-02', '08:00').toISOString(), '2026-11-02T02:30:00.000Z');
+    assert.equal(M.istAt('2026-11-02').toISOString(), '2026-11-01T18:30:00.000Z');
+  } finally {
+    if (prevTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = prevTZ;
+  }
+});

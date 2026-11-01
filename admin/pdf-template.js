@@ -2,7 +2,7 @@
    Exports buildQuotePdf(pkg, contact, terms) -> jsPDF document.
    Embeds Noto Sans for the ₹ glyph; falls back to "Rs." if that fails. */
 
-import { STUDIO_PHONE } from '../fs-shared.js';
+import { STUDIO_PHONE, todayISO } from '../fs-shared.js';
 
 const GOLD  = [184, 144, 43];
 const GOLDD = [142, 110, 30];
@@ -255,7 +255,7 @@ export async function buildQuotePdf(pkg, contact, terms){
   doc.setFont('helvetica', 'bold');
   doc.text('Date :', MR - 110, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(fmtDateHuman(pkg.quoteDate) || fmtDateHuman(new Date().toLocaleDateString('en-CA')), MR - 74, y);
+  doc.text(fmtDateHuman(pkg.quoteDate) || fmtDateHuman(todayISO()), MR - 74, y);
   if (pkg.careOf) {
     y += 15;
     doc.setFont('helvetica', 'bold'); doc.text('C/o :', ML, y);

@@ -1,4 +1,4 @@
-import { STUDIO_PHONE, STUDIO_PHONE10, esc, inr, todayISO, payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
+import { STUDIO_PHONE, STUDIO_PHONE10, esc, inr, todayISO, istDay, istAt, payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 /* compact rupees for tiles too narrow for the full figure — ₹8.4L, ₹1.2Cr.
@@ -3145,7 +3145,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + (d.slice(0,4) !== todayISO().slice(0,4) ? ' ' + d.slice(0,4) : '')
     : '';
   /* the same for a Date — a lead's arrival, a note's time stamp */
-  const dayOf = d => (d && !isNaN(d)) ? stepDate(d.toLocaleDateString('en-CA')) : '';
+  const dayOf = d => (d && !isNaN(d)) ? stepDate(istDay(d.getTime())) : '';
   /* A date as a small calendar block — the day large, "Oct 2026" under it —
      for list rows whose dates span years (a partner studio's job history and
      shoot list), where every row carries its year so they line up. */
@@ -3370,7 +3370,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   /* ---------- shared package helpers ---------- */
   const livePkgs = () => PKGS.filter(x=>!x.deleted);
-  const daysAgo = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? Math.floor((Date.now() - new Date(d+'T00:00').getTime()) / 864e5) : null;
+  const daysAgo = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? Math.floor((Date.now() - istAt(d).getTime()) / 864e5) : null;
   const waLink = (numOrPkg, text) => {
     const n = (numOrPkg && typeof numOrPkg === 'object')
       ? waNumberFor(numOrPkg)
@@ -3740,7 +3740,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _upEvents = [];
   function renderUpcoming(){
     const el = $('#upcoming'); if(!el) return;
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = todayISO();
     /* strictly AFTER today: the calendar day box opens on today and already
        shows today's events in full, so repeating them here as the hero was
        the same shoot twice on one screen */
@@ -4662,7 +4662,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let calY, calM, calSel = null;
   /* today is selected from the start: Home opens showing today's events
      instead of "Tap a date to see its events" */
-  (function(){ const n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); calSel = n.toLocaleDateString('en-CA'); })();
+  (function(){ const t = todayISO(); calY = +t.slice(0,4); calM = +t.slice(5,7) - 1; calSel = t; })();
   /* Rebuilt from scratch on every call, and called many times over — the grid,
      the day box, Next shoot, and once per date inside dateConflicts(), which
      itself runs in a .map() over a package's dates on save. Hold the build for
@@ -4711,7 +4711,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const dim = new Date(calY, calM+1, 0).getDate();
     const byDate = {};
     calEvents().forEach(e=>{ (byDate[e.date] = byDate[e.date]||[]).push(e); });
-    const todayIso = new Date().toLocaleDateString('en-CA');
+    const todayIso = todayISO();
     /* Monday-first, so columns 5 and 6 are Sat and Sun — tinted, because most
        functions land on a weekend and the eye needs to find them fast */
     let h = ['M','T','W','T','F','S','S'].map((d,i)=>`<div class="cal-dow ${i>4?'we':''}">${d}</div>`).join('');
@@ -4752,7 +4752,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const evs = calEvents().filter(e=>e.date===calSel);
     const human = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     const humanShort = new Date(calSel+'T00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
-    const isToday = calSel === new Date().toLocaleDateString('en-CA');
+    const isToday = calSel === todayISO();
     const fests = festivalsOn(calSel);
     /* a booked shoot on this date: one tap to the crew list for it. The crew
        list lost its own slot in the bar to Money; on a shoot day this puts it
@@ -4797,7 +4797,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   });
   on('#calPrev', 'click', ()=>{ calM--; if(calM<0){ calM=11; calY--; } renderCalendar(); });
   on('#calNext', 'click', ()=>{ calM++; if(calM>11){ calM=0; calY++; } renderCalendar(); });
-  on('#calToday', 'click', ()=>{ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=n.toLocaleDateString('en-CA'); renderCalendar(); });
+  on('#calToday', 'click', ()=>{ const t=todayISO(); calY=+t.slice(0,4); calM=+t.slice(5,7)-1; calSel=t; renderCalendar(); });
   /* jump to the calendar on Home, focused on a date */
   function gotoCalendar(dateISO){
     if(/^\d{4}-\d{2}-\d{2}$/.test(dateISO||'')){
@@ -6410,7 +6410,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      shape to pick from. The functions live in a second select, and only when
      the job is not the whole booking. */
   function bookingRows(){
-    const cutoff = new Date(Date.now() - 240*864e5).toLocaleDateString('en-CA');
+    const cutoff = istDay(Date.now() - 240*864e5);
     return livePkgs()
       .filter(x=>['booked','delivered'].includes(x.status||'draft'))
       .map(pk=>{
@@ -9968,8 +9968,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     };
     return rows.map(r=>r.map(cell).join(',')).join('\n');
   }
-  const tsDate = t => (t && typeof t.toDate === 'function') ? t.toDate().toLocaleDateString('en-CA') : '';
-  const stamp = () => new Date().toLocaleDateString('en-CA');
+  const tsDate = t => (t && typeof t.toDate === 'function') ? istDay(t.toDate().getTime()) : '';
+  const stamp = () => todayISO();
   /* exports fetch the FULL collections — the in-memory lists are capped, a backup must not be.
      Server-first: an offline cache copy is clearly labelled, never passed off as a full backup. */
   async function fetchAll(){
@@ -12680,9 +12680,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
 
   function insData(){
     const now = new Date();
-    const cutIso = new Date(now.getTime() - 365*864e5).toLocaleDateString('en-CA');
+    const cutIso = istDay(now.getTime() - 365*864e5);
     const inWin = iso => _insAll || (ISO_RE.test(iso||'') && iso >= cutIso);
-    const tsIso = t => (t && typeof t.toDate === 'function') ? t.toDate().toLocaleDateString('en-CA') : '';
+    const tsIso = t => (t && typeof t.toDate === 'function') ? istDay(t.toDate().getTime()) : '';
     /* Packages are anchored to their FIRST event date, the same anchor the
        money table uses — so a January enquiry for a November wedding counts
        as November's work on both screens. */
@@ -14756,7 +14756,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function askTables(){
     const today = todayISO();
     const ym = d => String(d||'').slice(0, 7);
-    const tsIso = t => (t && typeof t.toDate === 'function') ? t.toDate().toLocaleDateString('en-CA') : '';
+    const tsIso = t => (t && typeof t.toDate === 'function') ? istDay(t.toDate().getTime()) : '';
     const keys = [];
     { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + ASK_AHEAD); for(let i = 0; i < ASK_MONTHS + ASK_AHEAD; i++){ keys.push(d.toLocaleDateString('en-CA').slice(0, 7)); d.setMonth(d.getMonth() - 1); } }
     const rows = Object.create(null);
@@ -15767,7 +15767,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _apMoreAt = 0, _apFns = null;
   const AP_DAILY_CAP = 700;   /* 45 days × the dozen or so buckets a day, with room */
   const AP_SIGNIN_OPENED = '2026-10-06';   /* sign-in opened to everyone: account counts before it are a different crowd */
-  const istDayAt = ms => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+  const istDayAt = istDay;
   const apDayShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(d + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
   const apDateTime = ms => ms ? new Date(ms).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
   /* "properties/123456789" or "123456789" → the number; anything else → '' (the server cleans it the same way) */
@@ -15975,7 +15975,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       sub: s.ownerName || 'no owner named', p10: p10s(s.phone10 || s.phone), phone: s.phone || '' })));
     /* clients: a booked job, or one delivered in the last 90 days — the
        people who have a reason to open the app today, not every wedding ever */
-    const cutIso = new Date(now - 90 * DAY).toLocaleDateString('en-CA');
+    const cutIso = istDay(Number(now) - 90 * DAY);
     const cl = new Map();
     livePkgs().forEach(x=>{
       const st = x.status || 'draft';

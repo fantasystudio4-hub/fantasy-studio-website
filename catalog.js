@@ -232,7 +232,9 @@ function fillCopyTokens(text){
 function _scope(c){ return (c && typeof c.querySelector === 'function') ? c : document; }
 var $  = function(s,c){ return _scope(c).querySelector(s); };
 var $$ = function(s,c){ return [].slice.call(_scope(c).querySelectorAll(s)); };
-var TODAY_ISO = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd, local time
+/* yyyy-mm-dd in Hyderabad (the studio's day, whatever the visitor's zone) — the
+   same rule as fs-shared.js todayISO; this file is a classic script and cannot import it */
+var TODAY_ISO = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
 function esc(t){ return String(t).replace(/[&<>"']/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 

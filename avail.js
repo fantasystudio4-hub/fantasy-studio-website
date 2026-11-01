@@ -44,8 +44,8 @@ const WORD   = { '': 'available', y: 'filling up', r: 'fully booked' };
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const pad      = n => String(n).padStart(2, '0');
-const isoOf    = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const todayIso = () => isoOf(new Date());
+/* the studio's day, Hyderabad time — the same rule as fs-shared.js todayISO */
+const todayIso = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
 const monthKey = (y, m) => `${y}-${pad(m + 1)}`;
 const flag     = v => (v === 'y' || v === 'r') ? v : '';           /* anything else in the doc = free */
 const esc      = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -108,8 +108,8 @@ export function mountAvailability(host, opts = {}){
     heading: opts.heading == null ? 'Studio availability' : String(opts.heading),
   };
 
-  const now = new Date();
-  let y = now.getFullYear(), m = now.getMonth();   /* the visible month */
+  const t0 = todayIso();
+  let y = +t0.slice(0, 4), m = +t0.slice(5, 7) - 1;   /* the visible month: Hyderabad's */
   let sel = null;                                  /* selected 'YYYY-MM-DD' in the visible month */
   let days = {};                                   /* the visible month's doc.days */
   let loading = false, failed = false, dead = false;
@@ -142,7 +142,7 @@ export function mountAvailability(host, opts = {}){
 
   /* this month .. +monthsAhead, recomputed on use so a page left open
      past midnight on the 31st still moves with the calendar */
-  const bounds = () => { const n = new Date(), lo = n.getFullYear() * 12 + n.getMonth(); return { lo, hi: lo + o.monthsAhead }; };
+  const bounds = () => { const t = todayIso(), lo = +t.slice(0, 4) * 12 + (+t.slice(5, 7) - 1); return { lo, hi: lo + o.monthsAhead }; };
 
   function readMine(){
     let list = [];
@@ -269,10 +269,11 @@ export function mountAvailability(host, opts = {}){
   prevBtn.addEventListener('click', () => go(-1));
   nextBtn.addEventListener('click', () => go(1));
   $('[data-today]').addEventListener('click', () => {
-    const n = new Date();
-    sel = isoOf(n);
-    if(n.getFullYear() === y && n.getMonth() === m){ paint(); return; }
-    y = n.getFullYear(); m = n.getMonth();
+    const t = todayIso();
+    sel = t;
+    const ty = +t.slice(0, 4), tm = +t.slice(5, 7) - 1;
+    if(ty === y && tm === m){ paint(); return; }
+    y = ty; m = tm;
     subscribe();
   });
   grid.addEventListener('click', e => {

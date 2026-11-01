@@ -29,8 +29,18 @@ export const esc = t => String(t == null ? '' : t)
 /* whole rupees, Indian grouping: ₹1,20,000 (junk reads as ₹0) */
 export const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 
-/* today as yyyy-mm-dd on this device's calendar — the rule every page used */
-export const todayISO = () => new Date().toLocaleDateString('en-CA');
+/* Days are the STUDIO's days: Hyderabad time, whatever zone the phone is set
+   to (owner, 1 Nov 2026). A crew member or the owner in Dubai, or an NRI client
+   in the US, used to see "today" flip at their own midnight — fees owed a day
+   early or late, a countdown at zero the evening before, a different day from
+   the morning brief. India has no daylight saving, so a fixed +5:30 is exact. */
+const IST_MS = 330 * 60000;
+/* the yyyy-mm-dd in Hyderabad at epoch-ms (a Firestore Timestamp: t.toMillis()) */
+export const istDay = ms => new Date(Number(ms) + IST_MS).toISOString().slice(0, 10);
+/* today as yyyy-mm-dd, Hyderabad time */
+export const todayISO = () => istDay(Date.now());
+/* the moment a yyyy-mm-dd (and optional hh:mm) begins, Hyderabad time */
+export const istAt = (date, hhmm) => new Date(`${date}T${hhmm || '00:00'}:00+05:30`);
 
 /* asked once per row per total — over 2,000 assignments a date-formatter call
    each time is felt on a phone, so today's date is held for a second */

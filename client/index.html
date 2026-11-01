@@ -677,6 +677,7 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 <!-- the store app's tab bar (window.FSApp); a no-op without html.fs-app -->
 <script src="../app-shell.js"></script>
 <script type="module">
+import { todayISO, istAt } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 /* the store app, and nothing else: set by the <head> script */
@@ -1903,7 +1904,7 @@ let _nuEvent = null, _nuTimer = null;
 function renderJump(pkgs){
   const box = $('#pkgJump'); if(!box) return;
   if(pkgs.length < 2){ box.hidden = true; box.innerHTML = ''; return; }
-  const today = new Date().toLocaleDateString('en-CA');
+  const today = todayISO();
   box.hidden = false;
   box.innerHTML = pkgs.map(x=>{
     const ds = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
@@ -1950,7 +1951,7 @@ function widgetNext(list){
 }
 function renderNextUp(pkgs){
   const box = $('#nextUp'); if(!box) return;
-  const today = new Date().toLocaleDateString('en-CA');
+  const today = todayISO();
   const ahead = pkgs
     .flatMap(p=>(p.events||[]).map(e=>({ title:e.title, date:e.date, slot:e.slot, venue:e.venue, quoteNo:p.quoteNo, pkgStatus:p.status })))
     .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date||'') && e.date >= today)
@@ -1985,7 +1986,7 @@ function renderNextUp(pkgs){
 function tickNextUp(){
   const e = _nuEvent, box = $('#nuClock');
   if(!e || !box) return;
-  const ms = new Date(e.date+'T00:00') - new Date();
+  const ms = istAt(e.date) - new Date();   /* the day begins in Hyderabad, not where the phone is */
   if(ms <= 0){
     box.className = 'nu-clock today';
     box.innerHTML = '<div class="nu-today">🎉 It\'s today — see you there!</div>';
@@ -2285,14 +2286,14 @@ function pkgHTML(x, canToggle, collapsed, idx, total){
     const last = ds.length ? ds[ds.length-1] : '';
     /* not _today: that const is declared further down this function, so
        reading it here is a temporal dead zone throw, not a value */
-    if(last && last < new Date().toLocaleDateString('en-CA')) done[SHOT_STEP] = last;
+    if(last && last < todayISO()) done[SHOT_STEP] = last;
   }
   const doneCount = steps.filter(s=>s in done).length;
   const pct = steps.length ? Math.round(100*doneCount/steps.length) : 0;
   const ph = (contact().phone||'').replace(/\D/g,'');
   /* which function is behind them, which one is next — a three-day wedding
      read as one undifferentiated list before */
-  const _today = new Date().toLocaleDateString('en-CA');
+  const _today = todayISO();
   const _nextDate = (x.events||[]).map(e=>e.date).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'') && d >= _today).sort()[0] || '';
   /* A four-function wedding was four equal blocks in a row, which reads as
      four separate things booked rather than one celebration across four days.

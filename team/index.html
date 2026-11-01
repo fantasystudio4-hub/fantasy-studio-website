@@ -912,7 +912,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 <!-- the store app's tab bar; a classic script, so FSApp exists before the module runs -->
 <script src="../app-shell.js"></script>
 <script type="module">
-import { STUDIO_PHONE, esc, inr, todayISO, payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
+import { STUDIO_PHONE, esc, inr, todayISO, istDay, istAt, payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -947,10 +947,10 @@ const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? new Date(d+'T00:00').to
    wedding read "₹6,000 on 3 Oct", which looks like this month. */
 const fmtShort = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'')
   ? new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-    + (d.slice(0,4) !== new Date().toLocaleDateString('en-CA').slice(0,4) ? ' ' + d.slice(0,4) : '')
+    + (d.slice(0,4) !== todayISO().slice(0,4) ? ' ' + d.slice(0,4) : '')
   : (d||'—');
 /* the same for a Firestore timestamp (when a shoot was confirmed or done) */
-const fmtTs = t => t && t.toDate ? fmtShort(t.toDate().toLocaleDateString('en-CA')) : '';
+const fmtTs = t => t && t.toDate ? fmtShort(istDay(t.toDate().getTime())) : '';
 const fmtTime = t => {
   const m = /^(\d{2}):(\d{2})$/.exec(t||''); if(!m) return t||'';
   const h = Number(m[1]);
@@ -1749,8 +1749,7 @@ if(!CONFIGURED){
   const dayTag = d => {
     const t = todayISO();
     if(d === t) return '<i class="daytag">Today</i>';
-    const tm = new Date(t+'T00:00'); tm.setDate(tm.getDate()+1);
-    return d === tm.toLocaleDateString('en-CA') ? '<i class="daytag">Tomorrow</i>' : '';
+    return d === istDay(istAt(t).getTime() + 864e5) ? '<i class="daytag">Tomorrow</i>' : '';
   };
   /* ---------- one tap into the phone's calendar (FSApp.calendar, app only) ----------
      Drawn only where the plugin is on board — never in a browser, which
@@ -2177,7 +2176,7 @@ if(!CONFIGURED){
     const set = new Set(done.map(a=>(a.date||'').slice(0,7)));
     const now = new Date();
     let start = 0;
-    if(!set.has(now.toLocaleDateString('en-CA').slice(0,7))) start = 1;
+    if(!set.has(todayISO().slice(0,7))) start = 1;
     let n = 0;
     for(let i = start; i < 120; i++){
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -2333,7 +2332,7 @@ if(!CONFIGURED){
     if(!a || !box) return;
     /* to the call time when there is one, otherwise to the start of the day */
     const t = /^(\d{2}):(\d{2})$/.exec(a.callTime||'');
-    const target = new Date(a.date + 'T' + (t ? a.callTime : '00:00') + ':00');
+    const target = istAt(a.date, t ? a.callTime : '00:00');   /* call times are the studio's, India time — as shootStart */
     let ms = target - new Date();
     if(ms <= 0){
       box.className = 'cd-clock live';
