@@ -8,12 +8,10 @@ const assert = require('node:assert/strict');
 const { read, cut } = require('./helpers/load');
 
 const TODAY = '2026-11-01';
-function load(src, from, to, extra) {
+function load(src, from, to, extra, more) {
   const body = cut(src, from, to);
-  return new Function(
-    'todayISO',
-    `${extra || ''}\n${body}\nreturn { payFee, payGot, payDue, payEarned, payOwed, payUpcoming };`,
-  )(() => TODAY);
+  const names = ['payFee', 'payGot', 'payDue', 'payEarned', 'payOwed', 'payUpcoming'].concat(more || []);
+  return new Function('todayISO', `${extra || ''}\n${body}\nreturn { ${names.join(', ')} };`)(() => TODAY);
 }
 const admin = load(read('admin/app.js'), '  const payFee = a =>', "  /* 'paid' only when");
 const team = load(read('team/index.html'), 'const payFee = a =>', '/* every instalment as');
@@ -53,4 +51,22 @@ test('pay helpers: owed + upcoming === due, never negative', () => {
   assert.equal(admin.payOwed(ROWS[7]), 0);
   assert.equal(admin.payUpcoming(ROWS[7]), 4000);
   assert.equal(admin.payOwed(ROWS[9]), 7000);
+});
+
+test('a crew row with pay recorded cannot be handed to another member', () => {
+  const { reassignBlocked } = load(
+    read('admin/app.js'),
+    '  const payFee = a =>',
+    "  /* 'paid' only when",
+    '',
+    'reassignBlocked',
+  );
+  const paid = { memberId: 'vikas', pay: { amount: 5000, paidAmount: 2000 } };
+  const legacyPaid = { memberId: 'vikas', pay: { amount: 5000, paid: true } };
+  const unpaid = { memberId: 'vikas', pay: { amount: 5000 } };
+  assert.equal(reassignBlocked(paid, 'sandeep'), true);
+  assert.equal(reassignBlocked(legacyPaid, 'sandeep'), true);
+  assert.equal(reassignBlocked(paid, 'vikas'), false); /* fee / time edits on the same person still save */
+  assert.equal(reassignBlocked(unpaid, 'sandeep'), false);
+  assert.equal(reassignBlocked(null, 'sandeep'), false); /* a new row */
 });

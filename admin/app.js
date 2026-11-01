@@ -5661,6 +5661,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   const payEarned = a => !a || a.kind === 'edit' || !/^\d{4}-\d{2}-\d{2}$/.test(a.date||'') || a.date < payToday();
   const payOwed = a => payEarned(a) ? payDue(a) : 0;        /* what is owed NOW */
   const payUpcoming = a => payEarned(a) ? 0 : payDue(a);    /* agreed, for a shoot that has not happened yet */
+  /* A row that money has been recorded on belongs to the person who was paid:
+     the doc carries pay.payments[] and pay.paidAmount, so changing its member
+     would hand those receipts to someone else (owner, 1 Nov 2026: refuse it —
+     the new person gets a row of their own). */
+  const reassignBlocked = (old, memberId) => !!old && old.memberId !== memberId && payGot(old) > 0;
   /* 'paid' only when a real fee has been fully settled; 'part' once money has
      moved but not all of it; 'due' otherwise */
   function payState(a){
@@ -8864,6 +8869,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(!picked.length){ toast('Tap a team member to assign'); return; }
     const multi = !_asEditId && picked.length > 1;
     const m = picked[0];
+    const was = _asEditId ? ASGS.find(v=>v.id===_asEditId) : null;
+    if(reassignBlocked(was, m.id)){
+      toast(`${was.memberName||'The member on this row'} has already been paid ${inr(payGot(was))} on this row — add ${m.name||'the new member'} as a new assignment instead`);
+      return;
+    }
     /* several at once: each keeps their own role and their own rate, because
        one rate and one role across a mixed crew is never what was meant */
     const roleFor = x => multi ? (x.role || $('#asRole').value || '') : ($('#asRole').value || x.role || '');
