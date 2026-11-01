@@ -48,6 +48,11 @@ _cptest.html
 # excluded here as well so the file does not exist in production to be fetched.
 _demo-data.js
 **/_demo-data.js
+# portfolio/demo/ is the sample media behind the localhost-only
+# /portfolio/?demo=gallery view (~440 KB of photos and clips). Nothing on www
+# can show it, so it does not ship (B8, 1 Nov 2026).
+portfolio/demo/
+**/portfolio/demo/
 
 # NOTE: firebase-config.js is intentionally NOT excluded — the site needs it at
 # runtime, and a Firebase web config is public by design (it is not a secret;
