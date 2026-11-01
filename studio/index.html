@@ -1958,7 +1958,7 @@ function jobHTML(x, canToggle, collapsed, idx, total){
         ${hasBreak ? `<div class="ln"><span>Job total</span><span>${inr(tt.gross)}</span></div>
         <div class="ln"><span>Partner discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
         <div class="ln big"><span>Final amount</span><span>${inr(tt.finalPrice||0)}</span></div>
-        ${(x.payments||[]).length ? `<div class="brk-h">Payments received</div>${x.payments.map(pm=>
+        ${(x.payments||[]).filter(Boolean).length ? `<div class="brk-h">Payments received</div>${x.payments.filter(Boolean).map(pm=>
           `<div class="payrow"><span>${esc(dmy(pm.date))} · ${esc(pm.mode||'')}</span><b>${inr(pm.amount)}</b></div>`).join('')}` : ''}
       </details>` : ''}
     </div>

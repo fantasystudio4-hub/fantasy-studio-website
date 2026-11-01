@@ -2477,7 +2477,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     ].map(a=>JSON.stringify(a));
     if(Array.isArray(CFG.deliverySteps) && OLD_DSTEP_SETS.includes(JSON.stringify(CFG.deliverySteps))){
       CFG.deliverySteps = DEFAULTS.deliverySteps.slice();
-      try{ setDoc(doc(db,'config','site'), { deliverySteps: CFG.deliverySteps }, { merge: true }); }catch(e){}
+      /* best effort; .catch, because a try/catch cannot see an async refusal */
+      setDoc(doc(db,'config','site'), { deliverySteps: CFG.deliverySteps }, { merge: true }).catch(()=>{});
     }
     /* A form that stops half-drawn leaves every list after it EMPTY, and Save
        All would publish that. On the one long page the owner could see it;
@@ -17500,7 +17501,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         CFG = CFG || {}; CFG.learnedRates = learned;
         /* learned rates are the studio's own numbers — config/internal, never
            the world-readable document */
-        setDoc(doc(db,'config','internal'), { learnedRates: learned }, { merge: true });
+        setDoc(doc(db,'config','internal'), { learnedRates: learned }, { merge: true }).catch(()=>{});   /* best effort — not an unhandled rejection */
       }catch(e){}
       loadPkgs();
       /* Don't offer to "add the missing payment" here: paySave INCREMENTS
