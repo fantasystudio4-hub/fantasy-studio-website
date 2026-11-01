@@ -4379,8 +4379,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function pkgGrpsOpen(){
     if(!_pkgGrpsOpen){
       try{ _pkgGrpsOpen = JSON.parse(localStorage.getItem('fs_pkg_grps')||'null'); }catch(err){}
-      if(!_pkgGrpsOpen || typeof _pkgGrpsOpen !== 'object') _pkgGrpsOpen = { needs:true, booked:true, sent:false, unconfirmed:false, draft:false, delivered:false };
-      if(!('needs' in _pkgGrpsOpen)) _pkgGrpsOpen.needs = true;   /* devices that stored this map before the worklist existed */
+      if(!_pkgGrpsOpen || typeof _pkgGrpsOpen !== 'object') _pkgGrpsOpen = { booked:true, sent:false, unconfirmed:false, draft:false, delivered:false };
     }
     return _pkgGrpsOpen;
   }
@@ -4443,7 +4442,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
              <span class="empty-state__icon">📦</span>
              <p class="empty-state__title">No packages yet</p>
              <p class="empty-state__text">A package holds the events, the crew and the money for one booking.</p>
-             <button type="button" class="btn btn--primary" id="pkgEmptyNew">＋ Create your first package</button>
+             <button type="button" class="btn btn--ghost" id="pkgEmptyNew">＋ New package</button>
            </div>`;
       return;
     }
@@ -5216,7 +5215,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         <div class="fld"><label>For end client (optional)</label>
           <input id="qeEnd" placeholder="the studio's own client" />
         </div>`
-      : `<div class="qe-warn">No partner studios yet — add one in the <b>B2B</b> tab first, then come back here.</div>`;
+      : `<div class="qe-warn">No partner studios yet — add one under <b>More › Partner studios</b> first, then come back here.</div>`;
     }else{
       /* opened from a studio's page, "Existing" means that studio's own jobs;
          from the B2B list it means studio jobs generally, never a retail one */
@@ -5452,7 +5451,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     }else if(_qeMode === 'studio'){
       const sel = $('#qeStudio');
       stu = sel ? studioById(sel.value) : null;
-      if(!stu){ toast('Pick a partner studio — add one under More → Partner studios first'); return; }
+      if(!stu){ toast('Pick a partner studio — add one under More › Partner studios first'); return; }
       name = stu.name || 'Studio';
     }else{
       name = $('#qeName').value.trim();
@@ -7751,7 +7750,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           <span>${w ? 'They are' : 'They are each'} assigned to editing work${
             lost.length > 1 ? ` on ${lost.length} bookings` : ''}, and the crew page finds an editor by
             phone — so ${w ? 'that job cannot reach them' : 'those jobs cannot reach them'} until
-            ${w ? 'their number is' : 'the numbers are'} added. More → Team → tap the name.</span>`;
+            ${w ? 'their number is' : 'the numbers are'} added. More › Team → tap the name.</span>`;
       }else{ el.innerHTML = ''; }
       return;
     }
@@ -7775,8 +7774,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       <b>${head}</b>
       <span>${body}</span>
       ${who.length ? `<span class="ejfix-x">${who.length === 1
-        ? `${esc(who[0])} has no phone number on file, so their work stays out of reach even after this — add it under More → Team.`
-        : `${who.length} editors have no phone number on file, so their work stays out of reach even after this — add them under More → Team.`}</span>` : ''}
+        ? `${esc(who[0])} has no phone number on file, so their work stays out of reach even after this — add it under More › Team.`
+        : `${who.length} editors have no phone number on file, so their work stays out of reach even after this — add them under More › Team.`}</span>` : ''}
       <button type="button" class="btn btn--sm btn--primary" data-ejfix>${
         shut ? `Let ${one?'the editor':'the editors'} in` : `Send the full scope`}</button>`;
   }
@@ -8645,7 +8644,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + rows.map(r=>`<div class="amr"><span>${esc(r.name)}</span><em>${esc(roleLabel(r.role))}</em>`
           + `<b class="${r.rate?'':'zero'}">${r.rate ? inr(r.rate) : 'no rate'}</b></div>`).join('')
       + `<div class="amr tot"><span>Total</span><em></em><b>${inr(total)}</b></div>`
-      + (noRate ? `<div class="amn">${noRate === 1 ? 'One member has' : noRate + ' members have'} no pay per event set, so ${noRate === 1 ? 'they' : 'they'} will be saved at ₹0 — set it on their card under More → Team, or assign them on their own to type a one-off amount.</div>` : '');
+      + (noRate ? `<div class="amn">${noRate === 1 ? 'One member has' : noRate + ' members have'} no pay per event set, so ${noRate === 1 ? 'they' : 'they'} will be saved at ₹0 — set it on their card under More › Team, or assign them on their own to type a one-off amount.</div>` : '');
   }
 
   function syncAsUI(){
@@ -8735,7 +8734,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return head + pickBtn(m);
     }).join('') || `<div class="empty empty--tight">${fq
       ? 'Nobody matches “' + esc(fq) + '”.'
-      : 'No active team members — add one under More → Team.'}</div>`;
+      : 'No active team members — add one under More › Team.'}</div>`;
 
     function pickBtn(m){
       const busy = busyOf(m);
@@ -9056,7 +9055,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(cs){
       const a = ASGS.find(v=>v.id===cs.dataset.callsheet); if(!a) return;
       const wa = crewWaNumber(a);
-      if(!wa){ toast('No phone number for this member — add one under More → Team'); return; }
+      if(!wa){ toast('No phone number for this member — add one under More › Team'); return; }
       openWa('https://wa.me/' + wa + '?text=' + encodeURIComponent(callSheetText(a)));
       return;
     }
@@ -9224,7 +9223,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       if(memberPhone10(m).length !== 10) bits.push('⚠ no phone');
       return `<button type="button" class="cpick" data-mamem="${esc(m.id)}"><i class="dot booked"></i>`
         + `<span class="cp-t"><b>${esc(m.name||'—')}</b><em>${esc(bits.join(' · '))}</em></span></button>`;
-    }).join('') || '<div class="empty empty--tight">No active outdoor crew — add one under More → Team.</div>';
+    }).join('') || '<div class="empty empty--tight">No active outdoor crew — add one under More › Team.</div>';
   }
   /* what one event row says about this member, before it is ticked */
   function maState(m, r, ticked){
@@ -15598,7 +15597,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(pick){ const x = PKGS.find(p=>p.id===pick.dataset.qaPick); closeQaUI(); if(x) openPay(x); return; }
     /* "Today's calendar" and "Add a team member" left this menu: the calendar
        is the top of Home with its own Today button, and a member is added
-       from More → Team → ＋ Add team member. */
+       from More › Team → ＋ Add team member. */
   });
   /* delegated: #qaPaySearch is created by renderQaPay, so a direct listener
      would bind to nothing at load and then to a replaced element after */
@@ -17145,7 +17144,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       $('#stuJobTerms').textContent = (stu.paymentTerms ? 'Terms: ' + stu.paymentTerms + ' · ' : '')
         + (stu.rateCard && Object.keys(stu.rateCard).length
             ? 'Services quote at this studio\'s negotiated rates.'
-            : 'No rate card saved yet — rates fall back to your normal ones (set the card in More → Partner studios → the studio → Rate card).');
+            : 'No rate card saved yet — rates fall back to your normal ones (set the card in More › Partner studios › the studio › Rate card).');
       $('#pcEndClient').value = x ? (x.endClientName||'') : '';
       $('#pcWhiteLabel').checked = x ? !!x.whiteLabel : false;
     }else{
