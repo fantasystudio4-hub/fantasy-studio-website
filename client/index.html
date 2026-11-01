@@ -1523,7 +1523,9 @@ function loadPackages(user, again){
     return new Promise((resolve, reject)=>{
       let settled = false;
       _pkgUnsub = onSnapshot(
-        query(collection(db,'packages'), where('clientPhone','==', last10)),
+        /* shared == true: the rules now let a client read only packages the studio has
+           shared (not a draft, not in Trash), and a LIST query must prove that in its filter */
+        query(collection(db,'packages'), where('clientPhone','==', last10), where('shared','==',true)),
         snap=>{
           _pkgLast = { snap, user };
           try{

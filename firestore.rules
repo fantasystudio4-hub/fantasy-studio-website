@@ -215,10 +215,16 @@ service cloud.firestore {
     // read). Each branch of the OR stays provable from its own portal's
     // filters, so adding this one cannot break the client query above.
     match /packages/{pkgId} {
+      // shared == true on both branches (1 Nov 2026): a draft or a job in Trash
+      // is the studio's alone. The admin keeps packages.shared =
+      // !deleted && status != 'draft' (admin/app.js syncShared), and the portals
+      // query with where('shared','==',true) so each LIST stays provable.
       allow read: if isAdmin()
         || (request.auth != null
-            && resource.data.clientPhone == clientPhone10())
+            && resource.data.clientPhone == clientPhone10()
+            && resource.data.shared == true)
         || (request.auth != null
+            && resource.data.shared == true
             && resource.data.clientType == 'studio'
             && resource.data.studioId is string
             && get(/databases/$(database)/documents/studios/$(resource.data.studioId))

@@ -1304,7 +1304,7 @@ function syncPkgListeners(){
   STUS.forEach(s=>{
     if(_pkgUnsubs.has(s.id)) return;
     const u = onSnapshot(query(collection(db,'packages'),
-        where('clientType','==','studio'), where('studioId','==',s.id)), snap=>{
+        where('clientType','==','studio'), where('studioId','==',s.id), where('shared','==',true)), snap=>{
       _pkgErrs.delete(s.id);
       _pkgSeen.add(s.id);
       PKGMAP.set(s.id, snap.docs.map(d=>({ id:d.id, ...d.data() })));

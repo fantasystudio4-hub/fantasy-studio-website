@@ -318,7 +318,8 @@ export async function detectRoles(user){
     };
     await Promise.all([
       check('client', async () => {
-        const s = await getDocs(query(collection(db, 'packages'), where('clientPhone', '==', p10)));
+        /* shared == true: what the rules let a client read (no drafts, nothing in Trash) */
+        const s = await getDocs(query(collection(db, 'packages'), where('clientPhone', '==', p10), where('shared', '==', true)));
         /* the client portal's own filter: no drafts, no deleted, no B2B jobs */
         const mine = s.docs.map(d => d.data())
           .filter(x => !x.deleted && (x.status || 'draft') !== 'draft' && (x.clientType || 'direct') !== 'studio');

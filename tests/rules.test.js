@@ -14,3 +14,18 @@ for (const file of ['firestore.rules', 'storage.rules']) {
     assert.match(m[1], /request\.auth\.token\.firebase\.sign_in_provider == 'google\.com'/);
   });
 }
+
+test('firestore.rules: clients and partners read only packages the studio has shared', () => {
+  const rules = read('firestore.rules');
+  const m = rules.match(/match \/packages\/\{pkgId\} \{([\s\S]*?)allow write/);
+  assert.ok(m, 'packages rule not found');
+  assert.equal(
+    (m[1].match(/resource\.data\.shared == true/g) || []).length,
+    2,
+    'both the client and the partner branch',
+  );
+  /* and the portals' LIST queries prove it */
+  for (const f of ['client/index.html', 'fs-auth.js', 'studio/index.html']) {
+    assert.match(read(f), /where\(\s*'shared',\s*'==',\s*true\s*\)/, `${f} must query with shared == true`);
+  }
+});
