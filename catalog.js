@@ -101,7 +101,7 @@ var SERVICES = [
   { key:'candidPhotography', label:'Candid Photography',  unit:'event', cat:'photo',
     blurb:'A photographer following the real moments, not just the posed ones.',
     icon:'camera' },
-  { key:'ladyShooter',       label:'Female Shooter Premium', unit:'head', cat:'photo',
+  { key:'ladyShooter',       label:'Female Shooter', unit:'head', cat:'photo',
     badge:'Ladies’ Section Only',
     blurb:'A lady photographer covering the ladies’ side exclusively — for pardah-observing families.',
     icon:'lady' },
@@ -171,7 +171,7 @@ var PRESETS = {
   },
   royal: {
     name:'Royal', tag:'Signature',
-    desc:'Full signature coverage — cinematography, candid & drone for Nikah & Valima. + cinematic teasers.',
+    desc:'Full signature coverage — cinematography, candid & drone for Nikah & Valima, plus cinematic teasers.',
     events:[
       {type:'Sanchak', services:{traditionalVideo:1, traditionalPhoto:1}},
       {type:'Nikah', services:{traditionalPhoto:2, traditionalVideo:2, cinematography:1, candidPhotography:1, drone:1}},
@@ -505,16 +505,6 @@ function restoreQuote(d){
      its sheet count — it is read past, not restored */
   st.promo = own(PROMO_CODES, d.promo) ? d.promo : '';
   return st;
-}
-
-/* where the builder lives, from any page on the site */
-function builderUrl(opts){
-  var base = (location.pathname.indexOf('/builder/') === 0 || /\/builder\/?$/.test(location.pathname))
-    ? './' : 'builder/';
-  var o = opts || {};
-  if(o.promo) return base + '?promo=' + encodeURIComponent(o.promo);
-  if(o.hash)  return base + o.hash;
-  return base;
 }
 
 /* ============================================================
