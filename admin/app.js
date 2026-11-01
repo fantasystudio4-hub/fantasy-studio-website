@@ -1,7 +1,6 @@
-import { payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
+import { esc, inr, todayISO, payFee, payGot, payDue, payState, payEarned, payOwed, payUpcoming, jobPhase, jobBalance } from '../fs-shared.js';
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 /* compact rupees for tiles too narrow for the full figure — ₹8.4L, ₹1.2Cr.
    Only ever for display next to the exact value (title attribute). */
 const inrShort = n => {
@@ -9,7 +8,6 @@ const inrShort = n => {
   const cut = (d, unit) => '₹' + (v/d).toFixed(v % d === 0 ? 0 : 1).replace(/\.0$/,'') + unit;
   return v >= 1e7 ? cut(1e7,'Cr') : v >= 1e5 ? cut(1e5,'L') : v >= 1e4 ? cut(1e3,'K') : inr(v);
 };
-const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* A Firestore document id is chosen by whoever creates the document, and
    Firestore accepts quotes, angle brackets and spaces in one. Leads are created
    by anyone holding the public web API key, and a partner picks the id of a
@@ -3103,7 +3101,6 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       !own.includes(t) && !(hasPayTerm && /^50% advance/i.test(t)));
     return own.concat(extra);
   };
-  const todayISO = () => new Date().toLocaleDateString('en-CA');
   /* Every date this panel SHOWS is day-first. Dates are stored yyyy-mm-dd
      (sortable, what Firestore and the CSVs want); this is the one place that
      turns a stored date into the written form — 2026-08-02 → 02-08-2026 —

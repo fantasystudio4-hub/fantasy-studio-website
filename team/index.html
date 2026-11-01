@@ -912,7 +912,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 <!-- the store app's tab bar; a classic script, so FSApp exists before the module runs -->
 <script src="../app-shell.js"></script>
 <script type="module">
-import { payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
+import { esc, inr, todayISO, payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -936,7 +936,6 @@ const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slot
 /* a day's functions in the order they happen: morning, a full day (or no slot), evening */
 const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 
-const esc = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
 const show = id => { ['loadingView','notCrewView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
@@ -957,7 +956,6 @@ const fmtTime = t => {
   const h = Number(m[1]);
   return `${((h+11)%12)+1}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
 };
-const todayISO = () => new Date().toLocaleDateString('en-CA');
 
 /* The one sign-in (fs-auth.js, Phase 3.5): the session, the database and the
    profile this page shares with /start/, the client and the partner pages.
@@ -1863,7 +1861,6 @@ if(!CONFIGURED){
     .map(c => ({ by: ejTxt(c.by), at: ejTxt(c.at), text: ejTxt(c.text) }))
     .sort((x,y)=>String(x.at||'') < String(y.at||'') ? 1 : -1);
 
-  const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
 
   /* ---- your fee ----
      The studio sometimes books an edit before the price is settled, which

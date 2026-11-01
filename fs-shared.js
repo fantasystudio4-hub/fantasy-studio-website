@@ -16,6 +16,13 @@
 
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/* text into innerHTML — every name, note and message written by a client, crew
+   member, partner or the public goes through this (null/undefined → '') */
+export const esc = t => String(t == null ? '' : t)
+  .replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+/* whole rupees, Indian grouping: ₹1,20,000 (junk reads as ₹0) */
+export const inr = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+
 /* today as yyyy-mm-dd on this device's calendar — the rule every page used */
 export const todayISO = () => new Date().toLocaleDateString('en-CA');
 

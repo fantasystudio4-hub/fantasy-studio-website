@@ -76,11 +76,12 @@ test("jobPhase / jobBalance: a partner's two balance boxes", () => {
 });
 
 test('the admin, crew and partner pages import these rules instead of keeping copies', () => {
+  const BASE = ['esc', 'inr', 'todayISO'];
   const PAY = ['payFee', 'payGot', 'payDue', 'payState', 'payEarned', 'payOwed', 'payUpcoming'];
   for (const [file, names] of [
-    ['admin/app.js', [...PAY, 'jobPhase', 'jobBalance']],
-    ['team/index.html', PAY.filter((n) => n !== 'payEarned')],
-    ['studio/index.html', ['jobPhase', 'jobBalance']],
+    ['admin/app.js', [...BASE, ...PAY, 'jobPhase', 'jobBalance']],
+    ['team/index.html', [...BASE, ...PAY.filter((n) => n !== 'payEarned')]],
+    ['studio/index.html', [...BASE, 'jobPhase', 'jobBalance']],
   ]) {
     const src = read(file);
     assert.match(src, /import \{[^}]*\} from '\.\.\/fs-shared\.js'/, `${file} must import ../fs-shared.js`);

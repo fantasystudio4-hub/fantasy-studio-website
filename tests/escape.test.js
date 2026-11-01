@@ -4,20 +4,12 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { read } = require('./helpers/load');
+const { read, loadModule } = require('./helpers/load');
 
-const FILES = [
-  'admin/app.js',
-  'client/index.html',
-  'team/index.html',
-  'studio/index.html',
-  'portfolio/index.html',
-  'fs-auth.js',
-  'avail.js',
-  'catalog.js',
-];
+const FILES = ['fs-shared.js', 'client/index.html', 'portfolio/index.html', 'fs-auth.js', 'avail.js', 'catalog.js'];
 
 function escOf(file) {
+  if (file === 'fs-shared.js') return loadModule(file).esc; /* admin, crew and partner pages import this one */
   const src = read(file);
   let m = src.match(/const esc\s*=\s*([^\n]+?\}\[c\]\)\));/);
   if (m) return new Function(`return ${m[1]}`)();
