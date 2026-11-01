@@ -320,8 +320,6 @@ h2.secl{font-family:var(--serif);font-size:1.1rem;margin:1.6rem 0 .2rem}
 /* a studio's name above its jobs, with two studios on one number */
 .evm.stuname{margin-top:.7rem}
 .pay-sheet::before{content:"";display:block;width:44px;height:4px;border-radius:4px;background:var(--line);margin:0 auto .8rem}
-      <div class="sums txopen" data-tx="${esc(x.id)}" title="Double-tap to see every payment on this job">
-        <div><b>${inr(tt.finalPrice||0)}</b><span>job total</span></div>
 /* the Money tiles open the transactions list on a double-tap; manipulation
    stops the browser's double-tap zoom from eating the second tap */
 .sums.txopen{touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}
@@ -1547,7 +1545,8 @@ function renderNextUp(jobs){
       return;
     }
     const d = Math.floor(ms/864e5), h = Math.floor(ms%864e5/36e5), m = Math.floor(ms%36e5/6e4);
-    el.innerHTML = `<div><b>${d}</b><span>days</span></div><div><b>${h}</b><span>hours</span></div><div><b>${m}</b><span>mins</span></div>`;
+    /* "1 day", and two-digit hours and minutes, as the crew page's clock */
+    el.innerHTML = `<div><b>${d}</b><span>day${d===1?'':'s'}</span></div><div><b>${String(h).padStart(2,'0')}</b><span>hours</span></div><div><b>${String(m).padStart(2,'0')}</b><span>mins</span></div>`;
   };
   tick();
   _cdT = setInterval(tick, 30000);
@@ -1975,7 +1974,9 @@ function jobHTML(x, canToggle, collapsed, idx, total){
       <details class="brk">
         <summary>See the full breakdown</summary>
         <div class="ln"><span>Quote</span><span>${esc(x.quoteNo||'—')}${x.quoteDate ? ' · ' + esc(dmy(x.quoteDate)) : ''}</span></div>
-        ${hasBreak ? `<div class="ln"><span>Job total</span><span>${inr(tt.gross)}</span></div>
+        ${/* gross is the price before the partner discount (finalPrice =
+             gross − discount); "Job total" is finalPrice everywhere else */''}
+        ${hasBreak ? `<div class="ln"><span>Before discount</span><span>${inr(tt.gross)}</span></div>
         <div class="ln"><span>Partner discount</span><span>− ${inr(tt.discount)}</span></div>` : ''}
         <div class="ln big"><span>Final amount</span><span>${inr(tt.finalPrice||0)}</span></div>
         ${(x.payments||[]).filter(Boolean).length ? `<div class="brk-h">Payments received</div>${x.payments.filter(Boolean).map(pm=>
