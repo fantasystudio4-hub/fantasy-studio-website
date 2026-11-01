@@ -7009,7 +7009,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       /* the same rules the assign sheet applies — see feeChangePatch */
       const patch = feeChangePatch(a, amt);
       const sm = settleMsg(await settle(updateDoc(doc(db,'assignments',_feeId), patch)), `Fee set to ${inr(amt)}`);
-      btn.disabled = false; btn.textContent = 'Save Fee';
+      btn.disabled = false; btn.textContent = 'Save fee';
       toast(sm.msg);
       if(!sm.ok) return;
       /* mirror locally in the same shape the patch just wrote */
@@ -7021,7 +7021,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       closeFee();
       renderTeam();
     }catch(err){
-      btn.disabled = false; btn.textContent = 'Save Fee';
+      btn.disabled = false; btn.textContent = 'Save fee';
       toast('Save failed');
     }
   }
@@ -8626,7 +8626,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $$('#asModal [data-editonly]').forEach(f=>f.hidden = !ed);
     if(!$('#asBookWrap').hidden && typeof fillBookingEvents === 'function') fillBookingEvents();
     $$('#asModal [data-shootonly]').forEach(f=>f.hidden = ed);
-    $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save Assignment';
+    $('#asSave').textContent = multi ? `Assign ${n} crew` : 'Save assignment';
     /* One outdoor shooter picked for a new shoot that is still ahead: offer
        the rest of their events in the many-events sheet, this one ticked. */
     const more = $('#asMore');
@@ -9272,7 +9272,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     _maTicks.forEach(t=>{ total += maFee(m, t); });
     $('#maSum').innerHTML = n
       ? `<b>${maEvWord(n)}</b> · ${inr(total)}${n >= MA_CAP ? ` <em>· ${MA_CAP} is the most in one save</em>` : ''}`
-      : 'Tick the events below';
+      : 'Tick the events above';
     btn.disabled = !n;
     btn.textContent = n ? `Assign ${maFirst(m)} to ${maEvWord(n)}` : 'Assign';
     /* one push per save, not one per event (the push function groups them) */
@@ -9499,7 +9499,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     exitCpEdit(); setCpMode(viewGet('cpMode','online') === 'cash' ? 'cash' : 'online');
     $('#cpWho').textContent = `${name} — ${inr(total)} owed across ${rows.length} shoot${rows.length===1?'':'s'}`;
     $('#cpAmt').value = ''; $('#cpNote').value = '';
-    const quick = [['Everything owed', total]];
+    const quick = [['Full balance', total]];
     const half = Math.round(total/2);
     if(half > 0 && half < total) quick.push(['Half', half]);
     $('#cpQuick').innerHTML = quick.map(([l,v])=>`<button type="button" data-cqa="${v}">${l} · ${inr(v)}</button>`).join('');
@@ -9619,7 +9619,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cpEditWhat').innerHTML = `Editing the <b>${inr(_cpEditAmt0)}</b> paid on ${esc(dmy(pm.date) || 'an unrecorded date')}. Change what is wrong and tap Update.`;
     $('#cpEditBar').hidden = false;
     $('#cpDel').hidden = false;
-    $('#cpSave').textContent = 'Update Payment';
+    $('#cpSave').textContent = 'Update payment';
     $('#cpQuick').innerHTML = '';   /* "Full balance" means nothing while correcting one entry */
     renderCrewPayHist(a);
     $('#cpAmt').focus(); $('#cpAmt').select();
@@ -9631,7 +9631,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#cpTitle').textContent = 'Pay crew';
     $('#cpEditBar').hidden = true;
     $('#cpDel').hidden = true;
-    $('#cpSave').textContent = 'Save Payment';
+    $('#cpSave').textContent = 'Save payment';
   }
   function closeCrewPayUI(){ $('#cpModal').classList.remove('open'); $('#cpBackdrop').classList.remove('open'); _cpId = null; _cpAllMember = null; exitCpEdit(); }
   function closeCrewPay(){ backFrom('crewpay', closeCrewPayUI); }
@@ -9785,7 +9785,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       exitCpEdit();
       if(_cpId === a.id) openCrewPay(a);   /* back to the normal sheet, showing the corrected history */
     }catch(err){ toast('Could not save that correction: ' + (err.message||err.code||'no signal')); }
-    finally{ btn.disabled = false; if(_cpEditPid) btn.textContent = 'Update Payment'; }
+    finally{ btn.disabled = false; if(_cpEditPid) btn.textContent = 'Update payment'; }
   }
 
   async function saveCrewPayment(){
@@ -12356,7 +12356,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#payEditWhat').innerHTML = `Editing the <b>${inr(_payEditAmt0)}</b> received on ${esc(dmy(pm.date) || 'an unrecorded date')}. Change what is wrong and tap Update.`;
     $('#payEditBar').hidden = false;
     $('#payDel').hidden = false;
-    $('#paySave').textContent = 'Update Payment';
+    $('#paySave').textContent = 'Update payment';
     $('#payQuick').innerHTML = '';   /* "Full balance" means nothing while correcting one entry */
     renderPayHist(x);
     $('#payAmt').focus(); $('#payAmt').select();
@@ -12367,7 +12367,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#payTitle').textContent = 'Record payment';
     $('#payEditBar').hidden = true;
     $('#payDel').hidden = true;
-    $('#paySave').textContent = 'Save Payment';
+    $('#paySave').textContent = 'Save payment';
   }
   on('#payEditCancel', 'click', ()=>{
     const x = PKGS.find(pk=>pk.id===payingId);
@@ -12498,7 +12498,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       exitPayEdit();
       if(payingId === x.id) openPay(x);   /* back to the normal sheet, showing the corrected history */
     }catch(err){ toast('Could not save that correction: ' + (err.message||err.code||'no signal')); }
-    finally{ btn.disabled = false; if(_payEditPid) btn.textContent = 'Update Payment'; }
+    finally{ btn.disabled = false; if(_payEditPid) btn.textContent = 'Update payment'; }
   }
 
   on('#paySave', 'click', async ()=>{

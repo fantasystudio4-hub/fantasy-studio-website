@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4c" />
-<link rel="stylesheet" href="app.css?v=p5l" />
+<link rel="stylesheet" href="app.css?v=p5m" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -810,7 +810,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld"><label>Note <span class="field__opt">(optional — the client can read this, so keep it factual)</span></label>
     <input id="payNote" maxlength="80" autocomplete="off" placeholder="e.g. cash at venue · GPay from her brother" /></div>
   <div class="pay-hist" id="payHist"></div>
-  <button class="gbtn" id="paySave" type="button">Save Payment</button>
+  <button class="gbtn" id="paySave" type="button">Save payment</button>
   <button class="btn btn--sm btn--danger btn--block sheet-del" id="payDel" type="button" hidden>Delete this payment</button>
 </div>
 
@@ -839,7 +839,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld"><label>Fee for this event (₹)</label>
     <input id="feeAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
   <div id="feeNote"></div>
-  <button class="gbtn" id="feeSave" type="button">Save Fee</button>
+  <button class="gbtn" id="feeSave" type="button">Save fee</button>
 </div>
 
 <div class="pay-backdrop" id="cpBackdrop"></div>
@@ -866,7 +866,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld"><label>Note <span class="field__opt">(optional — the crew member can read this, so keep it factual)</span></label>
     <input id="cpNote" maxlength="80" autocomplete="off" placeholder="e.g. cash at office · PhonePe" /></div>
   <div class="pay-hist" id="cpHist"></div>
-  <button class="gbtn" id="cpSave" type="button">Save Payment</button>
+  <button class="gbtn" id="cpSave" type="button">Save payment</button>
   <button class="btn btn--sm btn--danger btn--block sheet-del" id="cpDel" type="button" hidden>Delete this payment</button>
 </div>
 
@@ -944,7 +944,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
   <div class="fld"><label>Notes <span class="field__opt">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
-  <button class="gbtn" id="asSave" type="button">Save Assignment</button>
+  <button class="gbtn" id="asSave" type="button">Save assignment</button>
   <button class="btn btn--sm btn--danger btn--block sheet-del" id="asRemove" type="button" hidden>Remove from this event</button>
 </div>
 
@@ -1128,7 +1128,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5n"></script>
+<script type="module" src="app.js?v=p5o"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

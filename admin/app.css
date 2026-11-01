@@ -507,6 +507,10 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 .pmedit:active{background:var(--gold-t2)}
 .pmedit.on{background:var(--gold-t3);color:var(--text)}
 .pmedit.on > span:first-child{color:var(--gold-b)}
+/* the entry being corrected has its own "Delete this payment" under Save — its
+   row ✕ would be a second delete for the same record (rulebook R1, 1 Nov 2026).
+   Every other row keeps its ✕. */
+.pmedit.on .rm{display:none}
 @media(hover:hover){ .pmedit:hover{background:var(--gold-t1)} }
 /* the bar that says which payment the fields above are holding */
 .editbar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
