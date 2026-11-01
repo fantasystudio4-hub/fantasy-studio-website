@@ -1,8 +1,8 @@
 # Prettier formats the TOOLING only. The site's own pages and scripts keep their
 # hand-written style; reformatting 46k lines would bury every real change.
 *
-!tests/
-!tests/**
-!types/
-!types/**
-!eslint.config.js
+!/tests/
+!/tests/**
+!/types/
+!/types/**
+!/eslint.config.js

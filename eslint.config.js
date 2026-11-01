@@ -15,7 +15,15 @@ for (const name of require('fs')
   CATALOG[name[1]] = 'writable';
 
 module.exports = [
-  { ignores: ['node_modules/**', '_cptest.html', '_preview-*.html', 'app/**'] },
+  {
+    ignores: [
+      'node_modules/**',
+      '_cptest.html',
+      '**/_preview-*.html',
+      'app/**',
+      '.claude/**',
+    ] /* .claude/worktrees holds other checkouts of this repo */,
+  },
   js.configs.recommended,
   {
     files: ['**/*.js', '**/*.html'],
