@@ -3555,6 +3555,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(!snap.metadata.fromCache){ _pkgsFresh = true; backfillPhoneIndex(); }
         syncStudioCrew();   /* partner portal reads crew off the package doc */
         syncAsgTeam();      /* evCrew tells functions apart by the package's events */
+        syncShared();       /* what the client and partner portals may read */
         renderPkgList();
         renderCalendar();
         renderEditTab();    /* the editing list is derived from these packages */
@@ -4594,7 +4595,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         });
       }
       try{
-        const res = await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
+        const res = await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), shared: false, updatedAt: serverTimestamp() }));
         if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         x.deleted = true; x.deletedAt = todayISO();
         let removedCrew = [], refused = 0;
@@ -4613,7 +4614,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           + (refused ? ` · ${refused} assignment${refused===1?'':'s'} NOT freed (server refused)` : '');
         toastUndo((removedCrew.length ? `Package + ${removedCrew.length} assignment${removedCrew.length===1?'':'s'} moved to Trash` : 'Package moved to Trash') + crewNote, async ()=>{
           try{
-            const r2 = await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), updatedAt: serverTimestamp() }));
+            const r2 = await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), shared: sharedWant({ status: x.status }), updatedAt: serverTimestamp() }));
             if(r2 === 'denied'){ toast('Undo failed — the server refused the write'); return; }
             delete x.deleted; delete x.deletedAt;
             if(removedCrew.length){
@@ -5573,7 +5574,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         };
         const quoteNo = await allocQuoteNo();
         const ref = doc(collection(db,'packages'));
-        res = await settle(setDoc(ref, { ...d, quoteNo, status,
+        res = await settle(setDoc(ref, { ...d, quoteNo, status, shared: sharedWant({ status }),
           ...(status === 'sent' ? { sentAt: todayISO() } : {}),
           createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
         /* drafts don't unlock the portal pre-check — indexing one makes a
@@ -10315,6 +10316,59 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const hit = same.filter(e=>String(e.title||'').trim().toLowerCase() === t);
     return hit.length === 1 ? hit[0] : null;
   };
+  /* ---- packages.shared: what a client or a partner studio may read ----
+     The client area and the partner portal show neither drafts nor trashed
+     jobs, but that was only their own filter: the rules let anyone signed in
+     with the booking's number READ the package, so an unsent quotation or a
+     trashed job was one devtools query away (audit, 1 Nov 2026). \`shared\` is
+     the server-side answer — true exactly when the package is neither a draft
+     nor in Trash — and once the portals and the rules require it, nothing else
+     reaches them. It is written with the package where the panel saves one
+     (create, Save, Trash, Undo) and kept true here for every other change, in
+     the background, like the crew mirrors below. The first run on a device
+     reads the WHOLE collection once (fs_shared_v1), so bookings older than the
+     listener's cap are flagged too. */
+  const sharedWant = x => !!x && !x.deleted && (x.status||'draft') !== 'draft';
+  let _sharedT = null, _sharedBusy = false, _sharedAgain = false, _sharedFull = false;
+  function syncShared(){
+    if(DEMO || !_pkgsFresh) return;
+    clearTimeout(_sharedT);
+    _sharedT = setTimeout(async ()=>{
+      if(_sharedBusy){ _sharedAgain = true; return; }
+      _sharedBusy = true;
+      try{
+        let list = PKGS, first = false;
+        if(!_sharedFull){
+          let done = false;
+          try{ done = !!localStorage.getItem('fs_shared_v1'); }catch(e){}
+          if(done) _sharedFull = true;
+          else{
+            first = true;
+            try{ list = (await getDocsFromServer(collection(db,'packages'))).docs.map(d=>({ id:d.id, ...d.data() })); }
+            catch(e){ return; }   /* no full read now: the next snapshot tries again */
+          }
+        }
+        let set = 0, failed = 0;
+        for(const x of list){
+          const want = sharedWant(x);
+          if(x.shared === want) continue;
+          const res = await settle(updateDoc(doc(db,'packages',x.id), { shared: want }));
+          if(res === 'denied'){ failed++; continue; }
+          set++;
+          x.shared = want;
+          const live = PKGS.find(p=>p.id === x.id); if(live) live.shared = want;
+        }
+        if(first && !failed){
+          _sharedFull = true;
+          try{ localStorage.setItem('fs_shared_v1', '1'); }catch(e){}
+          if(set) toast(`✓ Sharing flags set on ${set} booking${set===1?'':'s'}`);
+        }
+      }finally{
+        _sharedBusy = false;
+        if(_sharedAgain){ _sharedAgain = false; syncShared(); }
+      }
+    }, 1200);
+  }
   let _teamSyncT = null, _teamSyncBusy = false, _teamSyncAgain = false;
   const _teamKey = list => (Array.isArray(list) ? list : [])
     .map(c => [c.name, c.role, c.heads].map(v => String(v || '')).join('|'))
@@ -17412,7 +17466,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
           d.totals.advance = Math.min(d.totals.finalPrice, liveAdv);
           d.totals.balance = d.totals.finalPrice - d.totals.advance;
         }
-        const patch = { ...d, updatedAt: serverTimestamp() };
+        const patch = { ...d, shared: sharedWant({ deleted: existing && existing.deleted, status: newStatus }), updatedAt: serverTimestamp() };
         if(prevStatus !== newStatus){
           patch.status = newStatus;
           if(newStatus === 'sent') patch.sentAt = todayISO();
@@ -17429,7 +17483,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const quoteNo = await allocQuoteNo();
         newQuoteNo = quoteNo;
         const ref = doc(collection(db,'packages'));
-        res = await settle(setDoc(ref, { ...d, quoteNo, status: newStatus,
+        res = await settle(setDoc(ref, { ...d, quoteNo, status: newStatus, shared: sharedWant({ status: newStatus }),
           ...(newStatus === 'sent' ? { sentAt: todayISO() } : {}),
           createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
         /* only adopt the new id if the write was NOT refused — otherwise every
