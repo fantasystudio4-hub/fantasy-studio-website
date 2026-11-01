@@ -48,8 +48,9 @@ if (/FantasyStudioApp/.test(navigator.userAgent) || window.Capacitor) document.d
 <style>
 :root{
   --gold:#B8902B; --gold-b:#E2C275; --gold-d:#8E6E1E;
-  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.28);
+  --ink:#14110a; --panel:#241e12; --line:rgba(226,194,117,.22);
   --text:#f3ecdc; --mut:#b3a98f; --err:#e07a6a;
+  --grad-gold:linear-gradient(135deg,#C9A347,#8E6E1E);   /* the primary button's gold, written once */
   --serif:'Playfair Display',Georgia,serif; --sans:'Jost',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -95,7 +96,7 @@ h1{font-family:var(--serif);font-weight:600;font-size:1.5rem;line-height:1.15;co
    (beside an 84px circle they stacked one per line on a phone) */
 .photo{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:.8rem 1rem;margin-bottom:1.2rem}
 .av{position:relative;width:84px;height:84px;border-radius:50%;overflow:hidden;
-  background:linear-gradient(135deg,#C9A347,#8E6E1E);border:2px solid rgba(226,194,117,.55);
+  background:var(--grad-gold);border:2px solid rgba(226,194,117,.55);
   display:grid;place-items:center;color:#fff;font-family:var(--serif);font-weight:600;font-size:2.1rem;letter-spacing:.02em}
 .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .av svg{width:46px;height:46px;fill:rgba(255,255,255,.85)}
@@ -106,9 +107,8 @@ h1{font-family:var(--serif);font-weight:600;font-size:1.5rem;line-height:1.15;co
 .ph-side .hint{margin-top:.1rem}
 .ph-btns{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem}
 .pbtn{flex:1 1 auto;min-height:44px;background:none;border:1px solid var(--gold);color:var(--gold-b);border-radius:30px;padding:.4em .9em;font-size:.84rem;cursor:pointer;white-space:nowrap}
-.pbtn.rm{flex:0 0 auto}
+.pbtn.rm{flex:0 0 auto;border-color:var(--line);color:var(--mut)}
 .pbtn:active{background:rgba(184,144,43,.2)}
-.pbtn.rm{border-color:var(--line);color:var(--mut)}
 @media(hover:hover){ .pbtn:hover{background:rgba(184,144,43,.16)} }
 /* the pickers are opened by the buttons; the inputs stay in the page (not
    display:none) so their click() is honoured everywhere */
@@ -128,7 +128,7 @@ h1{font-family:var(--serif);font-weight:600;font-size:1.5rem;line-height:1.15;co
 
 /* ---- actions ---- */
 .err{color:var(--err);font-size:.84rem;margin:.2rem 0 .8rem;text-align:center}
-.gbtn{display:block;width:100%;min-height:50px;background:linear-gradient(135deg,#C9A347,#8E6E1E);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
+.gbtn{display:block;width:100%;min-height:50px;background:var(--grad-gold);border:0;color:#fff;border-radius:40px;padding:.9em;font-size:.9rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 16px rgba(142,110,30,.35)}
 .gbtn:active{transform:scale(.98);box-shadow:0 3px 8px rgba(142,110,30,.3)}
 .gbtn:disabled{opacity:.7;cursor:default;transform:none}
 .gbtn.busy::before{content:"";display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:.55em;vertical-align:-3px}
@@ -394,9 +394,13 @@ async function main(){
   }
   drawRoles();
   $('#phBtns').hidden = !PHOTO_OK;
-  /* the camera button only where there is a camera to hand; on iOS the
-     chooser offers the camera as well */
-  $('#takeBtn').hidden = !(window.matchMedia && matchMedia('(pointer:coarse)').matches);
+  /* "Take photo" on Android only (UI audit, 1 Nov 2026): iOS's own chooser
+     already offers the camera, so there it was a second button for the same
+     thing. The app says which it is (Capacitor's platform); a browser says it
+     in its user agent, which on Android always carries "Android". Still only
+     with a touch screen, as before. */
+  const ANDROID = platform() === 'android' || /android/i.test(navigator.userAgent);
+  $('#takeBtn').hidden = !(ANDROID && window.matchMedia && matchMedia('(pointer:coarse)').matches);
   drawAvatar();
   if(sample){
     $('#who').textContent = FS.DEMO_VIEW ? 'Test view — nothing here is saved to the studio.'
