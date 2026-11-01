@@ -4551,15 +4551,20 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
          package: the crew kept seeing the job on their phones while it had
          vanished from your Team tab, with no way left to cancel it. */
       const orphans = ASGS.filter(a=>a.pkgId===id);
+      /* A row with crew pay recorded is that member's payment record — it is
+         never freed from here (owner, 1 Nov 2026). Only unpaid rows are offered. */
+      const paidCrew = orphans.filter(a=>payGot(a) > 0);
+      const freeable = orphans.filter(a=>!(payGot(a) > 0));
       let dropCrew = false;
-      if(orphans.length){
+      if(freeable.length){
         /* This is a two-way CHOICE, not a yes/no gate, and a native confirm
            could only ever offer "OK" and "Cancel" for it — the old copy had to
            spell out in prose what each of those two words would do. Both
            outcomes are named on their own button now. */
         dropCrew = await confirmDialog({
-          title:`${orphans.length} crew assignment${orphans.length===1?'' : 's'} attached`,
-          body:`${esc(orphans.map(a=>a.memberName||'—').join(', '))} ${orphans.length===1?'is':'are'} booked on this package. Trashing it does not free ${orphans.length===1?'them':'them'} on its own — the crew would keep seeing the job on their phones.`,
+          title:`${freeable.length} crew assignment${freeable.length===1?'' : 's'} attached`,
+          body:`${esc(freeable.map(a=>a.memberName||'—').join(', '))} ${freeable.length===1?'is':'are'} booked on this package. Trashing it does not free them on its own — the crew would keep seeing the job on their phones.`
+            + (paidCrew.length ? `<p>${esc(paidCrew.map(a=>a.memberName||'—').join(', '))} ${paidCrew.length===1?'has':'have'} been paid on it, so ${paidCrew.length===1?'that row stays':'those rows stay'} either way.</p>` : ''),
           confirmText:`Also free the crew`,
           cancelText:'Keep them booked',
           danger:false
@@ -4569,15 +4574,21 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         const res = await settle(updateDoc(doc(db,'packages',id), { deleted: true, deletedAt: todayISO(), updatedAt: serverTimestamp() }));
         if(res === 'denied'){ toast('NOT deleted — the server refused this write. Check your sign-in and try again.'); return; }
         x.deleted = true; x.deletedAt = todayISO();
-        let removedCrew = [];
+        let removedCrew = [], refused = 0;
         if(dropCrew){
-          removedCrew = orphans.map(a=>({ ...a }));
-          await Promise.allSettled(orphans.map(a=>settle(deleteDoc(doc(db,'assignments',a.id)))));
-          ASGS = ASGS.filter(a=>a.pkgId!==id);
+          const results = await Promise.all(freeable.map(a=>settle(deleteDoc(doc(db,'assignments',a.id)))));
+          /* only what the server took leaves the list — a refused delete is still on the crew's phone */
+          const gone = freeable.filter((a,i)=>results[i] !== 'denied');
+          refused = freeable.length - gone.length;
+          removedCrew = gone.map(a=>({ ...a }));
+          const goneIds = new Set(gone.map(a=>a.id));
+          ASGS = ASGS.filter(a=>!goneIds.has(a.id));
           renderTeam();
         }
         renderPkgList();
-        toastUndo(dropCrew ? `Package + ${removedCrew.length} assignment${removedCrew.length===1?'':'s'} moved to Trash` : 'Package moved to Trash', async ()=>{
+        const crewNote = (paidCrew.length ? ` · ${paidCrew.length} paid crew row${paidCrew.length===1?'':'s'} kept` : '')
+          + (refused ? ` · ${refused} assignment${refused===1?'':'s'} NOT freed (server refused)` : '');
+        toastUndo((removedCrew.length ? `Package + ${removedCrew.length} assignment${removedCrew.length===1?'':'s'} moved to Trash` : 'Package moved to Trash') + crewNote, async ()=>{
           try{
             const r2 = await settle(updateDoc(doc(db,'packages',id), { deleted: deleteField(), deletedAt: deleteField(), updatedAt: serverTimestamp() }));
             if(r2 === 'denied'){ toast('Undo failed — the server refused the write'); return; }
@@ -10093,7 +10104,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       </div>`).join('') : '<div class="empty" style="padding:.4rem 0">Trash is empty.</div>';
     /* silent 30-day cleanup — only once BOTH lists have arrived fresh from the server,
        never from a stale cache image (it could hard-delete something restored elsewhere) */
-    if(!_purged && _pkgsFresh && _leadsFresh){
+    if(!_purged && _pkgsFresh && _leadsFresh && _asgsFresh){
       _purged = true;
       [...PKGS.filter(x=>x.deleted), ...LEADS.filter(l=>l.deleted)].forEach(it=>{
         const d = daysAgo(it.deletedAt);
@@ -10104,6 +10115,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
            no prompt and no way back. Those are kept in Trash until the owner
            deletes them deliberately with the ✕ Forever button. */
         if(col === 'packages' && Array.isArray(it.payments) && it.payments.length) return;
+        /* The same for crew pay: purging the package would take its assignments,
+           and with them the only record of what the crew were paid. */
+        if(col === 'packages' && ASGS.some(a=>a.pkgId === it.id && payGot(a) > 0)) return;
         /* Assignments live in their own collection and were left behind here.
            The package is going for good, so the crew must stop seeing the job —
            otherwise it sits on their phones with the call time and the venue,
