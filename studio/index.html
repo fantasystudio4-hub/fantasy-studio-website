@@ -758,9 +758,9 @@ html.fs-app .me-sw:disabled{opacity:.45;cursor:default}
     </div>
     <div class="rq-f">
       <label class="rq-l" for="reqFn">Function</label>
-      <input class="rq-in" id="reqFn" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Nikah" autocapitalize="words" enterkeyhint="next" aria-describedby="reqFnErr" />
-      <!-- filled from REQ_FNS, the same list as the chips under it -->
-      <datalist id="reqFnList"></datalist>
+      <!-- no <datalist>: on Android it opened as a list over the whole
+           screen. The chips under it are the suggestions (REQ_FNS). -->
+      <input class="rq-in" id="reqFn" type="text" maxlength="80" placeholder="e.g. Nikah" autocapitalize="words" enterkeyhint="next" aria-describedby="reqFnErr" />
       <div class="rq-chips" aria-label="Quick pick"></div>
       <div class="rq-err" id="reqFnErr" role="alert" hidden></div>
     </div>
@@ -2553,14 +2553,14 @@ function reqDateCue(){
   d.classList.toggle('rq-nodate', !d.value && !(d.validity && d.validity.badInput));   /* not .empty: that is the page's empty-state panel */
 }
 const REQ_MAX_FN = 6;
-/* The function names a partner can pick: ONE list for the quick-pick chips
-   and the Function field's suggestions (#reqFnList). They were two lists,
-   so a chip offered "Reception" while the field suggested "Valima /
-   Reception" (1 Nov 2026). The field still takes any name typed. */
+/* The function names a partner can pick: ONE list, shown as the quick-pick
+   chips. They were two lists, so a chip offered "Reception" while the field
+   suggested "Valima / Reception" (1 Nov 2026). The field's own suggestion
+   list (<datalist>) is gone: in the Android app it covered the whole screen
+   (2 Nov 2026). The field still takes any name typed. */
 const REQ_FNS = ['Nikah','Mehndi','Haldi','Sangeet','Valima / Reception','Engagement','Ruksati','Birthday',
                  'Manje','Sanchak','Wedding'];
 const chipsHTML = () => REQ_FNS.map(c=>`<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join('');
-$('#reqFnList').innerHTML = REQ_FNS.map(c=>`<option value="${esc(c)}"></option>`).join('');
 document.querySelectorAll('#reqCard1 .rq-chips').forEach(e=>{ e.innerHTML = chipsHTML(); });
 const estOf = q => _reqRows.reduce((t, [svc, rate])=>t + ((q && q.get(svc)) || 0) * (Number(rate) > 0 ? Number(rate) : 0), 0);
 const slotWord = v => v === 'morning' ? 'Morning' : v === 'evening' ? 'Evening' : v === 'full' ? 'Full day' : '';
@@ -2647,7 +2647,7 @@ function reqAddFn(){
         <label><input type="radio" name="mfSlot${n}" value="full" /><span>Full day</span></label>
       </div><div class="rq-av" aria-live="polite"></div></div>
     <div class="rq-f"><label class="rq-l" for="mff${n}">Function</label>
-      <input class="rq-in mf-fn" id="mff${n}" type="text" list="reqFnList" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" />
+      <input class="rq-in mf-fn" id="mff${n}" type="text" maxlength="80" placeholder="e.g. Reception" autocapitalize="words" />
       <div class="rq-chips" aria-label="Quick pick">${chipsHTML()}</div></div>
     <div class="rq-f"><label class="rq-l" for="mfv${n}">Venue</label>
       <input class="rq-in mf-venue" id="mfv${n}" type="text" maxlength="160" placeholder="Hall or address" autocapitalize="words" /></div>
@@ -2684,9 +2684,8 @@ function mfToggle(e){
 $('#reqForm').addEventListener('click', e=>{
   mfToggle(e);
   const b = e.target.closest('[data-chip]'); if(!b) return;
-  const inp = b.closest('.rq-more').querySelector('input[list="reqFnList"]');
+  const inp = b.closest('.rq-f').querySelector('input');
   inp.value = b.dataset.chip; inp.dispatchEvent(new Event('input', { bubbles:true }));
-  b.closest('.rq-chips').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x === b));
 });
 $('#reqForm').addEventListener('keydown', mfToggle);
 $('#reqMore').addEventListener('click', e=>{
@@ -2927,6 +2926,13 @@ $('#reqForm').addEventListener('input', e=>{
   }
   if(e.target.name === 'reqSlot'){ reqFieldErr('Slot', ''); reqPaintAvail(); }
   if(id === 'reqFn' && e.target.value.trim()) reqFieldErr('Fn', '');
+  /* a chip stays lit only while the field says its name: a name typed over
+     a picked chip turns it off */
+  const chips = e.target.closest('.rq-f') && e.target.closest('.rq-f').querySelector('.rq-chips');
+  if(chips){
+    const v = e.target.value.trim().toLowerCase();
+    chips.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x.dataset.chip.toLowerCase() === v));
+  }
   reqWaHref(); mfHeads();
 });
 $('#reqDate').addEventListener('blur', reqDateCue);
