@@ -95,3 +95,21 @@ export function jobPhase(x){
   return ds[ds.length - 1] >= t ? 'ongoing' : 'done';
 }
 export const jobBalance = x => Math.max(0, Number(((x && x.totals) || {}).balance)||0);
+
+/* ---------- when the crew see a shoot's details ----------
+   The owner (3 Nov 2026): a member put on a shoot days ahead sees only that
+   there IS one — the date and morning/evening — and the rest (the function,
+   client, venue, call time, notes, role, who else is on it) from 4 pm India
+   time the DAY BEFORE. An event on the 19th opens on the 18th at 16:00 IST.
+   Editing jobs and rows with no usable date are never held back. Returns the
+   moment in epoch-ms; 0 means "open now". The crew-alert function keeps its
+   own copy of this rule (app/backend/functions/alerts.js, detailsOpenAt). */
+export const DETAILS_OPEN_TIME = '16:00';
+export function detailsOpenAt(a){
+  if(!a || a.kind === 'edit' || !ISO_DATE.test(a.date||'')) return 0;
+  const d = new Date(a.date + 'T00:00:00Z');
+  if(isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== a.date) return 0;
+  d.setUTCDate(d.getUTCDate() - 1);
+  return istAt(d.toISOString().slice(0, 10), DETAILS_OPEN_TIME).getTime();
+}
+export const detailsOpen = (a, nowMs) => Number(nowMs) >= detailsOpenAt(a);

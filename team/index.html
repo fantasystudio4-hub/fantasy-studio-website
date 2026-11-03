@@ -929,7 +929,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 <!-- the store app's tab bar; a classic script, so FSApp exists before the module runs -->
 <script src="../app-shell.js"></script>
 <script type="module">
-import { STUDIO_PHONE, esc, inr, todayISO, istDay, istAt, payFee, payGot, payDue, payState, payOwed, payUpcoming } from '../fs-shared.js';
+import { STUDIO_PHONE, esc, inr, todayISO, istDay, istAt, payFee, payGot, payDue, payState, payOwed, payUpcoming, detailsOpenAt } from '../fs-shared.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -1125,6 +1125,35 @@ if(!CONFIGURED){
   /* ---------- data + routing ---------- */
   let ME = null, ASGS = [], EJOBS = {};
   let _meUnsub = null, _asgsUnsub = null, _ejUnsub = null;
+  /* A shoot's details reach this page from 4 pm India time the day before
+     (owner, 3 Nov 2026 — detailsOpenAt in fs-shared.js). Until then the row
+     keeps its date, morning/evening, status and pay (so the Pay tab's totals
+     stay true) and loses the rest: every card, the widget, the calendar
+     button and Confirm all read ASGS, so blanking it here covers them all.
+     `opensAt` says when. The rows as the server sent them stay in
+     _asgsRaw, so the page opens them on time without waiting for a change. */
+  let _asgsRaw = [], _veilT = 0;
+  const VEILED = ['eventTitle', 'clientName', 'quoteNo', 'venue', 'callTime', 'notes', 'role'];
+  function veil(a, now){
+    const t = detailsOpenAt(a);
+    if(!t || now >= t) return a;
+    const v = { ...a, team: [], heads: 1, opensAt: t };
+    VEILED.forEach(k=>{ v[k] = ''; });
+    return v;
+  }
+  function setAsgs(list){
+    _asgsRaw = list;
+    const now = Date.now();
+    ASGS = list.map(a=>veil(a, now));
+    clearTimeout(_veilT); _veilT = 0;
+    const next = Math.min(...ASGS.map(a=>a.opensAt || Infinity));
+    /* setTimeout tops out at ~24.8 days; a later one simply re-arms */
+    if(next < Infinity) _veilT = setTimeout(()=>{ setAsgs(_asgsRaw); if(ME) render(); },
+      Math.min(2147483000, Math.max(1000, next - now + 500)));
+  }
+  /* "18 Nov, 4:00 pm" — the studio's clock, whatever zone the phone is in */
+  const fmtOpens = t => new Date(t).toLocaleString('en-IN',
+    { day:'numeric', month:'short', hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Asia/Kolkata' });
   let _meLoaded = false, _asgsLoaded = false;
   let _meErr = null;
   /* the assignments listener failed: the empty list is not "nothing coming" (the widget) */
@@ -1146,7 +1175,7 @@ if(!CONFIGURED){
   function stopData(){
     [_meUnsub, _asgsUnsub, _ejUnsub].forEach(u=>{ if(u){ try{ u(); }catch(e){} } });
     _meUnsub = _asgsUnsub = _ejUnsub = null;
-    ME = null; ASGS = []; EJOBS = {};
+    ME = null; setAsgs([]); EJOBS = {};
     _meLoaded = _asgsLoaded = false;
     _meErr = null; _asgsFailed = false;
     _meFresh = false; clearTimeout(_meWatchdog); _meWatchdog = null;
@@ -1692,7 +1721,7 @@ if(!CONFIGURED){
   function startDemo(){
     _demo = true;
     const d = demoCrew();
-    ME = d.me; ASGS = d.asgs; EJOBS = d.ejobs;
+    ME = d.me; setAsgs(d.asgs); EJOBS = d.ejobs;
     /* every "has the server answered" flag, or route() waits for listeners
        that are never started */
     _meLoaded = _asgsLoaded = true;
@@ -1744,9 +1773,9 @@ if(!CONFIGURED){
     }, err=>{ _meLoaded = true; ME = null; _meErr = err; route(); });
     _asgsUnsub = onSnapshot(query(collection(db,'assignments'), where('memberPhone10','==',_phone10)), snap=>{
       _asgsLoaded = true; _asgsFailed = false;
-      ASGS = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      setAsgs(snap.docs.map(d=>({ id:d.id, ...d.data() })));
       if(ME) render();
-    }, err=>{ _asgsLoaded = true; _asgsFailed = true; ASGS = []; if(ME) render(); });
+    }, err=>{ _asgsLoaded = true; _asgsFailed = true; setAsgs([]); if(ME) render(); });
     /* The editing desk's own record: the drive the footage is on, what the
        client asked for, and the thread with the studio. The assignment says
        WHAT is due and WHEN; none of the rest of it was ever on this page, so
@@ -1844,10 +1873,11 @@ if(!CONFIGURED){
       <div class="asg-t"><b>${esc(a.eventTitle||'Event')}</b>${slotTag(a.slot)}</div>
       ${next ? '<div class="cd-clock" id="cdClock"></div>' : ''}
       <div class="lines">
+        ${a.opensAt ? `<div class="ln"><span>Details</span><span>From ${esc(fmtOpens(a.opensAt))}</span></div>` : ''}
         ${a.callTime ? `<div class="ln"><span>Call time</span><span class="ct">${esc(fmtTime(a.callTime))}</span></div>` : ''}
         ${a.venue ? `<div class="ln"><span>Venue</span><span><a class="vlink" href="https://maps.google.com/?q=${encodeURIComponent(a.venue)}" target="_blank" rel="noopener">📍 ${esc(a.venue)}</a></span></div>` : ''}
         ${a.clientName ? `<div class="ln"><span>Client</span><span>${a.quoteNo ? esc(a.quoteNo) + ' · ' : ''}${esc(a.clientName)}</span></div>` : ''}
-        <div class="ln"><span>Your role</span><span>${esc(roleCap(a.role))}</span></div>
+        ${a.role ? `<div class="ln"><span>Your role</span><span>${esc(roleCap(a.role))}</span></div>` : ''}
         ${(Number(a.heads)||1) > 1 ? `<div class="ln"><span>People</span><span>You + ${Number(a.heads) - 1} — ${Number(a.heads)} of you on this</span></div>` : ''}
         ${withYou(a)}
       </div>
@@ -1855,7 +1885,7 @@ if(!CONFIGURED){
       ${past ? '' : (seen
         ? `<div class="ackdone">✓ You confirmed this${fmtTs(a.ackAt) ? ' on ' + fmtTs(a.ackAt) : ''}</div>`
         : `<button class="ackbtn" data-ack="${a.id}">✓ Confirm — I've seen this</button>`)}
-      ${past ? '' : calBtn(a)}
+      ${past || a.opensAt ? '' : calBtn(a)}
       ${done ? (a.workDone
         ? `<div class="ackdone">✓ Event completed${fmtTs(a.workDoneAt) ? ' on ' + fmtTs(a.workDoneAt) : ''} · <button class="undobtn" data-workundo="${a.id}">undo</button></div>`
         : `<button class="ackbtn${past || seen ? '' : ' ack2'}" data-workdone="${a.id}">✓ Mark event completed</button>`) : ''}
@@ -3056,6 +3086,8 @@ if(!CONFIGURED){
     try{
       await ackWrite(a);
       a.status = 'acknowledged';
+      /* the raw row too, or the 4 pm reveal would briefly undo it */
+      const raw = _asgsRaw.find(v=>v.id===a.id); if(raw) raw.status = 'acknowledged';
       render();
       toast(msg || 'Confirmed ✓ — the studio can see it');
     }catch(err){
@@ -3146,6 +3178,7 @@ if(!CONFIGURED){
       /* a snapshot may have rebuilt ASGS while the writes were out */
       rows[i].status = 'acknowledged';
       const cur = ASGS.find(a=>a.id === rows[i].id); if(cur) cur.status = 'acknowledged';
+      const raw = _asgsRaw.find(a=>a.id === rows[i].id); if(raw) raw.status = 'acknowledged';
     });
     rows.forEach(a=>_ackAllBusy.delete(a.id));
     render();

@@ -3,7 +3,9 @@
    cache is the offline fallback), network-first-with-timeout for ALL
    executable code (see isCode below), and stale-while-revalidate for the
    remaining assets (images, fonts, manifest). */
-const CACHE = 'fs-cache-v22';   // v22: avail.js and the client page import fs-shared.js (todayISO,
+const CACHE = 'fs-cache-v23';   // v23: the crew page imports detailsOpenAt from fs-shared.js — a cached
+                                //      older copy has no such export (3 Nov 2026)
+                                // v22: avail.js and the client page import fs-shared.js (todayISO,
                                 //      esc, inr) instead of keeping their own copies (1 Nov 2026)
                                 // v21: fs-shared.js, the pay / account rules the admin,
                                 //      crew and partner pages import (app code, below)
