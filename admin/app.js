@@ -8674,9 +8674,12 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
      never go to a shoot. Two tabs, opened on the kind this sheet is for.
      A search covers everyone, so nobody is ever "on the other tab" — the tabs
      step aside while one is typed. Returns whether the tabs are in use. */
+  /* Office is the first tab and Outdoor the second (owner, 3 Nov 2026).
+     This sheet's own order — TM_CATS stays as it is for the leaderboards. */
+  const AS_CATS = ['office','outdoor'];
   function renderAsTabs(list, searching){
     const tabs = $('#asTabs');
-    const cats = TM_CATS.filter(c=>list.some(m=>catOf(m) === c));
+    const cats = AS_CATS.filter(c=>list.some(m=>catOf(m) === c));
     if(!cats.includes(_asCat)) _asCat = cats[0] || 'outdoor';
     const use = cats.length > 1 && !searching;
     if(tabs){
@@ -8718,9 +8721,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : onEvent.has(m.id) && m.id !== sel && asRolesOn(m.id).length ? 2
       : busyOf(m).length ? 3
       : need[String(m.role||'').toLowerCase()] ? 0 : 1;
-    /* a search across both kinds keeps them apart under a heading each — the
-       kind the sheet is for comes first */
-    const catRank = m => catOf(m) === _asCat ? 0 : 1;
+    /* a search across both kinds keeps them apart under a heading each —
+       office first and outdoor second, always, like the tabs (owner, 3 Nov 2026) */
+    const catRank = m => AS_CATS.indexOf(catOf(m));
     list.sort((a,b)=>catRank(a) - catRank(b) || rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||'')));
     let _lastCat = null;
     const showHeads = new Set(list.map(catOf)).size > 1;
