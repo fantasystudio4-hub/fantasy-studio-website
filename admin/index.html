@@ -927,6 +927,9 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <!-- picking several hides Role and Pay, because each member keeps their own.
        This is what that actually works out to, before it is saved. -->
   <div class="as-multi" id="asMulti" hidden></div>
+  <!-- the details only once somebody is picked: until then the sheet is the
+       crew list and nothing else (owner, 3 Nov 2026). syncAsUI shows it. -->
+  <div id="asDetails" hidden>
   <div class="fld" data-solo><label>Role for this event</label><select id="asRole"></select></div>
   <!-- a member who brings their own second shooter: one row, one fee (the
        total for all of them), counted as that many against what the event
@@ -951,6 +954,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
   <div class="fld"><label>Notes <span class="field__opt">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
+  </div>
   <!-- above Save, not below it: Save is pinned to the foot of the sheet and
        would sit on top of anything after it -->
   <button class="btn btn--sm btn--danger btn--block sheet-del" id="asRemove" type="button" hidden>Remove from this event</button>
@@ -1138,7 +1142,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5u"></script>
+<script type="module" src="app.js?v=p5v"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

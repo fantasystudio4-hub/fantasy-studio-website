@@ -8619,6 +8619,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       : n > 1 ? `${n} picked — each gets their own role & rate`
       : 'tap one, or several';
     renderAsMulti();
+    $('#asDetails').hidden = !n;
     $$('#asModal [data-solo]').forEach(f=>f.hidden = multi);
     /* editing is a desk job on a deadline — a call time means nothing for it,
        and a due date means nothing for a shoot */
@@ -8864,10 +8865,11 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asTitle').textContent = a ? 'Edit assignment' : (_asForceEdit ? 'Assign editing' : 'Assign crew');
     $('#asWho').textContent = asWhoText(ctx) + (ctx.venue ? ' · ' + ctx.venue : '');
     _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
-    /* a shoot opens on the outdoor crew, editing on the office; an existing
-       row on the tab of the person already on it */
+    /* every new assignment opens on the Office tab (owner, 3 Nov 2026); an
+       existing row on the tab of the person already on it, or they would be
+       picked but out of sight */
     const was = a && memberById(a.memberId);
-    _asCat = was ? catOf(was) : _asForceEdit ? 'office' : 'outdoor';
+    _asCat = was ? catOf(was) : 'office';
     /* Every field is set BEFORE the picker renders, because renderAsPick ends
        in syncAsUI — which reads the role to decide between a call time and a
        deadline, and fills an empty deadline in. Rendering first meant syncAsUI
