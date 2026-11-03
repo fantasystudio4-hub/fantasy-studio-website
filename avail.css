@@ -31,6 +31,8 @@
   --av-y:#E6BE5C;                              /* filling up — amber, readable on the dark field */
   --av-r:#c0392b;                              /* fully booked / blocked */
   --av-r-text:#ec8f82;                         /* the same red, lifted for text on dark */
+  --av-mine:var(--av-r);                       /* the person's own dates: red, not gold (owner, 3 Nov 2026) */
+  --av-mine-text:var(--av-r-text);
   --av-free:rgba(255,255,255,.045);            /* a free half: a faint band, so the split still shows */
   --av-sel:rgba(184,144,43,.22);
   font-family:var(--av-sans);color:var(--av-text);
@@ -70,11 +72,13 @@
 /* past: dim, no colour, not a target */
 .fs-avail .av-cell.past{opacity:.36;cursor:default}
 .fs-avail .av-cell.past .av-half{background:var(--av-free)}
-/* the person's own event dates: a gold ring */
-.fs-avail .av-cell.mine{border-color:var(--av-gold-b);box-shadow:0 0 0 1px var(--av-gold-b)}
-.fs-avail .av-cell.mine .av-d{color:var(--av-gold-b);font-weight:600}
+/* the person's own event dates: a red ring (gold until 3 Nov 2026; the
+   owner wanted them to stand out from the gold of today and the buttons) */
+.fs-avail .av-cell.mine{border-color:var(--av-mine);box-shadow:0 0 0 1px var(--av-mine)}
+.fs-avail .av-cell.mine .av-d{color:var(--av-mine-text);font-weight:600}
 .fs-avail .av-cell.mine.today .av-d{color:var(--av-ink)}
 .fs-avail .av-cell.sel{background:var(--av-sel);border-color:var(--av-gold-b)}
+.fs-avail .av-cell.mine.sel{border-color:var(--av-mine)}   /* tapped, it is still theirs */
 .fs-avail .av-cell:focus-visible{outline:2px solid var(--av-gold-b);outline-offset:1px}
 .fs-avail.loading .av-half{opacity:.5}
 @media(hover:hover){
@@ -91,7 +95,7 @@
 .fs-avail .av-sw{width:9px;height:9px;border-radius:2px;background:var(--av-free);box-shadow:inset 0 0 0 1px var(--av-line);display:inline-block;flex:0 0 auto}
 .fs-avail .av-sw.y{background:var(--av-y);box-shadow:none}
 .fs-avail .av-sw.r{background:var(--av-r);box-shadow:none}
-.fs-avail .av-sw.mine{background:none;box-shadow:0 0 0 1.5px var(--av-gold-b);border-radius:3px}
+.fs-avail .av-sw.mine{background:none;box-shadow:0 0 0 1.5px var(--av-mine);border-radius:3px}
 .fs-avail .av-mini{display:inline-flex;flex-direction:column;gap:1px;width:10px;height:13px;flex:0 0 auto}
 .fs-avail .av-mini b{flex:1;border-radius:1.5px;background:var(--av-gold-b)}
 .fs-avail .av-mini b + b{opacity:.4}
@@ -106,7 +110,7 @@
 .fs-avail .av-detail em.ok{color:var(--av-ok)}
 .fs-avail .av-detail em.y{color:var(--av-y)}
 .fs-avail .av-detail em.r{color:var(--av-r-text)}
-.fs-avail .av-you{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--av-gold-b);border:1px solid var(--av-gold-b);border-radius:20px;padding:.08em .6em;line-height:1.5}
+.fs-avail .av-you{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--av-mine-text);border:1px solid var(--av-mine);border-radius:20px;padding:.08em .6em;line-height:1.5}
 /* the Ask buttons — one per half that is not red — sit side by side on
    their own row under the text; on a phone the pair does not fit, so the
    second drops under the first and each stretches full width. From 560px
