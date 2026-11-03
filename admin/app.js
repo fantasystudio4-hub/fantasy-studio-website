@@ -9602,16 +9602,39 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const date = $('#cpDate').value || todayISO(), mode = _cpMode;
     const btn = $('#cpSave'); btn.disabled = true;
     let left = Math.min(amount, total), paid = 0, n = 0, failed = 0, queued = false;
+    /* One payment spread over several shoots used to reach the member as one
+       "Payment received" alert PER SHOOT — ₹10,000 over 8 shoots was 8 alerts
+       (owner, 3 Nov 2026). Every share of this payout carries the same
+       `payout` id, which keeps the server quiet about it; once they have all
+       been written, one payoutAlert on the last shoot that took money says
+       what actually landed, and the server sends that as the one alert. A
+       payout that touches a single shoot needs none of this. */
+    const shares = [];
+    for(let rest = left, i = 0; i < rows.length && rest > 0; i++){
+      const take = Math.min(rest, payDue(rows[i]));
+      if(take > 0){ shares.push(rows[i]); rest -= take; }
+    }
+    const payout = shares.length > 1 ? newPayId() : '';
+    let lastRow = null;
     try{
       for(const a of rows){
         if(left <= 0) break;
         const take = Math.min(left, payDue(a));
         if(take <= 0) continue;
         try{
-          const res = await recordCrewPayment(a, { id: newPayId(), amount: take, date, mode });
+          const entry = { id: newPayId(), amount: take, date, mode };
+          if(payout) entry.payout = payout;
+          const res = await recordCrewPayment(a, entry);
           a.pay = res.pay; queued = queued || res.queued;
-          left -= take; paid += take; n++;
+          left -= take; paid += take; n++; lastRow = a;
         }catch(err){ failed++; }
+      }
+      /* after the shares, never before: the alert is what was recorded, so a
+         share the server refused is not in it. Fire-and-forget — the money is
+         already on the record; a lost note only means a quiet phone. */
+      if(payout && lastRow){
+        updateDoc(doc(db,'assignments',lastRow.id),
+          { payoutAlert: { id: payout, amount: paid, n }, updatedAt: serverTimestamp() }).catch(()=>{});
       }
       /* Say exactly what landed. A partial run is the one case where a cheerful
          summary would be a lie — the owner has handed over cash and needs to
