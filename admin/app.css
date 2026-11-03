@@ -899,6 +899,39 @@ html.modal-open body{position:fixed;left:0;right:0;width:100%}
 @media(hover:hover){ .copycrew:hover{border-color:var(--gold)} }
 #asMore{min-height:var(--tap)}
 
+/* ---- the assign sheet's crew picker (#asPick) ----
+   One person per full-width row: initials, name, role and rate, and whether
+   they are free that day. Two columns in a 360px sheet cut every status line
+   to "on this event as Cinematography · tap to add another ro" and pushed
+   the cards past the sheet's right edge on a phone. */
+@media(min-width:700px){ .as-modal{width:min(92vw,440px)} }
+.as-tabs{margin:0 0 .5rem}
+.as-tabs button{min-height:var(--tap);font-size:var(--fs-md)}
+.as-tabs .as-tabn{font-style:normal;font-weight:600;margin-left:.45em;color:var(--gold-b)}
+.as-tabs button.on .as-tabn{color:var(--ink-0)}
+.crewpick.as-pick{grid-template-columns:minmax(0,1fr);gap:.35rem}
+.as-pick .cpick{gap:.65rem;min-height:56px;padding:.45rem .6rem}
+.as-pick .cp-t b{font-size:var(--fs-lg)}
+.as-pick .cp-t em{font-size:var(--fs-sm);margin-top:.1rem}
+/* the "needed" tag, moved off the name line so a long name is not cut for it */
+.as-pick .cp-t em .wantt{font-style:normal;font-size:var(--fs-2xs);letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:var(--gold-b);
+  border:1px solid rgba(var(--gold-b-rgb),.5);border-radius:var(--r-md);padding:.05em .4em;margin-right:.45em;vertical-align:.08em}
+.as-pick .chip-status{flex:0 0 auto;font-size:var(--fs-xs);padding:.2em .65em}
+/* the initials turn into a gold tick when picked */
+.as-av{flex:0 0 auto;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;
+  background:var(--gold-t2);border:1px solid var(--line);color:var(--gold-b);font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em}
+.as-av::before{content:attr(data-i)}
+.cpick.on .as-av{background:var(--grad-gold);border-color:transparent;color:var(--ink-0);font-size:var(--fs-lg)}
+.cpick.on .as-av::before{content:"✓"}
+.as-pick .pickhead{padding:.5rem .1rem .1rem}
+/* Save stays in reach at the foot of the sheet while the list scrolls */
+/* the shadow paints the sheet's own colour out over its side and bottom
+   padding (the phone's home-bar inset too), so rows scrolling underneath
+   never show round the button — and never above it */
+.as-foot{position:sticky;bottom:0;z-index:1;padding-top:.6rem;background:var(--panel);box-shadow:0 2.4rem 0 1.4rem var(--panel)}
+.as-foot .gbtn{margin:0}
+#asModal #asRemove:not([hidden]){margin:.2rem 0 .4rem}
+
 /* ---- one person → many events (#maModal) ----
    The crew picker's look, turned round: one person, a list of events. Event
    names are long ("Reception · Lakshmi Priyanka & Venkata Subrahmanyam"), so

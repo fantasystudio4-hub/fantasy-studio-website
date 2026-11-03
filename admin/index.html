@@ -26,7 +26,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
      app.css is per-screen and may only reference what those two publish. -->
 <link rel="stylesheet" href="tokens.css?v=p4b" />
 <link rel="stylesheet" href="ui.css?v=p4c" />
-<link rel="stylesheet" href="app.css?v=p5n" />
+<link rel="stylesheet" href="app.css?v=p5o" />
 <!-- Profiles (one sign-in, Sep 2026): the photo and details people add in
      the app, shown on their crew card, booking and partner studio, plus the
      account-deletion notes on Home. Only tokens from tokens.css. -->
@@ -906,7 +906,7 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
 </div>
 
 <div class="pay-backdrop" id="asBackdrop"></div>
-<div class="pay-modal" id="asModal" role="dialog" aria-modal="true" aria-label="Assign crew">
+<div class="pay-modal as-modal" id="asModal" role="dialog" aria-modal="true" aria-label="Assign crew">
   <button class="pay-close" id="asClose" type="button" aria-label="Close">&times;</button>
   <h3 id="asTitle">Assign crew</h3>
   <div class="who" id="asWho"></div>
@@ -914,8 +914,12 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld" id="asBookEvWrap" hidden><label>Which function</label><select id="asBookEv"></select></div>
   <button class="copycrew" id="asCopy" type="button" hidden></button>
   <div class="fld"><label>Team member <em id="asPickHint">tap one, or several</em></label>
-    <input id="asFilter" class="crewfilter" type="search" placeholder="Filter by name or role…" hidden autocomplete="off" />
-    <div class="crewpick" id="asPick"></div>
+    <input id="asFilter" class="crewfilter" type="search" placeholder="Search by name or role…" aria-label="Search the team" hidden autocomplete="off" />
+    <!-- outdoor crew and office staff on separate tabs: a shoot opens on
+         Outdoor, editing on Office. Hidden while searching (search covers
+         everyone) and when the team has only one kind. -->
+    <div class="fchips nofade as-tabs" id="asTabs" hidden></div>
+    <div class="crewpick as-pick" id="asPick"></div>
   </div>
   <div class="as-warn" id="asConflict" hidden></div>
   <!-- one outdoor shooter picked: carry on to the rest of their events -->
@@ -947,8 +951,11 @@ if (navigator.userAgent.indexOf('FantasyStudioApp') !== -1 || window.Capacitor) 
   <div class="fld" data-solo><label>Pay for this event (₹)</label><input id="asAmt" type="number" min="0" inputmode="numeric" enterkeyhint="done" /></div>
   <div class="fld"><label>Notes <span class="field__opt">(shown to the member)</span></label>
     <textarea id="asNotes" rows="2"></textarea></div>
-  <button class="gbtn" id="asSave" type="button">Save assignment</button>
+  <!-- above Save, not below it: Save is pinned to the foot of the sheet and
+       would sit on top of anything after it -->
   <button class="btn btn--sm btn--danger btn--block sheet-del" id="asRemove" type="button" hidden>Remove from this event</button>
+  <!-- stays in reach at the foot of the sheet, however long the crew list -->
+  <div class="as-foot"><button class="gbtn" id="asSave" type="button">Save assignment</button></div>
 </div>
 
 <!-- One person → many events: the assign sheet turned round. Pick the
@@ -1131,7 +1138,7 @@ window.addEventListener('beforeinstallprompt', e=>{
 });
 </script>
 <script src="../firebase-config.js"></script>
-<script type="module" src="app.js?v=p5s"></script>
+<script type="module" src="app.js?v=p5t"></script>
 <script>
 /* ---- keyboard-aware bottom sheets ------------------------------------------
    Every sheet in this panel slides up from the bottom on a phone, which is

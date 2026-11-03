@@ -8660,16 +8660,44 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     if(i >= 0) cur.splice(i,1); else cur.push(v);
     $('#asDeliver').value = cur.join(' + ');
   });
+  /* everyone the picker can offer */
+  function asRoster(){
+    const list = activeTeam().slice();
+    /* someone deactivated since being assigned must still show while editing,
+       or saving would quietly move their job to whoever sorts first */
+    const sel = _asEditId ? [..._asPicked][0] : null;
+    if(sel && !list.some(m=>m.id===sel)){ const g = memberById(sel); if(g) list.unshift(g); }
+    return list;
+  }
+  /* Office and outdoor on one long list made a shoot's photographers sit
+     below the editors, and a real roster meant scrolling past people who
+     never go to a shoot. Two tabs, opened on the kind this sheet is for.
+     A search covers everyone, so nobody is ever "on the other tab" — the tabs
+     step aside while one is typed. Returns whether the tabs are in use. */
+  function renderAsTabs(list, searching){
+    const tabs = $('#asTabs');
+    const cats = TM_CATS.filter(c=>list.some(m=>catOf(m) === c));
+    if(!cats.includes(_asCat)) _asCat = cats[0] || 'outdoor';
+    const use = cats.length > 1 && !searching;
+    if(tabs){
+      tabs.hidden = !use;
+      if(use) tabs.innerHTML = cats.map(c=>{
+        const inCat = list.filter(m=>catOf(m) === c);
+        /* a pick on the other tab stays picked — say so, or it is forgotten */
+        const picked = inCat.filter(m=>_asPicked.has(m.id)).length;
+        return `<button type="button" data-ascat="${c}" class="${_asCat===c?'on':''}" aria-pressed="${_asCat===c}">`
+          + `${esc(CAT_LABEL[c])} <b>${inCat.length}</b>${picked ? `<i class="as-tabn">✓ ${picked}</i>` : ''}</button>`;
+      }).join('');
+    }
+    return use;
+  }
   function renderAsPick(){
     const el = $('#asPick'); if(!el) return;
     const ev = asEventOf(_asCtx);
     const need = ev ? neededRoles(ev) : {};
     const onEvent = new Set(_asCtx ? evCrew(_asCtx.pkgId, _asCtx.date, _asCtx.eventTitle).map(a=>a.memberId) : []);
-    let list = activeTeam().slice();
-    /* someone deactivated since being assigned must still show while editing,
-       or saving would quietly move their job to whoever sorts first */
+    let list = asRoster();
     const sel = _asEditId ? [..._asPicked][0] : null;
-    if(sel && !list.some(m=>m.id===sel)){ const g = memberById(sel); if(g) list.unshift(g); }
     /* A real roster does not fit on a phone — the picker was a bounded scroll
        box you hunted through. Offered once there is enough to hunt through.
        A picked member filtered out of view stays picked; the summary below
@@ -8677,17 +8705,23 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     const filterBox = $('#asFilter');
     if(filterBox) filterBox.hidden = list.length <= 6;
     const fq = (filterBox && !filterBox.hidden ? _asFilter : '').trim().toLowerCase();
+    const useTabs = renderAsTabs(list, !!fq);
     if(fq) list = list.filter(m=>String(m.name||'').toLowerCase().includes(fq)
-      || String(m.role||'').toLowerCase().includes(fq));
+      || String(m.role||'').toLowerCase().includes(fq)
+      || roleLabel(m.role).toLowerCase().includes(fq));
+    else if(useTabs) list = list.filter(m=>catOf(m) === _asCat);
     const busyOf = m => _asCtx ? asgConflicts(m.id, _asCtx.date, _asEditId, _asCtx) : [];
-    /* wanted for this event and free → first; busy → last */
+    /* wanted for this event and free → first; already on it → after the
+       free (they are only there for a second role); busy → last */
     const rank = m => _asForceEdit
       ? (roleIsEdit(m.role) ? 0 : 1)                                  /* editors first */
-      : (busyOf(m).length ? 2 : 0) - (need[String(m.role||'').toLowerCase()] ? 1 : 0);
-    /* everyone in one list, office first then outdoor, each group still
-       ordered by who this event actually wants and who is free */
-    const catRank = m => catOf(m) === 'office' ? 0 : 1;
-    list.sort((a,b)=>catRank(a) - catRank(b) || rank(a) - rank(b));
+      : onEvent.has(m.id) && m.id !== sel && asRolesOn(m.id).length ? 2
+      : busyOf(m).length ? 3
+      : need[String(m.role||'').toLowerCase()] ? 0 : 1;
+    /* a search across both kinds keeps them apart under a heading each — the
+       kind the sheet is for comes first */
+    const catRank = m => catOf(m) === _asCat ? 0 : 1;
+    list.sort((a,b)=>catRank(a) - catRank(b) || rank(a) - rank(b) || String(a.name||'').localeCompare(String(b.name||'')));
     let _lastCat = null;
     const showHeads = new Set(list.map(catOf)).size > 1;
     el.innerHTML = list.map(m=>{
@@ -8710,20 +8744,27 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       const held = onEvent.has(m.id) && m.id !== sel ? asRolesOn(m.id) : [];
       const here = held.length > 0;
       const on = _asPicked.has(m.id);
-      const wanted = !!need[String(m.role||'').toLowerCase()];
-      const note = here ? 'on this event as ' + esc(held.map(roleLabel).join(' + ')) + ' · tap to add another role'
-        : busy.length ? 'busy · ' + esc(busy[0].eventTitle||'another event') : 'free';
       /* a bare ★ read as a favourite or a rating — it means this event's
          services actually call for their craft */
-      return `<button type="button" class="cpick ${on?'on':''} ${here?'again':''}" data-pick="${esc(m.id)}">
-        <i class="dot ${here ? 'lead' : busy.length ? 'unconfirmed' : 'booked'}"></i>
-        <span class="cp-t"><b>${esc(m.name||'—')}${wanted?'<i class="wantt">needed</i>':''}</b><em>${esc(roleLabel(m.role))} · ${note}</em></span>
+      const wanted = !here && !!need[String(m.role||'').toLowerCase()];
+      const rate = Math.max(0, Math.round(Number(m.defaultRate)||0));
+      const line = here ? `${esc(roleLabel(m.role))} · tap to add another role`
+        : busy.length ? `${esc(roleLabel(m.role))} · on ${esc(busy[0].eventTitle||'another event')}`
+        : esc(roleLabel(m.role)) + (rate ? ' · ' + inr(rate) : '');
+      const st = here ? ['new', 'Added'] : busy.length ? ['risk', 'Busy'] : ['confirmed', 'Free'];
+      /* "Rakesh (new hire)" is RN, not R( */
+      const ini = String(m.name||'').split(/\s+/).map(w=>w.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean)
+        .slice(0,2).map(w=>w[0]).join('').toUpperCase() || '?';
+      return `<button type="button" class="cpick ${on?'on':''} ${here?'again':''}" data-pick="${esc(m.id)}" aria-pressed="${on}">
+        <span class="as-av" data-i="${esc(ini)}" aria-hidden="true"></span>
+        <span class="cp-t"><b>${esc(m.name||'—')}</b><em>${wanted?'<i class="wantt">Needed</i>':''}${line}</em></span>
+        <span class="chip-status no-dot" data-state="${st[0]}">${st[1]}</span>
       </button>`;
     }
     /* A normal crew fits without any inner scrolling, which is what made this
        sheet quick. Only a long roster gets a bounded window, so Role, Pay and
        Notes don't end up a thousand pixels below the list. */
-    el.classList.toggle('tall', list.length > 8);
+    el.classList.toggle('tall', list.length > 7);
     syncAsUI();
     /* the same crew as another day of this booking, in one tap */
     const btn = $('#asCopy');
@@ -8768,9 +8809,19 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
         if(!_asEditId && m.defaultRate) $('#asAmt').value = m.defaultRate;
       }
     }
-    $$('#asPick .cpick').forEach(x=>x.classList.toggle('on', _asPicked.has(x.dataset.pick)));
+    $$('#asPick .cpick').forEach(x=>{
+      const on = _asPicked.has(x.dataset.pick);
+      x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on));
+    });
+    if(!$('#asTabs').hidden) renderAsTabs(asRoster(), false);
     syncAsUI();
     refreshAsConflict();
+  });
+  on('#asTabs', 'click', e=>{
+    const b = e.target.closest('[data-ascat]'); if(!b || b.dataset.ascat === _asCat) return;
+    _asCat = b.dataset.ascat;
+    renderAsPick();
+    $('#asPick').scrollTop = 0;
   });
   on('#asCopy', 'click', ()=>{
     const ids = String($('#asCopy').dataset.copy||'').split(',').filter(Boolean);
@@ -8793,6 +8844,8 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   let _asForceEdit = false, _bookRows = [];
   /* what is typed in the crew filter, for the length of one sheet */
   let _asFilter = '';
+  /* which tab of the crew picker is showing — outdoor or office */
+  let _asCat = 'outdoor';
   on('#asFilter', 'input', e=>{ _asFilter = e.target.value; renderAsPick(); });
   on('#asFilter', 'keydown', e=>{
     if(e.key !== 'Escape') return;
@@ -8808,6 +8861,10 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asTitle').textContent = a ? 'Edit assignment' : (_asForceEdit ? 'Assign editing' : 'Assign crew');
     $('#asWho').textContent = asWhoText(ctx) + (ctx.venue ? ' · ' + ctx.venue : '');
     _asPicked = a && a.memberId ? new Set([a.memberId]) : new Set();
+    /* a shoot opens on the outdoor crew, editing on the office; an existing
+       row on the tab of the person already on it */
+    const was = a && memberById(a.memberId);
+    _asCat = was ? catOf(was) : _asForceEdit ? 'office' : 'outdoor';
     /* Every field is set BEFORE the picker renders, because renderAsPick ends
        in syncAsUI — which reads the role to decide between a call time and a
        deadline, and fills an empty deadline in. Rendering first meant syncAsUI
@@ -8828,6 +8885,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     $('#asRemove').hidden = !a;
     renderAsPick();
     refreshAsConflict();
+    /* one sheet, reused: it opened wherever the last one was scrolled to,
+       with the crew list out of sight */
+    $('#asModal').scrollTop = 0; $('#asPick').scrollTop = 0;
     $('#asModal').classList.add('open'); $('#asBackdrop').classList.add('open');
     pushView('assheet', '#team/assign');
   }
@@ -14513,6 +14573,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
   function qeOpenAssign(m, evx, d){
     openAs(qeEvCtx(evx), null);
     _asPicked = new Set([m.id]);
+    _asCat = catOf(m);
     renderAsPick();
     $('#asRole').value = TEAM_ROLES.includes(d.role) ? d.role : (TEAM_ROLES.includes(m.role) ? m.role : TEAM_ROLES[0]);
     $('#asAmt').value = d.amount > 0 ? d.amount : (m.defaultRate || '');
