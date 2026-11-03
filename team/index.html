@@ -954,7 +954,7 @@ const slotTag  = s => slotName(s) ? `<span class="slotpill ${esc(s)}">${esc(slot
 const slotRank = s => s === 'morning' ? 0 : s === 'evening' ? 2 : 1;
 
 let toastT;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
+function toast(m, ms){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),ms||3000); }
 const show = id => { ['loadingView','notCrewView','appView','errorView'].forEach(v=>$('#'+v).hidden = (v!==id)); };
 /* the error view's Call works even when the sign-in module never loaded */
 $('#errCall').href = 'tel:+' + STUDIO_PHONE.replace(/\D/g,'');
@@ -1533,7 +1533,21 @@ if(!CONFIGURED){
       }
       else openTab(pushTab(n));
     });
-    on('notificationReceived', ()=>{});   /* a push while the page is open: the listeners already carry the change */
+    /* A push while the page is open. The listeners already carry the change,
+       and iOS shows the banner itself (presentationOptions), but Android shows
+       nothing for an app on screen: the new card slid into the list with no
+       sound and no word, and crew took it for no alert at all (3 Nov 2026).
+       Say it here instead, minus the "Open the app" the lock-screen text ends
+       with. */
+    on('notificationReceived', ev => {
+      if(appPlatform() !== 'android' || !ME) return;
+      const n = (ev && ev.notification) || {};
+      const title = String(n.title || '').trim();
+      const body = String(n.body || '').replace(/\s*Open the app\b[^.]*\.\s*$/i, '').trim();
+      if(!title && !body) return;
+      toast([title, body].filter(Boolean).join(' — '), 6000);   /* longer than a "Saved": it is news to read */
+      FSApp.haptic('success');
+    });
   }
   /* back in front (app-shell.js 'fs:resume'): the countdown and the widget
      are worked out again for the time it is now, so a shoot that is over

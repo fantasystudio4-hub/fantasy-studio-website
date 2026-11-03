@@ -223,6 +223,29 @@
   function platform(){ try{ var C = window.Capacitor; return C && C.getPlatform ? String(C.getPlatform()) : ''; }catch(e){ return ''; } }
   FSApp.haptic = haptic;
 
+  /* ---- the Android alert channel ----
+     Crew said an assignment never reached them (3 Nov 2026), though FCM had
+     taken every one. With no channel of our own, Android files each push
+     under FCM's fallback "Miscellaneous" channel at default importance: a
+     quiet icon in the status bar, no pop-up, easy to miss. 'alerts' is HIGH,
+     so it pops up with sound and vibration; every push names it
+     (fcmMessage in the functions repo), and a phone that never ran this
+     falls back to the old channel, as before. Creating it again on every
+     load is harmless: Android keeps whatever the person changed in its
+     settings. */
+  FSApp.ALERT_CHANNEL = 'alerts';
+  if(inApp() && platform() === 'android'){
+    try{
+      var FMc = FSApp.native.plugin('FirebaseMessaging');
+      var pc = FMc && FMc.createChannel && FMc.createChannel({
+        id: FSApp.ALERT_CHANNEL, name: 'Alerts',
+        description: 'New work, payments and booking updates from Fantasy Studio',
+        importance: 4, visibility: 1, vibrate: true
+      });
+      if(pc && pc.catch) pc.catch(function(){});
+    }catch(e){}
+  }
+
   /* ---- splash ----
      The app shows its launch splash over the remote load. It goes once
      there is something worth seeing: the first time the tab bar's
