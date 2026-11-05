@@ -4672,7 +4672,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
     livePkgs().forEach(pk=>{
       (pk.events||[]).forEach(ev=>{
         if(/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))
-          evs.push({ date: ev.date, title: ev.title||'Event', slot: ev.slot||'', client: pk.clientName||'', quoteNo: pk.quoteNo||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk) });
+          evs.push({ date: ev.date, title: ev.title||'Event', slot: ev.slot||'', client: pk.clientName||'', quoteNo: pk.quoteNo||'', status: pk.status||'draft', kind:'pkg', id: pk.id, venue: ev.venue||'', b2b: isStudioJob(pk), endClient: isStudioJob(pk) ? (pk.endClientName||'') : '' });
       });
     });
     /* the membership test below used to be PKGS.some() per lead — O(leads ×
@@ -4758,7 +4758,9 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       + (fests.length ? `<div class="festrow">${fests.map(f=>`<span class="fest">🪔 ${esc(f)}</span>`).join('')}</div>` : '')
       /* No quote number on the row — the owner reads the day by who it is
          for, so the client (or partner studio) is the lit part of the line
-         and the number lives on the booking itself. */
+         and the number lives on the booking itself. A partner studio's job
+         also names its end client beside the studio, in the client gold
+         ("🏢 Studio · for Rohit & Deepika" — owner, 5 Nov 2026). */
       /* The day's events as a numbered rail: "3 events", then 1, 2, 3 down a
          line on the left. The number sits in a ring whose colour is the
          status the dot used to carry (booked green, unconfirmed red, …), so
@@ -4768,7 +4770,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return `
       <div class="cal-ev" data-kind="${esc(e.kind)}" data-id="${esc(e.id)}">
         <span class="cal-n ${esc(e.status)}">${i + 1}</span>
-        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span><em class="cal-who${e.b2b ? ' cal-who--b2b' : ''}">${e.b2b ? '🏢 ' : ''}${esc(e.client)}</em>${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · <em class="cal-crew">🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) + '</em>' : ''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span><em class="cal-who${e.b2b ? ' cal-who--b2b' : ''}">${e.b2b ? '🏢 ' : ''}${esc(e.client)}</em>${e.endClient ? ' · <em class="cal-who">for ' + esc(e.endClient) + '</em>' : ''}${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · <em class="cal-crew">🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) + '</em>' : ''}</span></div>
         <button class="btn btn--sm btn--ghost" data-openev>Open</button>
       </div>`;
     }).join('') + '</div>' : '<div class="empty">No events on this date.</div>')
