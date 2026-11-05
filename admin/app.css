@@ -218,6 +218,10 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-ev-t .cal-who{font-style:normal;color:var(--gold-b);font-weight:600}
 .cal-ev-t .cal-who--b2b{color:var(--b2b)}
 .cal-ev-t .cal-crew{font-style:normal;color:var(--text);font-weight:500}
+/* 5 Nov 2026 (owner): a long venue ("Sri Venkateswara Kalyana Mandapam,
+   opposite the bus depot, …") filled the line and pushed the crew down —
+   it now stops at one short piece and ends in "…". Open shows it whole. */
+.cal-ev-t .cal-loc{display:inline-block;max-width:16ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 /* ---- the day box's events as a numbered rail (Home calendar) ----
    "3 events", then every row with its number in a ring on a line down the
    left. The ring's colour is the status (the legend's dot colours), so the
