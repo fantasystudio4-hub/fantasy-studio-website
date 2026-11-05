@@ -211,7 +211,13 @@ header{position:sticky;top:0;z-index:var(--z-header);background:var(--bar-2);bac
 .cal-ev-t b{display:block;font-family:var(--serif);color:var(--white);font-size:var(--fs-lg)}
 .cal-ev-t span{font-size:var(--fs-sm);color:var(--mut)}
 /* the client / partner studio, a shade brighter than the venue and crew */
-.cal-ev-t .cal-who{font-style:normal;color:var(--text);font-weight:500}
+/* 5 Nov 2026 (owner): the names were hard to pick out of the muted line,
+   so each one now has its own colour — the client in gold, a partner studio
+   in the B2B blue (same as the B2B pill), the crew in bright cream. Only the
+   venue stays muted. */
+.cal-ev-t .cal-who{font-style:normal;color:var(--gold-b);font-weight:600}
+.cal-ev-t .cal-who--b2b{color:var(--b2b)}
+.cal-ev-t .cal-crew{font-style:normal;color:var(--text);font-weight:500}
 /* ---- the day box's events as a numbered rail (Home calendar) ----
    "3 events", then every row with its number in a ring on a line down the
    left. The ring's colour is the status (the legend's dot colours), so the

@@ -4768,7 +4768,7 @@ if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey){
       return `
       <div class="cal-ev" data-kind="${esc(e.kind)}" data-id="${esc(e.id)}">
         <span class="cal-n ${esc(e.status)}">${i + 1}</span>
-        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span><em class="cal-who">${e.b2b ? '🏢 ' : ''}${esc(e.client)}</em>${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · 🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) : ''}</span></div>
+        <div class="cal-ev-t"><b>${esc(e.title)}${slotTag(e.slot)}</b><span><em class="cal-who${e.b2b ? ' cal-who--b2b' : ''}">${e.b2b ? '🏢 ' : ''}${esc(e.client)}</em>${e.venue?' · '+esc(e.venue):''}${crew.length ? ' · <em class="cal-crew">🎬 ' + esc(crew.map(a=>a.memberName||'—').join(', ')) + '</em>' : ''}</span></div>
         <button class="btn btn--sm btn--ghost" data-openev>Open</button>
       </div>`;
     }).join('') + '</div>' : '<div class="empty">No events on this date.</div>')
